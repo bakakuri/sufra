@@ -20,11 +20,11 @@ function getGeo(ask){return new Promise(res=>{if(S.geo)return res(S.geo);if(!nav
  if(ask)return go();try{navigator.permissions.query({name:'geolocation'}).then(st=>st.state==='granted'?go():res(null)).catch(()=>res(null))}catch(e){res(null)}})}
 
 PG.places={r(){S.pq=S.pq||{kind:'',text:'',view:'map'};const f=S.pq;
- view.innerHTML=pgHead('ადგილები',`<button class="btn sm" data-a="page" data-p="placenew">${ic('plus')}დამატება</button>`)+`<form class="search" id="plf" role="search"><input class="field" id="plq" type="search" placeholder="ხინკალი, მარანი, სასტუმრო, ქალაქი" value="${esc(f.text)}" aria-label="ადგილის ძიება" autocomplete="off"><button type="button" class="ibtn" data-a="plnear" aria-label="ჩემთან ახლოს">${ic('locate')}</button></form>
+ view.innerHTML=pgHead('ადგილები',`<button class="btn sm" data-a="page" data-p="placenew">${ic('plus')}დამატება</button>`)+`<form class="search" id="plsf" role="search"><input class="field" id="plq" type="search" placeholder="ხინკალი, მარანი, სასტუმრო, ქალაქი" value="${esc(f.text)}" aria-label="ადგილის ძიება" autocomplete="off"><button type="button" class="ibtn" data-a="plnear" aria-label="ჩემთან ახლოს">${ic('locate')}</button></form>
  <div class="chipsbar" role="group" aria-label="ტიპი"><button data-a="plkind" data-k="" aria-pressed="${!f.kind}">ყველა</button>${PKINDS.map(([k,l,e])=>`<button data-a="plkind" data-k="${k}" aria-pressed="${f.kind===k}">${e} ${l}</button>`).join('')}</div>
  <div class="seg" role="group" aria-label="ხედი" style="margin-top:0">${[['map','რუკა'],['list','სია']].map(([k,l])=>`<button data-a="plview" data-k="${k}" aria-pressed="${f.view===k}">${l}</button>`).join('')}</div>
  <div class="plmapw" id="plmapw"${f.view==='map'?'':' hidden'}><div id="plmap" class="plmap"></div><div id="plpeek" class="plpeek" hidden></div></div><div id="pll"></div>`;
- $('#plf').onsubmit=e=>{e.preventDefault();f.text=$('#plq').value.trim();loadPlaces()};$('#plq').oninput=()=>{clearTimeout(S.plt);S.plt=setTimeout(()=>{f.text=$('#plq').value.trim();loadPlaces()},450)};
+ $('#plsf').onsubmit=e=>{e.preventDefault();f.text=$('#plq').value.trim();loadPlaces()};$('#plq').oninput=()=>{clearTimeout(S.plt);S.plt=setTimeout(()=>{f.text=$('#plq').value.trim();loadPlaces()},450)};
  S.plmap=null;getGeo(false).then(g=>{if(!S.pc)S.pc=g||TBILISI;if(f.view==='map')initPlMap();else loadPlaces()})}};
 A.plkind=t=>{S.pq.kind=t.dataset.k;$$('[data-a="plkind"]').forEach(b=>b.setAttribute('aria-pressed',String(b===t)));loadPlaces()};
 A.plview=t=>{S.pq.view=t.dataset.k;$$('[data-a="plview"]').forEach(b=>b.setAttribute('aria-pressed',String(b===t)));$('#plmapw').hidden=S.pq.view!=='map';if(S.pq.view==='map'&&!S.plmap)initPlMap();else{S.plmap?.invalidateSize();loadPlaces()}};

@@ -18,12 +18,12 @@ function renderBadges(){const set=(id,n)=>{const d=$('#'+id);if(!d)return;const 
 
 /* tabs and pages */
 function go(tab,dx){if(!R[tab])tab='home';const oi=TABS.findIndex(t=>t[0]===S.tab),ni=TABS.findIndex(t=>t[0]===tab),wasPage=!!S.page;
- closeSheet();stopMedia();S.page=null;S.tab=tab;$$('.tab').forEach(b=>b.setAttribute('aria-current',String(b.dataset.tab===tab)));moveInd(ni);
+ closeSheet();closePV();stopMedia();S.page=null;S.tab=tab;$$('.tab').forEach(b=>b.setAttribute('aria-current',String(b.dataset.tab===tab)));moveInd(ni);
  const app=$('#app');app.classList.toggle('media',tab==='clips');app.classList.remove('barhidden');view.className=tab==='clips'?'is-clips':'';view.scrollTop=0;
  try{history.replaceState({tab},'',tab==='home'?location.pathname+location.search:'#'+tab)}catch(e){}
  R[tab]();updateFab();markSide();
  const d=dx!=null?dx:(oi===ni&&!wasPage?0:Math.sign(ni-oi||1)*24);if(d)enterView(d)}
-{const op=openPage;openPage=function(...a){const r=op.apply(this,a);updateFab();markSide();return r}}
+{const op=openPage;openPage=function(...a){closePV();const r=op.apply(this,a);updateFab();markSide();return r}}
 function updateFab(){const f=$('#fab');if(f)f.hidden=document.body.classList.contains('wide')||!!S.page||!['home','me'].includes(S.tab)}
 A.home=()=>{if(S.tab==='home'&&!S.page){view.scrollTo({top:0,behavior:RM()?'auto':'smooth'});return}go('home')};
 
@@ -106,6 +106,7 @@ window.addEventListener('popstate',e=>{if(!ME)return;
  if(!$('#layer').hidden){closeLayer();reState();return}
  if(!$('#story').hidden){closeStory();reState();return}
  if(!$('#sheet').hidden){closeSheet();reState();return}
+ if($('#pv')&&!$('#pv').hidden){closePV();reState();return}
  const st=e.state;if(st&&st.pg&&PG[st.pg]){S._dir=-1;openPage(st.pg,st.arg,null,true);return}
  if(!route(location.hash))go(st&&st.tab||'home',-28)});
 
@@ -123,7 +124,7 @@ $('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)r
 document.addEventListener('click',e=>{if(!e.target.closest('.rwrap'))$$('.picker').forEach(x=>x.remove());const t=e.target.closest('[data-a]');if(!t)return;const f=A[t.dataset.a];if(!f)return;if(t.tagName==='A')e.preventDefault();try{const r=f(t,e);if(r&&r.catch)r.catch(x=>toast(errMsg(x)))}catch(x){toast(errMsg(x))}});
 $('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeSheet()});
 $('#layer').addEventListener('click',e=>{if(e.target.id==='layer')closeLayer()});
-document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('#layer').hidden)closeLayer();else if(!$('#story').hidden)closeStory();else if(!$('#sheet').hidden)closeSheet()});
+document.addEventListener('keydown',e=>{if(PV&&!$('#pv')?.hidden&&$('#sheet').hidden&&(e.key==='ArrowRight'||e.key==='ArrowLeft')){const b=$(`#pv .pmnav.${e.key==='ArrowRight'?'next':'prev'}`);if(b)b.click();return}if(e.key!=='Escape')return;if(!$('#layer').hidden)closeLayer();else if(!$('#story').hidden)closeStory();else if(!$('#sheet').hidden)closeSheet();else if($('#pv')&&!$('#pv').hidden)closePV()});
 {let lastY=0;view.addEventListener('scroll',()=>{const y=view.scrollTop,app=$('#app');$('#top').classList.toggle('shadow',y>4);if(view.classList.contains('is-clips'))return;
  if(y>lastY+8&&y>90)app.classList.add('barhidden');else if(y<lastY-8||y<40)app.classList.remove('barhidden');lastY=y},{passive:true})}
 try{const ro=new ResizeObserver(()=>{const r=document.documentElement.style;r.setProperty('--th',$('#top').offsetHeight+'px');r.setProperty('--bh',$('#tabs').offsetHeight+'px')});ro.observe($('#top'));ro.observe($('#tabs'))}catch(e){}

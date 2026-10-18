@@ -74,7 +74,7 @@ const groupRow=g=>`<button class="row" data-a="group" data-id="${g.id}">${avAny(
 A.search=()=>openPage('search','');
 PG.tag={r(tag){view.innerHTML=pgHead('#'+esc(tag),`<button class="btn sm" data-a="composetag" data-t="${esc(tag)}">${ic('plus')}პოსტი</button>`)+`<div id="tagb">${skel(3)}</div>`;
  fetchPosts(b=>b.contains('tags',[tag]).order('created_at',{ascending:false}).limit(40)).then(rows=>{const el=$('#tagb');if(el){el.innerHTML=`<p class="hint" style="padding:12px 16px 4px">${rows.length} პოსტი</p>`+(rows.map(postHTML).join('')||empty('ჯერ არავის დაუწერია','იყავი პირველი ამ ჰეშთეგით.'));staggerIn($$('.post',el).slice(0,6))}}).catch(e=>{const el=$('#tagb');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))})}};
-A.composetag=async t=>{await compose();const ta=$('#ct');if(ta){ta.value=' #'+t.dataset.t;ta.focus();ta.setSelectionRange(0,0)}};
+A.composetag=async t=>{await compose();const ta=$('#ct');if(ta){ta.value=' #'+t.dataset.t;ta.oninput&&ta.oninput();ta.focus();ta.setSelectionRange(0,0)}};
 PG.saved={r(){view.innerHTML=pgHead('შენახული')+`<div id="savb">${skel(3)}</div>`;
  q(sb.from('saves').select('post_id').eq('user_id',ME.id).order('created_at',{ascending:false}).limit(60)).then(async s=>{const ids=s.map(x=>x.post_id);const rows=ids.length?await fetchPosts(b=>b.in('id',ids)):[];rows.sort((a,b)=>ids.indexOf(a.id)-ids.indexOf(b.id));const el=$('#savb');if(el)el.innerHTML=rows.map(postHTML).join('')||empty('შენახული ჯერ არაფერია','პოსტთან სანიშნეს დააჭირე და აქ გამოჩნდება.')}).catch(e=>{const el=$('#savb');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))})}};
 PG.post={r(id){id=+id;view.innerHTML=pgHead('პოსტი')+`<div id="postb">${skel(1)}</div>`;
