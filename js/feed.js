@@ -1,5 +1,5 @@
 /* posts: loading, rendering, reactions, polls, comments, composer */
-const POSTSEL='id,author,body,media,poll,tags,group_id,page_id,is_clip,hidden,created_at,ap:profiles(id,name,username,avatar_url,hue,verified,is_business),page:pages(id,name,hue,avatar_url,verified,kind),grp:groups(id,name)';
+const POSTSEL='id,author,body,media,poll,tags,group_id,page_id,is_clip,hidden,created_at,ap:profiles!posts_author_fkey(id,name,username,avatar_url,hue,verified,is_business),page:pages!posts_page_id_fkey(id,name,hue,avatar_url,verified,kind),grp:groups!posts_group_id_fkey(id,name)';
 const POSTS=new Map(),STAT=new Map();
 const EMOJI=['👍','❤️','😂','😮','😢','😡'];
 const blankStat=id=>({post_id:id,reactions:{},my_reaction:null,comments:0,grade_avg:null,grade_n:0,my_grade:null,votes:{},my_vote:null,saved:false});
@@ -63,7 +63,7 @@ function commentRow(c,postAuthor){const u=c.profiles||prof(c.author);if(c.profil
  return `<div class="trow" data-cid="${c.id}"><button data-a="user" data-u="${u.id}" aria-label="${esc(u.name)}">${av(u,34)}</button><div class="grow"><b>${esc(u.name)}${vb(u)} <span class="muted" style="font-weight:400;font-size:12px">${ago(c.created_at)}</span></b>${tx(c.body)}</div>${can?`<button class="ibtn sm" data-a="delcomment" data-cid="${c.id}" aria-label="კომენტარის წაშლა">${ic('x')}</button>`:''}</div>`}
 async function openComments(id){const p=POSTS.get(id);
  sheet(head('კომენტარები')+`<div class="ph-body" id="cb">${skel(2)}</div><form class="ph-foot" id="cf"><input class="field" id="cin" maxlength="1000" placeholder="დაწერე კომენტარი…" aria-label="კომენტარი" autocomplete="off"><button class="btn">გაგზავნა</button></form>`);
- try{const rows=await q(sb.from('comments').select('id,body,created_at,author,profiles(id,name,username,avatar_url,hue,verified)').eq('post_id',id).order('created_at').limit(300));
+ try{const rows=await q(sb.from('comments').select('id,body,created_at,author,profiles!comments_author_fkey(id,name,username,avatar_url,hue,verified)').eq('post_id',id).order('created_at').limit(300));
   $('#cb').innerHTML=rows.map(c=>commentRow(c,p?.author)).join('')||'<p class="muted">ჯერ არავის დაუწერია. იყავი პირველი.</p>';$('#cb').scrollTop=1e6}catch(e){$('#cb').innerHTML=`<p class="muted">${errMsg(e)}</p>`}
  $('#cf').onsubmit=async e=>{e.preventDefault();const i=$('#cin'),v=i.value.trim();if(!v)return;i.value='';
   try{const c=await q(sb.from('comments').insert({post_id:id,author:ME.id,body:v}).select('id,body,created_at,author').single());const cb=$('#cb');if(cb.querySelector('.muted'))cb.innerHTML='';cb.insertAdjacentHTML('beforeend',commentRow(c,p?.author));cb.scrollTop=1e6;

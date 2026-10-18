@@ -75,7 +75,7 @@ A.adver=async t=>{const c=t.closest('.repcard'),ok=t.dataset.ok==='1';$$('button
  anim(c,[{opacity:1},{opacity:0,transform:'scale(.97)'}],{duration:240});setTimeout(()=>{c.remove();if(!$('.vreq'))adminTab()},230);refreshStats()}catch(e){toast(errMsg(e));$$('button',c).forEach(b=>b.disabled=false)}};
 
 /* ads: review pending, see what runs */
-async function admAds(el){const rows=await q(sb.from('ads').select('id,page_id,post_id,budget,spent,status,created_at,page:pages(id,name,hue,verified)').in('status',['pending','active']).order('created_at',{ascending:false}).limit(40));
+async function admAds(el){const rows=await q(sb.from('ads').select('id,page_id,post_id,budget,spent,status,created_at,page:pages!ads_page_id_fkey(id,name,hue,verified)').in('status',['pending','active']).order('created_at',{ascending:false}).limit(40));
  const posts=rows.length?await fetchPosts(b=>b.in('id',rows.map(r=>r.post_id))):[];const P=new Map(posts.map(p=>[p.id,p]));
  if(!el.isConnected)return;const pend=rows.filter(r=>r.status==='pending'),act=rows.filter(r=>r.status==='active');
  if(!rows.length){el.innerHTML=empty('რეკლამები არ არის','ბიზნეს გვერდების რეკლამები განსახილველად აქ გამოჩნდება.');return}

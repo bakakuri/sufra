@@ -274,3 +274,5 @@ button.ptag{cursor:pointer}
 .bubwrap.txw{flex-direction:row;align-items:flex-end}
 .mrow.me .bubwrap{align-self:flex-end}
 .field:focus-visible,.fld input:focus-visible,.fld textarea:focus-visible,.fld select:focus-visible{outline:none;border-color:var(--wine);box-shadow:0 0 0 3px color-mix(in srgb,var(--wine) 22%,transparent)}
+.cpoll>.field{flex:none;height:42px}
+.prow .field{flex:1;height:42px}
