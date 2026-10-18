@@ -29,6 +29,17 @@ function text(kind: string, name: string, ref: Record<string, string>): string {
     case "verify_rejected": return "ვერიფიკაცია ვერ დადასტურდა. სცადე ახალი სელფით";
     case "ad_ok": return "შენი რეკლამა დამტკიცდა და უკვე ჩანს";
     case "ad_rejected": return "რეკლამა არ დამტკიცდა, მონეტები დაგიბრუნდა";
+    case "room_invite": return `${name} გეპატიჟება ${ref.kind === "birja" ? "ბირჟაზე" : "სუფრაზე"}: ${ref.title ?? ""}`;
+    case "bet_won": return `მოიგე ${ref.coins ?? ""} მონეტა · ${ref.match ?? ""} ${ref.score ?? ""}`;
+    case "bet_lost": return `${ref.match ?? ""} ${ref.score ?? ""} · პროგნოზი არ გამართლდა`;
+    case "bet_refund": return `${ref.match ?? ""} · მონეტები დაგიბრუნდა`;
+    case "ride_req": return `${name} ითხოვს ${ref.seats ?? 1} ადგილს · ${ref.route ?? ""}`;
+    case "ride_ok": return `${name} დაგიდასტურა ადგილი · ${ref.route ?? ""}`;
+    case "ride_no": return `${name}: ადგილი ვერ დაგიდასტურა · ${ref.route ?? ""}`;
+    case "ride_cancel": return `${name} გააუქმა ჯავშანი · ${ref.route ?? ""}`;
+    case "job_apply": return `${name} გამოეხმაურა ვაკანსიას: ${ref.title ?? ""}`;
+    case "job_invited": return `გასაუბრებაზე მიგიწვიეს: ${ref.title ?? ""}`;
+    case "job_rejected": return `${ref.title ?? ""} · სამწუხაროდ, სხვა კანდიდატი შეირჩა`;
     default: return `${name} · ახალი შეტყობინება`;
   }
 }
@@ -37,6 +48,10 @@ function route(kind: string, ref: Record<string, string>): string {
   if (kind === "message" && ref.conv) return `/#chat-${ref.conv}`;
   if ((kind === "react" || kind === "comment") && ref.post) return `/#post-${ref.post}`;
   if (kind === "match" || kind === "super") return "/#date";
+  if (kind === "room_invite" && ref.room) return `/#room-${ref.room}`;
+  if (kind.startsWith("bet_") && ref.fixture) return `/#fixture-${ref.fixture}`;
+  if (kind.startsWith("ride_") && ref.ride) return `/#ride-${ref.ride}`;
+  if (kind.startsWith("job_") && ref.job) return `/#job-${ref.job}`;
   return "/#notifications";
 }
 

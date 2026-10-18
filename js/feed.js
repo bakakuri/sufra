@@ -1,16 +1,17 @@
 /* posts: loading, rendering, reactions, polls, comments, composer */
-const POSTSEL='id,author,body,media,poll,tags,group_id,page_id,is_clip,hidden,created_at,ap:profiles!posts_author_fkey(id,name,username,avatar_url,hue,verified,is_business),page:pages!posts_page_id_fkey(id,name,hue,avatar_url,verified,kind),grp:groups!posts_group_id_fkey(id,name)';
+const POSTSEL='id,author,body,media,poll,tags,group_id,page_id,is_clip,hidden,created_at,link,draft,publish_at,ap:profiles!posts_author_fkey(id,name,username,avatar_url,hue,verified,is_business),page:pages!posts_page_id_fkey(id,name,hue,avatar_url,verified,kind),grp:groups!posts_group_id_fkey(id,name)';
 const POSTS=new Map(),STAT=new Map();
-const EMOJI=['👍','❤️','😂','😮','😢','😡'];
+const EMOJI=['👍','❤️','😂','😮','😢','😡','🍷'];
 const blankStat=id=>({post_id:id,reactions:{},my_reaction:null,comments:0,grade_avg:null,grade_n:0,my_grade:null,votes:{},my_vote:null,saved:false});
 async function hydrate(rows){rows=rows||[];rows.forEach(p=>{if(p.ap)PC.set(p.ap.id,Object.assign(PC.get(p.ap.id)||{},p.ap));POSTS.set(p.id,p)});
  if(rows.length){try{const st=await rpc('feed_stats',{p_ids:rows.map(p=>p.id)});st.forEach(s=>STAT.set(s.post_id,s))}catch(e){}}
  return rows}
-async function fetchPosts(build){return hydrate(await q(build(sb.from('posts').select(POSTSEL))))}
+async function fetchPosts(build){return hydrate(await q(build(sb.from('posts').select(POSTSEL).eq('draft',false).lte('created_at',new Date(Date.now()+3e5).toISOString()))))}
 const LOCALHIDE=store.get('hidden',{});
 const rTotal=s=>Object.values(s.reactions||{}).reduce((a,b)=>a+b,0);
-const rTop=s=>Object.entries(s.reactions||{}).sort((a,b)=>b[1]-a[1]).slice(0,3).map(e=>e[0]).join('');
+const rTop=s=>Object.entries(s.reactions||{}).sort((a,b)=>b[1]-a[1]).slice(0,3).map(e=>rg(e[0])).join('');
 function mediaBlock(p){const m=Array.isArray(p.media)?p.media:[];if(!m.length)return '';
+ if(ECO()&&!p._eco)return `<button class="ecoimg" data-a="ecopost" data-pid="${p.id}">${ic(m.some(x=>x.type==='video')?'clips':'image')}<span>${m.length>1?m.length+' ფაილი':m[0].type==='video'?'ვიდეო':'ფოტო'} · დააჭირე ჩასატვირთად</span></button>`;
  if(m.length===1){const x=m[0];return x.type==='video'?`<div class="ph vid">${mediaHTML(x)}</div>`:`<div class="ph" data-a="dbl" data-pid="${p.id}">${mediaHTML(x)}<span class="burst">${ic('heart','currentColor')}</span></div>`}
  const show=m.slice(0,4);return `<div class="mg n${show.length}">${show.map((x,i)=>`<button class="mgi" data-a="lightbox" data-pid="${p.id}" data-i="${i}" aria-label="ფოტო ${i+1}">${x.type==='video'?`<video src="${esc(x.url)}" muted playsinline preload="metadata"></video><span class="playi">${ic('clips')}</span>`:`<img src="${esc(x.url)}" alt="" loading="lazy">`}${i===3&&m.length>4?`<span class="more">+${m.length-4}</span>`:''}</button>`).join('')}</div>`}
 function pollBlock(p,s){if(!p.poll||!Array.isArray(p.poll.opts))return '';const tot=Object.values(s.votes||{}).reduce((a,b)=>a+b,0),voted=s.my_vote!=null;
@@ -19,9 +20,9 @@ function postHTML(p){const s=STAT.get(p.id)||blankStat(p.id),u=p.ap||prof(p.auth
  const who=pg?`<button class="pname" data-a="pagev" data-id="${pg.id}"><b>${esc(pg.name)}${pg.verified?vb({verified:1}):''}</b></button><span class="ptag">${pg.kind==='business'?'ბიზნესი':'არხი'}</span>`:`<button class="pname" data-a="user" data-u="${u.id}"><b>${esc(u.name)}${vb(u)}</b></button>`;
  return `<article class="post${p.hidden?' is-hidden':''}" data-id="${p.id}"><div class="lane">${pg?`<button data-a="pagev" data-id="${pg.id}" aria-label="${esc(pg.name)}">${avAny({n:pg.name,h:pg.hue},40).replace('class="av"','class="av sq"')}</button>`:`<button data-a="user" data-u="${u.id}" aria-label="${esc(u.name)}">${av(u)}</button>`}${s.comments?'<span class="thr"></span>':''}</div><div class="pbody">
  <div class="meta">${who}${p.grp?`<button class="ptag" data-a="group" data-id="${p.grp.id}">${esc(p.grp.name)}</button>`:''}<span>${ago(p.created_at)}</span>${p.hidden?'<span class="ptag warn">დამალულია</span>':''}${p.ad?'<span class="ptag ad">რეკლამა</span>':''}</div>
- ${tx(p.body)}${mediaBlock(p)}${pollBlock(p,s)}
+ ${tx(p.body)}${mediaBlock(p)}${p.link&&!(p.media||[]).length?linkCard(p.link):''}${pollBlock(p,s)}
  ${hasImg?`<div class="grade" role="group" aria-label="ფოტოს შეფასება"><span>შეფასება</span>${['1','2','3','4','5','5+'].map(x=>`<button data-a="grade" data-g="${x}" class="${x==='5+'?'plus':''}${s.my_grade===x?' on':''}">${x}</button>`).join('')}${s.grade_n?`<em>საშ. ${s.grade_avg} · ${s.grade_n}</em>`:''}</div>`:''}
- <div class="acts"><div class="rwrap"><button class="act${m?' on':''}" data-a="react" aria-label="რეაქცია">${m?`<span class="em">${m}</span>`:ic('heart')}<span>${rTotal(s)||''}</span></button></div>
+ <div class="acts"><div class="rwrap"><button class="act${m?' on':''}" data-a="react" aria-label="რეაქცია">${m?`<span class="em">${rg(m)}</span>`:ic('heart')}<span>${rTotal(s)||''}</span></button></div>
  <button class="act" data-a="comments" aria-label="კომენტარები">${ic('comment')}<span>${s.comments||''}</span></button>
  <button class="act" data-a="share" aria-label="გაზიარება">${ic('send')}</button>
  <button class="act${s.saved?' on':''}" data-a="save" aria-label="${s.saved?'შენახულია':'შენახვა'}">${ic('bookmark',s.saved?'currentColor':'')}</button>
@@ -35,8 +36,9 @@ async function setReaction(id,emoji){const s=STAT.get(id)||blankStat(id),old=s.m
  try{if(emoji)await q(sb.from('reactions').upsert({post_id:id,user_id:ME.id,emoji},{onConflict:'post_id,user_id'}));else await q(sb.from('reactions').delete().eq('post_id',id).eq('user_id',ME.id))}catch(e){toast(errMsg(e))}}
 A.react=t=>{const id=pidOf(t),s=STAT.get(id);if(s&&s.my_reaction){setReaction(id,null);return}
  const w=t.parentElement,open=$('.picker',w);$$('.picker').forEach(x=>x.remove());if(open)return;
- w.insertAdjacentHTML('beforeend',`<div class="picker" role="menu">${EMOJI.map(x=>`<button data-a="pick" data-e="${x}" role="menuitem" aria-label="${x}">${x}</button>`).join('')}</div>`)};
+ w.insertAdjacentHTML('beforeend',`<div class="picker" role="menu">${EMOJI.map(x=>`<button data-a="pick" data-e="${x}" role="menuitem" aria-label="${x==='🍷'?'ყანწი':x}">${rg(x)}</button>`).join('')}</div>`)};
 A.pick=t=>setReaction(pidOf(t),t.dataset.e);
+A.ecopost=t=>{const p=POSTS.get(pidOf(t));if(p){p._eco=true;rerenderPost(p.id)}};
 A.dbl=t=>{const now=Date.now();if(now-(t._l||0)<330){t._l=0;const id=pidOf(t),b=$('.burst',t);if(b){b.classList.remove('go');void b.offsetWidth;b.classList.add('go')}const s=STAT.get(id);if(!s||s.my_reaction!=='❤️')setTimeout(()=>setReaction(id,'❤️'),500)}else t._l=now};
 A.grade=async t=>{const id=pidOf(t),g=t.dataset.g,s=STAT.get(id)||blankStat(id);s.my_grade=g;STAT.set(id,s);$$('button',t.parentElement).forEach(b=>b.classList.toggle('on',b===t));pop(t);
  try{await q(sb.from('post_grades').upsert({post_id:id,user_id:ME.id,grade:g},{onConflict:'post_id,user_id'}));toast(g==='5+'?'„5+“ გაეგზავნა ავტორს':'შეფასება შენახულია')}catch(e){toast(errMsg(e))}};
@@ -79,9 +81,17 @@ async function compose(opt={}){CMP={files:[],poll:null,page:opt.page_id||null,gr
   ${pages.length?`<div class="chipsbar" style="padding:0" role="group" aria-label="ვისი სახელით"><button data-as="" aria-pressed="${!CMP.page}">${esc(ME.name)}</button>${pages.map(p=>`<button data-as="${p.id}" aria-pressed="${CMP.page===p.id}">${esc(p.name)}</button>`).join('')}</div>`:''}
   <textarea id="ct" class="ctext" rows="4" maxlength="2000" placeholder="${opt.clip?'კლიპის აღწერა, #ჰეშთეგები':'რა ხდება? გამოიყენე #ჰეშთეგები და @მომხმარებელი'}" aria-label="ტექსტი"></textarea>
   <div class="tlchip" id="tlc" hidden><span>ლათინური ასოებით წერ? <b>ერთი შეხებით გადაიყვანე.</b></span><button type="button" class="btn sm ghost" id="tlb">ქართულ ასოებზე</button></div>
-  <div class="cattach" id="cat"></div><div id="cpoll"></div><span class="cnt" id="cc">0/2000</span></div>
-  <div class="ph-foot cbar"><button class="ibtn" id="c_img" aria-label="ფოტოს დამატება">${ic('image')}</button><button class="ibtn" id="c_vid" aria-label="ვიდეოს დამატება">${ic('clips')}</button>${opt.clip?'':`<button class="ibtn" id="c_poll" aria-label="გამოკითხვა">${ic('poll')}</button>`}<span class="sp"></span><button class="btn" id="c_pub">გამოქვეყნება</button></div>`);
- const ta=$('#ct');ta.oninput=()=>{$('#cc').textContent=ta.value.length+'/2000';$('#tlc').hidden=!(ta.value.trim().length>5&&detect(ta.value)==='ka-lat')};
+  <div class="cattach" id="cat"></div><div id="clink"></div><div id="cpoll"></div>
+  <div class="csched" id="csch" hidden><label class="fld">გამოქვეყნების დრო<input type="datetime-local" id="c_when"></label><div class="row2" style="justify-content:flex-start"><button type="button" class="btn sm ghost" id="c_draft">${ic('edit')}დრაფტად შენახვა</button><button type="button" class="btn sm" id="c_plan">${ic('clock')}დაგეგმვა</button></div><p class="note">დრაფტები და დაგეგმილი პოსტები ჩანს პროფილზე → „დრაფტები“.</p></div>
+  <span class="cnt" id="cc">0/2000</span></div>
+  <div class="ph-foot cbar"><button class="ibtn" id="c_img" aria-label="ფოტოს დამატება">${ic('image')}</button><button class="ibtn" id="c_vid" aria-label="ვიდეოს დამატება">${ic('clips')}</button>${opt.clip?'':`<button class="ibtn" id="c_poll" aria-label="გამოკითხვა">${ic('poll')}</button>`}<button class="ibtn" id="c_sch" aria-label="დრაფტი ან დაგეგმვა">${ic('clock')}</button><span class="sp"></span><button class="btn" id="c_pub">გამოქვეყნება</button></div>`);
+ const ta=$('#ct');ta.oninput=()=>{$('#cc').textContent=ta.value.length+'/2000';$('#tlc').hidden=!(ta.value.trim().length>5&&detect(ta.value)==='ka-lat');clearTimeout(CMP.lt);CMP.lt=setTimeout(checkLink,700)};
+ const drawLink=()=>{const el=$('#clink');if(!el)return;el.innerHTML=CMP.link&&!CMP.files.length?`<div class="clinkw">${linkCard(CMP.link)}<button type="button" class="ibtn sm" id="c_lrm" aria-label="ბარათის მოშორება">${ic('x')}</button></div>`:'';const x=$('#c_lrm');if(x)x.onclick=()=>{CMP.linkOff=CMP.linkUrl;CMP.link=null;drawLink()}};
+ const checkLink=async()=>{const m=(ta.value.match(/https?:\/\/[^\s<]+/)||[])[0];if(!m){CMP.link=null;CMP.linkUrl=null;drawLink();return}if(m===CMP.linkUrl||m===CMP.linkOff)return;CMP.linkUrl=m;const d=await unfurl(m);if(CMP&&CMP.linkUrl===m){CMP.link=d;drawLink()}};
+ const pad=n=>String(n).padStart(2,'0'),dl=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+ $('#c_when').value=dl(new Date(Date.now()+36e5));$('#c_when').min=dl(new Date(Date.now()+6e4));
+ $('#c_sch').onclick=()=>{const b=$('#csch');b.hidden=!b.hidden;$('#c_sch').setAttribute('aria-pressed',String(!b.hidden))};
+ $('#c_draft').onclick=()=>publish('draft');$('#c_plan').onclick=()=>publish('plan');
  $('#tlb').onclick=()=>{ta.value=translit(ta.value);ta.oninput()};
  $$('[data-as]',$('#sheet')).forEach(b=>b.onclick=()=>{CMP.page=b.dataset.as?+b.dataset.as:null;$$('[data-as]',$('#sheet')).forEach(z=>z.setAttribute('aria-pressed',String(z===b)))});
  const drawAtt=()=>{$('#cat').innerHTML=CMP.files.map((f,i)=>`<div class="catt">${f.type==='video'?`<video src="${f.url}" muted playsinline></video>`:`<img src="${f.url}" alt="">`}<button type="button" data-rm="${i}" aria-label="წაშლა">${ic('x')}</button></div>`).join('');$$('[data-rm]',$('#cat')).forEach(b=>b.onclick=()=>{CMP.files.splice(+b.dataset.rm,1);drawAtt()})};
@@ -92,16 +102,19 @@ async function compose(opt={}){CMP={files:[],poll:null,page:opt.page_id||null,gr
  const pollUI=()=>{if(!CMP.poll){$('#cpoll').innerHTML='';return}$('#cpoll').innerHTML=`<div class="cpoll"><input class="field sq" id="pq" maxlength="140" placeholder="კითხვა" value="${esc(CMP.poll.q)}">${CMP.poll.opts.map((o,i)=>`<div class="prow"><input class="field sq" data-po="${i}" maxlength="60" placeholder="პასუხი ${i+1}" value="${esc(o)}">${i>1?`<button type="button" class="ibtn sm" data-pr="${i}" aria-label="წაშლა">${ic('x')}</button>`:''}</div>`).join('')}<div style="display:flex;gap:8px">${CMP.poll.opts.length<6?'<button type="button" class="btn sm ghost" id="padd">პასუხის დამატება</button>':''}<button type="button" class="btn sm ghost" id="prm">გამოკითხვის წაშლა</button></div></div>`;
   $('#pq').oninput=e=>CMP.poll.q=e.target.value;$$('[data-po]').forEach(i=>i.oninput=e=>CMP.poll.opts[+i.dataset.po]=e.target.value);$$('[data-pr]').forEach(b=>b.onclick=()=>{CMP.poll.opts.splice(+b.dataset.pr,1);pollUI()});
   const pa=$('#padd');if(pa)pa.onclick=()=>{CMP.poll.opts.push('');pollUI()};$('#prm').onclick=()=>{CMP.poll=null;pollUI()}};
- function rebind(){$('#c_img').onclick=addImgs;$('#c_vid').onclick=addVid;const pb=$('#c_poll');if(pb)pb.onclick=()=>{CMP.poll=CMP.poll||{q:'',opts:['','']};pollUI()};$('#c_pub').onclick=publish}
+ function rebind(){$('#c_img').onclick=addImgs;$('#c_vid').onclick=addVid;const pb=$('#c_poll');if(pb)pb.onclick=()=>{CMP.poll=CMP.poll||{q:'',opts:['','']};pollUI()};$('#c_pub').onclick=()=>publish('now')}
  rebind();if(opt.clip)setTimeout(addVid,200);
- async function publish(){const body=$('#ct').value.trim();let poll=null;
+ async function publish(mode='now'){const body=$('#ct').value.trim();let poll=null,when=null;
+  if(mode==='plan'){const v=$('#c_when').value;when=v?new Date(v):null;if(!when||isNaN(when)||when.getTime()<Date.now()+3e4){toast('აირჩიე მომავალი დრო');return}}
   if(CMP.poll){const opts=CMP.poll.opts.map(s=>s.trim()).filter(Boolean);if(!CMP.poll.q.trim()||opts.length<2){toast('გამოკითხვას სჭირდება კითხვა და მინიმუმ 2 პასუხი');return}poll={q:CMP.poll.q.trim(),opts}}
   if(!body&&!CMP.files.length&&!poll){toast('დაწერე რამე ან დაამატე ფოტო');return}
-  if(CMP.clip&&!CMP.files.some(f=>f.type==='video')){toast('კლიპისთვის საჭიროა ვიდეო');return}
+  if(mode==='now'&&CMP.clip&&!CMP.files.some(f=>f.type==='video')){toast('კლიპისთვის საჭიროა ვიდეო');return}
   const btn=$('#c_pub');btn.disabled=true;const media=[];
   try{for(let i=0;i<CMP.files.length;i++){btn.textContent=`იტვირთება ${i+1}/${CMP.files.length}…`;const f=CMP.files[i];media.push({url:await uploadBlob(f.blob,f.type==='video'?extOf(f.blob):'jpg'),type:f.type})}
    btn.textContent='ქვეყნდება…';
-   const row=await q(sb.from('posts').insert({author:ME.id,body,media,poll,page_id:CMP.page,group_id:CMP.group,is_clip:CMP.clip||(media.length===1&&media[0].type==='video'&&/#კლიპი|#clip/i.test(body))}).select(POSTSEL).single());
+   const rowIn={author:ME.id,body,media,poll,page_id:CMP.page,group_id:CMP.group,link:media.length?null:CMP.link||null,is_clip:CMP.clip||(media.length===1&&media[0].type==='video'&&/#კლიპი|#clip/i.test(body))};
+   if(mode!=='now'){await q(sb.from('posts').insert(Object.assign(rowIn,{draft:mode==='draft',publish_at:when?when.toISOString():null})));closeSheet();toast(mode==='draft'?'დრაფტი შენახულია':'დაიგეგმა: '+fdate(when));return}
+   const row=await q(sb.from('posts').insert(rowIn).select(POSTSEL).single());
    await hydrate([row]);closeSheet();toast('გამოქვეყნდა');
    const feed=$('#feed');if(feed&&!CMP.group){feed.insertAdjacentHTML('afterbegin',postHTML(row));anim($('.post',feed),[{opacity:0,transform:'translateY(-12px) scale(.98)'},{opacity:1,transform:'none'}],{duration:500,easing:SPRING})}else rp()}
   catch(e){toast(errMsg(e));btn.disabled=false;btn.textContent='გამოქვეყნება'}}}

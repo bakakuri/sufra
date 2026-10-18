@@ -12,6 +12,8 @@ PG.settings={r(){const push=store.get('push',false);view.innerHTML=pgHead('პ�
  ${isAdult()?`<button class="setrow" data-a="datesettings">${ic('heart')}<div class="grow"><span>გაცნობის პროფილი</span><small>${ME.dating?'ჩართულია':'გამორთულია'}</small></div></button>`:''}
  <h3 class="sec" style="margin:18px 0 4px">შეტყობინებები და აპი</h3>
  <div class="setrow"><div class="grow"><span>Push შეტყობინებები</span><small>მოწონებები, კომენტარები, მესიჯები, ზარები, როცა აპი დახურულია</small></div><button class="switch" role="switch" aria-checked="${push}" data-a="pushtog" aria-label="Push შეტყობინებები"></button></div>
+ <div class="setrow"><div class="grow"><span>ეკონომიური რეჟიმი</span><small>სუსტი ინტერნეტისთვის: ფოტო და ვიდეო იტვირთება შეხებით, კლიპები თავისით არ ირთვება, ატვირთვა უფრო მსუბუქია</small></div><button class="switch" role="switch" aria-checked="${!!S.eco}" data-a="ecotog" aria-label="ეკონომიური რეჟიმი"></button></div>
+ <button class="setrow" data-a="page" data-p="close">${ic('star')}<div class="grow"><span>ახლო მეგობრები</span><small>ვინ ნახავს „ახლო მეგობრების“ ისტორიებს</small></div></button>
  <button class="setrow" data-a="install">${ic('download')}<div class="grow"><span>ტელეფონზე დაყენება</span><small>სუფრა აპივით მთავარ ეკრანზე</small></div></button>
  <h3 class="sec" style="margin:18px 0 4px">საიტის ენა</h3><p class="note" style="margin-bottom:4px">თარგმნის ღილაკი ტექსტს ამ ენაზე თარგმნის. სხვა ენები მალე დაემატება.</p><div class="langs">${SITE_LANGS.map(k=>`<button data-a="setlang" data-l="${k}"${k==='ka'?'':' disabled'}><span>${LANGS[k].own}${k!=='ka'?' · მალე':''}</span><span class="radio${siteLang()===k?' on':''}"></span></button>`).join('')}</div>
  <h3 class="sec" style="margin:18px 0 4px">კონფიდენციალურობა</h3>
@@ -31,6 +33,7 @@ async function savePrivacy(){try{await q(sb.from('profiles').update({privacy:ME.
 A.tog=t=>{const k=t.dataset.k;ME.privacy=Object.assign({},ME.privacy,{[k]:!ME.privacy?.[k]});t.setAttribute('aria-checked',String(!!ME.privacy[k]));savePrivacy();if(k==='online')netPresence()};
 A.pset=t=>{ME.privacy=Object.assign({},ME.privacy,{[t.dataset.k]:t.dataset.v});$$(`[data-a="pset"][data-k="${t.dataset.k}"]`).forEach(b=>b.setAttribute('aria-pressed',String(b===t)));savePrivacy()};
 A.setlang=()=>{};
+A.ecotog=t=>{S.eco=!S.eco;store.set('eco',S.eco);document.documentElement.classList.toggle('eco',S.eco);t.setAttribute('aria-checked',String(S.eco));toast(S.eco?'ეკონომიური რეჟიმი ჩართულია':'ეკონომიური რეჟიმი გამორთულია')};
 const urlB64=s=>{const p='='.repeat((4-s.length%4)%4),b=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...b].map(c=>c.charCodeAt(0)))};
 async function enablePush(){if(!('serviceWorker' in navigator)||!('PushManager' in window)){toast(/iPhone|iPad/.test(navigator.userAgent)?'iPhone-ზე ჯერ დაამატე სუფრა მთავარ ეკრანზე (გაზიარება → „Add to Home Screen“)':'ამ ბრაუზერს push შეტყობინებები არ აქვს');return false}
  const perm=await Notification.requestPermission();if(perm!=='granted'){toast('შეტყობინებები ბრაუზერში დაბლოკილია. ჩართე საიტის პარამეტრებში');return false}

@@ -100,7 +100,7 @@ A.closelayer=()=>closeLayer();
 const lhead=t=>`<div class="ph-head"><h2>${t}</h2><span class="sp"></span><button class="ibtn" data-a="closelayer" aria-label="დახურვა">${ic('x')}</button></div>`;
 function editImage(file,opt={}){return new Promise(async resolve=>{let done=false;const fin=v=>{if(!done){done=true;resolve(v)}};
  let im;try{im=await loadImg(URL.createObjectURL(file))}catch(e){toast('ფოტო ვერ გაიხსნა');return fin(null)}
- const st={f:'none',r:opt.ratio||'orig',rot:0,b:100,max:opt.max||1600};const ratios=opt.ratios?RATIOS.filter(r=>opt.ratios.includes(r[0])):RATIOS;
+ const st={f:'none',r:opt.ratio||'orig',rot:0,b:100,max:opt.max||(ECO()?1080:1600)};const ratios=opt.ratios?RATIOS.filter(r=>opt.ratios.includes(r[0])):RATIOS;
  const L=layer(lhead(opt.title||'ფოტოს რედაქტირება')+`<div class="ph-body ed"><div class="edwrap"><canvas id="edc"></canvas></div>
   ${ratios.length>1?`<div class="chipsbar" role="group" aria-label="ჭრის ფორმა">${ratios.map(r=>`<button data-r="${r[0]}" aria-pressed="${st.r===r[0]}">${r[1]}</button>`).join('')}</div>`:''}
   <div class="chipsbar filt" role="group" aria-label="ფილტრი">${FILTERS.map(f=>`<button data-f="${f[0]}" aria-pressed="${st.f===f[0]}"><span class="fsw" style="filter:${f[2]||'none'}"></span>${f[1]}</button>`).join('')}</div>
@@ -128,4 +128,19 @@ function recordVoice(){return new Promise(async resolve=>{let done=false,rec,str
  layer(lhead('ხმოვანი შეტყობინება')+`<div class="ph-body"><div class="recbox"><span class="recdot"></span><b id="rect">0:00</b></div><p class="note">ილაპარაკე და შემდეგ დააჭირე „გაგზავნა“. მაქსიმუმ 2 წუთი.</p></div><div class="ph-foot"><button class="btn ghost" data-a="closelayer">გაუქმება</button><span class="sp"></span><button class="btn" id="recsend">${ic('send')}გაგზავნა</button></div>`,()=>{if(!done){chunks=[];fin(null)}});
  rec.start();t0=Date.now();tm=setInterval(()=>{const s=Math.round((Date.now()-t0)/1000);const e=$('#rect');if(e)e.textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0');if(s>=120)$('#recsend')?.click()},250);
  $('#recsend').onclick=()=>{LAYER_CB=null;closeLayer();rec.stop()}})}
-const mediaHTML=(m,cls='')=>m.type==='video'?`<video class="${cls}" src="${esc(m.url)}" controls playsinline preload="metadata"></video>`:m.type==='audio'?`<audio src="${esc(m.url)}" controls preload="metadata"></audio>`:`<img class="${cls}" src="${esc(m.url)}" alt="" loading="lazy">`;
+const mediaHTML=(m,cls='')=>m.type==='video'?`<video class="${cls}" src="${esc(m.url)}" controls playsinline preload="${ECO()?'none':'metadata'}"></video>`:m.type==='audio'?`<audio src="${esc(m.url)}" controls preload="metadata"></audio>`:`<img class="${cls}" src="${esc(m.url)}" alt="" loading="lazy">`;
+
+/* economy mode: no autoplay, media on tap, smaller uploads */
+const ECO=()=>!!S.eco;
+S.eco=store.get('eco',null);if(S.eco===null){const c=navigator.connection;S.eco=!!(c&&(c.saveData||/2g/.test(c.effectiveType||'')))}
+document.documentElement.classList.toggle('eco',!!S.eco);
+
+/* link preview cards */
+async function unfurl(url){try{const{data,error}=await sb.functions.invoke('unfurl',{body:{url}});if(error||!data||data.error||!data.title)return null;return data}catch(e){return null}}
+const safeHref=u=>/^https?:\/\//i.test(String(u||''))?String(u):'#';
+function linkCard(l,cls=''){if(!l||!l.url)return '';const img=l.image&&!ECO()?`<img src="${esc(l.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:'';
+ return `<a class="lcard2 ${cls}" href="${esc(safeHref(l.url))}" target="_blank" rel="noopener nofollow ugc">${img}<span class="lc-t"><small>${esc(l.site||'')}</small><b>${esc(l.title||l.url)}</b>${l.description?`<em>${esc(l.description)}</em>`:''}</span></a>`}
+
+/* the kantsi (drinking horn) reaction, stored as 🍷 */
+const KANTSI='<svg class="kantsi" viewBox="0 0 32 32" aria-label="ყანწი" role="img"><path d="M5 9c5 1 14 1 22-3-1 7-5 15-12 19-2 1-4 1-5-1-2-4-3-9-5-15z" fill="#C98A12"/><path d="M5 9c5 1 14 1 22-3" fill="none" stroke="#7A4B07" stroke-width="1.6" stroke-linecap="round"/><path d="M7 12c4 .6 11 .3 18-2.6" fill="none" stroke="#FFE3A3" stroke-width="1.2" opacity=".8"/><path d="M10 24c1 2 3 2 5 1" fill="none" stroke="#7A4B07" stroke-width="1.4" stroke-linecap="round"/><path d="M8 8.6c4 .5 11 .4 17-2.4l1 1c-6 3.2-13 3.4-18 2.6z" fill="#A8164A"/></svg>';
+const rg=e=>e==='🍷'?KANTSI:e;

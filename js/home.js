@@ -1,16 +1,16 @@
 /* home feed, reminders, trends, search, hashtags, saved, single post */
-const SHORT=[['events','cal','ღონისძიებები'],['groups','users','ჯგუფები'],['pages','mega','არხები'],['market','store','ბაზრობა'],['friends','user','მეგობრები'],['calendar','gift','კალენდარი'],['tour','trophy','ტურნირი']];
+const SHORT=[['rooms','wine','სუფრა'],['sport','trophy','მატჩები'],['events','cal','ღონისძიებები'],['groups','users','ჯგუფები'],['rides','pin','ერთად წავიდეთ'],['jobs','school','ვაკანსიები'],['market','store','ბაზრობა'],['pages','mega','არხები'],['friends','user','მეგობრები'],['calendar','gift','კალენდარი']];
 const FEED={done:false,loading:false,cursor:null,ads:[],adsShown:new Set(),count:0};
 const score=p=>{const s=STAT.get(p.id)||blankStat(p.id),h=(Date.now()-new Date(p.created_at).getTime())/36e5;return (1+rTotal(s)+s.comments*2+s.grade_n+(FRIENDS.has(p.author)?3:0)+(p.author===ME.id?1:0))/Math.pow(h+2,1.3)};
 const firstName=()=>esc(String(ME.name||'').split(' ')[0]);
 R.home=()=>{
  view.innerHTML=`<div class="stories" id="stories" role="list">${'<span class="story sk" aria-hidden="true"><span class="ring seen"><span class="av" style="--s:58px"></span></span><span></span></span>'.repeat(5)}</div>
  <nav class="shortcuts" aria-label="სერვისები">${SHORT.map(([p,i,l])=>`<button class="sc" data-a="page" data-p="${p}">${ic(i)}${l}</button>`).join('')}</nav>
- <div id="remind"></div><div id="trends"></div>
+ <div id="remind"></div><div id="memo"></div><div id="trends"></div>
  <button class="compose cbtn" data-a="compose">${av('me')}<span class="cph">რა ხდება, ${firstName()}?</span><span class="cq" aria-hidden="true">${ic('image')}${ic('poll')}</span></button>
  <div class="seg feedsw" role="group" aria-label="ფიდის რეჟიმი">${[['for','შენთვის'],['friends','მეგობრები'],['new','ახალი']].map(([k,l])=>`<button data-a="feed" data-f="${k}" aria-pressed="${S.feed===k}">${l}</button>`).join('')}</div>
  <div id="feed">${skel(3)}</div><div id="more" class="morebox" aria-live="polite"></div>`;
- loadStories();loadRemind();loadTrends();loadFeed(true);
+ loadStories();loadRemind();loadMemories();loadTrends();loadFeed(true);
  const io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting))loadFeed(false)},{root:view,rootMargin:'600px'});io.observe($('#more'))};
 A.feed=t=>{S.feed=t.dataset.f;$$('.feedsw button').forEach(b=>b.setAttribute('aria-pressed',String(b===t)));$('#feed').innerHTML=skel(3);loadFeed(true)};
 async function loadAds(){try{const ads=await q(sb.from('ads').select('id,post_id').eq('status','active').limit(6));if(!ads.length)return [];const rows=await fetchPosts(b=>b.in('id',ads.map(a=>a.post_id)));return rows.map(p=>Object.assign(p,{ad:ads.find(a=>a.post_id===p.id).id}))}catch(e){return []}}
@@ -81,3 +81,20 @@ PG.saved={r(){view.innerHTML=pgHead('შენახული')+`<div id="savb">
  q(sb.from('saves').select('post_id').eq('user_id',ME.id).order('created_at',{ascending:false}).limit(60)).then(async s=>{const ids=s.map(x=>x.post_id);const rows=ids.length?await fetchPosts(b=>b.in('id',ids)):[];rows.sort((a,b)=>ids.indexOf(a.id)-ids.indexOf(b.id));const el=$('#savb');if(el)el.innerHTML=rows.map(postHTML).join('')||empty('შენახული ჯერ არაფერია','პოსტთან სანიშნეს დააჭირე და აქ გამოჩნდება.')}).catch(e=>{const el=$('#savb');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))})}};
 PG.post={r(id){id=+id;view.innerHTML=pgHead('პოსტი')+`<div id="postb">${skel(1)}</div>`;
  fetchPosts(b=>b.eq('id',id)).then(rows=>{const el=$('#postb');if(!el)return;if(!rows.length){el.innerHTML=empty('პოსტი ვერ მოიძებნა','შეიძლება წაშლილია ან დამალული.');return}el.innerHTML=postHTML(rows[0])+`<div style="padding:12px 16px"><button class="btn ghost" data-a="comments" data-pid="${id}">${ic('comment')}კომენტარების ნახვა</button></div>`;if(S.openComments){S.openComments=0;openComments(id)}}).catch(e=>{const el=$('#postb');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))})}};
+
+/* "on this day" memories */
+async function loadMemories(){const el=$('#memo');if(!el)return;try{const ids=await rpc('my_memories');if(!ids.length||!$('#memo'))return;const rows=await fetchPosts(b=>b.in('id',ids.slice(0,1)));if(!rows.length)return;const p=rows[0],yrs=new Date().getFullYear()-new Date(p.created_at).getFullYear();
+ el.innerHTML=`<section class="memo"><div class="shead" style="padding:0"><h3>ამ დღეს, ${yrs} წლის წინ</h3>${ids.length>1?`<button class="trb" data-a="page" data-p="memories">ყველა · ${ids.length}</button>`:''}</div><div class="memo-in">${postHTML(p)}</div><div class="row2" style="justify-content:flex-start"><button class="btn sm ghost" data-a="sharememo" data-pid="${p.id}">${ic('repost')}მოგონების გაზიარება</button></div></section>`}catch(e){}}
+A.sharememo=t=>{const p=POSTS.get(pidOf(t));if(!p)return;compose().then(()=>{const ta=$('#ct');if(ta){ta.value=`მოგონება ${new Date(p.created_at).getFullYear()} წლიდან 💭\n${location.origin}/#post-${p.id}`;ta.oninput&&ta.oninput()}})};
+PG.memories={r(){view.innerHTML=pgHead('მოგონებები')+`<div id="memb">${skel(2)}</div>`;rpc('my_memories').then(async ids=>{const rows=ids.length?await fetchPosts(b=>b.in('id',ids)):[];const el=$('#memb');if(el)el.innerHTML=rows.map(p=>`<h3 class="sec2">${new Date(p.created_at).getFullYear()}</h3>`+postHTML(p)).join('')||empty('დღეს მოგონება არ არის')}).catch(e=>{const el=$('#memb');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))})}};
+
+/* drafts and scheduled posts */
+PG.drafts={r(){view.innerHTML=pgHead('დრაფტები და დაგეგმილი')+`<p class="hint" style="padding:12px 16px 0">დრაფტებს მხოლოდ შენ ხედავ. დაგეგმილი პოსტი თავისით გამოქვეყნდება მითითებულ დროს.</p><div id="drb">${skel(2)}</div>`;loadDrafts()}};
+async function loadDrafts(){const el=$('#drb');if(!el)return;try{const rows=await hydrate(await q(sb.from('posts').select(POSTSEL).eq('author',ME.id).or(`draft.eq.true,created_at.gt.${new Date().toISOString()}`).order('created_at',{ascending:true}).limit(60)));if(!el.isConnected)return;
+ el.innerHTML=rows.map(p=>`<div class="draftw" data-id="${p.id}"><div class="draftbar"><span class="ptag${p.draft?'':' ad'}">${p.draft?'დრაფტი':'დაგეგმილია · '+fdate(p.created_at)}</span><span class="sp"></span><button class="btn sm" data-a="dpub" data-pid="${p.id}">${ic('send')}ახლავე</button><button class="btn sm ghost" data-a="dplan" data-pid="${p.id}" aria-label="დროის შეცვლა">${ic('clock')}</button><button class="btn sm ghost" data-a="ddel" data-pid="${p.id}" aria-label="წაშლა">${ic('trash')}</button></div>${postHTML(p)}</div>`).join('')||empty('დრაფტები არ გაქვს','პოსტის წერისას დააჭირე საათის ღილაკს და შეინახე დრაფტად ან დაგეგმე.','<button class="btn" data-a="compose">პოსტის დაწერა</button>')}
+ catch(e){el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))}}
+A.dpub=async t=>{const id=+t.dataset.pid;t.disabled=true;try{await q(sb.from('posts').update({draft:false,publish_at:null}).eq('id',id));toast('გამოქვეყნდა');loadDrafts()}catch(e){toast(errMsg(e));t.disabled=false}};
+A.ddel=t=>{const id=+t.dataset.pid;confirmSheet('წაშლა','დრაფტი წაიშლება.','წაშლა',async()=>{await q(sb.from('posts').delete().eq('id',id));loadDrafts()},true)};
+A.dplan=t=>{const id=+t.dataset.pid,pad=n=>String(n).padStart(2,'0'),d=new Date(Date.now()+36e5),v=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+ sheet(head('გამოქვეყნების დრო')+`<div class="ph-body"><label class="fld">როდის<input type="datetime-local" id="dp_w" value="${v}"></label></div><div class="ph-foot"><span class="sp"></span><button class="btn" id="dp_ok">${ic('clock')}დაგეგმვა</button></div>`,'short');
+ $('#dp_ok').onclick=async()=>{const w=new Date($('#dp_w').value);if(isNaN(w)||w<Date.now()+3e4){toast('აირჩიე მომავალი დრო');return}try{await q(sb.from('posts').update({draft:false,publish_at:w.toISOString()}).eq('id',id));closeSheet();toast('დაიგეგმა: '+fdate(w));loadDrafts()}catch(e){toast(errMsg(e))}}};

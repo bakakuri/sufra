@@ -1,7 +1,7 @@
 /* groups, channels and business pages, ads, events, marketplace */
 const sqav=(n,h,s)=>avAny({n,h},s).replace('class="av"','class="av sq"');
 /* groups */
-PG.groups={r(){view.innerHTML=pgHead('ჯგუფები',`<button class="btn sm" data-a="newgroup">${ic('plus')}ახალი</button>`)+`<div id="grb">${skel(3)}</div>`;
+PG.groups={r(){view.innerHTML=pgHead('ჯგუფები',`<button class="btn sm" data-a="newgroup">${ic('plus')}ახალი</button>`)+`<div id="placeb"></div><div id="grb">${skel(3)}</div>`;placeCard();
  Promise.all([q(sb.from('group_members').select('group_id').eq('user_id',ME.id)),q(sb.from('groups').select('id,name,hue,is_private,description,owner').order('created_at',{ascending:false}).limit(60))]).then(([mine,all])=>{const ids=new Set(mine.map(m=>m.group_id));const el=$('#grb');if(!el)return;
   const my=all.filter(g=>ids.has(g.id)||g.owner===ME.id),other=all.filter(g=>!ids.has(g.id)&&g.owner!==ME.id);
   el.innerHTML=(my.length?`<h3 class="sec2">ჩემი ჯგუფები</h3><div class="list">${my.map(groupRow).join('')}</div>`:'')+`<h3 class="sec2">აღმოაჩინე</h3>`+(other.length?`<div class="list">${other.map(groupRow).join('')}</div>`:empty('სხვა ჯგუფები ჯერ არ არის','შექმენი პირველი და მოიწვიე მეგობრები.'));staggerIn($$('.row',el).slice(0,8))}).catch(e=>{const el=$('#grb');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))})}};
@@ -107,3 +107,15 @@ PG.mknew={r(){const imgs=[];view.innerHTML=pgHead('ახალი განც�
  $('#mkf').onsubmit=async e=>{e.preventDefault();const v=k=>$('#mk_'+k).value.trim(),btn=$('#mkf>.btn');btn.disabled=true;
   try{const media=[];for(let i=0;i<imgs.length;i++){btn.textContent=`იტვირთება ${i+1}/${imgs.length}…`;media.push({url:await uploadBlob(imgs[i],'jpg'),type:'image'})}
    await q(sb.from('listings').insert({seller:ME.id,title:v('t'),price:Math.max(0,parseFloat(v('p'))||0),category:v('c'),city:v('y'),description:v('d'),media}));toast('განცხადება გამოქვეყნდა');openPage('market')}catch(x){toast(errMsg(x));btn.disabled=false;btn.textContent='გამოქვეყნება'}}}};
+
+/* my village / region and the diaspora: automatic groups */
+const REGIONS=['თბილისი','აჭარა','გურია','იმერეთი','კახეთი','მცხეთა-მთიანეთი','რაჭა-ლეჩხუმი და ქვემო სვანეთი','სამეგრელო-ზემო სვანეთი','სამცხე-ჯავახეთი','ქვემო ქართლი','შიდა ქართლი','აფხაზეთი','ცხინვალის რეგიონი'];
+const ABROAD=['საბერძნეთი','იტალია','ესპანეთი','გერმანია','საფრანგეთი','აშშ','დიდი ბრიტანეთი','თურქეთი','რუსეთი','ისრაელი','პოლონეთი','კვიპროსი','ავსტრია','ბელგია','ნიდერლანდები','უკრაინა','კანადა','ირლანდია','შვეიცარია','პორტუგალია','შვედეთი','ჩეხეთი','ლიტვა','ესტონეთი','აზერბაიჯანი','სომხეთი','არაბთა გაერთიანებული საამიროები','იაპონია','ავსტრალია'];
+function placeCard(){const el=$('#placeb');if(!el)return;const has=ME.home_region||ME.home_place||ME.abroad;
+ el.innerHTML=`<section class="placec"><div class="grow"><b>${has?'ჩემი კუთხე':'ჩემი სოფელი და დიასპორა'}</b><span class="sub">${has?esc([ME.home_place,ME.home_region,ME.abroad&&'ვცხოვრობ: '+ME.abroad].filter(Boolean).join(' · ')):'მიუთითე საიდან ხარ და სად ცხოვრობ. შენი კუთხის და ემიგრაციის ჯგუფებში ავტომატურად შეხვალ.'}</span></div><button class="btn sm${has?' ghost':''}" data-a="setplace">${has?ic('edit')+'შეცვლა':ic('pin')+'მითითება'}</button></section>`}
+A.setplace=()=>{sheet(head('ჩემი კუთხე')+`<form class="ph-body" id="plf"><label class="fld">რეგიონი<select id="pl_r"><option value="">არ მიუთითო</option>${REGIONS.map(r=>`<option${ME.home_region===r?' selected':''}>${r}</option>`).join('')}</select></label>
+ <label class="fld">სოფელი ან ქალაქი<input id="pl_p" maxlength="60" value="${esc(ME.home_place||'')}" placeholder="მაგ. ზესტაფონი, სვირი, ონი" list="cities3"></label><datalist id="cities3">${CITIES.map(c=>`<option value="${c}">`).join('')}</datalist>
+ <label class="fld">ცხოვრობ საზღვარგარეთ?<select id="pl_a"><option value="">არა, საქართველოში</option>${ABROAD.map(c=>`<option${ME.abroad===c?' selected':''}>${c}</option>`).join('')}</select></label>
+ <p class="note">შეხვალ ჯგუფებში: შენი რეგიონი, სოფელი/ქალაქი და „ქართველები · ქვეყანა“. ნებისმიერ დროს შეგიძლია გამოხვიდე.</p></form><div class="ph-foot"><span class="sp"></span><button class="btn" id="pl_ok">შენახვა</button></div>`);
+ $('#pl_ok').onclick=async()=>{const b=$('#pl_ok');b.disabled=true;const upd={home_region:$('#pl_r').value,home_place:$('#pl_p').value.trim(),abroad:$('#pl_a').value};
+  try{await q(sb.from('profiles').update(upd).eq('id',ME.id));Object.assign(ME,upd);const ids=await rpc('join_place_groups');closeSheet();toast(ids.length?`შეხვედი ${ids.length} ჯგუფში`:'შენახულია');confetti();rp()}catch(e){toast(errMsg(e));b.disabled=false}}};
