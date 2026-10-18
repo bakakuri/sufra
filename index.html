@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<title>სუფრა</title>
+<meta name="description" content="სუფრა: ქართული სოციალური ქსელი. მეგობრები, კლიპები, გაცნობა, ჯგუფები, ბაზრობა და ნარდი, შაში, ჭადრაკი, ჯოკერი ონლაინ.">
+<meta name="theme-color" content="#A8164A" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F0D12" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="სუფრა">
+<meta property="og:title" content="სუფრა">
+<meta property="og:description" content="მეგობრები, კლიპები, გაცნობა და ნარდი ერთ სუფრასთან.">
+<meta property="og:image" content="/icons/icon-512.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://iasospzhhdedpilykpiu.supabase.co" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&family=Noto+Serif+Georgian:wdth,wght@62.5..100,600..900&display=swap">
+<link rel="stylesheet" href="/css/base.css?v=202610181751">
+<link rel="stylesheet" href="/css/app.css?v=202610181751">
+</head>
+<body>
+<div id="boot" aria-label="იტვირთება"><span class="logo">სუფრა</span><span class="spin"></span></div>
+<div id="auth" hidden></div>
+<div id="app" hidden>
+  <header class="top" id="top"></header>
+  <main id="view" tabindex="-1"></main>
+  <nav class="tabs" id="tabs" aria-label="მთავარი ნავიგაცია"></nav>
+  <button id="fab" class="fab" data-a="create" aria-label="შექმნა: პოსტი, ფოტო, კლიპი, ისტორია" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+</div>
+<div id="sheet" class="sheet" hidden></div>
+<div id="layer" class="sheet layer" hidden></div>
+<div id="story" class="sv" hidden></div>
+<div id="call" class="call" role="dialog" aria-label="ზარი" hidden></div>
+<button id="inapp" class="inapp" hidden></button>
+<div id="toast" role="status" hidden></div>
+<noscript><p style="padding:24px;font-family:sans-serif">სუფრას სჭირდება JavaScript. ჩართე და გადატვირთე გვერდი.</p></noscript>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>if(!window.supabase){document.getElementById('boot').innerHTML='<p style="padding:24px;text-align:center">სერვერთან დაკავშირება ვერ მოხერხდა. შეამოწმე ინტერნეტი და გადატვირთე გვერდი.</p>'}</script>
+<script src="/js/lib-icons.js?v=202610181751"></script>
+<script src="/js/lib-lang.js?v=202610181751"></script>
+<script src="/js/lib-motion.js?v=202610181751"></script>
+<script src="/js/core.js?v=202610181751"></script>
+<script src="/js/auth.js?v=202610181751"></script>
+<script src="/js/feed.js?v=202610181751"></script>
+<script src="/js/home.js?v=202610181751"></script>
+<script src="/js/people.js?v=202610181751"></script>
+<script src="/js/chat.js?v=202610181751"></script>
+<script src="/js/community.js?v=202610181751"></script>
+<script src="/js/dating.js?v=202610181751"></script>
+<script src="/js/games-core.js?v=202610181751"></script>
+<script src="/js/games-engines.js?v=202610181751"></script>
+<script src="/js/settings.js?v=202610181751"></script>
+<script src="/js/admin.js?v=202610181751"></script>
+<script src="/js/app.js?v=202610181751"></script>
+</body>
+</html>

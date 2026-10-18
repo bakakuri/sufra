@@ -1,0 +1,27 @@
+{
+  "name": "სუფრა",
+  "short_name": "სუფრა",
+  "description": "ქართული სოციალური ქსელი: მეგობრები, კლიპები, გაცნობა, ჯგუფები, ბაზრობა და სამაგიდო თამაშები ონლაინ.",
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "portrait",
+  "lang": "ka",
+  "dir": "ltr",
+  "background_color": "#F4F2F7",
+  "theme_color": "#A8164A",
+  "categories": ["social", "games", "entertainment"],
+  "icons": [
+    {"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ],
+  "shortcuts": [
+    {"name": "მიმოწერა", "url": "/#chats", "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]},
+    {"name": "კლიპები", "url": "/#clips", "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]},
+    {"name": "თამაშები", "url": "/#games", "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]},
+    {"name": "გაცნობა", "url": "/#date", "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]}
+  ]
+}
