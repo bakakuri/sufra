@@ -2,7 +2,7 @@
 Object.assign(ERR,{admin_only:'ეს მხოლოდ ადმინისტრატორს შეუძლია',cannot_ban_admin:'ადმინისტრატორს ვერ შეზღუდავ',cannot_demote_self:'საკუთარ თავს როლს ვერ ჩამოართმევ',not_pending:'ეს რეკლამა უკვე განხილულია',bad_type:'ამ ტიპის შინაარსს ასე ვერ დამალავ'});
 const ADM={tab:'reports',rst:'open',uf:'new',st:{}};
 const ATABS=[['reports','საჩივრები','open_reports'],['verify','ვერიფიკაცია','pending_verifications'],['ads','რეკლამა','pending_ads'],['users','მომხმარებლები',null],['pages','გვერდები',null]];
-const TTYPE={post:'პოსტი',comment:'კომენტარი',user:'პროფილი',listing:'განცხადება',message:'შეტყობინება',page:'გვერდი',story:'ისტორია',event:'ღონისძიება'};
+const TTYPE={post:'პოსტი',comment:'კომენტარი',user:'პროფილი',listing:'განცხადება',message:'შეტყობინება',page:'გვერდი',story:'ისტორია',event:'ღონისძიება',job:'ვაკანსია',ride:'მგზავრობა',room:'ოთახი',fixture:'მატჩი',place:'ადგილი',review:'შეფასება',toast:'სადღეგრძელო',help:'დახმარების თხოვნა'};
 const ROLE_L={user:'მომხმარებელი',moderator:'მოდერატორი',admin:'ადმინისტრატორი'};
 
 PG.admin={r(){if(!isStaff()){view.innerHTML=pgHead('ადმინ პანელი')+empty('წვდომა არ გაქვს','ეს გვერდი მხოლოდ მოდერატორებისთვისაა.');return}
@@ -32,22 +32,26 @@ async function admReports(el){
  if(by('page').length)jobs.push(grab('page',sb.from('pages').select('id,name,owner,verified').in('id',num(by('page')))));
  if(by('story').length)jobs.push(grab('story',sb.from('stories').select('id,author,media_url,media_type').in('id',num(by('story')))));
  if(by('event').length)jobs.push(grab('event',sb.from('events').select('id,title,host').in('id',num(by('event')))));
+ if(by('place').length)jobs.push(grab('place',sb.from('places').select('id,name,about,photo,created_by,hidden').in('id',num(by('place')))));
+ if(by('review').length)jobs.push(grab('review',sb.from('place_reviews').select('id,author,body,photos,place_id,hidden').in('id',num(by('review')))));
+ if(by('toast').length)jobs.push(grab('toast',sb.from('toasts').select('id,author,title,body,hidden').in('id',num(by('toast')))));
+ if(by('help').length)jobs.push(grab('help',sb.from('help_requests').select('id,author,title,body,media,hidden').in('id',num(by('help')))));
  await Promise.all(jobs);
- const people=[...rows.map(r=>r.reporter),...by('user'),...Object.values(T).map(x=>x.author||x.seller||x.owner||x.host)];await loadProfiles(people);
+ const people=[...rows.map(r=>r.reporter),...by('user'),...Object.values(T).map(x=>x.author||x.seller||x.owner||x.host||x.created_by)];await loadProfiles(people);
  if(!el.isConnected)return;
  const seg=`<div class="seg" role="group" aria-label="სტატუსი">${[['open','ღია'],['resolved','გადაწყვეტილი'],['dismissed','უარყოფილი']].map(([k,l])=>`<button data-a="adrst" data-k="${k}" aria-pressed="${ADM.rst===k}">${l}</button>`).join('')}</div>`;
  if(!groups.size){el.innerHTML=seg+empty(ADM.rst==='open'?'საჩივრები არ არის':'აქ ცარიელია',ADM.rst==='open'?'ყველაფერი წესრიგშია.':'');return}
  el.innerHTML=seg+[...groups.values()].sort((a,b)=>b.list.length-a.list.length).map(g=>repCard(g,T[g.type+':'+g.id])).join('');staggerIn($$('.repcard',el).slice(0,6))}
 A.adrst=t=>{ADM.rst=t.dataset.k;adminTab()};
-function repCard(g,x){const k=g.type,owner=k==='user'?g.id:x&&(x.author||x.seller||x.owner||x.host);const ids=g.list.map(r=>r.id).join(',');
+function repCard(g,x){const k=g.type,owner=k==='user'?g.id:x&&(x.author||x.seller||x.owner||x.host||x.created_by);const ids=g.list.map(r=>r.id).join(',');
  const reasons=[...new Set(g.list.map(r=>r.reason))];
  let prev='';
  if(k==='user')prev=`<button class="row" data-a="user" data-u="${esc(g.id)}">${av(g.id,40)}<span class="grow"><b>${esc(pname(g.id))}${vb(g.id)}</b><span class="sub">${prof(g.id).banned?'შეზღუდულია':'@'+esc(prof(g.id).username||'')}</span></span></button>`;
  else if(!x)prev=`<p class="note">${k==='message'?'პირადი მიმოწერა მოდერატორს არ უჩანს. გადაწყვიტე საჩივრის აღწერით ან შეზღუდე ავტორი პროფილიდან.':'შინაარსი უკვე წაშლილია ან ვადა გაუვიდა.'}</p>`;
- else{const media=(x.media||[])[0],img=x.media_url||media&&media.url,isVid=x.media_type==='video'||media&&media.type==='video';
+ else{const media=(x.media||[])[0],img=x.media_url||x.photo||(x.photos||[])[0]||(typeof media==='string'?media:media&&media.url),isVid=x.media_type==='video'||media&&media.type==='video';
   prev=`<div class="reppv">${img?(isVid?`<video src="${esc(img)}" muted playsinline preload="metadata"></video>`:`<img src="${esc(img)}" alt="" loading="lazy">`):''}<div class="grow">${owner?`<button class="pname" data-a="user" data-u="${owner}"><b>${esc(pname(owner))}</b></button>`:''}<p>${esc(String(x.body||x.title||x.name||'').slice(0,280))||'<span class="muted">ტექსტის გარეშე</span>'}</p>${x.hidden?'<span class="ptag warn">დამალულია</span>':''}</div></div>`}
- const canHide=['post','comment','listing'].includes(k)&&x,canDel=['post','comment','listing','story','event'].includes(k)&&x;
- const open=k==='post'&&x?`<button class="btn sm ghost" data-a="openpost" data-pid="${x.id}">${ic('eye')}ნახვა</button>`:k==='comment'&&x?`<button class="btn sm ghost" data-a="openpost" data-pid="${x.post_id}">${ic('eye')}პოსტი</button>`:k==='page'&&x?`<button class="btn sm ghost" data-a="pagev" data-id="${x.id}">${ic('eye')}ნახვა</button>`:k==='event'&&x?`<button class="btn sm ghost" data-a="page" data-p="event" data-arg="${x.id}">${ic('eye')}ნახვა</button>`:'';
+ const canHide=['post','comment','listing','place','review','toast','help'].includes(k)&&x,canDel=['post','comment','listing','story','event','place','review','toast','help'].includes(k)&&x;
+ const open=k==='post'&&x?`<button class="btn sm ghost" data-a="openpost" data-pid="${x.id}">${ic('eye')}ნახვა</button>`:k==='comment'&&x?`<button class="btn sm ghost" data-a="openpost" data-pid="${x.post_id}">${ic('eye')}პოსტი</button>`:k==='page'&&x?`<button class="btn sm ghost" data-a="pagev" data-id="${x.id}">${ic('eye')}ნახვა</button>`:k==='event'&&x?`<button class="btn sm ghost" data-a="page" data-p="event" data-arg="${x.id}">${ic('eye')}ნახვა</button>`:(k==='place'||k==='review')&&x?`<button class="btn sm ghost" data-a="page" data-p="place" data-arg="${x.place_id||x.id}">${ic('eye')}ნახვა</button>`:k==='help'&&x?`<button class="btn sm ghost" data-a="page" data-p="helpreq" data-arg="${x.id}">${ic('eye')}ნახვა</button>`:'';
  return `<article class="repcard" data-ids="${ids}"><div class="rephead"><span class="ptag">${TTYPE[k]||k}</span><b>${g.list.length} საჩივარი</b><span class="sp"></span><span class="sub">${ago(g.list[g.list.length-1].created_at)}</span></div>
  <div class="chips">${reasons.map(r=>`<span>${esc(r)}</span>`).join('')}</div>${g.list.filter(r=>r.details).slice(0,3).map(r=>`<p class="note">„${esc(r.details)}“</p>`).join('')}
  ${prev}
@@ -57,7 +61,7 @@ async function resolveCard(card,status){const ids=String(card.dataset.ids).split
  anim(card,[{opacity:1,transform:'none'},{opacity:0,transform:'translateX(40px)'}],{duration:260,easing:EASE});setTimeout(()=>{card.remove();if(!$('.repcard'))adminTab()},240);refreshStats()}
 A.adres=async t=>{const c=t.closest('.repcard');t.disabled=true;try{await resolveCard(c,t.dataset.s);toast(t.dataset.s==='resolved'?'მონიშნულია გადაწყვეტილად':t.dataset.s==='dismissed'?'საჩივარი უარყოფილია':'ხელახლა გაიხსნა')}catch(e){toast(errMsg(e));t.disabled=false}};
 A.adhide=async t=>{const c=t.closest('.repcard'),h=t.dataset.h==='1';t.disabled=true;try{await rpc('admin_hide',{p_type:t.dataset.type,p_id:+t.dataset.id,p_hidden:h});toast(h?'დაიმალა ყველასთვის':'ისევ ჩანს');if(h&&c&&ADM.rst==='open')await resolveCard(c,'resolved');else adminTab()}catch(e){toast(errMsg(e));t.disabled=false}};
-A.addel=t=>{const k=t.dataset.type,id=+t.dataset.id,c=t.closest('.repcard'),tbl={post:'posts',comment:'comments',listing:'listings',story:'stories',event:'events'}[k];
+A.addel=t=>{const k=t.dataset.type,id=+t.dataset.id,c=t.closest('.repcard'),tbl={post:'posts',comment:'comments',listing:'listings',story:'stories',event:'events',place:'places',review:'place_reviews',toast:'toasts',help:'help_requests'}[k];
  confirmSheet('სამუდამოდ წაშლა',`${TTYPE[k]} წაიშლება და ვეღარ აღდგება.`,'წაშლა',async()=>{await q(sb.from(tbl).delete().eq('id',id));toast('წაიშალა');if(c&&ADM.rst==='open')await resolveCard(c,'resolved');else if(c)c.remove()},true)};
 A.adban=t=>{const u=t.dataset.u,b=t.dataset.b==='1';const run=async()=>{await rpc('admin_ban',{p_user:u,p_banned:b});const p=PC.get(u);if(p)p.banned=b;toast(b?'შეიზღუდა':'შეზღუდვა მოიხსნა');refreshStats();if(ADM.tab==='users')adminTab();else{const c=t.closest('.repcard');if(c&&b&&ADM.rst==='open')await resolveCard(c,'resolved');else adminTab()}};
  if(b)confirmSheet('მომხმარებლის შეზღუდვა',`${esc(pname(u))} ვეღარ დაწერს პოსტებს, კომენტარებს და შეტყობინებებს, სანამ შეზღუდვას არ მოხსნი.`,'შეზღუდვა',run,true);else run().catch(e=>toast(errMsg(e)))};

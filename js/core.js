@@ -23,7 +23,7 @@ const S={tab:'home',page:null,feed:'for',game:null,ptab:'posts',online:new Set()
 const R={},A={},PG={};
 let ME=null;
 const PC=new Map();
-const PCOLS='id,username,name,bio,city,hue,avatar_url,cover_url,privacy,dating,gender,is_business,verified,role,banned,rating,last_seen,created_at';
+const PCOLS='id,username,name,bio,city,hue,avatar_url,cover_url,privacy,dating,gender,is_business,verified,role,banned,rating,last_seen,created_at,nameday,nameday_label,surname';
 async function loadProfiles(ids){const need=[...new Set(ids.filter(Boolean))].filter(id=>!PC.has(id)&&id!==ME?.id);if(need.length){for(let i=0;i<need.length;i+=100){const d=await q(sb.from('profiles').select(PCOLS).in('id',need.slice(i,i+100)));d.forEach(p=>PC.set(p.id,p))}}}
 const prof=id=>id&&ME&&id===ME.id?ME:PC.get(id)||{id,name:'მომხმარებელი',hue:200};
 const pname=id=>prof(id).name;

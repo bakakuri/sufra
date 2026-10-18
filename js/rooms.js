@@ -1,30 +1,33 @@
-/* live rooms: virtual supra with a tamada (video, up to 8) and birja voice rooms (up to 12), WebRTC mesh over realtime */
+/* live rooms: virtual supra with a tamada (video, up to 8), birja voice rooms (up to 12) and live broadcasts (one camera, up to 25 viewers); WebRTC over realtime */
 const ROOM_TOPICS=[['city','ქალაქი'],['sport','სპორტი'],['politics','პოლიტიკა'],['games','თამაშები'],['music','მუსიკა'],['tech','ტექნოლოგიები'],['love','ურთიერთობები'],['other','სხვა']];
 const TOASTS=['ღმერთის და მშვიდობის','სამშობლოს, საქართველოს','მასპინძლის და ამ ოჯახის','მშობლების','შენდობა: ვინც ჩვენ შორის აღარ არის','მეგობრობის','სიყვარულის და ქალების','ბავშვების და მომავლის','სტუმრების','ერთმანეთის, ალავერდით'];
-const ROOM_CAP={supra:8,birja:12};
+const ROOM_CAP={supra:8,birja:12,live:26};
+const RKINDS=[['supra','ვირტუალური სუფრა'],['birja','ბირჟა'],['live','ლაივი']];
+const rkIcon=k=>k==='supra'?'wine':k==='live'?'live':'mic';
 const topicName=k=>(ROOM_TOPICS.find(t=>t[0]===k)||ROOM_TOPICS[7])[1];
 let ROOM=null;
 
-PG.rooms={r(kind){S.rkind=kind==='birja'?'birja':S.rkind||'supra';
- view.innerHTML=pgHead('ოთახები',`<button class="btn sm" data-a="newroom">${ic('plus')}ახალი</button>`)+`<div class="seg" role="group" aria-label="ოთახის ტიპი">${[['supra','ვირტუალური სუფრა'],['birja','ბირჟა']].map(([k,l])=>`<button data-a="rkind" data-k="${k}" aria-pressed="${S.rkind===k}">${l}</button>`).join('')}</div>
+PG.rooms={r(kind){S.rkind=kind==='birja'||kind==='live'?kind:S.rkind||'supra';
+ view.innerHTML=pgHead('ოთახები',`<button class="btn sm" data-a="newroom">${ic('plus')}ახალი</button>`)+`<div class="seg" role="group" aria-label="ოთახის ტიპი">${RKINDS.map(([k,l])=>`<button data-a="rkind" data-k="${k}" aria-pressed="${S.rkind===k}">${l}</button>`).join('')}</div>
  <p class="hint" id="rhint"></p><div id="rlist">${skel(2)}</div>`;loadRooms()}};
 A.rkind=t=>{S.rkind=t.dataset.k;$$('[data-a="rkind"]').forEach(b=>b.setAttribute('aria-pressed',String(b===t)));loadRooms()};
 async function loadRooms(){const el=$('#rlist'),k=S.rkind;if(!el)return;
- $('#rhint').textContent=k==='supra'?'ვიდეო-სუფრა მეგობრებთან, 8 ადამიანამდე. თამადა სადღეგრძელოებს რიგით ამბობს, სხვები ჭიქებს უჭახუნებენ.':'ხმოვანი ოთახი თემაზე, 12 ადამიანამდე. ლაპარაკისთვის აწიე ხელი, მასპინძელი სიტყვას მოგცემს.';
+ $('#rhint').textContent=k==='supra'?'ვიდეო-სუფრა მეგობრებთან, 8 ადამიანამდე. თამადა სადღეგრძელოებს რიგით ამბობს, სხვები ჭიქებს უჭახუნებენ.':k==='live'?'პირდაპირი ეთერი შენი კამერიდან, 25 მაყურებლამდე. მაყურებლები წერენ კომენტარებს და გიგზავნიან საჩუქრებს.':'ხმოვანი ოთახი თემაზე, 12 ადამიანამდე. ლაპარაკისთვის აწიე ხელი, მასპინძელი სიტყვას მოგცემს.';
  try{const rows=await q(sb.from('rooms').select('id,host,kind,title,topic,is_private,created_at').eq('live',true).eq('kind',k).gt('created_at',new Date(Date.now()-12*36e5).toISOString()).order('created_at',{ascending:false}).limit(40));
   await loadProfiles(rows.map(r=>r.host));if(!el.isConnected)return;
-  el.innerHTML=rows.length?`<div class="list">${rows.map(r=>`<button class="row roomrow" data-a="page" data-p="room" data-arg="${r.id}"><span class="rico ${r.kind}">${ic(r.kind==='supra'?'wine':'mic')}</span><span class="grow"><b>${esc(r.title)}</b><span class="sub">${r.kind==='birja'?topicName(r.topic)+' · ':''}${esc(pname(r.host))} · ${ago(r.created_at)}${r.is_private?' · მეგობრებისთვის':''}</span></span><span class="live"><i></i>ცოცხლად</span></button>`).join('')}</div>`
-   :empty(k==='supra'?'ახლა სუფრა არავის აქვს გაშლილი':'ბირჟაზე ახლა არავინაა','გახსენი პირველმა და მოიწვიე მეგობრები.',`<button class="btn" data-a="newroom">${ic('plus')}${k==='supra'?'სუფრის გაშლა':'ოთახის გახსნა'}</button>`);staggerIn($$('.row',el).slice(0,8))}
+  el.innerHTML=rows.length?`<div class="list">${rows.map(r=>`<button class="row roomrow" data-a="page" data-p="room" data-arg="${r.id}"><span class="rico ${r.kind}">${ic(rkIcon(r.kind))}</span><span class="grow"><b>${esc(r.title)}</b><span class="sub">${r.kind==='birja'?topicName(r.topic)+' · ':''}${esc(pname(r.host))} · ${ago(r.created_at)}${r.is_private?' · მეგობრებისთვის':''}</span></span><span class="live"><i></i>ცოცხლად</span></button>`).join('')}</div>`
+   :empty(k==='supra'?'ახლა სუფრა არავის აქვს გაშლილი':k==='live'?'ახლა ეთერში არავინაა':'ბირჟაზე ახლა არავინაა',k==='live'?'დაიწყე ლაივი და მეგობრებს შეატყობინებთ.':'გახსენი პირველმა და მოიწვიე მეგობრები.',`<button class="btn" data-a="newroom">${ic('plus')}${k==='supra'?'სუფრის გაშლა':k==='live'?'ლაივის დაწყება':'ოთახის გახსნა'}</button>`);staggerIn($$('.row',el).slice(0,8))}
  catch(e){el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))}}
-A.newroom=()=>{const k=S.rkind||'supra';sheet(head(k==='supra'?'სუფრის გაშლა':'ბირჟაზე ოთახი')+`<form class="ph-body" id="nrf">
- <div class="seg flat" role="group" aria-label="ტიპი" style="margin:0">${[['supra','ვირტუალური სუფრა'],['birja','ბირჟა']].map(([x,l])=>`<button type="button" data-rk="${x}" aria-pressed="${x===k}">${l}</button>`).join('')}</div>
- <label class="fld">სახელი<input id="nr_t" maxlength="80" required placeholder="${k==='supra'?'მაგ. ნინოს დაბადების დღე':'მაგ. ვინ მოიგებს ლიგას?'}"></label>
- <div class="fld" id="nr_topic"${k==='supra'?' hidden':''}>თემა<div class="chips pick6">${ROOM_TOPICS.map(([x,l],i)=>`<button type="button" data-tp="${x}" aria-pressed="${i===0}">${l}</button>`).join('')}</div></div>
- <label class="chk" id="nr_pw"${k==='birja'?' hidden':''}><input type="checkbox" id="nr_p"><span>მხოლოდ მეგობრებისთვის</span></label>
- <p class="note">${k==='supra'?'შენ იქნები თამადა. კამერა და მიკროფონი ჩაირთვება შესვლისას.':'შენ იქნები მასპინძელი და პირველი მოლაპარაკე.'}</p></form>
+const RNOTE={supra:'შენ იქნები თამადა. კამერა და მიკროფონი ჩაირთვება შესვლისას.',birja:'შენ იქნები მასპინძელი და პირველი მოლაპარაკე.',live:'კამერა და მიკროფონი ჩაირთვება. მეგობრებს შეეტყობინებათ, რომ ეთერში ხარ.'};
+A.newroom=()=>{const k=S.rkind||'supra';sheet(head(k==='supra'?'სუფრის გაშლა':k==='live'?'ლაივის დაწყება':'ბირჟაზე ოთახი')+`<form class="ph-body" id="nrf">
+ <div class="seg flat" role="group" aria-label="ტიპი" style="margin:0">${RKINDS.map(([x,l])=>`<button type="button" data-rk="${x}" aria-pressed="${x===k}">${l}</button>`).join('')}</div>
+ <label class="fld">სახელი<input id="nr_t" maxlength="80" required placeholder="${k==='supra'?'მაგ. ნინოს დაბადების დღე':k==='live'?'მაგ. რთველი კახეთში':'მაგ. ვინ მოიგებს ლიგას?'}"></label>
+ <div class="fld" id="nr_topic"${k!=='birja'?' hidden':''}>თემა<div class="chips pick6">${ROOM_TOPICS.map(([x,l],i)=>`<button type="button" data-tp="${x}" aria-pressed="${i===0}">${l}</button>`).join('')}</div></div>
+ <label class="chk" id="nr_pw"${k!=='supra'?' hidden':''}><input type="checkbox" id="nr_p"><span>მხოლოდ მეგობრებისთვის</span></label>
+ <p class="note" id="nr_note">${RNOTE[k]}</p></form>
  <div class="ph-foot"><span class="sp"></span><button class="btn" id="nr_ok">${ic('live')}გახსნა</button></div>`,'short');
  let kind=k,topic='city';
- $$('[data-rk]').forEach(b=>b.onclick=()=>{kind=b.dataset.rk;$$('[data-rk]').forEach(z=>z.setAttribute('aria-pressed',String(z===b)));$('#nr_topic').hidden=kind==='supra';$('#nr_pw').hidden=kind==='birja'});
+ $$('[data-rk]').forEach(b=>b.onclick=()=>{kind=b.dataset.rk;$$('[data-rk]').forEach(z=>z.setAttribute('aria-pressed',String(z===b)));$('#nr_topic').hidden=kind!=='birja';$('#nr_pw').hidden=kind!=='supra';$('#nr_note').textContent=RNOTE[kind]});
  $$('[data-tp]').forEach(b=>b.onclick=()=>{topic=b.dataset.tp;$$('[data-tp]').forEach(z=>z.setAttribute('aria-pressed',String(z===b)))});
  $('#nr_ok').onclick=async()=>{const t=$('#nr_t').value.trim();if(t.length<2){toast('ჩაწერე სახელი');return}const b=$('#nr_ok');b.disabled=true;
   try{const r=await q(sb.from('rooms').insert({host:ME.id,kind,title:t,topic:kind==='birja'?topic:'other',is_private:kind==='supra'&&$('#nr_p').checked}).select('id').single());closeSheet();openPage('room',r.id,['rooms'])}catch(e){toast(errMsg(e));b.disabled=false}}};
@@ -34,12 +37,12 @@ PG.room={cls:'is-room',r(id){id=+id;view.innerHTML=pgHead('ოთახი')+`<d
 async function openRoom(id){let r;try{r=await q(sb.from('rooms').select('*').eq('id',id).maybeSingle())}catch(e){}
  const el=$('#roomb');if(!el)return;
  if(!r||!r.live){el.innerHTML=empty('ოთახი დაიხურა','ეს სუფრა ან საუბარი უკვე დასრულდა.',`<button class="btn" data-a="page" data-p="rooms">სხვა ოთახები</button>`);return}
- await loadProfiles([r.host]);const isHost=r.host===ME.id,supra=r.kind==='supra';
+ await loadProfiles([r.host]);if(r.kind==='live'){const h=$('.pghead h2');if(h)h.textContent=r.title;$('.pghead').insertAdjacentHTML('beforeend',`<button class="ibtn" data-a="roominvite" aria-label="მოწვევა">${ic('users')}</button><button class="ibtn" data-a="roomshare" aria-label="გაზიარება">${ic('share')}</button>`);return openLive(r)}const isHost=r.host===ME.id,supra=r.kind==='supra';
  const h=$('.pghead h2');if(h)h.textContent=r.title;
  $('.pghead').insertAdjacentHTML('beforeend',`<button class="ibtn" data-a="roominvite" aria-label="მოწვევა">${ic('users')}</button><button class="ibtn" data-a="roomshare" aria-label="გაზიარება">${ic('share')}</button>`);
  el.innerHTML=supra?`<div class="tamada" id="tam"></div><div class="rgrid" id="rgrid"></div>
   <div class="rbar"><button class="rbtn" id="rb_mic" aria-pressed="true" aria-label="მიკროფონი">${ic('mic')}</button><button class="rbtn" id="rb_cam" aria-pressed="true" aria-label="კამერა">${ic('video')}</button><button class="rbtn clink" data-a="clink" aria-label="ჭიქის მიჭახუნება">🥂</button><button class="rbtn end" data-a="leaveroom" aria-label="${isHost?'სუფრის დასრულება':'გასვლა'}">${ic('hangup')}</button></div>
-  ${isHost?`<section class="tampanel"><h3 class="sec2" style="padding:0 0 6px">თამადის პულტი</h3><div class="row2" style="justify-content:flex-start"><button class="btn sm" data-a="tnext">${ic('wine')}შემდეგი სადღეგრძელო</button><button class="btn sm ghost" data-a="tlist">სიიდან არჩევა</button><button class="btn sm ghost" data-a="tfloor">ალავერდი</button></div><form id="tcf" class="tcustom"><input class="field" id="tci" maxlength="120" placeholder="საკუთარი სადღეგრძელო…" autocomplete="off"><button class="btn sm">თქმა</button></form></section>`:''}`
+  ${isHost?`<section class="tampanel"><h3 class="sec2" style="padding:0 0 6px">თამადის პულტი</h3><div class="row2" style="justify-content:flex-start"><button class="btn sm" data-a="tnext">${ic('wine')}შემდეგი სადღეგრძელო</button><button class="btn sm ghost" data-a="tlist">სიიდან არჩევა</button><button class="btn sm ghost" data-a="tbook">${ic('book')}წიგნიდან</button><button class="btn sm ghost" data-a="tfloor">ალავერდი</button></div><form id="tcf" class="tcustom"><input class="field" id="tci" maxlength="120" placeholder="საკუთარი სადღეგრძელო…" autocomplete="off"><button class="btn sm">თქმა</button></form></section>`:''}`
  :`<div class="topicbar">${ic('mic')}<span>${esc(topicName(r.topic))}</span><span class="sp"></span><span class="muted" id="rcount"></span></div>
   <h3 class="sec2">ლაპარაკობენ</h3><div class="spk" id="spk"></div><h3 class="sec2">უსმენენ</h3><div class="lst" id="lst"></div>
   <div class="rbar"><button class="rbtn" id="rb_mic" aria-pressed="false" aria-label="მიკროფონი">${ic('micoff')}</button><button class="rbtn" id="rb_hand" aria-label="ხელის აწევა">✋</button><button class="rbtn end" data-a="leaveroom" aria-label="${isHost?'ოთახის დახურვა':'გასვლა'}">${ic('hangup')}</button></div>
@@ -58,15 +61,18 @@ function bindRoomControls(){const mic=$('#rb_mic'),cam=$('#rb_cam'),hand=$('#rb_
  if(mic)mic.onclick=()=>{if(!ROOM.supra&&!ROOM.st.speakers.includes(ME.id)){toast('ჯერ აწიე ხელი, მასპინძელი სიტყვას მოგცემს');return}roomMic(!ROOM.mic)};
  if(cam)cam.onclick=()=>{const tr=ROOM.local?.getVideoTracks()[0];if(!tr)return;ROOM.cam=!ROOM.cam;tr.enabled=ROOM.cam;cam.setAttribute('aria-pressed',String(ROOM.cam));cam.innerHTML=ic(ROOM.cam?'video':'block');track();drawRoom()};
  if(hand)hand.onclick=()=>{if(ROOM.st.speakers.includes(ME.id)){toast('უკვე ლაპარაკობ');return}roomSend('hand',{up:true});hand.classList.add('on');toast('ხელი აწიე. მასპინძელი გნახავს')};
- const f=$('#tcf');if(f)f.onsubmit=e=>{e.preventDefault();const v=$('#tci').value.trim();if(!v)return;$('#tci').value='';setRoomState({custom:v,toast:-1,floor:null})}}
+ const f=$('#tcf');if(f)f.onsubmit=e=>{e.preventDefault();const v=$('#tci').value.trim();if(!v)return;$('#tci').value='';setRoomState({custom:v,book:'',toast:-1,floor:null})}}
 function roomJoin(){const ch=ROOM.ch=sb.channel('room-'+ROOM.id,{config:{presence:{key:ME.id},broadcast:{self:false}}});
  ch.on('presence',{event:'sync'},()=>onRoomPresence())
   .on('broadcast',{event:'sig'},({payload:p})=>{if(p&&p.to===ME.id)onRoomSig(p)})
   .on('broadcast',{event:'state'},({payload:p})=>{if(p&&p.from===ROOM.room.host){const was=ROOM.st.speakers.includes(ME.id);ROOM.st=p.st;if(!ROOM.supra&&!was&&ROOM.st.speakers.includes(ME.id))toast('მასპინძელმა სიტყვა მოგცა. ჩართე მიკროფონი');drawRoom();applySpeaker()}})
   .on('broadcast',{event:'hello'},({payload:p})=>{if(ROOM.isHost)roomSend('state',{st:ROOM.st})})
   .on('broadcast',{event:'clink'},({payload:p})=>clinkFx(p.from))
+  .on('broadcast',{event:'cmt'},({payload:p})=>{if(ROOM?.live)liveCmt(p)})
+  .on('broadcast',{event:'heart'},()=>{if(ROOM?.live)liveHeart()})
+  .on('broadcast',{event:'gift'},({payload:p})=>{if(ROOM?.live)liveGiftFx(p)})
   .on('broadcast',{event:'hand'},({payload:p})=>{if(ROOM.isHost&&p.from){const h=new Set(ROOM.st.hands);p.up?h.add(p.from):h.delete(p.from);setRoomState({hands:[...h]})}})
-  .on('broadcast',{event:'end'},()=>{toast(ROOM.supra?'თამადამ სუფრა დაასრულა':'მასპინძელმა ოთახი დახურა');leaveRoom(false);rp()})
+  .on('broadcast',{event:'end'},()=>{toast(ROOM.live?'ლაივი დასრულდა':ROOM.supra?'თამადამ სუფრა დაასრულა':'მასპინძელმა ოთახი დახურა');leaveRoom(false);rp()})
   .subscribe(st=>{if(st==='SUBSCRIBED'){track();roomSend('hello',{})}});
  ROOM.onUnload=()=>leaveRoom(false);window.addEventListener('pagehide',ROOM.onUnload)}
 function track(){if(ROOM&&ROOM.ch)ROOM.ch.track({n:ME.name,h:ME.hue,a:ME.avatar_url||'',mic:ROOM.mic,cam:ROOM.cam,host:ROOM.isHost}).catch(()=>{})}
@@ -77,38 +83,39 @@ function onRoomPresence(){if(!ROOM)return;const st=ROOM.ch.presenceState(),now=n
  if(!ROOM.joinedOnce){ROOM.joinedOnce=true;const others=[...now.keys()].filter(k=>k!==ME.id).length;if(others>=ROOM_CAP[ROOM.room.kind]){ROOM.full=true;toast('ოთახი სავსეა');leaveRoom(false);const el=$('#roomb');if(el)el.innerHTML=empty('ოთახი სავსეა',`აქ უკვე ${others} ადამიანია. სცადე ცოტა ხანში.`,'<button class="btn" data-a="page" data-p="rooms">სხვა ოთახები</button>');return}}
  now.forEach((m,k)=>{if(m&&m.n&&!PC.has(k)&&k!==ME.id)PC.set(k,{id:k,name:m.n,hue:m.h,avatar_url:m.a||null})});
  ROOM.present=now;
- for(const k of now.keys())if(k!==ME.id&&!ROOM.peers.has(k)){const p=newRoomPeer(k);if(ME.id<k)roomOffer(p)}
+ for(const k of now.keys())if(k!==ME.id&&!ROOM.peers.has(k)){if(ROOM.live){if(ROOM.isHost)roomOffer(newRoomPeer(k))}else{const p=newRoomPeer(k);if(ME.id<k)roomOffer(p)}}
  for(const k of [...ROOM.peers.keys()])if(!now.has(k))closePeer(k);
  if(ROOM.isHost&&ROOM.st.hands.some(h=>!now.has(h)))setRoomState({hands:ROOM.st.hands.filter(h=>now.has(h))});
  drawRoom()}
 function newRoomPeer(uid){const pc=new RTCPeerConnection({iceServers:ICE}),p={uid,pc,stream:new MediaStream(),pendingIce:[]};ROOM.peers.set(uid,p);
  pc.onicecandidate=e=>{if(e.candidate)roomSend('sig',{to:uid,ice:e.candidate})};
- pc.ontrack=e=>{p.stream.addTrack(e.track);e.track.onunmute=()=>drawRoom();attachPeer(p);watchLevel(p)};
- pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed'){closePeer(uid);setTimeout(()=>{if(ROOM&&ROOM.present.has(uid)&&!ROOM.peers.has(uid)){const n=newRoomPeer(uid);if(ME.id<uid)roomOffer(n)}},1500)}};
+ pc.ontrack=e=>{p.stream.addTrack(e.track);if(ROOM.live){liveAttach(p);return}e.track.onunmute=()=>drawRoom();attachPeer(p);watchLevel(p)};
+ pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed'){closePeer(uid);setTimeout(()=>{if(ROOM&&ROOM.present.has(uid)&&!ROOM.peers.has(uid)){if(ROOM.live){if(ROOM.isHost)roomOffer(newRoomPeer(uid))}else{const n=newRoomPeer(uid);if(ME.id<uid)roomOffer(n)}}},1500)}};
  return p}
 function addLocal(p,fromOffer){const pc=p.pc,a=ROOM.local?.getAudioTracks()[0]||null,v=ROOM.local?.getVideoTracks()[0]||null;
+ if(ROOM.live){if(fromOffer){pc.getTransceivers().forEach(t=>{t.direction='recvonly'});return}const ta=pc.addTransceiver('audio',{direction:'sendonly'});ta.sender.replaceTrack(a);p.audioSender=ta.sender;const tv=pc.addTransceiver('video',{direction:'sendonly'});tv.sender.replaceTrack(v);p.videoSender=tv.sender;return}
  if(fromOffer){pc.getTransceivers().forEach(t=>{const kind=t.receiver.track.kind;t.direction='sendrecv';if(kind==='audio'){p.audioSender=t.sender;t.sender.replaceTrack(ROOM.supra||ROOM.mic?a:null)}else{t.sender.replaceTrack(v)}});return}
  const ta=pc.addTransceiver('audio',{direction:'sendrecv'});p.audioSender=ta.sender;ta.sender.replaceTrack(ROOM.supra||ROOM.mic?a:null);
  if(ROOM.supra){const tv=pc.addTransceiver('video',{direction:'sendrecv'});tv.sender.replaceTrack(v)}}
 async function roomOffer(p){try{addLocal(p,false);const o=await p.pc.createOffer();await p.pc.setLocalDescription(o);roomSend('sig',{to:p.uid,sdp:o})}catch(e){}}
-async function onRoomSig(m){if(!ROOM)return;let p=ROOM.peers.get(m.from);
+async function onRoomSig(m){if(!ROOM)return;if(ROOM.live&&!ROOM.isHost&&m.from!==ROOM.room.host)return;let p=ROOM.peers.get(m.from);
  try{if(m.sdp&&m.sdp.type==='offer'){if(p&&(p.pc.signalingState!=='stable'||p.pc.remoteDescription)){closePeer(m.from);p=null}if(!p)p=newRoomPeer(m.from);await p.pc.setRemoteDescription(m.sdp);addLocal(p,true);const a=await p.pc.createAnswer();await p.pc.setLocalDescription(a);roomSend('sig',{to:m.from,sdp:a});p.pendingIce.splice(0).forEach(c=>p.pc.addIceCandidate(c).catch(()=>{}))}
   else if(m.sdp&&m.sdp.type==='answer'&&p){await p.pc.setRemoteDescription(m.sdp);p.pendingIce.splice(0).forEach(c=>p.pc.addIceCandidate(c).catch(()=>{}))}
   else if(m.ice&&p){if(p.pc.remoteDescription)p.pc.addIceCandidate(m.ice).catch(()=>{});else p.pendingIce.push(m.ice)}}catch(e){}}
 function closePeer(uid){const p=ROOM&&ROOM.peers.get(uid);if(!p)return;try{p.pc.close()}catch(e){}ROOM.peers.delete(uid);drawRoom()}
 function attachPeer(p){const el=document.getElementById('rv-'+p.uid);if(el&&el.srcObject!==p.stream){el.srcObject=p.stream;el.play?.().catch(()=>{})}}
-function applySpeaker(){if(!ROOM||ROOM.supra)return;const me=ROOM.st.speakers.includes(ME.id);if(!me&&ROOM.mic)roomMic(false);const h=$('#rb_hand');if(h&&me)h.classList.remove('on')}
+function applySpeaker(){if(!ROOM||ROOM.supra||ROOM.live)return;const me=ROOM.st.speakers.includes(ME.id);if(!me&&ROOM.mic)roomMic(false);const h=$('#rb_hand');if(h&&me)h.classList.remove('on')}
 function watchLevel(p){try{if(!ROOM.ac)ROOM.ac=new (window.AudioContext||window.webkitAudioContext)();const tr=p.stream.getAudioTracks()[0];if(!tr||p.an)return;
  const src=ROOM.ac.createMediaStreamSource(new MediaStream([tr])),an=ROOM.ac.createAnalyser();an.fftSize=256;src.connect(an);p.an=an;p.buf=new Uint8Array(an.frequencyBinCount);
  if(!ROOM.levels)ROOM.levels=setInterval(()=>{if(!ROOM){return}ROOM.peers.forEach(x=>{if(!x.an)return;x.an.getByteFrequencyData(x.buf);let s=0;for(const v of x.buf)s+=v;const on=s/x.buf.length>18;const t=document.querySelector(`[data-tile="${x.uid}"]`);if(t)t.classList.toggle('speaking',on)})},300)}catch(e){}}
 function tileHTML(uid,me){const m=me?{n:ME.name,mic:ROOM.mic,cam:ROOM.cam,host:ROOM.isHost}:ROOM.present.get(uid)||{},p=prof(uid),floor=ROOM.st.floor===uid,host=uid===ROOM.room.host;
  if(!ROOM.supra)return `<div class="ptile${floor?' floor':''}" data-tile="${uid}"><span class="pav">${av(uid,64)}${me?'':`<audio id="rv-${uid}" autoplay></audio>`}</span><b>${esc(String(p.name||m.n||'').split(' ')[0])}${host?' 👑':''}</b><span class="pmic">${ic(m.mic?'mic':'micoff')}</span></div>`;
  return `<div class="vtile${floor?' floor':''}" data-tile="${uid}"><video id="${me?'rv-me':'rv-'+uid}" autoplay playsinline${me?' muted':''}></video>${(me?ROOM.cam:m.cam!==false)?'':`<span class="vav">${av(uid,72)}</span>`}<span class="vname">${host?'🍷 ':''}${esc(String(p.name||m.n||'').split(' ')[0])}${me?' (შენ)':''}${m.mic===false?` ${ic('micoff')}`:''}</span>${floor?'<span class="vfloor">სიტყვა აქვს</span>':''}</div>`}
-function drawRoom(){if(!ROOM)return;const ids=[ME.id,...[...ROOM.present.keys()].filter(k=>k!==ME.id)];
+function drawRoom(){if(!ROOM)return;if(ROOM.live)return drawLive();const ids=[ME.id,...[...ROOM.present.keys()].filter(k=>k!==ME.id)];
  const sig=JSON.stringify([ids,ids.map(u=>{const m=u===ME.id?{mic:ROOM.mic,cam:ROOM.cam}:ROOM.present.get(u)||{};return [m.mic,m.cam,!!PC.get(u)]}),ROOM.st.floor,ROOM.st.speakers]),fresh=sig!==ROOM.sig;ROOM.sig=sig;
  if(ROOM.supra){const g=$('#rgrid');if(!g)return;if(fresh||!g.childElementCount){g.dataset.n=Math.min(ids.length,8);g.innerHTML=ids.map(u=>tileHTML(u,u===ME.id)).join('')}
   const lv=$('#rv-me');if(lv&&ROOM.local&&lv.srcObject!==ROOM.local){lv.srcObject=ROOM.local}ROOM.peers.forEach(attachPeer);
-  const t=$('#tam'),st=ROOM.st;if(t)t.innerHTML=`<span class="tam-ic">🍷</span><div class="grow"><span class="eyebrow">თამადა · ${esc(pname(ROOM.room.host))}</span><b>${st.custom?esc(st.custom):st.toast>=0?'გაუმარჯოს '+esc(TOASTS[st.toast])+'!':'სუფრა იწყება…'}</b>${st.floor?`<span class="sub">ალავერდი: ${esc(pname(st.floor))}</span>`:''}</div>`}
+  const t=$('#tam'),st=ROOM.st;if(t)t.innerHTML=`<span class="tam-ic">🍷</span><div class="grow"><span class="eyebrow">თამადა · ${esc(pname(ROOM.room.host))}</span><b>${st.custom?esc(st.custom):st.toast>=0?'გაუმარჯოს '+esc(TOASTS[st.toast])+'!':'სუფრა იწყება…'}</b>${st.book?`<p class="tambook" data-a="texpand">${esc(st.book)}</p>`:''}${st.floor?`<span class="sub">ალავერდი: ${esc(pname(st.floor))}</span>`:''}</div>`}
  else{const sp=$('#spk'),ls=$('#lst');if(!sp)return;const speakers=ids.filter(u=>ROOM.st.speakers.includes(u)),listeners=ids.filter(u=>!ROOM.st.speakers.includes(u));
   if(fresh||!sp.childElementCount){sp.innerHTML=speakers.map(u=>tileHTML(u,u===ME.id)).join('')||'<p class="muted">ჯერ არავინ</p>';ls.innerHTML=listeners.map(u=>tileHTML(u,u===ME.id)).join('')||'<p class="muted">ჯერ არავინ</p>'}
   ROOM.peers.forEach(attachPeer);const c=$('#rcount');if(c)c.textContent=ids.length+' ოთახში';
@@ -116,9 +123,9 @@ function drawRoom(){if(!ROOM)return;const ids=[ME.id,...[...ROOM.present.keys()]
    hs.innerHTML=`<h3 class="sec2" style="padding:0 0 6px">მასპინძლის პულტი</h3>${hands.map(h=>`<div class="row">${av(h,36)}<span class="grow"><b>${esc(pname(h))}</b><span class="sub">✋ ხელი აწია</span></span><button class="btn sm" data-a="rspeak" data-u="${h}">სიტყვა</button></div>`).join('')}${ROOM.st.speakers.filter(s=>s!==ME.id).map(s=>`<div class="row">${av(s,36)}<span class="grow"><b>${esc(pname(s))}</b><span class="sub">ლაპარაკობს</span></span><button class="btn sm ghost" data-a="runspeak" data-u="${s}">მსმენელად</button></div>`).join('')}`}}}
 A.rspeak=t=>{const u=t.dataset.u;setRoomState({speakers:[...new Set([...ROOM.st.speakers,u])],hands:ROOM.st.hands.filter(h=>h!==u)})};
 A.runspeak=t=>{const u=t.dataset.u;setRoomState({speakers:ROOM.st.speakers.filter(s=>s!==u)})};
-A.tnext=()=>setRoomState({toast:(ROOM.st.toast+1)%TOASTS.length,custom:'',floor:null});
+A.tnext=()=>setRoomState({toast:(ROOM.st.toast+1)%TOASTS.length,custom:'',book:'',floor:null});
 A.tlist=()=>sheet(head('სადღეგრძელოები')+`<div class="reasons">${TOASTS.map((x,i)=>`<button data-a="tpick" data-i="${i}">${i+1}. ${x}</button>`).join('')}</div>`,'short');
-A.tpick=t=>{closeSheet();setRoomState({toast:+t.dataset.i,custom:'',floor:null})};
+A.tpick=t=>{closeSheet();setRoomState({toast:+t.dataset.i,custom:'',book:'',floor:null})};
 A.tfloor=()=>{const ids=[...ROOM.present.keys()].filter(k=>k!==ME.id);if(!ids.length){toast('ჯერ სხვა არავინაა სუფრასთან');return}
  sheet(head('ალავერდი ვის?')+`<div class="ph-body">${ids.map(u=>`<button class="row" data-a="tfl" data-u="${u}">${av(u,40)}<span class="grow"><b>${esc(pname(u))}</b></span></button>`).join('')}<button class="row" data-a="tfl" data-u=""><span class="av" style="--s:40px;--h:330">🍷</span><span class="grow"><b>სიტყვა ისევ თამადას</b></span></button></div>`,'short')};
 A.tfl=t=>{closeSheet();setRoomState({floor:t.dataset.u||null})};
@@ -133,3 +140,35 @@ function leaveRoom(end){const R_=ROOM;if(!R_)return;ROOM=null;S.chanCleanup=null
  if(R_.ch){try{R_.ch.untrack()}catch(e){}sb.removeChannel(R_.ch)}if(R_.onUnload)window.removeEventListener('pagehide',R_.onUnload)}
 A.roominvite=()=>{if(!ROOM)return;friendPicker('მოწვევა','მოწვევა',async sel=>{const n=await rpc('invite_to_room',{p_room:ROOM.id,p_users:sel});closeSheet();toast(n?`მოწვევა გაეგზავნა ${n} მეგობარს`:'მოწვევა ვერ გაიგზავნა')})};
 A.roomshare=()=>{if(ROOM)shareLink(location.origin+'/#room-'+ROOM.id,ROOM.room.title)};
+
+/* live broadcast: the host's camera goes to every viewer (star), comments, hearts and coin gifts over the same channel */
+async function openLive(r){const el=$('#roomb');if(!el)return;const isHost=r.host===ME.id;view.classList.add('is-live');
+ el.innerHTML=`<div class="livebox" id="lvb"><video id="lvv" autoplay playsinline${isHost?' muted':''}></video><div class="lvshade"></div>
+  <div class="lvtop">${av(r.host,36)}<span class="grow"><b>${esc(pname(r.host))}</b><small>${esc(r.title)}</small></span><span class="lvbadge">LIVE</span><span class="lvcount" id="lvc">${ic('eye')}<span>0</span></span></div>
+  <div class="lvwait" id="lvwait">${isHost?'კამერა ირთვება…':'ეთერს ვუკავშირდები…'}</div><button class="lvunmute" id="lvum" hidden>${ic('micoff')}ხმის ჩართვა</button>
+  <div class="lvcmts" id="lvcm" aria-live="polite"></div><div class="lvhearts" id="lvh" aria-hidden="true"></div>
+  <form class="lvfoot" id="lvf"><input class="field" id="lvin" maxlength="200" placeholder="${isHost?'დაწერე მაყურებლებს…':'კომენტარი…'}" autocomplete="off" aria-label="კომენტარი">${isHost?`<button type="button" class="rbtn" id="lv_flip" aria-label="კამერის შებრუნება">${ic('flip')}</button><button type="button" class="rbtn" id="lv_mic" aria-pressed="true" aria-label="მიკროფონი">${ic('mic')}</button><button type="button" class="rbtn end" data-a="leaveroom" aria-label="ლაივის დასრულება">${ic('hangup')}</button>`:`<button type="button" class="rbtn" data-a="lvheart" aria-label="გული">❤️</button><button type="button" class="rbtn" data-a="lvgift" aria-label="საჩუქარი">🎁</button><button type="button" class="rbtn end" data-a="leaveroom" aria-label="გასვლა">${ic('x')}</button>`}</form></div>`;
+ ROOM={id:r.id,room:r,isHost,supra:false,live:true,peers:new Map(),present:new Map(),local:null,mic:true,cam:true,st:{speakers:[r.host],hands:[]},ch:null,ac:null,levels:null,full:false,facing:'user'};
+ S.chanCleanup=()=>leaveRoom(false);
+ if(isHost){try{ROOM.local=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:{facingMode:'user',width:{ideal:720},height:{ideal:1280}}});const v=$('#lvv');if(v){v.srcObject=ROOM.local;v.classList.add('mirror')}$('#lvwait').hidden=true}
+  catch(e){toast('კამერაზე წვდომა არ არის. ლაივი ვერ დაიწყება');leaveRoom(true);openPage('rooms','live');return}
+  $('#lv_mic').onclick=()=>{const tr=ROOM.local?.getAudioTracks()[0];if(!tr)return;ROOM.mic=!ROOM.mic;tr.enabled=ROOM.mic;const b=$('#lv_mic');b.setAttribute('aria-pressed',String(ROOM.mic));b.innerHTML=ic(ROOM.mic?'mic':'micoff')};
+  $('#lv_flip').onclick=liveFlip}
+ $('#lvf').onsubmit=e=>{e.preventDefault();const i=$('#lvin'),t=i.value.trim();if(!t||!ROOM)return;i.value='';const p={from:ME.id,t:t.slice(0,200),n:String(ME.name).split(' ')[0],h:ME.hue,host:isHost};roomSend('cmt',p);liveCmt(p)};
+ $('#lvum').onclick=()=>{const v=$('#lvv');if(v){v.muted=false;v.play().catch(()=>{})}$('#lvum').hidden=true};
+ roomJoin();drawLive()}
+function liveAttach(p){const v=$('#lvv');if(!v||!ROOM||p.uid!==ROOM.room.host)return;if(v.srcObject!==p.stream)v.srcObject=p.stream;$('#lvwait').hidden=true;
+ v.play().catch(()=>{v.muted=true;v.play().catch(()=>{});const u=$('#lvum');if(u)u.hidden=false})}
+function drawLive(){if(!ROOM)return;const host=ROOM.room.host,n=[...ROOM.present.keys()].filter(k=>k!==host).length,c=$('#lvc span');if(c)c.textContent=n;
+ if(!ROOM.isHost){const w=$('#lvwait');if(w&&ROOM.joinedOnce&&!ROOM.present.has(host)){w.hidden=false;w.textContent='მასპინძელი ეთერში ჯერ არ არის…'}}}
+function liveCmt(p){const el=$('#lvcm');if(!el||!p||!p.t)return;const d=document.createElement('div');d.className='lvc'+(p.host?' host':'');
+ d.innerHTML=`<b>${esc(String(p.n||'').slice(0,24))}${p.host?' · მასპინძელი':''}</b> ${esc(String(p.t).slice(0,200))}`;el.appendChild(d);while(el.childElementCount>30)el.firstElementChild.remove();el.scrollTop=1e6}
+function liveHeart(){const el=$('#lvh');if(!el)return;const h=document.createElement('span');h.textContent=['❤️','🧡','💛','💜','🍷'][Math.floor(Math.random()*5)];h.style.setProperty('--x',(Math.random()*60-30)+'px');el.appendChild(h);setTimeout(()=>h.remove(),2200)}
+function liveGiftFx(p){const el=$('#lvb');if(!el||!p)return;const g=document.createElement('div');g.className='lvgift';g.innerHTML=`<span>${esc(p.e||'🎁')}</span><b>${esc(String(p.n||'').slice(0,24))}</b><small>საჩუქარი</small>`;el.appendChild(g);setTimeout(()=>g.remove(),2600);liveCmt({t:`გაგზავნა ${p.e||'🎁'}`,n:p.n})}
+A.lvheart=t=>{if(!ROOM)return;liveHeart();pop(t);const now=Date.now();if(now-(ROOM.lastHeart||0)>350){ROOM.lastHeart=now;roomSend('heart',{})}};
+A.lvgift=()=>{if(!ROOM)return;layer(lhead('საჩუქარი · '+esc(pname(ROOM.room.host)))+`<p class="hint" style="padding:12px 16px 0">ბალანსი: ${ME.coins??0} მონეტა. საჩუქრის 80% მასპინძელს ერიცხება.</p><div class="gifts">${GIFTS.map(g=>`<button class="gift" data-a="lvsendgift" data-g="${g[0]}" aria-label="${g[1]}, ${g[2]} მონეტა">${g[0]}<small>${g[1]} · ${g[2]}</small></button>`).join('')}</div>`)};
+A.lvsendgift=async t=>{if(!ROOM)return;t.disabled=true;try{const bal=await rpc('live_gift',{p_room:ROOM.id,p_emoji:t.dataset.g});setCoins(bal);closeLayer();const p={from:ME.id,e:t.dataset.g,n:String(ME.name).split(' ')[0]};roomSend('gift',p);liveGiftFx(p)}catch(e){toast(errMsg(e));t.disabled=false}};
+async function liveFlip(){if(!ROOM||!ROOM.local)return;const facing=ROOM.facing==='user'?'environment':'user';
+ try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:720},height:{ideal:1280}}});const nv=s.getVideoTracks()[0],old=ROOM.local.getVideoTracks()[0];
+  ROOM.peers.forEach(p=>p.videoSender&&p.videoSender.replaceTrack(nv).catch(()=>{}));if(old){ROOM.local.removeTrack(old);old.stop()}ROOM.local.addTrack(nv);ROOM.facing=facing;const v=$('#lvv');if(v){v.srcObject=ROOM.local;v.classList.toggle('mirror',facing==='user')}}
+ catch(e){toast('მეორე კამერა ვერ ჩაირთო')}}

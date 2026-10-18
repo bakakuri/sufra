@@ -29,7 +29,7 @@ function text(kind: string, name: string, ref: Record<string, string>): string {
     case "verify_rejected": return "ვერიფიკაცია ვერ დადასტურდა. სცადე ახალი სელფით";
     case "ad_ok": return "შენი რეკლამა დამტკიცდა და უკვე ჩანს";
     case "ad_rejected": return "რეკლამა არ დამტკიცდა, მონეტები დაგიბრუნდა";
-    case "room_invite": return `${name} გეპატიჟება ${ref.kind === "birja" ? "ბირჟაზე" : "სუფრაზე"}: ${ref.title ?? ""}`;
+    case "room_invite": return `${name} გეპატიჟება ${ref.kind === "birja" ? "ბირჟაზე" : ref.kind === "live" ? "ლაივზე" : "სუფრაზე"}: ${ref.title ?? ""}`;
     case "bet_won": return `მოიგე ${ref.coins ?? ""} მონეტა · ${ref.match ?? ""} ${ref.score ?? ""}`;
     case "bet_lost": return `${ref.match ?? ""} ${ref.score ?? ""} · პროგნოზი არ გამართლდა`;
     case "bet_refund": return `${ref.match ?? ""} · მონეტები დაგიბრუნდა`;
@@ -40,6 +40,16 @@ function text(kind: string, name: string, ref: Record<string, string>): string {
     case "job_apply": return `${name} გამოეხმაურა ვაკანსიას: ${ref.title ?? ""}`;
     case "job_invited": return `გასაუბრებაზე მიგიწვიეს: ${ref.title ?? ""}`;
     case "job_rejected": return `${ref.title ?? ""} · სამწუხაროდ, სხვა კანდიდატი შეირჩა`;
+    case "nameday": return `${ref.label ?? "ანგელოზის დღე"}: ${name}${Number(ref.n) > 1 ? ` და კიდევ ${Number(ref.n) - 1} მეგობარი` : ""} · მიულოცე!`;
+    case "birthday": return `დაბადების დღე: ${name}${Number(ref.n) > 1 ? ` და კიდევ ${Number(ref.n) - 1} მეგობარი` : ""} · მიულოცე! 🎉`;
+    case "nameday_me": return `გილოცავ ანგელოზის დღეს! ${ref.label ?? ""}`;
+    case "birthday_me": return "სუფრა გილოცავს დაბადების დღეს! 🎉";
+    case "kin_req": return `${name} გთავაზობს ოჯახის ხეში დაკავშირებას`;
+    case "kin_ok": return `${name} დაადასტურა ნათესაობა`;
+    case "help_new": return `${ref.kind === "blood" ? "🩸 საჭიროა დონორი" + (ref.blood ? " " + ref.blood : "") : ref.kind === "volunteer" ? "🤝 საჭიროა მოხალისე" : "🐾 " + (ref.kind === "found_pet" ? "ნაპოვნია" : "დაიკარგა")} · ${ref.title ?? ""} · ${ref.region ?? ""}`;
+    case "help_offer": return `${name} გთავაზობს დახმარებას: ${ref.title ?? ""}`;
+    case "help_done": return `${ref.title ?? ""} · მოგვარდა. მადლობა, რომ გამოეხმაურე`;
+    case "live_start": return `${name} ცოცხალ ეთერშია: ${ref.title ?? ""}`;
     default: return `${name} · ახალი შეტყობინება`;
   }
 }
@@ -52,6 +62,11 @@ function route(kind: string, ref: Record<string, string>): string {
   if (kind.startsWith("bet_") && ref.fixture) return `/#fixture-${ref.fixture}`;
   if (kind.startsWith("ride_") && ref.ride) return `/#ride-${ref.ride}`;
   if (kind.startsWith("job_") && ref.job) return `/#job-${ref.job}`;
+  if (kind === "nameday" || kind === "birthday") return "/#calendar";
+  if (kind === "nameday_me") return "/#namedays";
+  if (kind.startsWith("kin_")) return kind === "kin_req" ? "/#tree" : `/#tree-${ref.owner ?? ""}`;
+  if (kind.startsWith("help_") && ref.help) return `/#helpreq-${ref.help}`;
+  if (kind === "live_start" && ref.room) return `/#room-${ref.room}`;
   return "/#notifications";
 }
 

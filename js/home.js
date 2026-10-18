@@ -1,5 +1,5 @@
 /* home feed, reminders, trends, search, hashtags, saved, single post */
-const SHORT=[['rooms','wine','სუფრა'],['sport','trophy','მატჩები'],['events','cal','ღონისძიებები'],['groups','users','ჯგუფები'],['rides','pin','ერთად წავიდეთ'],['jobs','school','ვაკანსიები'],['market','store','ბაზრობა'],['pages','mega','არხები'],['friends','user','მეგობრები'],['calendar','gift','კალენდარი']];
+const SHORT=[['rooms','wine','სუფრა'],['places','map','ადგილები'],['sport','trophy','მატჩები'],['help','help','დახმარება'],['toasts','book','სადღეგრძელოები'],['events','cal','ღონისძიებები'],['groups','users','ჯგუფები'],['rides','pin','ერთად წავიდეთ'],['jobs','school','ვაკანსიები'],['market','store','ბაზრობა'],['pages','mega','არხები'],['friends','user','მეგობრები'],['calendar','gift','კალენდარი']];
 const FEED={done:false,loading:false,cursor:null,ads:[],adsShown:new Set(),count:0};
 const score=p=>{const s=STAT.get(p.id)||blankStat(p.id),h=(Date.now()-new Date(p.created_at).getTime())/36e5;return (1+rTotal(s)+s.comments*2+s.grade_n+(FRIENDS.has(p.author)?3:0)+(p.author===ME.id?1:0))/Math.pow(h+2,1.3)};
 const firstName=()=>esc(String(ME.name||'').split(' ')[0]);
@@ -36,19 +36,17 @@ async function loadSuggest(){const el=$('#sugg');if(!el)return;try{const s=await
 async function loadTrends(){const el=$('#trends');if(!el)return;try{const t=await rpc('trending_tags',{p_limit:8});if(!t.length)return;el.innerHTML=`<div class="trends"><span class="eyebrow">ტრენდები</span>${t.map(x=>`<button class="tchip" data-a="tag" data-t="${esc(x.tag)}">#${esc(x.tag)} <em>${x.uses}</em></button>`).join('')}</div>`}catch(e){}}
 
 /* friends' birthdays and name days */
-const NAMEDAY={'ნინო':[['01-27','ნინოობა'],['06-01','ნინოობა']],'გიორგი':[['11-23','გიორგობა'],['05-06','გიორგობა']],'მარიამ':[['08-28','მარიამობა']],'თამარ':[['05-14','თამარობა']],'დავით':[['02-08','დავით აღმაშენებლის ხსენება']],'დათო':[['02-08','დავით აღმაშენებლის ხსენება']],'ნიკოლოზ':[['12-19','ნიკოლოზობა'],['05-22','ნიკოლოზობა']],'ნიკა':[['12-19','ნიკოლოზობა'],['05-22','ნიკოლოზობა']],'ელენე':[['06-03','ელენეობა']],'ქეთევან':[['09-26','ქეთევანობა']],'ქეთი':[['09-26','ქეთევანობა']],'ლუკა':[['10-31','ლუკა მახარობლის ხსენება']],'ანდრია':[['05-25','ანდრიაობა'],['12-13','ანდრიაობა']],'ილია':[['08-02','ელიობა']]};
-const nameDays=n=>{const f=String(n||'').trim().split(/\s+/)[0];return NAMEDAY[f]||NAMEDAY[f.replace(/ი$/,'')]||[]};
 async function upcoming(days){const now=new Date();now.setHours(0,0,0,0);const out=[];let bd=[];try{bd=await rpc('friend_birthdays')}catch(e){}
  const add=(p,m,d,kind,label)=>{let dt=new Date(now.getFullYear(),m-1,d);if(dt<now)dt=new Date(now.getFullYear()+1,m-1,d);const n=Math.round((dt-now)/864e5);if(n<=days)out.push({p,n,dt,kind,label})};
  bd.forEach(p=>{PC.set(p.id,Object.assign(PC.get(p.id)||{},{id:p.id,name:p.name,hue:p.hue,avatar_url:p.avatar_url}));add(p,p.month,p.day,'b','დაბადების დღე')});
- for(const id of FRIENDS){const p=prof(id);for(const[md,f]of nameDays(p.name)){const[m,d]=md.split('-').map(Number);add(p,m,d,'n',f)}}
+ for(const id of FRIENDS){const p=prof(id);for(const[md,f]of nameDaysOf(p)){const[m,d]=md.split('-').map(Number);add(p,m,d,'n',f)}}
  return out.sort((a,b)=>a.n-b.n)}
 const whenTxt=n=>n===0?'დღეს':n===1?'ხვალ':n+' დღეში';
 const remRow=e=>`<div class="rrow">${av(e.p,40)}<div class="grow"><span class="when">${whenTxt(e.n)} · ${e.dt.getDate()} ${MONTHS[e.dt.getMonth()]}</span><b>${esc(e.p.name)} · ${e.kind==='b'?'დაბადების დღე':'ანგელოზის დღე, '+e.label}</b></div><button class="btn ghost" data-a="greet" data-u="${e.p.id}" data-k="${e.kind}">მილოცვა</button><button class="btn ghost" data-a="gift" data-u="${e.p.id}" aria-label="საჩუქრის გაგზავნა">${ic('gift')}</button></div>`;
 async function loadRemind(){const el=$('#remind');if(!el||!FRIENDS.size)return;const u=(await upcoming(14)).slice(0,3);if(!u.length||!$('#remind'))return;
  el.innerHTML=`<section class="remind"><div class="shead" style="padding:0"><h3>არ დაგავიწყდეს</h3><button class="trb" data-a="page" data-p="calendar">კალენდარი</button></div>${u.map(remRow).join('')}</section>`}
-A.greet=t=>{const p=prof(t.dataset.u),f=String(p.name).split(' ')[0];openChatWith(p.id,t.dataset.k==='b'?`გილოცავ დაბადების დღეს, ${f}! ბედნიერებას და ბევრ კარგ დღეს გისურვებ 🎉`:`გილოცავ ანგელოზის დღეს, ${f}! ბედნიერი და მშვიდი წელი გქონდეს`)};
-PG.calendar={r(){view.innerHTML=pgHead('კალენდარი')+`<p class="hint" style="padding:12px 16px 0">მეგობრების დაბადების დღეები და ანგელოზის დღეები მომდევნო 4 თვეში.</p><div id="calb">${skel(3)}</div>`;
+A.greet=t=>openCardPicker({uid:t.dataset.u,kind:t.dataset.k==='b'?'b':'n'});
+PG.calendar={r(){view.innerHTML=pgHead('კალენდარი',`<button class="btn sm ghost" data-a="page" data-p="namedays">${ic('cal')}სახელის დღეები</button>`)+`<p class="hint" style="padding:12px 16px 0">მეგობრების დაბადების დღეები და ანგელოზის დღეები მომდევნო 4 თვეში.</p><div id="calb">${skel(3)}</div>`;
  upcoming(120).then(u=>{let html='',m=-1;for(const e of u){if(e.dt.getMonth()!==m){m=e.dt.getMonth();html+=`<h3 class="sec2">${MONTHS[m]}</h3>`}html+=`<div class="list">${remRow(e)}</div>`}
   const el=$('#calb');if(el)el.innerHTML=html||empty('ჯერ ცარიელია','დაამატე მეგობრები და მათი თარიღები აქ გამოჩნდება.','<button class="btn" data-a="page" data-p="friends">მეგობრების პოვნა</button>')})}};
 
