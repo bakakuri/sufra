@@ -50,22 +50,26 @@ const DM=GAME.domino={title:'დომინო',
   const l=this.last,pre=l&&l.pass?esc(this.nm(l.p))+': პასი. ':'';
   if(this.cur===0){if(!this.moves(0).length)return pre+'შესაფერისი ქვა არ გაქვს, პასი';return pre+(this.sel!=null?'აირჩიე, რომელ ბოლოს მიუდო':this.root?'შენი სვლაა':'იწყებ შენ. დადე ექვს-ექვსი')}
   return pre+esc(this.nm(this.cur))+' ფიქრობს…'+(!this.root&&this.first?' (6-6 მასთანაა)':'')},
- render(){if(S.tab!=='games'||S.game!=='domino'||S.page)return;const c=this.ctx,g3=g3On(),mine=this.phase==='play'&&this.cur===0,ok=new Set(mine?this.moves(0).map(m=>m.i):[]);
+
+ render(){if(S.tab!=='games'||S.game!=='domino'||S.page)return;const c=this.ctx,g3=g3Want(),mine=this.phase==='play'&&this.cur===0,ok=new Set(mine?this.moves(0).map(m=>m.i):[]);gTurnSnd(this,mine&&ok.size>0);
   const seat=(p,pos)=>`<div class="seat ${pos}${this.cur===p&&this.phase==='play'?' turn':''}">${avAny(DMN[p],36)}<b>${esc(this.nm(p))}</b><span class="bt">${this.hands[p].length} ქვა${p===2?' · პარტნიორი':''}</span></div>`;
-  const chain=this.line().map(x=>dmTile(x.t,x.root?'root':'')).join('');
+  const line=this.line();if(!g3On()&&line.length!==this.lineN&&this.lineN!=null)gSnd('tile');this.lineN=line.length;
+  const chain=line.map(x=>dmTile(x.t,x.root?'root':'')).join('');
   const hand=this.hands[0].map((t,i)=>dmTile(t,(this.sel===i?'sel':'')+(ok.has(i)?' ok':''),` data-a="dmt" data-i="${i}"${mine&&ok.has(i)?'':' disabled'}`)).join('');
   const e=this.ends();let panel='';
   if(mine&&this.sel!=null&&e)panel=`<div class="dmends" role="group" aria-label="რომელ ბოლოს"><button class="btn ghost" data-a="dmend" data-e="L">${ic('back')}მარცხნივ · ${e[0]}</button><button class="btn ghost" data-a="dmend" data-e="R">მარჯვნივ · ${e[1]}<span class="flipx">${ic('back')}</span></button></div>`;
-  if(this.res&&this.phase!=='play'){const r=this.res;panel=`<div class="sheet-tbl"><table><thead><tr><th></th>${[0,1,2,3].map(p=>`<th>${esc(p===0?'შენ':this.nm(p))}</th>`).join('')}</tr></thead><tbody><tr><td>დარჩა ქულა</td>${r.pips.map(x=>`<td>${x}</td>`).join('')}</tr></tbody></table></div>
-   <p class="note">ჩვენ ${r.tp[0]} · მეტოქეები ${r.tp[1]}.${r.kind==='domino'?` ${esc(r.by===0?'შენ':this.nm(r.by))} გამოვიდა პირველი.`:' არავის შეეძლო სვლა, ნაკლები ქულა იგებს.'}</p>`+(this.phase==='over'?'<button class="btn" data-a="dmagain" style="align-self:flex-start">ახალი თამაში</button>':'<button class="btn" data-a="dmnext" style="align-self:flex-start">შემდეგი ხელი</button>')}
-  const info=`<div class="jinfo"><span class="trump">ჩვენ ${this.score[0]} · მეტოქეები ${this.score[1]}</span><span>ხელი ${this.round} · ${DM_TO}-მდე</span></div>`;
-  view.innerHTML=`<div class="view-pad game">${gTop('დომინო',c)}<div class="jt dmtab${g3?' g3jt':''}">${seat(2,'top')}${seat(1,'left')}${seat(3,'right')}<div class="trick dmchain${g3?' g3sr':''}" aria-label="მაგიდა">${chain||'<span class="muted">მაგიდა ცარიელია</span>'}</div>${g3?`<div class="g3 g3-domino">${g3Rv()}</div>`:''}${info}</div>
-   <div class="pl">${av('me',30)}<b>${esc(ME.name)}</b><span class="muted">შენ და ანა ერთ გუნდში ხართ</span></div>
-   <div class="dmhand${g3?' g3sr':''}" aria-label="შენი ქვები">${hand}</div><div class="status" role="status">${this.status()}</div>${panel}
-   <details><summary style="cursor:pointer;font-weight:600">წესები</summary><p class="note" style="margin-top:8px">ოთხი მოთამაშე, ორ-ორი გუნდში: შენ და ანა გიორგისა და ლევანის წინააღმდეგ. თითოეულს 7 ქვა აქვს, საბაზრო არ არის. პირველ ხელს ის იწყებს, ვისაც ექვს-ექვსი აქვს, შემდეგ ხელებს წინა ხელის გამარჯვებული. სვლისას ქვა ერთ-ერთ ღია ბოლოს უნდა მიუდო, თუ შესაფერისი არ გაქვს, პასობ. გუნდი, რომლის მოთამაშეც პირველი დაცლის ხელს, იღებს მეტოქეების ქვებზე დარჩენილ ქულებს. თუ თამაში ჩაიკეტა, იგებს გუნდი, რომელსაც ნაკლები ქულა დარჩა, და იღებს მეტოქეების ქულებს. თამაში ${DM_TO} ქულამდეა.</p></details></div>`;
+  if(this.res&&this.phase==='roundover'){const r=this.res;panel=`<div class="sheet-tbl"><table><thead><tr><th></th>${[0,1,2,3].map(p=>`<th>${esc(p===0?'შენ':this.nm(p))}</th>`).join('')}</tr></thead><tbody><tr><td>დარჩა ქულა</td>${r.pips.map(x=>`<td>${x}</td>`).join('')}</tr></tbody></table></div>
+   <button class="btn" data-a="dmnext" style="align-self:center">შემდეგი ხელი</button>`}
+  let res='';if(this.phase==='over'){const win=this.score[0]>this.score[1];res=gResBox(this,{title:win?'მოიგეთ!':'წააგეთ',sub:win?'შენ და ანამ 101 ქულა პირველებმა დააგროვეთ':'გიორგიმ და ლევანმა 101 ქულა პირველებმა დააგროვეს',kind:win?'win':'lose',
+   more:`<div class="gendt"><span><b>ჩვენ</b>${this.score[0]}</span><span><b>მეტოქეები</b>${this.score[1]}</span></div>`,again:'<button class="btn gold" data-a="dmagain">ახალი თამაში</button>'})}
+  const info=`<div class="ginfo"><span class="trump">ჩვენ ${this.score[0]} · მეტოქეები ${this.score[1]}</span><span>ხელი ${this.round} · ${DM_TO}-მდე</span></div>`;
+  const stage=`<div class="jt dmtab${g3?' g3jt':''}">${seat(2,'top')}${seat(1,'left')}${seat(3,'right')}<div class="trick dmchain${g3?' g3sr':''}" aria-label="მაგიდა">${chain||'<span class="muted">მაგიდა ცარიელია</span>'}</div>${g3?`<div class="g3 g3-domino${G3W.ready?'':' loading'}">${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div>`:''}</div>`;
+  const st=this.status()+(mine&&g3&&ok.size&&this.sel==null&&this.root?' · შეეხე ქვას ან გადაათრიე':'');
+  view.innerHTML=gShell('domino',{stage,mid:stage,top:gTop('დომინო',c)+info,bot:`<div class="pl me${mine?' turn':''}">${av('me',34)}<span class="pln"><b>${esc(ME.name)}</b><span class="muted">შენ და ანა ერთ გუნდში ხართ</span></span></div>
+   <div class="dmhand${g3?' g3sr':''}" aria-label="შენი ქვები">${hand}</div><div class="status${mine&&ok.size?' mine':''}" role="status">${st}</div>${panel}`,res});
   g3After('domino')}};
 A.dmt=t=>{const G=DM;if(G.phase!=='play'||G.cur!==0)return;const i=+t.dataset.i,pl=G.places(G.hands[0][i]);if(!pl.length){G.sel=null;G.render();return}
  if(pl.length===1){G.put(0,i,pl[0]);return}G.sel=G.sel===i?null:i;G.render()};
 A.dmend=t=>{const G=DM;if(G.phase!=='play'||G.cur!==0||G.sel==null)return;const s=t.dataset.e;if(!G.places(G.hands[0][G.sel]).includes(s))return;G.put(0,G.sel,s)};
 A.dmnext=()=>{if(DM.phase==='roundover'){DM.deal();DM.render();DM.step()}};
-A.dmagain=()=>{DM.start();DM.render();DM.step()};
+A.dmagain=()=>{DM.resHide=0;DM.resSnd=0;DM.start();DM.render();DM.step()};

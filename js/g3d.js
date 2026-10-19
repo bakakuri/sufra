@@ -38,7 +38,7 @@ const lin=h=>{const n=parseInt(h.slice(1),16);return[(n>>16&255)/255,(n>>8&255)/
 /* ---------- shaders ---------- */
 const VS_MAIN=`attribute vec3 aP;attribute vec3 aN;attribute vec2 aU;uniform mat4 uM,uVP,uL;uniform vec4 uUV;varying vec3 vW;varying vec3 vN;varying vec2 vU;varying vec4 vS;
 void main(){vec4 w=uM*vec4(aP,1.0);vW=w.xyz;vN=(uM*vec4(aN,0.0)).xyz;vU=uUV.xy+aU*uUV.zw;vS=uL*w;gl_Position=uVP*w;}`;
-const FS_MAIN=`uniform sampler2D uT,uSh;uniform vec3 uC,uE,uEye,uLd,uLc,uSky,uGnd;uniform vec4 uMat,uFx,uSp;uniform float uSS,uExp;
+const FS_MAIN=`uniform sampler2D uT,uSh;uniform vec3 uC,uE,uEye,uLd,uLc,uSky,uGnd,uRe;uniform vec4 uMat,uFx,uSp,uRf,uRc;uniform float uSS,uExp;
 varying vec3 vW;varying vec3 vN;varying vec2 vU;varying vec4 vS;
 float unp(vec4 c){return dot(c,vec4(1.0,1.0/255.0,1.0/65025.0,1.0/16581375.0));}
 float cmp(vec2 uv,float z){return step(z,unp(texture2D(uSh,uv)));}
@@ -47,7 +47,8 @@ float pcf(vec2 uv,float z){vec2 t=uv/uSS-0.5;vec2 f=fract(t);vec2 b=(floor(t)+0.
 float shade(float nl){if(uFx.w<0.5)return 1.0;vec3 p=vS.xyz/vS.w*0.5+0.5;if(p.x<0.0||p.x>1.0||p.y<0.0||p.y>1.0||p.z>1.0)return 1.0;
  float z=p.z-0.0007-0.0022*(1.0-nl);float k=uSS*1.5;return (pcf(p.xy+vec2(-k,-k),z)+pcf(p.xy+vec2(k,-k),z)+pcf(p.xy+vec2(-k,k),z)+pcf(p.xy+vec2(k,k),z))*0.25;}
 vec3 aces(vec3 x){return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);}
-void main(){vec4 tx=uFx.x>0.5?texture2D(uT,vU):vec4(1.0);if(uFx.z>0.5&&tx.a<0.5)discard;
+void main(){float ra=1.0;if(uRf.x>0.0){vec3 d=vW-uRe;vec3 s=uRe+d*((uRf.y-uRe.y)/d.y);if(s.x<uRc.x||s.x>uRc.z||s.z<uRc.y||s.z>uRc.w)discard;ra=uRf.x*(1.0-smoothstep(0.0,uRf.z,uRf.y-vW.y));}
+ vec4 tx=uFx.x>0.5?texture2D(uT,vU):vec4(1.0);if(uFx.z>0.5&&tx.a<0.5)discard;
  vec3 base=uC*pow(tx.rgb,vec3(2.2));
  if(uFx.y>0.5){gl_FragColor=vec4(pow(base+uE,vec3(1.0/2.2)),tx.a*uMat.w);return;}
  vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;vec3 v=normalize(uEye-vW);float nl=max(dot(n,uLd),0.0);float sh=shade(nl);
@@ -57,7 +58,7 @@ void main(){vec4 tx=uFx.x>0.5?texture2D(uT,vU):vec4(1.0);if(uFx.z>0.5&&tx.a<0.5)
  vec3 env=mix(uGnd*0.6,uSky*1.5,smoothstep(-0.25,0.85,r.y))+vec3(2.6)*pow(max(dot(r,normalize(vec3(-0.35,0.8,0.5))),0.0),40.0);
  float g=uMat.z*(0.04+0.96*fr);
  vec3 col=base*(amb*(0.5+0.5*sp)+uLc*nl*sh*sp)*(1.0-g*0.6)+uLc*spec*sh*sp+env*g*(0.35+0.65*sp)+uE;
- gl_FragColor=vec4(pow(aces(col*uExp),vec3(1.0/2.2)),uMat.w*tx.a);}`;
+ gl_FragColor=vec4(pow(aces(col*uExp),vec3(1.0/2.2)),uMat.w*tx.a*ra);}`;
 const VS_SH=`attribute vec3 aP;uniform mat4 uM,uL;varying float vZ;void main(){vec4 p=uL*(uM*vec4(aP,1.0));vZ=p.z*0.5+0.5;gl_Position=p;}`;
 const FS_SH=`varying float vZ;void main(){vec4 e=fract(vZ*vec4(1.0,255.0,65025.0,16581375.0));e-=e.yzww*vec4(1.0/255.0,1.0/255.0,1.0/255.0,0.0);gl_FragColor=e;}`;
 
@@ -77,7 +78,7 @@ function g3Init(){if(G3D.ok!==null)return G3D.ok;G3D.ok=false;
   G3D.cv=cv;G3D.gl=gl;const hp=gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER,gl.HIGH_FLOAT);G3D.hp=!!hp&&hp.precision>0;
   G3D.af=gl.getExtension('EXT_texture_filter_anisotropic')||gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic');if(G3D.af)G3D.afM=gl.getParameter(G3D.af.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
   G3D.u32=!!gl.getExtension('OES_element_index_uint');
-  G3D.P=g3Prog(VS_MAIN,(G3D.hp?'precision highp float;':'precision mediump float;')+FS_MAIN,['uM','uVP','uL','uUV','uT','uSh','uC','uE','uEye','uLd','uLc','uSky','uGnd','uMat','uFx','uSp','uSS','uExp']);
+  G3D.P=g3Prog(VS_MAIN,(G3D.hp?'precision highp float;':'precision mediump float;')+FS_MAIN,['uM','uVP','uL','uUV','uT','uSh','uC','uE','uEye','uLd','uLc','uSky','uGnd','uMat','uFx','uSp','uSS','uExp','uRf','uRc','uRe']);
   if(G3D.hp){G3D.Q=g3Prog(VS_SH,'precision highp float;'+FS_SH,['uM','uL']);g3ShadowFB()}
   const w=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,w);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,255,255,255]));G3D.white=w;
   g3Input(cv);
@@ -161,36 +162,55 @@ function g3Set(sc,list,opt={}){const now=performance.now(),rm=RM(),old=sc.objs,n
  for(const o of old.values()){if(next.has(o.id))continue;if(o.dying){next.set(o.id,o);continue}if(used.has(o)||took.has(o))continue;g3Leave(o,opt.gone?opt.gone(o):null,now,rm,opt);next.set(o.id,o)}
  for(const d of pend){if(done.has(d))continue;const o={id:d.k!=null?'k:'+d.k:'a'+(++sc.seq),anon:d.k==null,m:d.m,p:d.p.slice(),q:(d.q||qt.id()).slice(),s:d.s??1,a:d.a??1,p1:d.p.slice()};g3Spawn(o,d,now,rm,opt);g3Props(o,d);next.set(o.id,o)}
  sc.objs=next;g3Need()}
-function g3Props(o,d){o.dim=d.dim??1;o.glow=d.glow||null;o.pick=d.pick||null;o.uv=d.uv||null;o.cast=d.cast!==false;o.lift=d.lift||0}
+function g3Props(o,d){o.dim=d.dim??1;o.glow=d.glow||null;o.pick=d.pick||null;o.uv=d.uv||null;o.cast=d.cast!==false;o.lift=d.lift||0;o.drag=!!d.drag;o.refl=d.refl!==false}
 function g3Aim(o,d,now,opt,rm){g3Props(o,d);const q1=d.q||qt.id(),s1=d.s??1,a1=d.a??1,dist=v3.len(v3.sub(o.p1,d.p));
  if(dist<1e-4&&qt.same(o.q1||o.q,q1)&&sDiff(o.s1??o.s,s1)<1e-4&&Math.abs((o.a1??o.a)-a1)<1e-3&&!d.path&&!d.spin)return;
  o.p1=d.p.slice();o.q1=q1;o.s1=s1;o.a1=a1;if(rm){o.p=d.p.slice();o.q=q1.slice();o.s=s1;o.a=a1;o.tw=null;return}
  const far=v3.len(v3.sub(o.p,d.p)),dur=d.dur??(opt.dur?opt.dur(o,d,far):Math.min(700,260+90*Math.sqrt(far))),arc=d.arc??(far>.7?Math.min(1.5,.3+far*.13):0);
- o.tw={t0:now+(d.delay??(opt.delay?opt.delay(o,d):0)),d:dur,p0:o.p.slice(),q0:o.q.slice(),s0:o.s,a0:o.a,p1:d.p.slice(),q1,s1,a1,arc,path:d.path?[o.p.slice(),...d.path]:null,hops:d.hops||null,spin:d.spin||null,ez:d.ez||null}}
+ o.tw={t0:now+(d.delay??(opt.delay?opt.delay(o,d):0)),d:dur,p0:o.p.slice(),q0:o.q.slice(),s0:o.s,a0:o.a,p1:d.p.slice(),q1,s1,a1,arc,path:d.path?[o.p.slice(),...d.path]:null,hops:d.hops||null,spin:d.spin||null,ez:d.ez||null,land:far>.12}}
 function g3Leave(o,g,now,rm,opt){o.dying=1;o.pick=null;if(rm){o.tw={t0:now,d:1,p0:o.p,q0:o.q,s0:o.s,a0:0,p1:o.p,q1:o.q,s1:o.s,a1:0};return}
  const p1=g&&g.p?g.p:v3.add(o.p,[0,.4,0]);o.tw={t0:now+(g&&g.delay||0),d:g&&g.dur||420,p0:o.p.slice(),q0:o.q.slice(),s0:o.s,a0:o.a,p1,q1:g&&g.q||o.q,s1:g&&g.s!=null?g.s:o.s,a1:g&&g.a!=null?g.a:0,arc:g&&g.arc||0}}
 function g3Spawn(o,d,now,rm,opt){o.p1=d.p.slice();o.q1=(d.q||qt.id()).slice();o.s1=d.s??1;o.a1=d.a??1;if(rm||d.now)return;
  const f=d.from||(opt.from?opt.from(d):null)||{p:v3.add(d.p,[0,.5,0]),a:0};o.p=(f.p||d.p).slice();o.q=(f.q||o.q1).slice();o.s=f.s??o.s1;o.a=f.a??1;
- o.tw={t0:now+(d.delay??f.delay??0),d:d.dur??f.dur??480,p0:o.p.slice(),q0:o.q.slice(),s0:o.s,a0:o.a,p1:o.p1,q1:o.q1,s1:o.s1,a1:o.a1,arc:d.arc??f.arc??0,path:d.path?[o.p.slice(),...d.path]:null,hops:d.hops||null,spin:d.spin||null,ez:d.ez||null}}
-function g3Tick(sc,now){let busy=false;for(const o of sc.objs.values()){const t=o.tw;if(!t)continue;let k=(now-t.t0)/t.d;if(k<0){busy=true;continue}if(k>1)k=1;const e=t.ez==='out'?easeOut(k):ease(k);
+ o.tw={t0:now+(d.delay??f.delay??0),d:d.dur??f.dur??480,p0:o.p.slice(),q0:o.q.slice(),s0:o.s,a0:o.a,p1:o.p1,q1:o.q1,s1:o.s1,a1:o.a1,arc:d.arc??f.arc??0,path:d.path?[o.p.slice(),...d.path]:null,hops:d.hops||null,spin:d.spin||null,ez:d.ez||null,land:!!(d.from||d.path)}}
+function g3Tick(sc,now){let busy=false;const c=sc.cam;
+ if(sc.intro){const I=sc.intro,k=Math.min(1,(now-I.t0)/I.d),e=1-Math.pow(1-k,3);c.dy=I.dy*(1-e);c.dp=I.dp*(1-e);c.dz=I.dz+(1-I.dz)*e;if(k>=1){c.dy=c.dp=0;c.dz=1;sc.intro=null}else busy=true}
+ if(sc.fx&&sc.fx.length){sc.fx=sc.fx.filter(f=>now-f.t0<f.d);if(sc.fx.length)busy=true}
+ for(const o of sc.objs.values()){const t=o.tw;if(!t)continue;let k=(now-t.t0)/t.d;if(k<0){busy=true;continue}if(k>1)k=1;const e=t.ez==='out'?easeOut(k):ease(k);
   if(t.path){const P=t.path,ls=[];let tot=0;for(let i=1;i<P.length;i++){const l=v3.len(v3.sub(P[i],P[i-1]));ls.push(l);tot+=l}let x=e*tot,i=0;while(i<ls.length-1&&x>ls[i]){x-=ls[i];i++}
    const u=ls[i]?Math.min(1,x/ls[i]):1,h=t.hops?t.hops[i]??0:t.arc;o.p=v3.lerp(P[i],P[i+1],u);o.p[1]+=h*4*u*(1-u)}
   else{o.p=v3.lerp(t.p0,t.p1,e);if(t.arc)o.p[1]+=t.arc*4*e*(1-e)}
   o.q=qt.slerp(t.q0,t.q1,e);if(t.spin)o.q=qt.mul(o.q,qt.ax(t.spin[0],t.spin[1],t.spin[2],t.spin[3]*Math.PI*2*(1-e)));
   o.s=sLerp(t.s0,t.s1,e);o.a=t.a0+(t.a1-t.a0)*e;
-  if(k>=1){o.tw=null;o.p=t.p1.slice();o.q=t.q1.slice();if(o.dying)sc.objs.delete(o.id)}else busy=true}
+  if(k>=1){o.tw=null;o.p=t.p1.slice();o.q=t.q1.slice();if(o.dying)sc.objs.delete(o.id);else if(t.land){const md=sc.models[o.m];if(md&&md.land)try{md.land(o,sc)}catch(e){}}}else busy=true}
  return busy}
+/* short effects drawn like marks: a ring where a piece lands, sparks when one is taken */
+function g3Fx(sc,f){f.t0=performance.now()+(f.delay||0);f.d=f.d||450;(sc.fx||(sc.fx=[])).push(f);g3Need()}
+function g3Ripple(sc,p,size=1,c,a=.55){if(RM())return;g3Fx(sc,{m:'mk',uv:MK.ring,c:c||[1,.92,.75],p,s0:size*.35,s1:size*1.35,a0:a,a1:0,d:520,add:true})}
+function g3Sparks(sc,p,c,n=10,delay=0){if(RM())return;for(let k=0;k<n;k++){const a=k/n*Math.PI*2+Math.random()*.4,r=.7+Math.random()*.8;g3Fx(sc,{m:'mk',uv:MK.dot,c:c||[1,.8,.4],p:p.slice(),v:[Math.cos(a)*r,.12,Math.sin(a)*r],s0:.28,s1:.06,a0:1,a1:0,d:420+Math.random()*260,add:true,delay})}
+ g3Fx(sc,{m:'mk',uv:MK.ring,c:[1,.75,.35],p:p.slice(),s0:.3,s1:2,a0:.7,a1:0,d:560,add:true,delay})}
 
 /* ---------- camera: orbit around the board, fit the board to whatever shape the screen has ---------- */
-function g3Dir(c){const yaw=c.yaw+c.dy,pit=clamp(c.pitch+c.dp,.32,1.5);return[Math.sin(yaw)*Math.cos(pit),Math.sin(pit),Math.cos(yaw)*Math.cos(pit)]}
-function g3Fit(c,dir,asp){const B=c.box,pts=[];for(const x of[B[0][0],B[1][0]])for(const y of[B[0][1],B[1][1]])for(const z of[B[0][2],B[1][2]])pts.push([x,y,z]);
- const P=m4.persp(c.fov,asp,.05,500),mx=c.mx??.94,my=c.my??.92;let lo=1,hi=400;
+function g3Dir(c){const tall=(G3D.asp||1)<.8,yaw=c.yaw+c.dy,pit=clamp(c.pitch+(tall?c.pp||0:0)+c.dp,.32,1.5);return[Math.sin(yaw)*Math.cos(pit),Math.sin(pit),Math.cos(yaw)*Math.cos(pit)]}
+function g3Shift(c){const W=G3D.cw||1,H=G3D.ch||1,i=c.inset||{t:0,b:0,l:0,r:0};return{cx:(i.l-i.r)/W,cy:(i.b-i.t)/H,hx:Math.max(.3,1-(i.l+i.r)/W),hy:Math.max(.3,1-(i.t+i.b)/H)}}
+function g3Fit(c,dir,asp,sh){const B=asp<.8&&c.boxp?c.boxp:c.box,pts=[];for(const x of[B[0][0],B[1][0]])for(const y of[B[0][1],B[1][1]])for(const z of[B[0][2],B[1][2]])pts.push([x,y,z]);
+ const tall=asp<.8,P=m4.persp(c.fov,asp,.05,500),mx=(tall?c.mxp??.985:c.mx??.94)*sh.hx,my=(c.my??.92)*sh.hy,B0=tall&&c.boxp?c.boxp:c.box;P[8]=-sh.cx;P[9]=-sh.cy;let lo=1,hi=400;
  for(let it=0;it<26;it++){const d=(lo+hi)/2,e=v3.add(c.tgt,v3.mul(dir,d)),VP=m4.mul(P,m4.look(e,c.tgt,[0,1,0]));let ok=true;
-  for(const p of pts){const r=m4.xf(VP,p);if(r[3]<=0||Math.abs(r[0])>mx||Math.abs(r[1])>my){ok=false;break}}if(ok)hi=d;else lo=d}
+  for(const p of pts){const r=m4.xf(VP,p);if(r[3]<=0||Math.abs(r[0]-sh.cx)>mx||Math.abs(r[1]-sh.cy)>my){ok=false;break}}if(ok)hi=d;else lo=d}
  return hi}
-function g3Cam(sc){const c=sc.cam,asp=G3D.asp||1,dir=g3Dir(c),key=[asp.toFixed(3),c.yaw,c.dy.toFixed(3),c.dp.toFixed(3),c.pitch,c.fov,JSON.stringify(c.box)].join();
- if(c.fk!==key){c.fd=g3Fit(c,dir,asp);c.fk=key}const dist=c.fd/c.dz,eye=v3.add(c.tgt,v3.mul(dir,dist)),V=m4.look(eye,c.tgt,[0,1,0]),P=m4.persp(c.fov,asp,Math.max(.2,dist*.2),dist*3+30);
- return{eye,VP:m4.mul(P,V),dist}}
+function g3Cam(sc){const c=sc.cam,asp=G3D.asp||1,dir=g3Dir(c),sh=g3Shift(c),key=[asp.toFixed(3),c.yaw,c.dy.toFixed(3),c.dp.toFixed(3),c.pitch,c.fov,JSON.stringify(c.box),JSON.stringify(c.inset||0)].join();
+ if(c.fk!==key){c.fd=g3Fit(c,dir,asp,sh);c.fk=key}
+ if(c.fdc==null||c.snap){c.fdc=c.fd;c.cxc=sh.cx;c.cyc=sh.cy;c.snap=0}else{const k=.2;c.fdc+=(c.fd-c.fdc)*k;c.cxc+=(sh.cx-c.cxc)*k;c.cyc+=(sh.cy-c.cyc)*k;
+  if(Math.abs(c.fd-c.fdc)>c.fd*.002||Math.abs(sh.cx-c.cxc)>.002||Math.abs(sh.cy-c.cyc)>.002)sc.camBusy=true;else{c.fdc=c.fd;c.cxc=sh.cx;c.cyc=sh.cy}}
+ const dist=c.fdc/c.dz,eye=v3.add(c.tgt,v3.mul(dir,dist)),V=m4.look(eye,c.tgt,[0,1,0]),P=m4.persp(c.fov,asp,Math.max(.2,dist*.2),dist*3+30);P[8]=-c.cxc;P[9]=-c.cyc;
+ return{eye,VP:m4.mul(P,V),dist,cx:c.cxc,cy:c.cyc}}
+/* how much of the screen the floating panels cover, so the board sits in the free part */
+function g3Insets(sc){const cv=G3D.cv,gx=cv&&cv.isConnected&&cv.closest('.gx'),c=sc.cam;if(!gx){c.inset=null;return}const r=cv.getBoundingClientRect();if(!r.width||!r.height)return;
+ const top=gx.querySelector('.ghud.top'),bot=gx.querySelector('.ghud.bot'),tr=top&&top.getBoundingClientRect();let t=0,b=0,rr=0;
+ const vis=el=>el&&[...el.children].filter(x=>x.offsetHeight&&getComputedStyle(x).position!=='absolute');
+ if(tr&&tr.left>r.left+r.width*.3)rr=r.right-tr.left;
+ else{const lt=vis(top).pop(),fb=vis(bot)[0];if(lt)t=lt.getBoundingClientRect().bottom-r.top+8;if(fb)b=r.bottom-fb.getBoundingClientRect().top+8}
+ const q=(v,m)=>Math.round(clamp(v,0,m)/8)*8;c.inset={t:q(t,r.height*.4),b:q(b,r.height*.48),l:0,r:q(rr,r.width*.5)};G3D.cw=r.width;G3D.ch=r.height}
 
 /* ---------- drawing ---------- */
 let G3_LID=null;
@@ -215,11 +235,18 @@ function g3Draw(sc,now){const gl=G3D.gl,cv=G3D.cv,C=g3Cam(sc),L=sc.light;sc.camN
  gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,sm?sm.t:G3D.white);gl.uniform1i(u.uSh,1);gl.uniform1f(u.uSS,sm?1/sm.S:0);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(u.uT,0);
  gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.disable(gl.BLEND);gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);
  for(const s of sc.statics){if(s.late)continue;for(const pt of s.parts)g3Part(pt,s.M,1,null,1,!!sm&&s.recv!==false)}
- const tr=[];for(const o of sc.objs.values()){const md=sc.models[o.m];if(!md||o.a<.01)continue;if(o.a<.999){tr.push(o);continue}for(const pt of md.parts)g3Part(pt,o.M,o.dim,o.glow,1,!!sm,o.uv)}
+ if(sc.refl){const R=sc.refl,Mi=m4.id(),me=[C.eye[0],2*R.y-C.eye[1],C.eye[2]];Mi[5]=-1;Mi[13]=2*R.y;
+  gl.uniform3fv(u.uEye,me);gl.uniform3f(u.uLd,L.d[0],-L.d[1],L.d[2]);gl.uniform4f(u.uRf,R.k,R.y,R.fade||1.2,0);gl.uniform4fv(u.uRc,R.rect);gl.uniform3fv(u.uRe,C.eye);
+  gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.cullFace(gl.FRONT);
+  const rl=[...sc.objs.values()].filter(o=>o.a>.5&&o.refl&&o.p[1]>=R.y-.02&&o.p[0]>R.rect[0]-.6&&o.p[0]<R.rect[2]+.6&&o.p[2]>R.rect[1]-.6&&o.p[2]<R.rect[3]+.6).sort((a,b)=>v3.len(v3.sub(b.p,me))-v3.len(v3.sub(a.p,me)));
+  for(const o of rl){const md=sc.models[o.m];if(!md)continue;const M=m4.mul(Mi,o.M);for(const pt of md.parts)if(!pt.mat.unlit)g3Part(pt,M,o.dim,o.glow,1,false,o.uv)}
+  gl.uniform4f(u.uRf,0,0,0,0);gl.uniform3fv(u.uEye,C.eye);gl.uniform3fv(u.uLd,L.d);gl.cullFace(gl.BACK);gl.enable(gl.DEPTH_TEST);gl.disable(gl.BLEND)}
+ const HOV=[.1,.07,.02],tr=[];for(const o of sc.objs.values()){const md=sc.models[o.m];if(!md||o.a<.01)continue;if(o.a<.999){tr.push(o);continue}const gw=o.glow||(sc.hov===o.id?HOV:null);for(const pt of md.parts)g3Part(pt,o.M,o.dim,gw,1,!!sm,o.uv)}
  gl.enable(gl.BLEND);gl.depthMask(false);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(-1,-4);
  const pulse=.62+.38*Math.sin(now*.0055);
- for(const mk of sc.marks){const md=sc.models[mk.m];if(!md)continue;if(mk.add)gl.blendFunc(gl.SRC_ALPHA,gl.ONE);else gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-  const M=mk.M||(mk.M=m4.trs(mk.p,mk.q||qt.id(),mk.s||1)),pt=md.parts[0],m=pt.mat,c0=m.c;if(mk.c)m.c=mk.c;g3Part(pt,M,1,null,(mk.a??1)*(mk.pulse&&!RM()?pulse:1),false,mk.uv);m.c=c0}
+ const one=(mk,M,al)=>{const md=sc.models[mk.m];if(!md)return;if(mk.add)gl.blendFunc(gl.SRC_ALPHA,gl.ONE);else gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);const pt=md.parts[0],m=pt.mat,c0=m.c;if(mk.c)m.c=mk.c;g3Part(pt,M,1,null,al,false,mk.uv);m.c=c0};
+ for(const mk of sc.hm?[...sc.marks,sc.hm]:sc.marks)one(mk,mk.M||(mk.M=m4.trs(mk.p,mk.q||qt.id(),mk.s||1)),(mk.a??1)*(mk.pulse&&!RM()?pulse:1));
+ if(sc.fx)for(const f of sc.fx){const k=(now-f.t0)/f.d;if(k<0||k>1)continue;const e=easeOut(k),s=f.s0+(f.s1-f.s0)*e,p=f.v?v3.add(f.p,v3.mul(f.v,e)):f.p;one(f,m4.trs(p,f.q||qt.id(),s),f.a0+(f.a1-f.a0)*e)}
  gl.disable(gl.POLYGON_OFFSET_FILL);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(true);
  for(const s of sc.statics)if(s.late)for(const pt of s.parts)g3Part(pt,s.M,1,null,1,!!sm&&s.recv!==false);
  gl.depthMask(false);tr.sort((a,b)=>v3.len(v3.sub(b.p,C.eye))-v3.len(v3.sub(a.p,C.eye)));
@@ -230,22 +257,24 @@ function g3Labels(sc){const C=sc.camNow,cv=G3D.cv,root=cv&&cv.parentNode&&cv.par
  for(const[sel,p]of sc.anchors){const el=root.querySelector(sel);if(!el)continue;const r=m4.xf(C.VP,p);if(r[3]<=0)continue;const w=el.offsetWidth/2+6,h=el.offsetHeight/2+6;
   el.style.left=clamp((r[0]*.5+.5)*W,w,W-w).toFixed(1)+'px';el.style.top=clamp((.5-r[1]*.5)*H,h,H-h).toFixed(1)+'px'}}
 function g3Need(){if(!G3D.raf&&G3D.ok)G3D.raf=requestAnimationFrame(g3Frame)}
-function g3Frame(now){G3D.raf=0;const sc=G3D.sc,cv=G3D.cv;if(!sc||!cv||!cv.isConnected||!G3D.ok)return;const busy=g3Tick(sc,now);g3Size();
+function g3Frame(now){G3D.raf=0;const sc=G3D.sc,cv=G3D.cv;if(!sc||!cv||!cv.isConnected||!G3D.ok)return;const busy=g3Tick(sc,now);g3Size();sc.camBusy=false;
  try{g3Draw(sc,now);g3Labels(sc)}catch(e){try{console.warn('3D draw',e)}catch(x){}return}
- if(busy)g3Need();else if(!RM()&&sc.marks.some(m=>m.pulse)){clearTimeout(G3D.slow);G3D.slow=setTimeout(g3Need,80)}}
+ if(busy||sc.camBusy)g3Need();else if(!RM()&&sc.marks.some(m=>m.pulse)){clearTimeout(G3D.slow);G3D.slow=setTimeout(g3Need,80)}}
 function g3Size(){const cv=G3D.cv,el=cv.parentNode;if(!el)return;const r=el.getBoundingClientRect(),d=Math.min(window.devicePixelRatio||1,2),w=Math.max(2,Math.round(r.width*d)),h=Math.max(2,Math.round(r.height*d));
  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}G3D.asp=w/h}
 /* put the canvas into a board on screen and draw at once, so there is no empty frame */
 function g3Mount(el,sc){if(!g3Init())return false;const cv=G3D.cv;if(cv.parentNode!==el)el.prepend(cv);G3D.sc=sc;
- if(window.ResizeObserver){if(!G3D.ro)G3D.ro=new ResizeObserver(()=>{if(G3D.sc&&G3D.cv.isConnected){g3Size();g3Draw(G3D.sc,performance.now());g3Labels(G3D.sc)}});G3D.ro.disconnect();G3D.ro.observe(el)}
- el.classList.toggle('moved',!!(sc.cam.dy||sc.cam.dp||sc.cam.dz!==1));g3Size();try{g3Draw(sc,performance.now());g3Labels(sc)}catch(e){}g3Need();return true}
+ if(window.ResizeObserver){if(!G3D.ro)G3D.ro=new ResizeObserver(()=>{if(G3D.sc&&G3D.cv.isConnected){g3Size();g3Insets(G3D.sc);G3D.sc.cam.snap=1;g3Draw(G3D.sc,performance.now());g3Labels(G3D.sc)}});G3D.ro.disconnect();G3D.ro.observe(el)}
+ el.classList.toggle('moved',!sc.intro&&!!(sc.cam.dy||sc.cam.dp||sc.cam.dz!==1));g3Size();g3Insets(sc);try{g3Draw(sc,performance.now());g3Labels(sc)}catch(e){}g3Need();return true}
 function g3Reset(){const sc=G3D.sc;if(!sc)return;const c=sc.cam,a={dy:c.dy,dp:c.dp,dz:c.dz},t0=performance.now();
  const f=t=>{const k=Math.min(1,(t-t0)/380),e=easeOut(k);c.dy=a.dy*(1-e);c.dp=a.dp*(1-e);c.dz=a.dz+(1-a.dz)*e;g3Moved(true);if(k<1)requestAnimationFrame(f);else{c.dy=c.dp=0;c.dz=1;g3Moved(true)}};requestAnimationFrame(f)}
 A.g3reset=()=>g3Reset();
-function g3Moved(){const sc=G3D.sc,el=G3D.cv&&G3D.cv.parentNode;if(el&&sc)el.classList.toggle('moved',Math.abs(sc.cam.dy)>.01||Math.abs(sc.cam.dp)>.01||Math.abs(sc.cam.dz-1)>.01);g3Need()}
+function g3Moved(){const sc=G3D.sc,el=G3D.cv&&G3D.cv.parentNode;if(el&&sc)el.classList.toggle('moved',!sc.intro&&(Math.abs(sc.cam.dy)>.01||Math.abs(sc.cam.dp)>.01||Math.abs(sc.cam.dz-1)>.01));g3Need()}
+/* the camera swoops in when a game opens */
+function g3StartIntro(sc){if(RM())return;const s=Math.random()<.5?1:-1;sc.intro={t0:performance.now(),d:1500,dy:.6*s,dp:.55,dz:.62};sc.cam.dy=.6*s;sc.cam.dp=.55;sc.cam.dz=.62;g3Need()}
 
 /* ---------- touch: drag turns the board, two fingers zoom, a tap picks ---------- */
-function g3Ray(cx,cy){const sc=G3D.sc,r=G3D.cv.getBoundingClientRect(),nx=(cx-r.left)/r.width*2-1,ny=1-(cy-r.top)/r.height*2,C=sc.camNow||g3Cam(sc);
+function g3Ray(cx,cy){const sc=G3D.sc,r=G3D.cv.getBoundingClientRect(),C=sc.camNow||g3Cam(sc),nx=(cx-r.left)/r.width*2-1-(C.cx||0),ny=1-(cy-r.top)/r.height*2-(C.cy||0);
  const f=v3.norm(v3.sub(sc.cam.tgt,C.eye)),rt=v3.norm(v3.cross(f,[0,1,0])),up=v3.cross(rt,f),t=Math.tan(sc.cam.fov/2);
  return{o:C.eye,d:v3.norm(v3.add(f,v3.add(v3.mul(rt,nx*t*G3D.asp),v3.mul(up,ny*t))))}}
 /* the nearest object with tap data under the ray, tested against its box */
@@ -255,16 +284,27 @@ function g3HitObj(sc,ray,filter){let best=null,bt=1e9;for(const o of sc.objs.val
    let a=(lo-ro[k])/rd[k],b=(hi-ro[k])/rd[k];if(a>b)[a,b]=[b,a];t0=Math.max(t0,a);t1=Math.min(t1,b)}
   if(t0<=t1&&t1>0&&t0<bt){bt=t0;best=o}}return best}
 const g3HitY=(ray,y)=>{if(Math.abs(ray.d[1])<1e-6)return null;const t=(y-ray.o[1])/ray.d[1];return t>0?v3.add(ray.o,v3.mul(ray.d,t)):null};
-function g3Input(cv){const P=new Map();let st=null,pin=null;
- cv.addEventListener('pointerdown',e=>{const sc=G3D.sc;if(!sc)return;P.set(e.pointerId,[e.clientX,e.clientY]);
-  if(P.size===1)st={x:e.clientX,y:e.clientY,dy:sc.cam.dy,dp:sc.cam.dp,drag:false};else if(P.size===2){st=null;const[a,b]=[...P.values()];pin={d:Math.hypot(a[0]-b[0],a[1]-b[1])||1,z:sc.cam.dz}}});
- cv.addEventListener('pointermove',e=>{if(!P.has(e.pointerId))return;P.set(e.pointerId,[e.clientX,e.clientY]);const sc=G3D.sc;if(!sc)return;
+/* one finger on your own piece drags it; anywhere else it turns the board; two fingers zoom; a short touch is a tap */
+function g3Input(cv){const P=new Map();let st=null,pin=null,hovT=0;
+ const back=o=>{if(!o||o.tw||o.dying)return;if(v3.len(v3.sub(o.p,o.p1))>.01){o.tw={t0:performance.now(),d:230,p0:o.p.slice(),q0:o.q.slice(),s0:o.s,a0:o.a,p1:o.p1.slice(),q1:(o.q1||o.q).slice(),s1:o.s1??o.s,a1:o.a1??o.a,arc:0,land:true};g3Need()}};
+ cv.addEventListener('pointerdown',e=>{const sc=G3D.sc;if(!sc)return;P.set(e.pointerId,[e.clientX,e.clientY]);if(sc.intro){sc.intro=null;g3Moved()}
+  if(P.size===1){let obj=null;if(sc.drag){try{obj=g3HitObj(sc,g3Ray(e.clientX,e.clientY),o=>o.drag)}catch(x){}}st={x:e.clientX,y:e.clientY,dy:sc.cam.dy,dp:sc.cam.dp,drag:false,obj}}
+  else if(P.size===2){if(st&&st.obj&&st.drag){st.obj.held=0;back(st.obj);sc.hm=null}st=null;const[a,b]=[...P.values()];pin={d:Math.hypot(a[0]-b[0],a[1]-b[1])||1,z:sc.cam.dz}}});
+ cv.addEventListener('pointermove',e=>{const sc=G3D.sc;if(!sc)return;
+  if(!P.has(e.pointerId)){if(e.pointerType==='mouse'&&!e.buttons&&performance.now()-hovT>45){hovT=performance.now();let h=null;try{h=g3HitObj(sc,g3Ray(e.clientX,e.clientY),o=>o.drag||(o.pick&&sc.hoverAll))}catch(x){}const id=h?h.id:null;if(id!==sc.hov){sc.hov=id;cv.style.cursor=h?'pointer':'';g3Need()}}return}
+  P.set(e.pointerId,[e.clientX,e.clientY]);
   if(P.size===2&&pin){const[a,b]=[...P.values()];sc.cam.dz=clamp(pin.z*Math.hypot(a[0]-b[0],a[1]-b[1])/pin.d,.85,1.9);g3Moved();return}
-  if(!st)return;const dx=e.clientX-st.x,dy=e.clientY-st.y;if(!st.drag&&Math.hypot(dx,dy)>9){st.drag=true;try{cv.setPointerCapture(e.pointerId)}catch(x){}}
-  if(st.drag&&sc.orbit!==false){sc.cam.dy=clamp(st.dy-dx*.0065,-(sc.yawMax??.75),sc.yawMax??.75);sc.cam.dp=clamp(st.dp+dy*.005,-(sc.pitchDown??.42),sc.pitchUp??.45);g3Moved()}});
- const up=e=>{const had=P.delete(e.pointerId);if(P.size<2)pin=null;if(!had||!st)return;const s=st;st=null;if(e.type==='pointerup'&&!s.drag)g3Tap(e.clientX,e.clientY)};
+  if(!st)return;const dx=e.clientX-st.x,dy=e.clientY-st.y;
+  if(!st.drag&&Math.hypot(dx,dy)>(st.obj?7:9)){st.drag=true;try{cv.setPointerCapture(e.pointerId)}catch(x){}if(st.obj){st.obj.held=1;try{sc.drag.start&&sc.drag.start(st.obj)}catch(x){}if(typeof gBuzz==='function')gBuzz(6)}}
+  if(!st.drag)return;
+  if(st.obj){const D=sc.drag,p=g3HitY(g3Ray(e.clientX,e.clientY),D.y);if(p){const o=st.obj;o.tw=null;o.p=[p[0],D.y+(D.lift??.55),p[2]+(D.dz||0)];try{sc.hm=D.move?D.move(o,p):null}catch(x){}g3Need()}return}
+  if(sc.orbit!==false){sc.cam.dy=clamp(st.dy-dx*.0065,-(sc.yawMax??.75),sc.yawMax??.75);sc.cam.dp=clamp(st.dp+dy*.005,-(sc.pitchDown??.42),sc.pitchUp??.45);g3Moved()}});
+ const up=e=>{const had=P.delete(e.pointerId);if(P.size<2)pin=null;if(!had||!st)return;const s=st;st=null;const sc=G3D.sc;
+  if(s.obj&&s.drag){const o=s.obj;o.held=0;if(sc)sc.hm=null;if(e.type==='pointerup'&&sc&&sc.drag){let p=null;try{p=g3HitY(g3Ray(e.clientX,e.clientY),sc.drag.y)}catch(x){}try{sc.drag.drop(o,p)}catch(x){}}back(o);g3Need();return}
+  if(e.type==='pointerup'&&!s.drag)g3Tap(e.clientX,e.clientY)};
  cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);cv.addEventListener('lostpointercapture',e=>{if(P.has(e.pointerId)&&e.pointerType==='mouse')up(e)});
- cv.addEventListener('wheel',e=>{const sc=G3D.sc;if(!sc||!(GFS.on||e.ctrlKey))return;e.preventDefault();sc.cam.dz=clamp(sc.cam.dz*Math.exp(-e.deltaY*.0012),.85,1.9);g3Moved()},{passive:false});
+ cv.addEventListener('pointerleave',()=>{const sc=G3D.sc;if(sc&&sc.hov){sc.hov=null;cv.style.cursor='';g3Need()}});
+ cv.addEventListener('wheel',e=>{const sc=G3D.sc;if(!sc||!(cv.closest('.gx')||e.ctrlKey))return;e.preventDefault();sc.cam.dz=clamp(sc.cam.dz*Math.exp(-e.deltaY*.0012),.85,1.9);g3Moved()},{passive:false});
  cv.addEventListener('contextmenu',e=>e.preventDefault())}
 function g3Tap(x,y){const sc=G3D.sc;if(!sc||!sc.tap)return;try{sc.tap(g3Ray(x,y))}catch(e){}}
 /* call a game action the same way a button on the flat board would */

@@ -5,21 +5,40 @@ const JK_BOTS=['ნინო','ლუკა','დათო'],JK_ERG=['ნინ�
 const BOTN=[['ლუკა',205],['დათო',12],['გიორგი',150],['ნინო',340],['ანა',275],['ლევანი',95],['თამარი',190]];
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 const BOT={n:'ბ',h:42};
-function startGame(id,ctx){const G=GAME[id],fresh=!S.game;S.game=id;G.ctx=Object.assign({mode:'bot',side:1,names:{1:ME.name,'-1':'სუფრა ბოტი'},avs:{1:'me','-1':BOT},seq:0},ctx||{});G.start();view.scrollTop=0;G.render();if(G.kick)G.kick();if(fresh)navOpen('game')}
+/* a game opens over the whole screen, like a game app; one back step closes it */
+function startGame(id,ctx){const G=GAME[id],fresh=!S.game;S.game=id;G.ctx=Object.assign({mode:'bot',side:1,names:{1:ME.name,'-1':'სუფრა ბოტი'},avs:{1:'me','-1':BOT},seq:0},ctx||{});
+ G.resHide=0;G.resSnd=0;G.wasMine=false;G.start();view.scrollTop=0;if(fresh){fsEnter();g3Intro(id)}G.render();if(G.kick)G.kick();if(fresh)navOpen('game')}
 const isPlayer=c=>c.mode==='bot'||c.mode==='online'||c.mode==='tour';
 function plSub(c,s){if(c.mode==='watch'||c.mode==='netwatch')return '';if(s===c.side)return 'რეიტინგი '+(ME.rating??1500);return c.mode==='online'?(c.gone?'გავიდა':'ონლაინ'):'ბოტი'}
-const gTag=c=>c.mode==='bot'?'<button class="btn ghost sm" data-a="restart">ახალი პარტია</button>':c.mode==='online'?'<span class="tag">ონლაინ</span>':c.mode==='tour'?'<span class="tag">ტურნირი</span>':'<span class="tag soon">ყურება</span>';
-const gTop=(t,c)=>`<div class="gtop"><button class="ibtn" data-a="lobby" aria-label="ლობიში დაბრუნება">${ic('back')}</button><h2>${t}</h2><span class="sp"></span>${gTag(c)}${gTools()}</div>`;
-function gview(id,title,board,status,extra='',plx=null){if(S.tab!=='games'||S.game!==id||S.page)return;const c=GAME[id].ctx;
- const pl=s=>`<div class="pl${s===c.side?' me':''}">${avAny(c.avs[s],30)}<b>${esc(c.names[s])}</b><span class="muted">${plSub(c,s)}</span>${plx?plx(s):''}</div>`;
- view.innerHTML=`<div class="view-pad game">${gTop(title,c)}${pl(-c.side)}${board}${pl(c.side)}<div class="status" role="status">${status}</div>${extra}</div>`}
+const gTag=c=>c.mode==='online'?'<span class="gtag">ონლაინ</span>':c.mode==='tour'?'<span class="gtag">ტურნირი</span>':c.mode==='watch'||c.mode==='netwatch'?'<span class="gtag">ყურება</span>':'';
+const gTop=(t,c,back='lobby')=>`<div class="gtop"><button class="ibtn gb" data-a="${back}" aria-label="თამაშიდან გასვლა">${ic('back')}</button><h2>${t}</h2>${c?gTag(c):''}<span class="sp"></span>${gTools()}</div>`;
+/* the game screen: the board fills the screen, the players and controls float over it */
+function gShellParts(o){const w=g3Want()&&!o.center;return{w,html:`${w?`<div class="gstage">${o.stage||''}</div>`:''}<div class="ghud top">${o.top||''}</div><div class="gmid">${o.center||(w?'':o.mid||'')}</div><div class="ghud bot">${o.bot||''}</div>${o.res||''}`}}
+function gShell(id,o){const P=gShellParts(o);return `<div class="view-pad game gx${P.w?' is3d':''}" data-g="${id}">${P.html}</div>`}
+const plCard=(c,s,turn,plx)=>`<div class="pl${s===c.side?' me':''}${turn?' turn':''}">${avAny(c.avs[s],34)}<span class="pln"><b>${esc(c.names[s])}</b><span class="muted">${plSub(c,s)}</span></span>${plx?plx(s):''}</div>`;
+function gview(id,title,board,status,extra='',plx=null){if(S.tab!=='games'||S.game!==id||S.page)return;const G=GAME[id],c=G.ctx,ts=G.turnSide?G.turnSide():null,mine=!!(G.mine&&G.mine());gTurnSnd(G,mine);
+ view.innerHTML=gShell(id,{stage:board,mid:board,top:gTop(title,c)+plCard(c,-c.side,ts===-c.side,plx),bot:plCard(c,c.side,ts===c.side,plx)+`<div class="status${mine?' mine':''}" role="status">${status}</div>${extra}`,res:gResHTML(G)})}
+/* a chime when the turn comes to you */
+function gTurnSnd(G,mine){if(mine&&!G.wasMine&&typeof gSnd==='function'){gSnd('turn');gBuzz(12)}G.wasMine=mine}
+/* the end of a game: a card over the board with the result and what to do next */
+const RESWHY={mate:'მატი',stale:'პატი',rep:'პოზიცია სამჯერ განმეორდა',mat:'მატისთვის საკმარისი ფიგურები აღარ დარჩა','50':'50 სვლა აყვანისა და პაიკის სვლის გარეშე',resign:'დანებება',blocked:'სვლა აღარ დარჩა',kings:'15 სვლა მხოლოდ დამებით',k31:'სამმა დამამ ერთი ვერ აიყვანა'};
+function gResBox(G,{title,sub,kind,more='',again='',leave='<button class="btn ghost" data-a="lobby">ლობი</button>'}){if(G.resHide)return '';if(!G.resSnd&&typeof gSnd==='function'){G.resSnd=1;setTimeout(()=>gSnd(kind==='win'?'win':kind==='draw'?'draw':'lose'),250)}
+ return `<div class="gend ${kind}" role="dialog" aria-label="${esc(title)}"><div class="gendc"><span class="gendi">${ic(kind==='win'?'trophy':kind==='draw'?'flag':'chess')}</span><h2>${title}</h2>${sub?`<p>${sub}</p>`:''}${more}
+  <div class="gendb">${again}<button class="btn ghost" data-a="gresx">დაფის ნახვა</button>${leave}</div></div></div>`}
+function gResHTML(G){const r=G.res&&G.res();if(!r)return '';const c=G.ctx,me=isPlayer(c),draw=r.w===2,win=me&&!draw&&r.w===c.side;
+ const title=draw?'ფრე':!me?esc(c.names[r.w])+' მოიგო':win?'მოიგე!':'წააგე';
+ let sub=r.why==='resign'?(me?(win?'მეტოქე დანებდა':'დანებდი'):esc(c.names[-r.w])+' დანებდა'):RESWHY[r.why]||'';if(r.mult>1)sub=(sub?sub+' · ':'')+MULT[r.mult];if(c.gone&&!sub)sub='მეტოქე გავიდა';
+ const more=me&&!draw?`<span class="gendd">${win?'+12':'−9'} რეიტინგი</span>`:'';
+ const again=c.mode==='bot'?'<button class="btn gold" data-a="restart">ახალი პარტია</button>':c.mode==='tour'&&c.finished?'<button class="btn gold" data-a="page" data-p="tour">ტურნირზე</button>':'';
+ return gResBox(G,{title,sub,kind:draw?'draw':win||!me?'win':'lose',more,again})}
+A.gresx=()=>{if(S.page&&S.page.id==='jktable'){JO.resHide=1;joDraw();return}const G=GAME[S.game];if(G){G.resHide=1;G.render()}};
 function endMsg(c,w){if(w===2)return 'ფრე';if(!isPlayer(c))return esc(c.names[w])+' მოიგო';return w===c.side?'მოიგე!':esc(c.names[w])+' მოიგო. სცადე ისევ'}
 const tourBack=c=>c.mode==='tour'&&c.finished?'<button class="btn" data-a="page" data-p="tour" style="align-self:flex-start">ტურნირზე დაბრუნება</button>':'';
 async function gameResult(game,win){try{const r=await rpc('game_result',{p_game:game,p_win:win});ME.rating=r.rating;setCoins(r.coins);if(win)toast(r.reward?`მოიგე! +12 რეიტინგი, +${r.reward} მონეტა`:'მოიგე! +12 რეიტინგი');if(win)confetti()}catch(e){}}
 function finish(G,w){const c=G.ctx;if(c.finished)return;c.finished=1;if(isPlayer(c)&&w!==2){const win=w===c.side;gameResult(G.title,win);if(c.mode==='tour')tourResult(win)}G.render()}
 A.play=t=>{const g=GAMES.find(x=>x.id===t.dataset.g);if(g.soon||!GAME[g.id]){toast(g.n+' მალე დაემატება');return}startGame(g.id)};
-A.lobby=()=>{gfsOff();navKill('game');const G=GAME[S.game];if(G){if(G.ctx&&G.ctx.gr)netLeave();G.ctx={mode:'dead',side:1,names:{},avs:{}};G.tk=(G.tk||0)+1}S.game=null;R.games()};
-A.restart=()=>{const G=GAME[S.game];if(!G)return;if(S.game==='joker'){G.start();G.render();return}startGame(S.game,{mode:'bot',names:G.ctx.names,avs:G.ctx.avs})};
+A.lobby=()=>{closeSheet();fsExit();navKill('game');const G=GAME[S.game];if(G){if(G.ctx&&G.ctx.gr)netLeave();G.ctx={mode:'dead',side:1,names:{},avs:{}};G.tk=(G.tk||0)+1}S.game=null;R.games()};
+A.restart=()=>{const G=GAME[S.game];if(!G)return;closeSheet();G.resHide=0;G.resSnd=0;if(S.game==='joker'){G.start();G.render();return}startGame(S.game,{mode:'bot',names:G.ctx.names,avs:G.ctx.avs})};
 const LIVEG=[{gt:'nardi',a:0,b:1},{gt:'chess',a:2,b:4},{gt:'shashi',a:3,b:5}];
 A.watch=t=>{const g=LIVEG[+t.dataset.i],a=BOTN[g.a],b=BOTN[g.b];startGame(g.gt,{mode:'watch',names:{1:a[0]+' (ბოტი)','-1':b[0]+' (ბოტი)'},avs:{1:{n:a[0],h:a[1]},'-1':{n:b[0],h:b[1]}}})};
 
@@ -90,30 +109,49 @@ R.games=()=>{if(S.game&&GAME[S.game])return GAME[S.game].render();
  <section><h3 class="sec">რეიტინგი · ტოპ 10</h3><div id="lb">${skel(2)}</div></section></div>`;
  q(sb.from('profiles').select('id,name,avatar_url,hue,rating,verified').eq('onboarded',true).order('rating',{ascending:false}).limit(10)).then(rows=>{rows.forEach(p=>PC.set(p.id,Object.assign(PC.get(p.id)||{},p)));const el=$('#lb');if(el)el.innerHTML=`<table class="lb"><tbody>${rows.map((r,i)=>`<tr${r.id===ME.id?' class="mine"':''}><td>${i+1}</td><td><button class="lbn" data-a="user" data-u="${r.id}">${av(r,28)}${esc(r.name)}${vb(r)}</button></td><td>${r.rating}</td></tr>`).join('')}</tbody></table>`}).catch(()=>{})};
 
-/* ---------- 3D boards and fullscreen ----------
+/* ---------- 3D boards, fullscreen, the game menu ----------
    the 3D code loads only when a game opens. without WebGL, or when the person picks the flat board, everything stays flat.
-   fullscreen is one step of the back button: back leaves fullscreen first, then the game */
+   the game screen always covers the app; the browser's own fullscreen is asked for too, where the browser allows it */
 const G3W={p:null,ready:false,fail:false};
 const g3Pref=()=>{const v=store.get('g3d',null);return v===null?!ECO():!!v};
 const g3Can=()=>!G3W.fail&&!!window.WebGLRenderingContext;
-function g3On(){if(!g3Pref()||!g3Can())return false;if(G3W.ready)return true;g3Load();return false}
+const g3Want=()=>g3Pref()&&g3Can();
+function g3On(){if(!g3Want())return false;if(G3W.ready)return true;g3Load();return false}
 function g3Load(){if(G3W.p)return G3W.p;const v=(($('script[src*="/js/core.js"]')||{}).src||'').split('v=')[1]||'';
  const one=f=>new Promise((res,rej)=>{const s=document.createElement('script');s.src=`/js/${f}.js${v?'?v='+v:''}`;s.onload=res;s.onerror=rej;document.head.appendChild(s)});
- G3W.p=one('g3d').then(()=>one('g3d-art')).then(()=>one('g3d-games')).then(()=>{G3W.ready=typeof g3Init==='function'&&g3Init();if(!G3W.ready)G3W.fail=true;g3Redraw()},()=>{G3W.fail=true;G3W.p=null});return G3W.p}
-function g3Redraw(){const on=g3Pref()&&g3Can();$$('[data-a="g3tog"]').forEach(b=>{b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on))});
+ G3W.p=one('g3d').then(()=>one('g3d-art')).then(()=>one('g3d-games')).then(()=>{G3W.ready=typeof g3Init==='function'&&g3Init();if(!G3W.ready)G3W.fail=true;g3Redraw()},()=>{G3W.fail=true;G3W.p=null;g3Redraw()});return G3W.p}
+function g3Redraw(){const on=g3Want();$$('[data-a="g3tog"]').forEach(b=>{b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on))});
  if(S.page){if(S.page.id==='jktable'&&typeof joDraw==='function')joDraw();return}const G=S.tab==='games'&&GAME[S.game];if(G)G.render()}
 const g3Rv=()=>`<button class="g3rv" data-a="g3reset" aria-label="ხედის აღდგენა">${ic('turn')}</button>`;
-const g3Board=(id,dom)=>g3On()?`<div class="g3 g3-${id}"><div class="g3sr">${dom}</div>${g3Rv()}</div>`:dom;
-function g3After(id){if(G3W.ready&&g3On()&&typeof g3Show==='function')g3Show(id)}
-const GFS={on:false,at:0,native:false,seq:0};
-OVE.gfs=null;OVS.push(['gfs',()=>GFS.on||Date.now()-GFS.at<700,()=>gfsOff(true)]);
-/* the browser's own fullscreen is a bonus: where it is missing (iPhone) the game still covers the whole app */
-function gfsOn(){if(GFS.on)return;GFS.on=true;const k=++GFS.seq;document.body.classList.add('gfs');navOpen('gfs');const d=document.documentElement;
- try{if(d.requestFullscreen&&!document.fullscreenElement)d.requestFullscreen({navigationUI:'hide'}).then(()=>{if(GFS.on&&GFS.seq===k)GFS.native=true;else if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})},()=>{})}catch(e){}g3Redraw()}
-function gfsOff(byNav,quiet){if(!GFS.on)return;GFS.on=false;GFS.native=false;GFS.seq++;GFS.at=Date.now();document.body.classList.remove('gfs');if(!byNav)navKill('gfs');
- try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}if(!quiet)g3Redraw()}
-document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&GFS.on&&GFS.native)gfsOff()});
-{const sm=stopMedia;stopMedia=function(){sm();if(GFS.on)gfsOff(false,true)}}
-A.gfull=()=>{if(GFS.on)gfsOff();else gfsOn()};
-A.g3tog=()=>{const on=!(g3Pref()&&g3Can());store.set('g3d',on);if(on&&!g3Can()){toast('ამ მოწყობილობაზე 3D დაფა ვერ ჩაირთო');return}toast(on?'3D დაფა':'ბრტყელი დაფა');g3Redraw()};
-const gTools=()=>{const on=g3Pref()&&g3Can();return `<button class="ibtn g3tg${on?' on':''}" data-a="g3tog" aria-pressed="${on}" aria-label="3D დაფა">${ic('cube')}</button><button class="ibtn" data-a="gfull" aria-pressed="${GFS.on}" aria-label="${GFS.on?'სრული ეკრანიდან გასვლა':'სრულ ეკრანზე'}">${ic(GFS.on?'unfull':'full')}</button>`};
+const g3Board=(id,dom)=>g3Want()?`<div class="g3 g3-${id}${G3W.ready?'':' loading'}"><div class="g3sr">${dom}</div>${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div>`:dom;
+function g3After(id){if(g3On()&&typeof g3Show==='function')g3Show(id)}
+function g3Intro(id){if(typeof G3D!=='undefined')G3D.intro=id;else G3W.intro=id}
+/* the browser's own fullscreen; where it is missing (iPhone) the game still covers the whole app */
+const GFS={native:false};
+function fsEnter(){const d=document.documentElement;if(!store.get('gfs',true)||document.fullscreenElement||!d.requestFullscreen)return;
+ try{d.requestFullscreen({navigationUI:'hide'}).then(()=>{GFS.native=true;fsSync()},()=>{})}catch(e){}}
+function fsExit(){const was=GFS.native;GFS.native=false;try{if(was&&document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}}
+function fsSync(){const on=!!document.fullscreenElement;$$('[data-a="gfull"]').forEach(b=>{b.setAttribute('aria-pressed',String(on));const s=b.querySelector('.sw');if(s)s.classList.toggle('on',on);else b.innerHTML=ic(on?'unfull':'full')})}
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)GFS.native=false;fsSync();setTimeout(()=>{if(typeof G3D!=='undefined'&&G3D.sc)g3Need()},60)});
+{const sm=stopMedia;stopMedia=function(){sm();if(GFS.native&&S.game)fsExit()}}
+A.gfull=()=>{if(document.fullscreenElement){store.set('gfs',false);fsExit();GFS.native=false;try{document.exitFullscreen().catch(()=>{})}catch(e){}}else{store.set('gfs',true);fsEnter()}};
+A.g3tog=t=>{const on=!g3Want();store.set('g3d',on);if(on&&!g3Can()){toast('ამ მოწყობილობაზე 3D დაფა ვერ ჩაირთო');return}const b=t&&t.closest&&t.closest('button'),s=b&&b.querySelector('.sw');if(s)s.classList.toggle('on',on);else toast(on?'3D დაფა':'ბრტყელი დაფა');g3Redraw()};
+const gTools=()=>{const on=g3Want(),fs=!!document.fullscreenElement;return `<button class="ibtn g3tg${on?' on':''}" data-a="g3tog" aria-pressed="${on}" aria-label="3D დაფა">${ic('cube')}</button><button class="ibtn" data-a="gfull" aria-pressed="${fs}" aria-label="სრული ეკრანი">${ic(fs?'unfull':'full')}</button><button class="ibtn" data-a="gmenu" aria-label="მენიუ">${ic('more')}</button>`};
+/* the game menu: board, screen, sound, rules, a new game, resign, leave */
+const GRULES={
+ chess:'კლასიკური ჭადრაკი. მეფეს ქიშიდან უნდა გაიყვანო; როქი შესაძლებელია, თუ მეფე და ეტლი ჯერ არ დაძრულან და გზა ცარიელი და დაუცველია. გავლით აღება მხოლოდ მომდევნო სვლაზეა. ბოლო ხაზამდე მისული პაიკი შენს არჩეულ ფიგურად იქცევა. მატი იგებს. ფრეა პატი, სამჯერ განმეორებული პოზიცია, 50 სვლა აყვანისა და პაიკის სვლის გარეშე და მატისთვის არასაკმარისი ფიგურები. ფიგურის გადასატანად შეეხე მას და შემდეგ უჯრას, ან უბრალოდ გადაათრიე.',
+ shashi:'რუსული შაში. ქვა წინ, დიაგონალზე დადის, ჭრა კი წინაც შეუძლია და უკანაც. ჭრა სავალდებულოა და ზედიზედ გრძელდება; მოჭრილი ქვები სვლის ბოლოს იხსნება და ერთ ქვას ორჯერ ვერ მოჭრი. ბოლო ხაზამდე მისული ქვა დამა ხდება და, თუ ჭრა გრძელდება, უკვე დამასავით აგრძელებს. დამა მთელ დიაგონალზე დადის და მოჭრის შემდეგ იქ უნდა დაჯდეს, საიდანაც ჭრას გააგრძელებს. იგებს ის, ვინც მეტოქეს ქვებს მოუჭრის ან სვლას წაართმევს. ფრეა სამჯერადი გამეორება, 15 სვლა მხოლოდ დამებით და სამი დამა ერთის წინააღმდეგ 15 სვლაში.',
+ nardi:'ტავლა. პირველ სვლას კამათლის გაგორებით ირჩევენ: ვისაც მეტი მოუვა, ის იწყებს და ორივე რიცხვს თამაშობს. ქვები 24-დან 1-ისკენ მოძრაობს. ორივე კამათლის გამოყენება სავალდებულოა; თუ მხოლოდ ერთი გამოდის, უფრო დიდი უნდა ითამაშო. წყვილი ოთხ სვლას იძლევა. ორი ან მეტი ქვა პუნქტს კეტავს, მარტოხელა ქვა იჭრება და ზარზე გადადის, ზარიდან კი ჯერ უნდა შემოიყვანო. როცა ყველა ქვა სახლშია, იწყებ გატანას. ვინც პირველი გაიტანს 15 ქვას, იგებს; თუ მეტოქეს ერთიც არ გაუტანია, მარსია (ორმაგი), თუ ქვა ზარზე ან შენს სახლშიც უდგას, კოქსი (სამმაგი).',
+ domino:'ოთხი მოთამაშე, ორ-ორი გუნდში: შენ და ანა გიორგისა და ლევანის წინააღმდეგ. თითოეულს 7 ქვა აქვს, საბაზრო არ არის. პირველ ხელს ის იწყებს, ვისაც ექვს-ექვსი აქვს, შემდეგ ხელებს წინა ხელის გამარჯვებული. ქვა ერთ-ერთ ღია ბოლოს უნდა მიუდო; თუ შესაფერისი არ გაქვს, პასობ. გუნდი, რომლის მოთამაშეც პირველი დაცლის ხელს, იღებს მეტოქეების ქვებზე დარჩენილ ქულებს. თუ თამაში ჩაიკეტა, იგებს გუნდი, რომელსაც ნაკლები ქულა დარჩა. თამაში 101 ქულამდეა. ქვა შეგიძლია მაგიდაზე გადაათრიო.'};
+const gCur=()=>S.page&&S.page.id==='jktable'?'joker':S.game;
+A.gmenu=()=>{const id=gCur(),G=GAME[id],c=G&&G.ctx,sw=on=>`<i class="sw${on?' on':''}" aria-hidden="true"></i>`,rules=id==='joker'?JK_RULES:GRULES[id]||'';
+ navMark('gmenu',()=>A.gmenu());
+ sheet(head('თამაში')+`<div class="gmenu">
+  <button data-a="g3tog" aria-pressed="${g3Want()}">${ic('cube')}<span>3D დაფა</span>${sw(g3Want())}</button>
+  <button data-a="gfull" aria-pressed="${!!document.fullscreenElement}">${ic('full')}<span>სრული ეკრანი</span>${sw(!!document.fullscreenElement)}</button>
+  <button data-a="gsnd" aria-pressed="${GS.on}">${ic('mic')}<span>ხმა და ვიბრაცია</span>${sw(GS.on)}</button>
+  ${rules?'<button data-a="grules">'+ic('book')+'<span>წესები</span></button>':''}
+  ${c&&c.mode==='bot'&&!S.page?'<button data-a="restart">'+ic('turn')+'<span>ახალი პარტია</span></button>':''}
+  ${G&&G.resign&&canResign(G)&&!S.page?'<button data-a="gresign">'+ic('flag')+'<span>დანებება</span></button>':''}
+  <button data-a="${S.page?'back':'lobby'}">${ic('back')}<span>${S.page?'მაგიდიდან გასვლა':'ლობიში გასვლა'}</span></button></div>`,'short')};
+A.grules=()=>{const id=gCur(),rules=id==='joker'?JK_RULES:GRULES[id]||'';sheet(head('წესები')+`<div class="ph-body"><p class="grules">${rules}</p></div>`,'short')};

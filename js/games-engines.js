@@ -8,7 +8,7 @@ function overMsg(c,w,why){if(w===2)return WHY[why]||'ფრე';const pre=why===
  if(why==='resign')return isPlayer(c)?(w===c.side?'მეტოქე დანებდა. მოიგე!':'დანებდი. '+esc(c.names[w])+' მოიგო'):esc(c.names[-w])+' დანებდა';return pre+endMsg(c,w)}
 const canResign=G=>{const c=G.ctx;return isPlayer(c)&&!c.gone&&!c.finished};
 const resignBtn=G=>canResign(G)?'<button class="btn ghost sm gres" data-a="gresign">'+ic('flag')+'დანებება</button>':'';
-A.gresign=()=>{const G=GAME[S.game];if(!G||!G.resign||!canResign(G))return;confirmSheet('დანებება','პარტია წაგებულად ჩაითვლება.','დანებება',()=>{if(GAME[S.game]===G&&canResign(G))G.resign()},true)};
+A.gresign=()=>{const G=GAME[S.game];if(!G||!G.resign||!canResign(G))return;closeSheet();confirmSheet('დანებება','პარტია წაგებულად ჩაითვლება.','დანებება',()=>{if(GAME[S.game]===G&&canResign(G))G.resign()},true)};
 
 /* ---------- checkers (შაში): Russian rules, mandatory capture, flying kings ---------- */
 const DIRS=[[-1,-1],[-1,1],[1,-1],[1,1]];
@@ -45,6 +45,7 @@ const CK=GAME.shashi={title:'შაში',
   this.b=s.b.map(r=>(Array.isArray(r)?r:[]).slice(0,8).map(v=>[-2,-1,0,1,2].includes(v)?v:0));this.turn=s.turn===-1?-1:1;this.last=sq(s.last);this.lcap=sq(s.lcap);this.over=[1,-1,2].includes(s.over)?s.over:0;
   this.why=['rep','kings','k31','resign','blocked'].includes(s.why)?s.why:'';this.kq=Math.max(0,Math.min(99,+s.kq||0));this.k31=Math.max(0,Math.min(99,+s.k31||0));this.k31s=String(s.k31s||'').slice(0,8);this.rep=repOk(s.rep);this.sel=null;this.moves=this.over?[]:ckAll(this.b,this.turn)},
  mine(){return isPlayer(this.ctx)&&this.turn===this.ctx.side&&!this.over&&!this.ctx.gone&&!this.ctx.syncing},
+ res(){return this.over?{w:this.over,why:this.why}:null},turnSide(){return this.over?null:this.turn},
  status(must){const c=this.ctx;if(this.over)return overMsg(c,this.over,this.why);if(c.gone)return 'მოწინააღმდეგე გავიდა თამაშიდან';if(this.mine())return must?'მოჭრა სავალდებულოა. აირჩიე მოციმციმე ქვა':this.sel?'აირჩიე უჯრა, სადაც გადავა':'შენი სვლაა';return esc(c.names[this.turn])+' ფიქრობს…'},
  cnt(s){return this.b.flat().filter(v=>Math.sign(v)===s).length},
  targets(){const sel=this.sel;return sel?this.moves.filter(m=>m.path[0][0]===sel[0]&&m.path[0][1]===sel[1]).map(m=>m.path[m.path.length-1].join()):[]},
@@ -126,6 +127,7 @@ const NR=GAME.nardi={title:'ნარდი',
  move(s,from,to,d){nDo(this,s,from,to);this.dice.splice(this.dice.indexOf(d),1);this.lg=null;if(this.off[s]===15){this.over=s;this.mult=nMult(this,s)}},
  roll(){const a=1+Math.floor(Math.random()*6),b=1+Math.floor(Math.random()*6);this.last=[a,b];this.dice=a===b?[a,a,a,a]:[a,b];this.rolled=true;this.open=null;this.lg=null},
  mine(){return isPlayer(this.ctx)&&this.turn===this.ctx.side&&!this.over&&!this.ctx.gone&&!this.ctx.syncing},
+ res(){return this.over?{w:this.over,why:this.why,mult:this.mult}:null},turnSide(){return this.over?null:this.turn},
  endTurn(){this.turn*=-1;this.rolled=false;this.dice=[];this.sel=null;this.open=null;this.lg=null;if(this.ctx.mode==='online')netSend();this.render();this.kick()},
  resign(){this.over=-this.ctx.side;this.why='resign';this.mult=1;this.sel=null;if(this.ctx.mode==='online')netSend();finish(this,this.over)},
  kick(){const c=this.ctx;if(this.over)return;if(!(c.mode==='watch'||((c.mode==='bot'||c.mode==='tour')&&this.turn!==c.side)))return;const s=this.turn,fast=c.mode==='watch',tk=this.tk=(this.tk||0)+1;
@@ -145,7 +147,7 @@ const NR=GAME.nardi={title:'ნარდი',
   const bch=(sd,n)=>n?`<span class="ch ${sd===1?'w':'b'}">${n>1?n:''}</span>`:'';
   const bar=`<button class="barc${s==='bar'?' sel':''}" data-a="npt" data-k="bar" aria-label="ზარი: ${this.bar[me]} შენი, ${this.bar[-me]} მეტოქის">${bch(-me,this.bar[-me])}<span class="sp"></span>${bch(me,this.bar[me])}</button>`;
   const shown=this.dice.length?this.dice.map(v=>dieHTML(v)).join(''):this.last.map(v=>dieHTML(v,1)).join('');
-  const ctl=`<div class="nctl"><div class="dice g3hide" aria-label="კამათელი">${shown}</div><span class="sp"></span>${mine&&!this.rolled?'<button class="btn" data-a="nroll">გაგორება</button>':''}${resignBtn(this)}</div>
+  const ctl=`<div class="nctl"><div class="dice g3hide" aria-label="კამათელი">${shown}</div><span class="sp"></span>${mine&&!this.rolled?`<button class="btn" data-a="nroll">${ic('dice')}გაგორება</button>`:''}${resignBtn(this)}</div>
   <div class="offs"><button class="offbtn${tg.includes('off')?' tgt':''}" data-a="npt" data-k="off">გატანილი: ${isPlayer(c)?'შენ':esc(c.names[me])} ${this.off[me]}/15</button><span class="offbtn" style="border-style:solid">${esc(c.names[-me])} ${this.off[-me]}/15</span></div>
   ${isPlayer(c)?`<p class="note">შენ ${me===1?'თეთრი':'შავი'} ქვებით თამაშობ და ქვედა მარჯვენა სახლისკენ მოძრაობ. შეეხე ქვას, შემდეგ ოქროსფრად მონიშნულ პუნქტს. თუ ორივე კამათლის გამოყენება შეიძლება, ორივე უნდა გამოიყენო, თუ მხოლოდ ერთის, უფრო დიდის. მარტოხელა ქვა იჭრება და ზარზე გადადის. როცა ყველა ქვა სახლშია, გაიტანე ისინი.</p>`:''}${tourBack(c)}`;
   gview('nardi','ნარდი',g3Board('nardi',`<div class="nb" aria-label="ნარდის დაფა">${pts}${bar}</div>`),this.status(),ctl);g3After('nardi')}};
@@ -212,6 +214,7 @@ const CH=GAME.chess={title:'ჭადრაკი',
   this.st={b:s.b.map(x=>typeof x==='string'&&ok.test(x)?x:''),turn:s.turn===-1?-1:1,cs:String(s.cs||'').replace(/[^KQkq]/g,''),ep:Number.isInteger(s.ep)&&s.ep>=0&&s.ep<64?s.ep:-1,last:Array.isArray(s.last)?s.last.slice(0,2).map(Number).filter(x=>x>=0&&x<64):[],over:[1,-1,2].includes(s.over)?s.over:0,hm:Math.max(0,Math.min(200,Number(s.hm)||0)),rep:repOk(s.rep),why:['mate','stale','rep','mat','50','resign'].includes(s.why)?s.why:''};
   this.sel=null;this.pend=null;this.moves=this.st.over?[]:chLegal(this.st,this.st.turn)},
  mine(){return isPlayer(this.ctx)&&this.st.turn===this.ctx.side&&!this.st.over&&!this.ctx.gone&&!this.ctx.syncing},
+ res(){return this.st.over?{w:this.st.over,why:this.st.why}:null},turnSide(){return this.st.over?null:this.st.turn},
  inCheck(){const st=this.st;return chAttacked(st.b,chKing(st.b,st.turn),-st.turn)},
  status(){const c=this.ctx,st=this.st;if(st.over)return overMsg(c,st.over,st.why);if(c.gone)return 'მოწინააღმდეგე გავიდა თამაშიდან';const chk=this.inCheck()?'ქიში! ':'';
   return this.mine()?chk+(this.sel!==null?'აირჩიე უჯრა':'შენი სვლაა'):chk+esc(c.names[st.turn])+' ფიქრობს…'},
@@ -304,11 +307,11 @@ const JK=GAME.joker={title:'ჯოკერი',
    const low=nj.slice().sort(byV)[0];return low?{c:low}:{c:L[0],jm:'lo',js:this.trump||'h'}}
   if(need>0){const w=nj.filter(wins).sort(byV);if(w.length)return{c:w[0]};if(jk&&this.winner([...t,{p,card:jk,jm:'hi',js:null}])===p)return{c:jk,jm:'hi'};return{c:nj.sort(byV)[0]||L[0],jm:'lo'}}
   const lose=nj.filter(c=>!wins(c)).sort(byV);if(lose.length)return{c:lose.pop()};if(jk)return{c:jk,jm:'lo'};return{c:nj.sort(byV)[0]}},
- render(){if(S.tab!=='games'||S.game!=='joker'||S.page)return;const top=gTop('ჯოკერი',{mode:'bot'});
-  if(this.phase==='setup'){view.innerHTML=`<div class="view-pad game">${top}<section class="tourcard"><h3>ჯოკერი ოთხ კაცზე</h3><p class="note">36 კარტი, ორი ჯოკერი. ყოველ ხელში წინასწარ თქვი, რამდენ ხელს წაიღებ. თუ ზუსტად იმდენს წაიღებ, რამდენიც თქვი, ქულებს მიიღებ. მეტოქეებს ბოტი თამაშობს.</p>
+ render(){if(S.tab!=='games'||S.game!=='joker'||S.page)return;const top=gTop('ჯოკერი',null);
+  if(this.phase==='setup'){view.innerHTML=gShell('joker',{top,center:`<section class="setupc"><h3>ჯოკერი ოთხ კაცზე</h3><p class="note">36 კარტი, ორი ჯოკერი. ყოველ ხელში წინასწარ თქვი, რამდენ ხელს წაიღებ. თუ ზუსტად იმდენს წაიღებ, რამდენიც თქვი, ქულებს მიიღებ. მეტოქეებს ბოტი თამაშობს.</p>
    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-a="jstart" data-m="quick">სწრაფი · 8 ხელი</button><button class="btn ghost" data-a="jstart" data-m="full">სრული · 24 ხელი</button></div>
-   <div class="jkonline"><div><b>მეგობრებთან ონლაინ</b><p class="note">გაშალე მაგიდა და მოიწვიე მეგობრები. ცარიელ ადგილებზე ბოტები ჩაჯდებიან.</p></div><button class="btn" data-a="jkonew">${ic('users')}მაგიდის გაშლა</button></div>
-   <details><summary style="cursor:pointer;font-weight:600">წესები</summary><p class="note" style="margin-top:8px">${JK_RULES}</p></details></section></div>`;return}
+   <div class="jkonline"><div><b>მეგობრებთან ონლაინ</b><p class="note">გაშალე მაგიდა და მოიწვიე მეგობრები. ცარიელ ადგილებზე ბოტები ჩაჯდებიან.</p></div><button class="btn ghost" data-a="jkonew">${ic('users')}მაგიდის გაშლა</button></div></section>`,bot:''});return}
+  const g3=g3Want(),mine=this.cur===0&&['bid','play','trump'].includes(this.phase)&&this.win==null;gTurnSnd(this,mine);
   const seat=(p,pos)=>`<div class="seat ${pos}${this.cur===p&&(this.phase==='bid'||this.phase==='play'||this.phase==='trump')?' turn':''}">${avAny(this.ids[p],38)}<b>${esc(this.nm(p))}</b><span class="bt" aria-label="ნათქვამი ${this.bids[p]??'ჯერ არა'}, წაღებული ${this.taken[p]}">${this.bids[p]??'–'} / ${this.taken[p]}</span><span>${this.score[p]}</span></div>`;
   const tr=this.trick.map(e=>{const h=jCardHTML(e.card).replace('class="card','class="card p'+e.p);return e.card.j?h.replace('</div>',`<span class="jm">${e.jm==='hi'?'მაღალი':'დაბალი'}${e.js?' '+SY[e.js]:''}</span></div>`):h}).join('');
   const trumpTxt=this.phase==='trump'?'კოზირი ირჩევა':this.trump?`კოზირი: <b style="color:${isRed(this.trump)?'#FF8A9A':'inherit'}">${SY[this.trump]}</b> ${SN[this.trump]}`:'უკოზირო';
@@ -318,18 +321,20 @@ const JK=GAME.joker={title:'ჯოკერი',
   let panel='',st='';
   if(this.phase==='trump'){if(this.cur===0){st='ნახე პირველი სამი კარტი და აირჩიე კოზირი';panel=`<div class="suits">${SUITS.map(s=>`<button class="${isRed(s)?'red':''}" data-a="jtrump" data-s="${s}" aria-label="${SN[s]}">${SY[s]}</button>`).join('')}</div><button class="btn ghost" data-a="jtrump" data-s="" style="align-self:center">უკოზირო</button>`}else st=esc(this.nm(this.cur))+' ირჩევს კოზირს…'}
   else if(this.phase==='bid'){if(this.cur===0){const f=this.forbidden(0);st='რამდენს წაიღებ?'+(f>=0?` დამრიგებელი ხარ, ${f}-ს ვერ იტყვი`:'');panel=`<div class="bids" role="group" aria-label="ნათქვამი">${Array.from({length:this.n+1},(_,v)=>`<button data-a="jbid" data-v="${v}"${v===f?' disabled':''}>${v===0?'პასი':v}</button>`).join('')}</div>`}else st=esc(this.nm(this.cur))+' ამბობს…'}
-  else if(this.phase==='play'){st=this.win!=null?(this.win===0?'ეს ხელი შენ წაიღე':esc(JK_ERG[this.win-1])+' წაიღო ხელი'):this.cur===0?'შენი სვლაა':esc(this.nm(this.cur))+' ფიქრობს…'}
-  else if(this.phase==='handover'||this.phase==='over'){const{hand:last,prem}=jLast(this.hist);const mine=last.p[0]+(prem?prem.p[0]:0);
-   st=this.phase==='over'?(this.score[0]===Math.max(...this.score)?'მოიგე! +12 რეიტინგი, +10 მონეტა':'თამაში დასრულდა'):`ხელი დასრულდა. შენ: ${mine>0?'+':''}${mine}`+(prem?' · სექციის პრემია':'');
-   panel=jLastHTML(this.hist,this.score,[0,1,2,3].map(p=>this.nm(p)))+(this.phase==='over'?'<button class="btn" data-a="jagain" style="align-self:flex-start">ახალი თამაში</button>':'<button class="btn" data-a="jnext" style="align-self:flex-start">შემდეგი ხელი</button>')}
-  const info=`<div class="jinfo"><span class="trump">${trumpTxt}</span><span>ხელი ${Math.min(this.h+1,JSEQ[this.len].length)}/${JSEQ[this.len].length} · ${this.n} კარტი</span></div>`;
-  view.innerHTML=`<div class="view-pad game">${top}<div class="jt${g3On()?' g3jt':''}">${seat(2,'top')}${seat(1,'left')}${seat(3,'right')}<div class="trick" aria-label="მაგიდა">${tr}</div>${g3On()?`<div class="g3 g3-joker">${g3Rv()}</div>`:''}${info}</div>
-   <div class="pl">${av('me',30)}<b>${esc(ME.name)}</b><span class="muted">${this.bids[0]??'–'} / ${this.taken[0]} · ${this.score[0]} ქულა</span><span class="sp"></span><button class="btn ghost sm" data-a="jsheet">ქულების ფურცელი</button></div>
-   <div class="hand${g3On()?' g3sr':''}" aria-label="შენი კარტები">${hand}</div><div class="status" role="status">${st}</div>${panel}</div>`;
+  else if(this.phase==='play'){st=this.win!=null?(this.win===0?'ეს ხელი შენ წაიღე':esc(JK_ERG[this.win-1])+' წაიღო ხელი'):this.cur===0?(g3?'შენი სვლაა · შეეხე კარტს ორჯერ ან გადაათრიე':'შენი სვლაა'):esc(this.nm(this.cur))+' ფიქრობს…'}
+  else if(this.phase==='handover'||this.phase==='over'){const{hand:last,prem}=jLast(this.hist);const mn=last.p[0]+(prem?prem.p[0]:0);
+   st=this.phase==='over'?(this.score[0]===Math.max(...this.score)?'მოიგე! +12 რეიტინგი, +10 მონეტა':'თამაში დასრულდა'):`ხელი დასრულდა. შენ: ${mn>0?'+':''}${mn}`+(prem?' · სექციის პრემია':'');
+   panel=jLastHTML(this.hist,this.score,[0,1,2,3].map(p=>this.nm(p)))+(this.phase==='over'?'<button class="btn" data-a="jagain" style="align-self:center">ახალი თამაში</button>':'<button class="btn" data-a="jnext" style="align-self:center">შემდეგი ხელი</button>')}
+  const info=`<div class="ginfo"><span class="trump">${trumpTxt}</span><span>ხელი ${Math.min(this.h+1,JSEQ[this.len].length)}/${JSEQ[this.len].length} · ${this.n} კარტი</span></div>`;
+  const stage=`<div class="jt${g3?' g3jt':''}">${seat(2,'top')}${seat(1,'left')}${seat(3,'right')}<div class="trick" aria-label="მაგიდა">${tr}</div>${g3?`<div class="g3 g3-joker${G3W.ready?'':' loading'}">${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div>`:''}</div>`;
+  let res='';if(this.phase==='over'){const mx=Math.max(...this.score),win=this.score[0]===mx,pl=[0,1,2,3].sort((a,b)=>this.score[b]-this.score[a]);
+   res=gResBox(this,{title:win?'მოიგე!':'თამაში დასრულდა',sub:win?'ყველაზე მეტი ქულა შენ დააგროვე':'გაიმარჯვა: '+esc(this.nm(pl[0])),kind:win?'win':'lose',more:`<div class="gendt">${pl.map(p=>`<span><b>${esc(this.nm(p))}</b>${this.score[p]}</span>`).join('')}</div>`,again:'<button class="btn gold" data-a="jagain">ახალი თამაში</button>'})}
+  view.innerHTML=gShell('joker',{stage,mid:stage,top:top+info,bot:`<div class="pl me${mine?' turn':''}">${av('me',34)}<span class="pln"><b>${esc(ME.name)}</b><span class="muted">${this.bids[0]??'–'} / ${this.taken[0]} · ${this.score[0]} ქულა</span></span><span class="sp"></span><button class="btn ghost sm" data-a="jsheet">ქულები</button></div>
+   <div class="hand${g3?' g3sr':''}" aria-label="შენი კარტები">${hand}</div><div class="status${mine?' mine':''}" role="status">${st}</div>${panel}`,res});
   g3After('joker')}};
 const JK_RULES='ფერი უნდა აჰყვე. თუ ფერი არ გაქვს, კოზირი უნდა დადო. ჯოკერი ნებისმიერ დროს შეგიძლია დადო: „მაღალი“ წაიღებს ხელს, „დაბალი“ არ წაიღებს. მოგვიანებით დადებული მაღალი ჯოკერი უფრო ძლიერია. ჯოკერით დაწყებისას ითხოვ ფერს: „მაღალი“ ნიშნავს, რომ ყველამ ამ ფრის უმაღლესი კარტი უნდა დადოს და ხელი შენია, თუმცა თუ ფერი კოზირი არ არის და ვინმემ კოზირი დადო, უმაღლესი კოზირი წაიღებს. „დაბალი“ ნიშნავს, რომ ამ ფრის უმაღლესი კარტი წაიღებს. ქულები: ზუსტად ნათქვამი 50 თითო ხელზე და 50 ბონუსი, ყველა ხელის წაღება 100 თითოზე, პასი და ნული 50. მეტის ან ნაკლების წაღებისას 10 თითოზე. თუ თქვი და ვერცერთი ვერ წაიღე, ხიშტი: −200, ცხრიან სექციებში −500. ვინც სექციის ყველა ხელში ზუსტად ნათქვამს წაიღებს, პრემიას იღებს: მისი საუკეთესო ხელი ორმაგდება, დანარჩენებს კი საუკეთესო ხელი ეშლებათ.';
 A.jstart=t=>JK.begin(t.dataset.m);
-A.jagain=()=>{JK.start();JK.render()};
+A.jagain=()=>{JK.resHide=0;JK.resSnd=0;JK.start();JK.render()};
 A.jnext=()=>{if(JK.phase==='handover')JK.newHand()};
 A.jbid=t=>{if(JK.phase==='bid'&&JK.cur===0)JK.bid(0,+t.dataset.v)};
 A.jtrump=t=>{if(JK.phase==='trump'&&JK.cur===0)JK.setTrump(t.dataset.s)};
@@ -345,20 +350,22 @@ A.jsheet=()=>{if(!JK.hist||!JK.hist.length){toast('ქულების ფუ�
 {const p=CH.play,r=CH.render,l=CH.load;
  CH.play=function(m){this.anim=[m.f,m.t];p.call(this,m)};
  CH.load=function(s){const prev=this.st&&this.st.last;l.call(this,s);const n=this.st.last;if(n.length===2&&(!prev||prev.join()!==n.join()))this.anim=n};
- CH.render=function(){r.call(this);if(this.anim&&S.tab==='games'&&S.game==='chess'&&!g3On()){const[a,b]=this.anim;this.anim=null;flipPiece($(`.cs[data-i="${a}"]`,view),$(`.cs[data-i="${b}"]`,view))}this.anim=null}}
+ CH.render=function(){r.call(this);if(S.tab!=='games'||S.game!=='chess')return;const st=this.st,k=st.rep&&st.rep[st.rep.length-1];if(this.inCheck()&&!st.over&&k!==this.chk){this.chk=k;gSnd('check')}
+  if(this.anim&&!g3On()){const[a,b]=this.anim;flipPiece($(`.cs[data-i="${a}"]`,view),$(`.cs[data-i="${b}"]`,view));gSnd('wood')}this.anim=null}}
 {const p=CK.play,r=CK.render,l=CK.load;
  CK.play=function(m){this.anim=[m.path[0],m.path[m.path.length-1]];p.call(this,m)};
  CK.load=function(s){const prev=JSON.stringify(this.last||[]);l.call(this,s);if(this.last.length>1&&JSON.stringify(this.last)!==prev)this.anim=[this.last[0],this.last[this.last.length-1]]};
- CK.render=function(){r.call(this);if(this.anim&&S.tab==='games'&&S.game==='shashi'&&!g3On()){const[a,b]=this.anim;const q=x=>$(`.sq[data-r="${x[0]}"][data-c="${x[1]}"]`,view);flipPiece(q(a),q(b))}this.anim=null}}
+ CK.render=function(){r.call(this);if(this.anim&&S.tab==='games'&&S.game==='shashi'&&!g3On()){const[a,b]=this.anim;const q=x=>$(`.sq[data-r="${x[0]}"][data-c="${x[1]}"]`,view);flipPiece(q(a),q(b));gSnd(this.lcap&&this.lcap.length?'cap':'wood')}this.anim=null}}
 {const m=NR.move,ro=NR.roll,r=NR.render;
  NR.move=function(s,f,to,d){m.call(this,s,f,to,d);this.lastTo=to};
  NR.roll=function(){ro.call(this);this.rollAnim=1};
- NR.render=function(){r.call(this);if(S.tab!=='games'||S.game!=='nardi'||g3On()){this.lastTo=null;return}
+ NR.render=function(){r.call(this);if(S.tab!=='games'||S.game!=='nardi')return;const sig=this.rolled?this.turn+':'+this.last.join():'';if(sig&&sig!==this.rsig)gSnd('dice');this.rsig=sig;
+  if(g3On()){this.lastTo=null;return}if(this.lastTo!=null)gSnd('wood');
   if(this.rollAnim){this.rollAnim=0;$$('.dice .die',view).forEach(d=>d.classList.add('roll'))}
   if(this.lastTo!=null){const k=this.lastTo;this.lastTo=null;const el=k==='off'?$('.offbtn',view):$(`.pt[data-k="${k}"]`,view);if(el){const c=k==='off'?el:[...el.querySelectorAll('.ch')].pop();if(c){c.classList.add('drop');if(k==='off')pop(c)}}}}}
 {const nh=JK.newHand,pc=JK.playCard,r=JK.render,V={0:'0 130px',1:'-130px 0',2:'0 -130px',3:'130px 0'};
  JK.newHand=function(){this.dealAnim=1;nh.call(this)};
  JK.playCard=function(p,c,jm,js){this.newCard=p;pc.call(this,p,c,jm,js);if(this.win!=null&&!g3On()){const w=this.win,tk=this.tk;setTimeout(()=>{if(tk!==this.tk)return;$$('.trick .card',view).forEach(el=>anim(el,[{translate:'0 0',opacity:1},{translate:V[w],opacity:0}],{duration:380,easing:EASE,fill:'forwards'}))},950)}};
- JK.render=function(){r.call(this);if(S.tab!=='games'||S.game!=='joker'||g3On()){this.dealAnim=0;this.newCard=null;return}
+ JK.render=function(){r.call(this);if(S.tab!=='games'||S.game!=='joker'||g3On()){this.dealAnim=0;this.newCard=null;return}if(this.dealAnim)gSnd('deal');if(this.newCard!=null)gSnd('card');
   if(this.dealAnim){this.dealAnim=0;$$('.hand .card',view).forEach((el,i)=>anim(el,[{translate:'0 -70px',opacity:0},{translate:'0 0',opacity:1}],{duration:420,delay:i*55,easing:SPRING,fill:'backwards'}))}
   if(this.newCard!=null){const p=this.newCard;this.newCard=null;const el=$(`.trick .card.p${p}`,view);anim(el,[{translate:V[p],opacity:0},{translate:'0 0',opacity:1}],{duration:380,easing:EASE})}}}
