@@ -9,7 +9,7 @@ async function myChats(){try{return await rpc('my_chats')}catch(e){return await 
 const mutedNow=c=>!!(c&&c.muted_until&&new Date(c.muted_until)>Date.now());
 const lastTxt=c=>c.last_kind==='voice'?'🎤 ხმოვანი':c.last_kind==='image'?'📷 ფოტო':c.last_body||(c.last_kind==='text'?'შეტყობინება წაიშალა':'');
 let CHAT_ARCH=false;
-async function openChats(arch=false){CHAT_ARCH=!!arch;sheet(head(arch?'არქივი':'მიმოწერა',arch?`<button class="btn sm ghost" data-a="chats">${ic('back')}ყველა</button>`:`<button class="btn sm ghost" data-a="newgroupchat">${ic('users')}ჯგუფი</button>`)+`<div class="ph-body" id="chl">${skel(4)}</div>`);
+async function openChats(arch=false){CHAT_ARCH=!!arch;navMark(arch?'chatarch':'chats',()=>openChats(arch));sheet(head(arch?'არქივი':'მიმოწერა',arch?`<button class="btn sm ghost" data-a="chats">${ic('back')}ყველა</button>`:`<button class="btn sm ghost" data-a="newgroupchat">${ic('users')}ჯგუფი</button>`)+`<div class="ph-body" id="chl">${skel(4)}</div>`);
  try{[CONVS]=await Promise.all([myChats(),loadStreaks()]);await loadProfiles(CONVS.flatMap(c=>c.members||[]));drawChatList()}catch(e){const el=$('#chl');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))}}
 function chatRow(c){const other=!c.is_group&&c.members?.[0],title=c.is_group?(c.title||'ჯგუფი'):pname(other),mu=mutedNow(c);
  return `<button class="row" data-a="chat" data-c="${c.conv_id}">${c.is_group?`<span class="av gav" style="--s:48px;--h:${(c.conv_id*47)%360}">${ic('users')}</span>`:av(other,48)}<span class="grow"><b>${esc(title)}${other?vb(other):''}${fire(c.conv_id)}${mu?`<i class="chmu" aria-label="დადუმებულია">${ic('mute')}</i>`:''}</b><span class="sub">${c.last_sender===ME.id?'შენ: ':''}${esc(lastTxt(c))} · ${ago(c.last_message_at)}</span></span>${c.unread?`<span class="badge${mu?' muted':''}">${c.unread}</span>`:other&&isOnline(other)?'<i class="ond" aria-label="ონლაინ"></i>':''}</button>`}
@@ -28,7 +28,7 @@ A.chmuteset=t=>{const h=+t.dataset.h;setMute(+t.dataset.c,h?new Date(Date.now()+
 async function setMute(cid,until){closeLayer();try{await q(sb.from('conversation_members').update({muted_until:until}).eq('conv_id',cid).eq('user_id',ME.id));const c=CONVS.find(x=>x.conv_id===cid);if(c)c.muted_until=until;toast(until?'საუბარი დადუმდა':'ხმა ჩაირთო');drawChatList();S.unreadMsgs=chatUnread();renderBadges();if(CHAT&&CHAT.cid===cid)drawChatSub()}catch(e){toast(errMsg(e))}}
 A.charch=async t=>{const cid=+t.dataset.c,c=CONVS.find(x=>x.conv_id===cid);if(!c)return;closeLayer();const v=!c.archived;
  try{await q(sb.from('conversation_members').update({archived:v}).eq('conv_id',cid).eq('user_id',ME.id));c.archived=v;toast(v?'გადავიდა არქივში. ახალი მესიჯი თავად ამოიღებს, თუ საუბარი დადუმებული არ არის':'ამოვიდა არქივიდან');if(CHAT&&CHAT.cid===cid&&v)openChats();else drawChatList()}catch(e){toast(errMsg(e))}};
-A.chats=()=>openChats();
+A.chats=()=>{if(!navBackTo('chats'))openChats()};
 A.chat=t=>openChat(+t.dataset.c);
 A.chatwith=t=>openChatWith(t.dataset.u);
 async function openChatWith(uid,draft){try{const c=await rpc('start_dm',{other:uid});openChat(c,draft)}catch(e){toast(errMsg(e))}}
@@ -70,7 +70,7 @@ async function openChat(cid,draft=''){let conv=CONVS.find(c=>c.conv_id===cid);
  if(!conv){toast('საუბარი ვერ მოიძებნა');return}await loadProfiles(conv.members||[]);S.chatGroup=conv.is_group;
  const other=!conv.is_group&&conv.members?.[0],title=conv.is_group?(conv.title||'ჯგუფი'):pname(other);
  let chan=null;const st=CHAT={cid,conv,other,msgs:new Map(),reply:null,edit:null,pinned:null,ttl:null,timers:[],seen:new Map(),typing:new Map(),reacts:new Map(),more:false,oldBusy:false};
- sheet(`<div class="ph-head"><button class="ibtn" data-a="chats" aria-label="უკან">${ic('back')}</button>${conv.is_group?`<span class="av gav" style="--s:34px;--h:${(cid*47)%360}">${ic('users')}</span>`:`<button data-a="user" data-u="${other}" aria-label="პროფილი">${av(other,34)}</button>`}<div class="grow"><b>${esc(title)}${other?vb(other):''}${fire(cid)}</b><span class="sub" id="chsub">${conv.is_group?(conv.members.length+1)+' წევრი':isOnline(other)?'ონლაინ':'ბოლოს იყო '+ago(prof(other).last_seen||Date.now())}</span></div>
+ navMark('chat',()=>openChat(cid));sheet(`<div class="ph-head"><button class="ibtn" data-a="chats" aria-label="უკან">${ic('back')}</button>${conv.is_group?`<span class="av gav" style="--s:34px;--h:${(cid*47)%360}">${ic('users')}</span>`:`<button data-a="user" data-u="${other}" aria-label="პროფილი">${av(other,34)}</button>`}<div class="grow"><b>${esc(title)}${other?vb(other):''}${fire(cid)}</b><span class="sub" id="chsub">${conv.is_group?(conv.members.length+1)+' წევრი':isOnline(other)?'ონლაინ':'ბოლოს იყო '+ago(prof(other).last_seen||Date.now())}</span></div>
  ${other?`<button class="ibtn" data-a="call" data-u="${other}" data-v="0" aria-label="ხმოვანი ზარი">${ic('phone')}</button><button class="ibtn" data-a="call" data-u="${other}" data-v="1" aria-label="ვიდეოზარი">${ic('video')}</button>`:''}<button class="ibtn" data-a="chatmore" data-c="${cid}" aria-label="მეტი">${ic('more')}</button></div>
  <button class="pinbar" id="pinb" data-a="jumppin" hidden></button>
  <div class="ph-body chatb" id="cb">${skel(2)}</div>

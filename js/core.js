@@ -39,8 +39,8 @@ const isAdult=()=>(age(ME?.birthday)||0)>=18;
 /* sheets */
 let SHEET_TOK=0,SHEET_CB=null;
 function sheet(html,cls='',onClose){if(SHEET_CB){const f=SHEET_CB;SHEET_CB=null;try{f()}catch(e){}}SHEET_TOK++;SHEET_CB=onClose||null;const s=$('#sheet');s.classList.remove('closing');s.innerHTML=`<div class="panel ${cls}" role="dialog" aria-modal="true">${html}</div>`;s.hidden=false;
- const f=$('input:not([type=file]):not([type=range]),textarea',s);if(f&&!/Mobi/.test(navigator.userAgent))f.focus();dragSheet($('.panel',s));staggerIn($$('.ph-body>*,.reasons>*,.svc>*,.gifts>*,.jchoice>*,.match>*',s).slice(0,10),35,80)}
-function closeSheet(){const s=$('#sheet');if(s.hidden)return;if(SHEET_CB){const f=SHEET_CB;SHEET_CB=null;try{f()}catch(e){}}const tok=++SHEET_TOK;if(RM()||!$('.panel',s)){s.hidden=true;s.innerHTML='';return}s.classList.add('closing');setTimeout(()=>{if(tok!==SHEET_TOK)return;s.hidden=true;s.innerHTML='';s.classList.remove('closing')},220)}
+ const f=$('input:not([type=file]):not([type=range]),textarea',s);if(f&&!/Mobi/.test(navigator.userAgent))f.focus();dragSheet($('.panel',s));staggerIn($$('.ph-body>*,.reasons>*,.svc>*,.gifts>*,.jchoice>*,.match>*',s).slice(0,10),35,80);navOpen('sheet')}
+function closeSheet(nav){const s=$('#sheet');if(s.hidden)return;if(!nav)navKill('sheet');if(SHEET_CB){const f=SHEET_CB;SHEET_CB=null;try{f()}catch(e){}}const tok=++SHEET_TOK;if(RM()||!$('.panel',s)){s.hidden=true;s.innerHTML='';return}s.classList.add('closing');setTimeout(()=>{if(tok!==SHEET_TOK)return;s.hidden=true;s.innerHTML='';s.classList.remove('closing')},220)}
 const head=(t,extra='')=>`<div class="ph-head"><h2>${t}</h2><span class="sp"></span>${extra}<button class="ibtn" data-a="close" aria-label="დახურვა">${ic('x')}</button></div>`;
 A.close=()=>closeSheet();
 function confirmSheet(title,text,okLabel,onOk,danger,inLayer){
@@ -51,12 +51,67 @@ const empty=(t,sub='',btn='')=>`<div class="empty3"><h3>${t}</h3>${sub?`<p>${sub
 
 /* pages */
 const pgHead=(t,extra='')=>`<div class="pghead"><button class="ibtn" data-a="back" aria-label="უკან">${ic('back')}</button><h2>${t}</h2>${extra}</div>`;
-function openPage(id,arg,back,noPush){if(!PG[id])return;closeSheet();stopMedia();S.page={id,arg,back};view.className=PG[id].cls||'';const app=$('#app');app.classList.toggle('media',PG[id].cls==='is-clips');app.classList.remove('barhidden');view.scrollTop=0;
- if(!noPush)try{history.pushState({pg:id,arg},'','#'+id+(arg!=null?'-'+arg:''))}catch(e){}
+function openPage(id,arg,back,noPush){if(!PG[id])return;closeSheet(true);stopMedia();S.page={id,arg,back};view.className=PG[id].cls||'';const app=$('#app');app.classList.toggle('media',PG[id].cls==='is-clips');app.classList.remove('barhidden');view.scrollTop=0;
+ if(!noPush)navStep();
  const r=PG[id].r(arg);const d=S._dir||1;S._dir=0;enterView(28*d);return r}
 const rp=()=>{if(S.page)return PG[S.page.id].r(S.page.arg)};
 A.page=t=>openPage(t.dataset.p,t.dataset.arg);
-A.back=()=>{const b=S.page&&S.page.back;stopMedia();if(b){S._dir=-1;openPage(b[0],b[1],null,true)}else go(S.tab,-28)};
+/* the arrow in a page header does exactly what the phone's back gesture does */
+A.back=()=>{stopMedia();if(NAV.ready&&NAV.cur>0){history.back();return}const b=S.page&&S.page.back;NAV.busy++;try{if(b){S._dir=-1;openPage(b[0],b[1],null,true)}else go(S.tab,-28)}finally{NAV.busy--}navReplace()};
+
+/* back button: every step a person takes is one browser history entry, so the phone's back gesture undoes exactly one step.
+   steps are tabs, pages and anything that opens on top (sheets, layers, the photo viewer, stories).
+   anything new gets this for free as long as it opens through openPage, go, sheet, layer, openPV, openImage or openStory.
+   a step that was already closed by hand is skipped; at the very start, back asks once more before leaving the site. */
+const NAV={list:[],cur:-1,seq:0,busy:0,ready:false,boot:Math.random().toString(36).slice(2,9),next:null,adopt:null,expect:null,keep:false,exitAt:0,exitT:0,guarded:false};
+const OVE={sheet:null,layer:null,pv:null,story:null,game:null};
+const navOk=()=>!navigator.userActivation||navigator.userActivation.hasBeenActive;
+const navBase=()=>S.page?{pg:S.page.id,arg:S.page.arg??null,back:S.page.back||null}:{tab:S.tab||'home'};
+const sameBase=(a,b)=>!!a&&!!b&&(a.pg||b.pg?a.pg===b.pg&&String(a.arg??'')===String(b.arg??''):(a.tab||'home')===(b.tab||'home'));
+const navUrl=b=>b.pg?'#'+b.pg+(b.arg!=null?'-'+b.arg:''):b.tab&&b.tab!=='home'?'#'+b.tab:location.pathname+location.search;
+const navState=e=>({app:1,s:NAV.boot,id:e.id,base:e.base});
+function navPush(ov){if(!NAV.ready||NAV.busy||!navOk())return null;clearTimeout(NAV.exitT);
+ const e={id:++NAV.seq,base:navBase(),ov:ov||null,alive:true};NAV.list.length=NAV.cur+1;NAV.list.push(e);NAV.cur=NAV.list.length-1;
+ try{history.pushState(navState(e),'',navUrl(e.base))}catch(x){}return e}
+function navReplace(){const e=NAV.list[NAV.cur];if(!e)return;e.base=navBase();try{history.replaceState(navState(e),'',navUrl(e.base))}catch(x){}}
+/* a tab or a page; going to the same place again does not add a step */
+function navStep(){if(!NAV.ready||NAV.busy)return;const c=NAV.list[NAV.cur];if(c&&!c.ov&&sameBase(c.base,navBase()))navReplace();else navPush(null)}
+/* sheets that can be drawn again (chats, a chat, notifications, comments, the menus) say how, so back returns to them after a page */
+function navMark(key,reopen){NAV.next={key,reopen}}
+function navOpen(type){const nx=NAV.next;NAV.next=null;
+ if(NAV.adopt&&nx&&NAV.adopt.ov&&NAV.adopt.ov.type===type&&NAV.adopt.ov.key===nx.key){OVE[type]=NAV.adopt;NAV.adopt=null;return}
+ if(NAV.busy)return;OVE[type]=navPush({type,key:nx?nx.key:'',reopen:nx?nx.reopen:null})}
+/* closed by hand: its steps are done and back will not bring it again */
+function navKill(type){if(NAV.busy||!NAV.ready)return;let i=NAV.cur;while(i>0&&NAV.list[i]&&NAV.list[i].ov)i--;for(let k=i+1;k<NAV.list.length;k++){const e=NAV.list[k];if(e.ov&&e.ov.type===type)e.alive=false}}
+const OVS=[['layer',()=>!$('#layer').hidden,()=>closeLayer(true)],['pv',()=>{const p=$('#pv');return !!p&&!p.hidden},()=>closePV(true)],['story',()=>!$('#story').hidden,()=>closeStory(true)],['sheet',()=>!$('#sheet').hidden,()=>closeSheet(true)],['game',()=>S.tab==='games'&&!!S.game&&!S.page,()=>A.lobby()]];
+const ovShown=type=>{const o=OVS.find(x=>x[0]===type);return !!o&&o[1]()};
+/* close everything that belongs to a later step (or to no step) */
+function navCloseAbove(j){let ch=false;for(const[type,shown,close]of OVS){if(!shown())continue;const i=OVE[type]?NAV.list.indexOf(OVE[type]):-1;if(j<0||i<0||i>j){close();ch=true}}return ch}
+function navGoBase(b){S._dir=-1;if(b&&b.pg&&PG[b.pg])openPage(b.pg,b.arg??undefined,b.back||null,true);else go(b&&b.tab&&R[b.tab]?b.tab:'home',-28)}
+/* step forward again without drawing anything: keeps a step above the start, so back never drops out of the site by itself */
+function navForward(keep){const nx=NAV.list[NAV.cur+1];if(!nx)return;NAV.expect=nx.id;NAV.keep=!!keep;history.forward()}
+function navInit(){NAV.list=[{id:++NAV.seq,base:navBase(),ov:null,alive:true}];NAV.cur=0;NAV.ready=true;try{history.replaceState(navState(NAV.list[0]),'',navUrl(NAV.list[0].base))}catch(x){}
+ const evs=['pointerup','keydown','click'],g=()=>{if(NAV.guarded||!navOk())return;NAV.guarded=true;evs.forEach(k=>document.removeEventListener(k,g,true));if(NAV.list.length===1&&NAV.cur===0)navPush(null)};
+ evs.forEach(k=>document.addEventListener(k,g,true))}
+/* an in-sheet back arrow: when the sheet before this one is still there, step back to it */
+function navBackTo(key){const p=NAV.list[NAV.cur-1],c=NAV.list[NAV.cur];if(NAV.ready&&p&&p.ov&&p.alive&&p.ov.key===key&&c&&c.ov){history.back();return true}return false}
+function navPop(st){if(!NAV.ready)return;const j=st&&st.app&&st.s===NAV.boot?NAV.list.findIndex(x=>x.id===st.id):-1;
+ if(NAV.expect!=null){const ex=NAV.expect,keep=NAV.keep;NAV.expect=null;NAV.keep=false;if(j>=0&&NAV.list[j].id===ex){NAV.cur=j;if(!keep){const e=NAV.list[j];e.base=navBase();e.ov=null;e.alive=false;try{history.replaceState(navState(e),'',navUrl(e.base))}catch(x){}}return}}
+ if(j<0){if(Date.now()-NAV.exitAt<4000){history.back();return}
+  NAV.busy++;try{navCloseAbove(-1);const b=st&&(st.base||(st.pg?{pg:st.pg,arg:st.arg}:st.tab?{tab:st.tab}:null));if(b){if(!sameBase(b,navBase()))navGoBase(b)}else if(!route(location.hash))go('home',-28)}finally{NAV.busy--}
+  NAV.list=[{id:++NAV.seq,base:navBase(),ov:null,alive:true}];NAV.cur=0;navReplace();navPush(null);return}
+ if(!$('#call').hidden){NAV.cur=j;navForward(true);return}
+ const t=NAV.list[j];NAV.cur=j;clearTimeout(NAV.exitT);let changed=false;
+ NAV.busy++;
+ try{changed=navCloseAbove(j);
+  if(!sameBase(t.base,navBase())){navGoBase(t.base);changed=true}
+  if(t.ov&&t.alive&&t.ov.reopen&&!(OVE[t.ov.type]===t&&ovShown(t.ov.type))){NAV.adopt=t;setTimeout(()=>{if(NAV.adopt===t)NAV.adopt=null},5000);try{t.ov.reopen()}catch(x){}changed=true}
+  if(j===0&&!changed&&(S.page||S.tab!=='home')){go('home',-28);changed=true}}
+ finally{NAV.busy--}
+ if(j===0){if(changed){navReplace();navForward();return}
+  NAV.exitAt=Date.now();toast('გასასვლელად კიდევ ერთხელ დააჭირე „უკან“');NAV.exitT=setTimeout(()=>{if(NAV.cur===0)navForward()},2600);return}
+ if(!changed)history.back()}
+window.addEventListener('popstate',e=>{if(ME)navPop(e.state)});
 let LIVE_T=null;function stopMedia(){if(LIVE_T){clearInterval(LIVE_T);LIVE_T=null}$$('video',view).forEach(v=>{try{v.pause()}catch(e){}});if(S.chanCleanup){try{S.chanCleanup()}catch(e){}S.chanCleanup=null}}
 
 /* translation: detect locally, translate on request through the edge function */
@@ -115,8 +170,8 @@ const FILTERS=[['none','ბუნებრივი',''],['warm','თბილ�
 const RATIOS=[['orig','ორიგინალი',0],['1','1:1',1],['45','4:5',.8],['169','16:9',16/9],['916','9:16',9/16]];
 /* a second layer above sheets, for the photo editor and the voice recorder */
 let LAYER_CB=null;
-function layer(html,onClose){const el=$('#layer');if(LAYER_CB){const f=LAYER_CB;LAYER_CB=null;try{f()}catch(e){}}LAYER_CB=onClose||null;el.innerHTML=`<div class="panel" role="dialog" aria-modal="true">${html}</div>`;el.hidden=false;return el}
-function closeLayer(){const el=$('#layer');if(el.hidden)return;if(LAYER_CB){const f=LAYER_CB;LAYER_CB=null;try{f()}catch(e){}}el.hidden=true;el.innerHTML=''}
+function layer(html,onClose){const el=$('#layer');if(LAYER_CB){const f=LAYER_CB;LAYER_CB=null;try{f()}catch(e){}}LAYER_CB=onClose||null;el.innerHTML=`<div class="panel" role="dialog" aria-modal="true">${html}</div>`;el.hidden=false;navOpen('layer');return el}
+function closeLayer(nav){const el=$('#layer');if(el.hidden)return;if(!nav)navKill('layer');if(LAYER_CB){const f=LAYER_CB;LAYER_CB=null;try{f()}catch(e){}}el.hidden=true;el.innerHTML=''}
 A.closelayer=()=>closeLayer();
 const lhead=t=>`<div class="ph-head"><h2>${t}</h2><span class="sp"></span><button class="ibtn" data-a="closelayer" aria-label="დახურვა">${ic('x')}</button></div>`;
 function editImage(file,opt={}){return new Promise(async resolve=>{let done=false;const fin=v=>{if(!done){done=true;resolve(v)}};

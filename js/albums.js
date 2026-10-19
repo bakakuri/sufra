@@ -43,7 +43,7 @@ A.albadd=async()=>{if(!ALB)return;const fs=await pickFile('image/*',{multiple:tr
 /* the viewer: swipe between the album's photos, who added it and when */
 A.albview=t=>{const P=ALB?.photos||[];if(!P.length)return;let i=+t.dataset.i||0;let el=$('#pv');
  if(!el){el=document.createElement('div');el.id='pv';el.className='pv';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)closePV()})}
- PV={id:null,i};el.classList.remove('closing','top');el.hidden=false;
+ PV={id:null,i};el.classList.remove('closing','top');el.hidden=false;navOpen('pv');
  const cap=k=>{const p=P[k];return `${av(p.added_by,28)}<span class="grow"><b>${esc(pname(p.added_by))}</b><small>${fdate(p.created_at)}</small></span>${p.added_by===ME.id||ALB.own||isStaff()?`<button class="ibtn" data-a="albdel" data-id="${p.id}" aria-label="ფოტოს წაშლა">${ic('trash')}</button>`:''}<a class="ibtn" href="${esc(p.url)}" target="_blank" rel="noopener" download aria-label="ჩამოტვირთვა">${ic('download')}</a>`};
  el.innerHTML=`<div class="pvin"><div class="pvtop"><span class="grow"><b>${esc(ALB.a.title)}</b></span><button class="ibtn" data-a="pvclose" aria-label="დახურვა">${ic('x')}</button></div>
   <div class="pvframe"><div class="pvtrack">${P.map(p=>`<div class="pvs"><img src="${esc(safeU(p.md)||p.url)}" alt="" decoding="async" loading="lazy"></div>`).join('')}</div>${P.length>1?`<span class="pvcount"><b>${i+1}</b>/${P.length}</span><button class="pmnav prev" data-a="pmnav" data-d="-1" aria-label="წინა">${ic('back')}</button><button class="pmnav next" data-a="pmnav" data-d="1" aria-label="შემდეგი">${ic('back')}</button>`:''}</div>

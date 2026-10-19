@@ -5,7 +5,7 @@ const JK_BOTS=['ნინო','ლუკა','დათო'],JK_ERG=['ნინ�
 const BOTN=[['ლუკა',205],['დათო',12],['გიორგი',150],['ნინო',340],['ანა',275],['ლევანი',95],['თამარი',190]];
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 const BOT={n:'ბ',h:42};
-function startGame(id,ctx){const G=GAME[id];S.game=id;G.ctx=Object.assign({mode:'bot',side:1,names:{1:ME.name,'-1':'სუფრა ბოტი'},avs:{1:'me','-1':BOT},seq:0},ctx||{});G.start();view.scrollTop=0;G.render();if(G.kick)G.kick()}
+function startGame(id,ctx){const G=GAME[id],fresh=!S.game;S.game=id;G.ctx=Object.assign({mode:'bot',side:1,names:{1:ME.name,'-1':'სუფრა ბოტი'},avs:{1:'me','-1':BOT},seq:0},ctx||{});G.start();view.scrollTop=0;G.render();if(G.kick)G.kick();if(fresh)navOpen('game')}
 const isPlayer=c=>c.mode==='bot'||c.mode==='online'||c.mode==='tour';
 function plSub(c,s){if(c.mode==='watch'||c.mode==='netwatch')return '';if(s===c.side)return 'რეიტინგი '+(ME.rating??1500);return c.mode==='online'?(c.gone?'გავიდა':'ონლაინ'):'ბოტი'}
 const gTag=c=>c.mode==='bot'?'<button class="btn ghost sm" data-a="restart">ახალი პარტია</button>':c.mode==='online'?'<span class="tag">ონლაინ</span>':c.mode==='tour'?'<span class="tag">ტურნირი</span>':'<span class="tag soon">ყურება</span>';
@@ -18,7 +18,7 @@ const tourBack=c=>c.mode==='tour'&&c.finished?'<button class="btn" data-a="page"
 async function gameResult(game,win){try{const r=await rpc('game_result',{p_game:game,p_win:win});ME.rating=r.rating;setCoins(r.coins);if(win)toast(r.reward?`მოიგე! +12 რეიტინგი, +${r.reward} მონეტა`:'მოიგე! +12 რეიტინგი');if(win)confetti()}catch(e){}}
 function finish(G,w){const c=G.ctx;if(c.finished)return;c.finished=1;if(isPlayer(c)&&w!==2){const win=w===c.side;gameResult(G.title,win);if(c.mode==='tour')tourResult(win)}G.render()}
 A.play=t=>{const g=GAMES.find(x=>x.id===t.dataset.g);if(g.soon||!GAME[g.id]){toast(g.n+' მალე დაემატება');return}startGame(g.id)};
-A.lobby=()=>{const G=GAME[S.game];if(G){if(G.ctx&&G.ctx.gr)netLeave();G.ctx={mode:'dead',side:1,names:{},avs:{}};G.tk=(G.tk||0)+1}S.game=null;R.games()};
+A.lobby=()=>{navKill('game');const G=GAME[S.game];if(G){if(G.ctx&&G.ctx.gr)netLeave();G.ctx={mode:'dead',side:1,names:{},avs:{}};G.tk=(G.tk||0)+1}S.game=null;R.games()};
 A.restart=()=>{const G=GAME[S.game];if(!G)return;if(S.game==='joker'){G.start();G.render();return}startGame(S.game,{mode:'bot',names:G.ctx.names,avs:G.ctx.avs})};
 const LIVEG=[{gt:'nardi',a:0,b:1},{gt:'chess',a:2,b:4},{gt:'shashi',a:3,b:5}];
 A.watch=t=>{const g=LIVEG[+t.dataset.i],a=BOTN[g.a],b=BOTN[g.b];startGame(g.gt,{mode:'watch',names:{1:a[0]+' (ბოტი)','-1':b[0]+' (ბოტი)'},avs:{1:{n:a[0],h:a[1]},'-1':{n:b[0],h:b[1]}}})};
@@ -52,7 +52,7 @@ async function joinGame(gid,gt,side,opp,oppId,watch){netLeave();const G=GAME[gt]
  const ch=sb.channel('game-'+gid,{config:{presence:{key:ME.id},broadcast:{self:false}}});
  const ctx={mode:watch?'netwatch':'online',side:watch?1:side,names,avs,gid,opp:oppId,seq:0,gr:{ch,emit:(ev,p)=>ch.send({type:'broadcast',event:ev,payload:p})}};
  if(S.page)S.page=null;if(S.tab!=='games'){S.tab='games';$$('.tab').forEach(b=>b.setAttribute('aria-current',String(b.dataset.tab==='games')));view.className='';$('#app').classList.remove('media');moveInd(3)}
- S.game=gt;G.ctx=ctx;G.start();NET.gr=ctx.gr;
+ {const fresh=!S.game;S.game=gt;G.ctx=ctx;G.start();NET.gr=ctx.gr;if(fresh)navOpen('game')}
  ch.on('broadcast',{event:'st'},({payload:d})=>{if(G.ctx!==ctx||!d||typeof d!=='object'||!(Number(d.seq)>ctx.seq)||!d.s)return;try{G.load(d.s);ctx.seq=Number(d.seq);G.render();if(G.checkEnd)G.checkEnd()}catch(e){}})
   .on('broadcast',{event:'need'},()=>{if(G.ctx===ctx&&ctx.mode==='online'&&side===1)netSend()})
   .on('broadcast',{event:'bye'},({payload:d})=>{if(G.ctx===ctx&&d&&d.from===oppId){ctx.gone=1;G.render()}})
