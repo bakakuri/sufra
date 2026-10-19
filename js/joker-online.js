@@ -13,7 +13,8 @@ const joName=p=>{const u=JO.t&&JO.t.seats[p];if(u)return u===ME.id?'შენ':p
 const joShort=p=>{const u=JO.t&&JO.t.seats[p];if(u)return u===ME.id?'შენ':String(pname(u)).split(' ')[0];return (JO.st&&JO.st.bots&&JO.st.bots[p])||'–'};
 const joAv=(p,s)=>{const u=JO.t&&JO.t.seats[p];if(u)return av(u,s);const b=JO.st&&JO.st.bots&&JO.st.bots[p];return b?avAny({n:b,h:joBotHue(b)},s):`<span class="av jkempty" style="--s:${s}px" aria-hidden="true">+</span>`};
 
-PG.jktable={r(id){id=+id;view.innerHTML=pgHead('ჯოკერი ონლაინ',`<button class="ibtn" data-a="jkoshare" aria-label="ბმულის გაზიარება">${ic('share')}</button>`)+`<div class="view-pad game jko" id="jko">${skel(2)}</div>`;joOpen(id)}};
+PG.jktable={r(id){id=+id;view.innerHTML=pgHead('ჯოკერი ონლაინ',`<button class="ibtn" data-a="jkoshare" aria-label="ბმულის გაზიარება">${ic('share')}</button>${gTools()}`)+`<div class="view-pad game jko" id="jko">${skel(2)}</div>`;joOpen(id)}};
+const joBar=()=>`<div class="gtop gfsbar"><button class="ibtn" data-a="gfull" aria-label="სრული ეკრანიდან გასვლა">${ic('back')}</button><h2>ჯოკერი</h2><span class="sp"></span>${gTools()}</div>`;
 
 function joStop(){clearTimeout(JO.tm);clearTimeout(JO.tw);clearTimeout(JO.wt);clearInterval(JO.tick);if(JO.ch){try{JO.ch.untrack()}catch(e){}sb.removeChannel(JO.ch)}joReset()}
 
@@ -91,8 +92,7 @@ function joApply(p,m){const E=JO.E;if(!E||!m||p!==E.cur||E.win!=null)return fals
   const w=E.winner();E.taken[w]++;E.win=w;E.cur=-1;joPub([p]);
   clearTimeout(JO.tw);JO.tw=setTimeout(()=>{if(JO.E!==E)return;E.trick=[];E.win=null;if(!E.hands.some(x=>x.length)){joEndHand();return}E.cur=w;joPub()},1700);return true}
  return false}
-function joEndHand(){const E=JO.E;const pts=[0,1,2,3].map(p=>E.pts(E.bids[p],E.taken[p],E.n));pts.forEach((x,p)=>E.score[p]+=x);
- E.hist.push({n:E.n,b:E.bids.slice(),t:E.taken.slice(),p:pts});E.h++;E.cur=-1;E.phase=E.h>=JSEQ[E.len].length?'over':'handover';joPub()}
+function joEndHand(){const E=JO.E;jScore(E);E.cur=-1;E.phase=E.h>=JSEQ[E.len].length?'over':'handover';joPub()}
 function joHandNext(){const E=JO.E;if(E&&E.phase==='handover'&&joIsHost())joDeal(true)}
 /* a move from a friend: it counts only from the person sitting in that seat, for this deal, when it is their turn */
 function joMove(m){const E=JO.E;if(!E||!m||m.table_id!==JO.id||m.id<=E.mv)return false;E.mv=m.id;
@@ -115,10 +115,8 @@ async function joSend(mv){const s=JO.st;if(!s||JO.seat<0||s.cur!==JO.seat||JO.wa
  try{await q(sb.from('jk_moves').insert({table_id:JO.id,seat:JO.seat,user_id:ME.id,move:mv}))}catch(e){JO.wait=false;toast(errMsg(e));joFetchHand()}}
 A.jkobid=t=>joSend({k:'bid',v:+t.dataset.v});
 A.jkotrump=t=>joSend({k:'trump',s:t.dataset.s||null});
-A.jkocard=t=>{const s=JO.st,c=JO.hand[+t.dataset.i];if(!s||!c||s.phase!=='play'||s.cur!==JO.seat||JO.wait)return;
- if(!c.j){joSend({k:'card',c:{s:c.s,r:c.r}});return}JO.pj=c;const lead=!s.trick.length;
- sheet(head('ჯოკერი')+(lead?`<div class="form"><b>მაღალი: ვითხოვ ამ ფრის უმაღლესს და ხელს ვიღებ</b><div class="suits">${SUITS.map(x=>`<button class="${isRed(x)?'red':''}" data-a="jkoj" data-m="hi" data-s="${x}" aria-label="მაღალი, ${SN[x]}">${SY[x]}</button>`).join('')}</div><b>დაბალი: ამ ფრის უმაღლესმა წაიღოს</b><div class="suits">${SUITS.map(x=>`<button class="${isRed(x)?'red':''}" data-a="jkoj" data-m="lo" data-s="${x}" aria-label="დაბალი, ${SN[x]}">${SY[x]}</button>`).join('')}</div></div>`
-  :`<div class="jchoice"><button data-a="jkoj" data-m="hi">მაღალი<br><small class="muted">წაიღებს ხელს</small></button><button data-a="jkoj" data-m="lo">დაბალი<br><small class="muted">არ წაიღებს</small></button></div>`),'short')};
+A.jkocard=t=>{const s=JO.st,c=JO.hand[+t.dataset.i];if(!s||!c||s.phase!=='play'||s.cur!==JO.seat||JO.wait||s.win!=null)return;if(!JK.legal.call({hands:{[JO.seat]:JO.hand},trick:s.trick,trump:s.trump},JO.seat).includes(c))return;
+ if(!c.j){joSend({k:'card',c:{s:c.s,r:c.r}});return}JO.pj=c;jkJokerSheet(!s.trick.length,'jkoj')};
 A.jkoj=t=>{closeSheet();const c=JO.pj;JO.pj=null;if(c)joSend({k:'card',c:{j:c.j},jm:t.dataset.m,js:t.dataset.s||null})};
 A.jkonext=()=>{if(joIsHost())joHandNext()};
 A.jkoagain=()=>{if(joIsHost()&&JO.st&&JO.st.phase==='over'){clearTimeout(JO.tm);joBegin()}};
@@ -149,14 +147,14 @@ function joStatus(){const s=JO.st,me=JO.seat;if(!s)return '';
  if(s.phase==='trump')return s.cur===me?'ნახე პირველი სამი კარტი და აირჩიე კოზირი'+tm:esc(joName(s.cur))+' ირჩევს კოზირს…';
  if(s.phase==='bid'){if(s.cur!==me)return esc(joName(s.cur))+' ამბობს…';const f=JK.forbidden.call({dealer:s.dealer,n:s.n,bids:s.bids},me);return 'რამდენს წაიღებ?'+(f>=0?` დამრიგებელი ხარ, ${f}-ს ვერ იტყვი`:'')+tm}
  if(s.phase==='play'){if(s.win!=null)return s.win===me?'ეს ხელი შენ წაიღე':'ხელი წაიღო: '+esc(joName(s.win));if(JO.wait)return 'იგზავნება…';return s.cur===me?'შენი სვლაა'+tm:esc(joName(s.cur))+' ფიქრობს…'}
- if(s.phase==='handover'){const last=s.hist[s.hist.length-1],x=me>=0?last.p[me]:null;return 'ხელი დასრულდა'+(x!=null?`. შენ: ${x>0?'+':''}${x}`:'')}
+ if(s.phase==='handover'){const{hand,prem}=jLast(s.hist),x=me>=0&&hand?hand.p[me]+(prem?prem.p[me]:0):null;return 'ხელი დასრულდა'+(x!=null?`. შენ: ${x>0?'+':''}${x}`:'')+(prem?' · სექციის პრემია':'')}
  if(s.phase==='over'){const mx=Math.max(...s.score),w=[0,1,2,3].filter(p=>s.score[p]===mx);return me>=0&&w.includes(me)?'მოიგე! 🎉':'თამაში დასრულდა. გაიმარჯვა: '+w.map(p=>esc(joName(p))).join(', ')}
  return ''}
 function joCount(){const s=JO.st;if(!s||!s.dl||!joHere(JO.id))return;const el=$('#jko .status');if(el)el.innerHTML=joStatus()}
 function joDraw(){const el=$('#jko');if(!el||!JO.t||!joHere(JO.id))return;const t=JO.t;
- if(t.status==='closed'){el.innerHTML=empty('მაგიდა დაიხურა','მასპინძელმა თამაში დაასრულა.','<button class="btn" data-a="jkonew">ახალი მაგიდა</button>');return}
- if(t.status==='wait'){el.innerHTML=joWaitHTML();return}
- const s=JO.st;if(!s){el.innerHTML='<p class="hint">მასპინძელი კარტს არიგებს…</p>';return}
+ if(t.status==='closed'){el.innerHTML=joBar()+empty('მაგიდა დაიხურა','მასპინძელმა თამაში დაასრულა.','<button class="btn" data-a="jkonew">ახალი მაგიდა</button>');return}
+ if(t.status==='wait'){el.innerHTML=joBar()+joWaitHTML();return}
+ const s=JO.st;if(!s){el.innerHTML=joBar()+'<p class="hint">მასპინძელი კარტს არიგებს…</p>';return}const g3=g3On();
  const me=JO.seat,base=me>=0?me:0,P=k=>(base+k)%4,host=joIsHost(),live=['bid','play','trump'].includes(s.phase);
  const seat=(p,pos)=>`<div class="seat ${pos}${s.cur===p&&s.win==null&&live?' turn':''}">${joAv(p,38)}<b>${esc(joName(p))}</b><span class="bt" aria-label="ნათქვამი ${s.bids[p]??'ჯერ არა'}, წაღებული ${s.taken[p]}">${s.bids[p]??'–'} / ${s.taken[p]}</span><span>${s.score[p]}</span></div>`;
  const tr=(s.trick||[]).map(e=>{const h=jCardHTML(e.card).replace('class="card','class="card p'+((e.p-base+4)%4));return e.card.j?h.replace('</div>',`<span class="jm">${e.jm==='hi'?'მაღალი':'დაბალი'}${e.js?' '+SY[e.js]:''}</span></div>`):h}).join('');
@@ -168,17 +166,17 @@ function joDraw(){const el=$('#jko');if(!el||!JO.t||!joHere(JO.id))return;const 
  let panel='';
  if(myTurn&&s.phase==='trump')panel=`<div class="suits">${SUITS.map(x=>`<button class="${isRed(x)?'red':''}" data-a="jkotrump" data-s="${x}" aria-label="${SN[x]}">${SY[x]}</button>`).join('')}</div><button class="btn ghost" data-a="jkotrump" data-s="" style="align-self:center">უკოზირო</button>`;
  else if(myTurn&&s.phase==='bid'){const f=JK.forbidden.call({dealer:s.dealer,n:s.n,bids:s.bids},me);panel=`<div class="bids" role="group" aria-label="ნათქვამი">${Array.from({length:s.n+1},(_,v)=>`<button data-a="jkobid" data-v="${v}"${v===f?' disabled':''}>${v===0?'პასი':v}</button>`).join('')}</div>`}
- else if((s.phase==='handover'||s.phase==='over')&&s.hist.length){const last=s.hist[s.hist.length-1];
-  panel=`<div class="sheet-tbl"><table><thead><tr><th></th>${[0,1,2,3].map(p=>`<th>${esc(joShort(p))}</th>`).join('')}</tr></thead><tbody><tr><td>თქვა / წაიღო</td>${[0,1,2,3].map(p=>`<td>${last.b[p]} / ${last.t[p]}</td>`).join('')}</tr><tr><td>ქულა</td>${last.p.map(x=>`<td class="${x<0?'neg':''}">${x>0?'+':''}${x}</td>`).join('')}</tr><tr class="tot"><td>სულ</td>${s.score.map(x=>`<td>${x}</td>`).join('')}</tr></tbody></table></div>`
+ else if((s.phase==='handover'||s.phase==='over')&&s.hist.length){
+  panel=jLastHTML(s.hist,s.score,[0,1,2,3].map(joShort))
    +(s.phase==='over'?(host?'<div class="jkacts"><button class="btn" data-a="jkoagain">ახალი პარტია იმავე მაგიდაზე</button><button class="btn ghost sm" data-a="jkoclose">მაგიდის დახურვა</button></div>':'<p class="hint">მასპინძელს შეუძლია ახალი პარტიის დაწყება.</p>')
     :host?'<button class="btn" data-a="jkonext" style="align-self:flex-start">შემდეგი ხელი</button>':'<p class="hint">შემდეგი ხელი რამდენიმე წამში დაირიგდება.</p>')}
- const mine=me>=0?`<div class="pl">${av('me',30)}<b>${esc(ME.name)}</b><span class="muted">${s.bids[me]??'–'} / ${s.taken[me]} · ${s.score[me]} ქულა</span><span class="sp"></span><button class="btn ghost sm" data-a="jkosheet">ქულები</button></div><div class="hand" aria-label="შენი კარტები">${hand}</div>`
+ const mine=me>=0?`<div class="pl">${av('me',30)}<b>${esc(ME.name)}</b><span class="muted">${s.bids[me]??'–'} / ${s.taken[me]} · ${s.score[me]} ქულა</span><span class="sp"></span><button class="btn ghost sm" data-a="jkosheet">ქულები</button></div><div class="hand${g3?' g3sr':''}" aria-label="შენი კარტები">${hand}</div>`
   :`<div class="pl"><span class="muted">შენ უყურებ. კარტები მხოლოდ მოთამაშეებს უჩანთ.</span><span class="sp"></span><button class="btn ghost sm" data-a="jkosheet">ქულები</button></div>`;
- el.innerHTML=`<div class="jt">${seat(P(2),'top')}${seat(P(1),'left')}${seat(P(3),'right')}<div class="trick" aria-label="მაგიდა">${tr}</div>
+ el.innerHTML=`${joBar()}<div class="jt${g3?' g3jt':''}">${seat(P(2),'top')}${seat(P(1),'left')}${seat(P(3),'right')}<div class="trick" aria-label="მაგიდა">${tr}</div>${g3?`<div class="g3 g3-joker">${g3Rv()}</div>`:''}
   <div class="jinfo"><span class="trump">${trumpTxt}</span><span>ხელი ${Math.min(s.h+1,JSEQ[s.len].length)}/${JSEQ[s.len].length} · ${s.n} კარტი</span></div></div>
-  ${mine}<div class="status" role="status">${joStatus()}</div>${panel}`}
+  ${mine}<div class="status" role="status">${joStatus()}</div>${panel}`;g3After('jko')}
 A.jkosheet=()=>{const s=JO.st;if(!s||!s.hist||!s.hist.length){toast('ქულების ფურცელი პირველი ხელის შემდეგ შეივსება');return}
- sheet(head('ქულების ფურცელი')+`<div class="ph-body"><div class="sheet-tbl"><table><thead><tr><th>ხელი</th>${[0,1,2,3].map(p=>`<th>${esc(joShort(p))}</th>`).join('')}</tr></thead><tbody>${s.hist.map((h,i)=>`<tr><td>${i+1} · ${h.n}</td>${[0,1,2,3].map(p=>`<td class="${h.p[p]<0?'neg':''}">${h.b[p]}/${h.t[p]} · ${h.p[p]}</td>`).join('')}</tr>`).join('')}<tr class="tot"><td>სულ</td>${s.score.map(x=>`<td>${x}</td>`).join('')}</tr></tbody></table></div></div>`)};
+ sheet(head('ქულების ფურცელი')+`<div class="ph-body">${jSheetHTML(s.hist,s.score,[0,1,2,3].map(joShort))}</div>`)};
 /* the result counts once per person per table, like a game against the computer */
 function joResult(){const s=JO.st;if(s&&s.phase!=='over')JO.res=false;if(!s||s.phase!=='over'||JO.seat<0||JO.res)return;JO.res=true;const k='jkres-'+JO.id+'-'+s.deal;
  try{if(localStorage.getItem(k))return;localStorage.setItem(k,'1')}catch(e){}

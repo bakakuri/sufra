@@ -1,0 +1,187 @@
+/* the 3D scenes of the five games. each scene is built once; on every render the game's state becomes a list of objects
+   (matched with what is already on the table, so moves animate) and a list of flat marks (selection, targets, last move) */
+const G3S={},G3B={},G3U={};
+const GOLD=lin('#F4BC4C'),GOLDS=lin('#FFD27A'),RED=lin('#FF5A5F'),INK=lin('#20140c'),PALE=lin('#FFF4D6'),MINT=lin('#7CF0B4');
+function g3Show(id){const el=$('.g3',view);if(!el)return;const gm=el.closest('.game');if(gm)gm.classList.add('is3d');const k=id==='jko'?'joker':id,sc=G3S[k]||(G3S[k]=G3B[k]());if(!g3Mount(el,sc))return;try{G3U[id](sc)}catch(e){try{console.warn('3D sync',e)}catch(x){}}g3Draw(sc,performance.now());g3Labels(sc);g3Need()}
+const mkModel=sc=>g3Model(sc,'mk',[[gPlane(1,1),g3Mat({t:g3T('marks',()=>g3Tex(marksCv(),{af:false})),unlit:true,vary:true}),false]],null);
+function g3Table(sc,o={}){const g=gPlane(o.w||44,o.d||44,o.rep||6,o.rep||6);sc.statics.push({parts:[{mesh:g3Mesh(g),mat:g3Mat({t:woodTex(o.wood||'table'),sh:18,sp:.1,gl:.06}),cast:false}],M:m4.trs([0,o.y||0,0],qt.id(),1),cast:false})}
+function g3Static(sc,g,mat,p,q,cast=true){sc.statics.push({parts:[{mesh:g3Mesh(g),mat,cast}],M:m4.trs(p,q||qt.id(),1),cast})}
+const pieceMat=w=>w?g3Mat({t:woodTex('boxv'),uv:[0,0,2,1],sh:70,sp:.45,gl:.55}):g3Mat({t:woodTex('ebonyv'),uv:[0,0,2,1],sh:90,sp:.6,gl:.75});
+WOOD.boxv=Object.assign({},WOOD.box,{dir:'v'});WOOD.ebonyv=Object.assign({},WOOD.ebony,{dir:'v'});
+const blob=(x,y,z,s,a=.42)=>({m:'mk',p:[x,y+.002,z],s:[s,1,s],uv:MK.blob,c:[0,0,0],a});
+
+/* ---------- chess ---------- */
+const CHT=.42;
+G3B.chess=()=>{const sc=g3Scene({cam:{yaw:0,pitch:.9,fov:.56,tgt:[0,.25,.3],box:[[-4.75,0,-5.7],[4.75,1.2,5.7]],dy:0,dp:0,dz:1,my:.97},shR:8.5,spot:[0,0,7.6,.85]});
+ g3Table(sc);mkModel(sc);const W=9.5,T=CHT;
+ const bt=g3T('bchess',()=>g3Tex(boardCv({size:W,border:.75,frame:'frame',light:'maple',dark:'wenge',inlay:'rgba(226,184,96,.95)',ink:'rgba(244,214,156,.9)',coords:1})));
+ sc.statics.push({parts:[{mesh:g3Mesh(gBox(W,T,W,.07,4,null,[0])),mat:g3Mat({t:bt,sh:70,sp:.35,gl:.3}),cast:true},{mesh:g3Mesh(gBox(W,T,W,.07,4,(f,u,v)=>[u*2.5,v*.35],[1,2,3,4,5])),mat:g3Mat({t:woodTex('frame'),sh:60,sp:.35,gl:.3}),cast:true}],M:m4.trs([0,T/2,0],qt.id(),1),cast:true});
+ for(const t of'pnbrqk'){const g=g3Mesh(pieceGeo(t)),h={p:.6,n:.8,b:.88,r:.72,q:.95,k:1.12}[t];
+  g3Model(sc,'w'+t,[[g,pieceMat(1)]],[.36,h/2,.36],[0,h/2,0]);g3Model(sc,'b'+t,[[g,pieceMat(0)]],[.36,h/2,.36],[0,h/2,0])}
+ sc.tap=ray=>{const o=g3HitObj(sc,ray,o=>o.pick);let i=o?o.pick.i:null;if(i==null){const p=g3HitY(ray,CHT);if(!p)return;const c=Math.floor(p[0]+4),r=Math.floor(p[2]+4);if(c<0||c>7||r<0||r>7)return;i=r*8+c}g3Act('chm',{i:String(i)})};
+ return sc};
+const chXZ=i=>[(i&7)-3.5,(i>>3)-3.5];
+G3U.chess=sc=>{const G=CH,st=G.st,c=G.ctx,T=CHT;sc.cam.yaw=c.side===-1?Math.PI:0;const L=[],M=[];
+ st.b.forEach((p,i)=>{if(!p)return;const t=p.toLowerCase(),w=isW(p),[x,z]=chXZ(i);L.push({m:(w?'w':'b')+t,p:[x,T,z],q:t==='n'?qt.ax(0,1,0,w?(i&7)<4?Math.PI-.62:.62:(i&7)<4?Math.PI+.62:-.62):qt.id(),pick:{i}});M.push(blob(x,T,z,1.05,.38))});
+ for(const col of[1,-1])chTaken(st.b,-col).forEach((t,k)=>{const x=(-4.2+k*.6)*col,z=5.3*col;L.push({m:(col===1?'b':'w')+t,p:[x,0,z],s:.62,q:t==='n'?qt.ax(0,1,0,col===1?-Math.PI/2:Math.PI/2):qt.id()});M.push(blob(x,0,z,.7,.3))});
+ const mk=(i,uv,col,a,s,o)=>{const[x,z]=chXZ(i);M.push(Object.assign({m:'mk',p:[x,T+.004,z],s:[s,1,s],uv,c:col,a},o||{}))};
+ st.last.forEach(i=>mk(i,MK.dot,GOLDS,.38,1.25));
+ if(G.inCheck()&&!st.over){const k=chKing(st.b,st.turn);if(k>=0)mk(k,MK.dot,RED,.85,1.5,{add:true,pulse:true})}
+ if(G.sel!=null){mk(G.sel,MK.sq,GOLD,1,1.02,{add:true});for(const m of G.moves.filter(m=>m.f===G.sel))(st.b[m.t]||m.ep)?mk(m.t,MK.ring,GOLD,.95,.95,{add:true}):mk(m.t,MK.dot,GOLD,.9,.38,{add:true})}
+ sc.marks=M;g3Set(sc,L,{delay:(o,d)=>d.s<1?280:0,dur:(o,d,far)=>d.m[1]==='n'&&far>1?560:Math.min(620,280+90*Math.sqrt(far))})};
+
+/* ---------- checkers ---------- */
+const CKT=.42;
+G3B.shashi=()=>{const sc=g3Scene({cam:{yaw:0,pitch:.92,fov:.56,tgt:[0,.2,.3],box:[[-4.75,0,-5.6],[4.75,.8,5.6]],dy:0,dp:0,dz:1,my:.97},shR:8.5,spot:[0,0,7.6,.85]});
+ g3Table(sc);mkModel(sc);const W=9.5,T=CKT;
+ const bt=g3T('bck',()=>g3Tex(boardCv({size:W,border:.75,frame:'rose',light:'birch',dark:'mahog',inlay:'rgba(226,184,96,.95)',ink:'rgba(244,220,170,.9)',coords:1})));
+ sc.statics.push({parts:[{mesh:g3Mesh(gBox(W,T,W,.07,4,null,[0])),mat:g3Mat({t:bt,sh:70,sp:.35,gl:.3}),cast:true},{mesh:g3Mesh(gBox(W,T,W,.07,4,(f,u,v)=>[u*2.5,v*.35],[1,2,3,4,5])),mat:g3Mat({t:woodTex('rose'),sh:60,sp:.35,gl:.3}),cast:true}],M:m4.trs([0,T/2,0],qt.id(),1),cast:true});
+ const man=g3Mesh(manGeo()),two=g3Mesh(gMerge(manGeo(),gXf(manGeo(),[0,.13,0],qt.id()))),crown=g3Mesh(gXf(gLathe(arc(.2,0,.035,-Math.PI/2,Math.PI*1.5,14).map(([r,y])=>[r,y]),36),[0,.262,0],qt.id()));
+ const wm=g3Mat({c:'#F4EADA',sh:80,sp:.5,gl:.6}),bm=g3Mat({c:'#2A1C17',sh:90,sp:.6,gl:.75}),gm=g3Mat({c:'#E2A93F',sh:120,sp:.9,gl:.9});
+ g3Model(sc,'w',[[man,wm]],[.4,.08,.4],[0,.07,0]);g3Model(sc,'b',[[man,bm]],[.4,.08,.4],[0,.07,0]);
+ g3Model(sc,'W',[[two,wm],[crown,gm]],[.4,.15,.4],[0,.14,0]);g3Model(sc,'B',[[two,bm],[crown,gm]],[.4,.15,.4],[0,.14,0]);
+ sc.tap=ray=>{const o=g3HitObj(sc,ray,o=>o.pick);let r,c;if(o){r=o.pick.r;c=o.pick.c}else{const p=g3HitY(ray,CKT);if(!p)return;c=Math.floor(p[0]+4);r=Math.floor(p[2]+4)}
+  if(c<0||c>7||r<0||r>7||(r+c)%2===0)return;g3Act('ck',{r:String(r),c:String(c)})};
+ return sc};
+G3U.shashi=sc=>{const G=CK,c=G.ctx,T=CKT;sc.cam.yaw=c.side===-1?Math.PI:0;const L=[],M=[],xz=(r,cc)=>[cc-3.5,r-3.5];
+ const mv=JSON.stringify(G.last),fresh=mv!==sc.lm&&G.last.length>1;sc.lm=mv;const end=G.last[G.last.length-1];
+ for(let r=0;r<8;r++)for(let cc=0;cc<8;cc++){const p=G.b[r][cc];if(!p)continue;const[x,z]=xz(r,cc),d={m:Math.abs(p)===2?(p>0?'W':'B'):(p>0?'w':'b'),p:[x,T,z],pick:{r,c:cc}};
+  if(fresh&&end&&end[0]===r&&end[1]===cc&&G.last.length>2){d.path=G.last.slice(1).map(([a,b])=>{const[px,pz]=xz(a,b);return[px,T,pz]});d.hops=d.path.map(()=>.55);d.dur=300*d.path.length;
+   const[sx,sz]=xz(G.last[0][0],G.last[0][1]);d.from={p:[sx,T,sz],a:1}}
+  L.push(d);M.push(blob(x,T,z,.95,.36))}
+ /* taken men stand in stacks by the side of whoever took them */
+ for(const s of[1,-1]){const n=12-G.cnt(-s);for(let k=0;k<n;k++){const x=(3.2+Math.floor(k/6)*.95)*s,z=5.25*s,y=(k%6)*.13;L.push({m:s===1?'b':'w',p:[x,y,z],cast:true});if(k%6===0)M.push(blob(x,0,z,.9,.3))}}
+ const mk=(r,cc,uv,col,a,s,o)=>{const[x,z]=xz(r,cc);M.push(Object.assign({m:'mk',p:[x,T+.004,z],s:[s,1,s],uv,c:col,a},o||{}))};
+ G.last.forEach(([r,cc],i)=>mk(r,cc,MK.dot,GOLDS,i===G.last.length-1||i===0?.38:.25,i===G.last.length-1||i===0?1.25:.55));
+ const mine=G.mine(),must=mine&&G.moves.length&&G.moves[0].caps.length;
+ if(must&&!G.sel)for(const k of new Set(G.moves.map(m=>m.path[0].join()))){const[r,cc]=k.split(',').map(Number);mk(r,cc,MK.ring,GOLD,.9,1.05,{add:true,pulse:true})}
+ if(G.sel){mk(G.sel[0],G.sel[1],MK.sq,GOLD,1,1.02,{add:true});for(const k of G.targets()){const[r,cc]=k.split(',').map(Number);mk(r,cc,MK.dot,GOLD,.9,.4,{add:true})}}
+ sc.marks=M;const caps=(G.lcap||[]).map(([r,cc])=>xz(r,cc));
+ g3Set(sc,L,{gone:o=>fresh&&G.last.length&&Math.abs(o.p[0]-(G.last[0][1]-3.5))<.01&&Math.abs(o.p[2]-(G.last[0][0]-3.5))<.01?{a:0,dur:1}:null,
+  delay:(o,d)=>{if(!fresh)return 0;const k=caps.findIndex(([x,z])=>Math.abs(o.p[0]-x)<.01&&Math.abs(o.p[2]-z)<.01);return k<0?0:180+k*300}})};
+
+/* ---------- nardi ---------- */
+const NT=.35,NRIM=.13;
+const nCol=di=>di>=12?{col:di<18?di-12:di-11,top:1}:{col:di>=6?11-di:12-di,top:0};
+G3B.nardi=()=>{const sc=g3Scene({cam:{yaw:0,pitch:1.08,fov:.56,tgt:[.8,.2,.35],box:[[-7,0,-6.1],[8.6,.9,6.1]],dy:0,dp:0,dz:1},shR:10.5,shC:[.8,0,0],spot:[.8,0,10,.65],yawMax:.5});
+ g3Table(sc);mkModel(sc);const fr=g3Mat({t:woodTex('frame'),sh:60,sp:.35,gl:.32});
+ const top=g3T('bnardi',()=>g3Tex(nardiCv()));
+ sc.statics.push({parts:[{mesh:g3Mesh(gBox(15.6,NT,12.2,.08,3,null,[0])),mat:g3Mat({t:top,sh:55,sp:.3,gl:.25}),cast:true},{mesh:g3Mesh(gBox(15.6,NT,12.2,.08,3,(f,u,v)=>[u*3,v*.3],[1,2,3,4,5])),mat:fr,cast:true}],M:m4.trs([.8,NT/2,0],qt.id(),1),cast:true});
+ const rim=(x,z,w,d,h=NRIM)=>g3Static(sc,gBox(w,h,d,.05,3,(f,u,v)=>[u*Math.max(1,w/3),v*Math.max(1,d/3)]),fr,[x,NT+h/2,z]);
+ rim(.8,-5.85,15.6,.5);rim(.8,5.85,15.6,.5);rim(-6.75,0,.5,11.2);rim(0,0,1,11.2,NRIM+.02);rim(6.725,0,.45,11.2);rim(8.375,0,.45,11.2);
+ const ck=g3Mesh(checkerGeo());g3Model(sc,'w',[[ck,g3Mat({c:'#F2E8D6',sh:80,sp:.5,gl:.6})]],[.44,.09,.44],[0,.08,0]);g3Model(sc,'b',[[ck,g3Mat({c:'#3a1714',sh:90,sp:.6,gl:.75})]],[.44,.09,.44],[0,.08,0]);
+ g3Model(sc,'die',[[dieGeo(.62),g3Mat({t:g3T('dice',()=>g3Tex(diceCv(),{af:false})),sh:90,sp:.5,gl:.45})]],[.31,.31,.31]);
+ sc.tap=ray=>{const G=NR,flip=G.ctx.side===-1,p=g3HitY(ray,NT);if(!p)return;const[x,z]=[p[0],p[2]];if(z<-5.7||z>5.7)return;
+  if(x>6.9&&x<8.3){g3Act('npt',{k:'off'});return}if(x<-6.6||x>6.6)return;const col=Math.round(x+6);if(col===6){g3Act('npt',{k:'bar'});return}
+  const top=z<0;const di=top?(col<6?12+col:col+11):(col<6?11-col:12-col);g3Act('npt',{k:String(flip?23-di:di)})};
+ return sc};
+function nSlot(di,k){const{col,top}=nCol(di),lay=Math.floor(k/5),idx=k%5;return[col-6,NT+lay*.165,top?-5.1+idx*.9+lay*.45:5.1-idx*.9-lay*.45]}
+G3U.nardi=sc=>{const G=NR,c=G.ctx,me=c.side,flip=me===-1,L=[],M=[],dI=i=>flip?23-i:i;
+ for(let i=0;i<24;i++){const v=G.p[i],n=Math.abs(v);for(let k=0;k<n;k++){const p=nSlot(dI(i),k);L.push({m:v>0?'w':'b',p})}}
+ for(const s of[me,-me])for(let k=0;k<G.bar[s];k++)L.push({m:s===1?'w':'b',p:[0,NT+NRIM+.02+Math.floor(k/4)*.165,(s===me?1:-1)*(1.05+(k%4)*.9)]});
+ for(const s of[me,-me])for(let k=0;k<G.off[s];k++)L.push({m:s===1?'w':'b',p:[7.55,NT+.44,(s===me?1:-1)*(5.3-k*.172)],q:qt.ax(1,0,0,Math.PI/2)});
+ /* dice: the mover's dice lie in their half; a fresh roll is thrown from their edge and tumbles */
+ const all=G.last.length===2?(G.last[0]===G.last[1]?[G.last[0],G.last[0],G.last[0],G.last[0]]:G.last.slice()):[],left=G.dice.slice();
+ const used=all.map(v=>{const k=left.indexOf(v);if(k>=0){left.splice(k,1);return false}return true});
+ const sig=G.rolled?G.turn+':'+G.last.join(','):'';G.rollAnim=0;if(sig&&sig!==sc.rsig){sc.rsig=sig;sc.roll=(sc.roll||0)+1;sc.dside=G.turn===me?1:-1}if(sc.dside==null)sc.dside=G.turn===me?1:-1;
+ const side=sc.dside,R=rng((sc.roll||0)*977+7),thrower=side;
+ all.forEach((v,i)=>{const x=side*(all.length>2?1.9+i*.82:2.7+i*1.05),z=all.length>2?(i%2?.12:-.12):(i?.14:-.1),yaw=(R()-.5)*1.2,q=qt.mul(qt.ax(0,1,0,yaw),dieUp(v)),d={k:'d'+(sc.roll||0)+'-'+i,m:'die',p:[x,NT+.31,z],q,dim:used[i]?.42:1};
+  if(sc.roll&&sc.rolled!==sc.roll){const from=[x+side*(1.5+R()),NT+2.4,thrower*4.6];d.from={p:from,q:qt.mul(qt.ax(R(),R(),R(),R()*6),q)};
+   d.path=[[x+side*.5*(R()-.2),NT+.31,z*.5+thrower*1.2],[x,NT+.31,z]];d.hops=[.15,.55];d.spin=[R()-.5,R()-.5,R()-.5,2+Math.floor(R()*2)];d.ez='out';d.dur=1000+i*90;d.delay=i*40}
+  L.push(d)});
+ if(sc.roll)sc.rolled=sc.roll;
+ /* marks: the chosen point, where it can go, and which checkers can move */
+ const mine=G.mine()&&G.rolled,sel=G.sel,mk=(p,uv,col,a,s,o)=>M.push(Object.assign({m:'mk',p,s,uv,c:col,a},o||{}));
+ const ptMark=(i,col,a)=>{const{col:cc,top}=nCol(dI(i));mk([cc-6,NT+.003,top?-3.15:3.15],MK.sq,col,a,[.98,1,4.9],{add:true})};
+ if(mine&&sel!==null){if(sel==='bar')mk([0,NT+NRIM+.04,3],MK.sq,GOLD,1,[1,1,5],{add:true});else ptMark(sel,GOLD,.95);
+  for(const o of G.opts(me,sel)){if(o.to==='off'){mk([7.55,NT+.005,3],MK.sq,GOLD,.95,[1.1,1,5.2],{add:true,pulse:true});continue}const n=Math.abs(G.p[o.to]),p=nSlot(dI(o.to),G.p[o.to]*me<0?0:n);mk([p[0],p[1]+.01,p[2]],MK.dot,GOLD,.95,[.62,1,.62],{add:true,pulse:true})}}
+ else if(mine&&G.legal().length){const from=new Set(G.legal().map(m=>m.f));for(const f of from){if(f==='bar'){const k=G.bar[me]-1;mk([0,NT+NRIM+.03+Math.floor(k/4)*.165+.17,1.05+(k%4)*.9],MK.ring,GOLD,.9,[1.05,1,1.05],{add:true,pulse:true});continue}
+   const n=Math.abs(G.p[f]),p=nSlot(dI(f),n-1);mk([p[0],p[1]+.17,p[2]],MK.ring,GOLD,.9,[1.05,1,1.05],{add:true,pulse:true})}}
+ sc.marks=M;g3Set(sc,L,{gone:o=>o.m==='die'?{a:0,dur:220}:null,delay:(o,d)=>d.m!=='die'&&Math.abs(d.p[0])<.01&&o.p[0]!==0?260:0})};
+
+/* ---------- cards: the joker table, against the computer or online ---------- */
+const CDW=.92,CDH=1.28,JKH={c:[0,1.55,5.95],b:.95,R:6.2,s:1.32};
+const JSEAT=[{p:[0,0,4.2],yaw:0},{p:[-4.7,0,.15],yaw:-Math.PI/2},{p:[0,0,-4.5],yaw:Math.PI},{p:[4.7,0,.15],yaw:Math.PI/2}];
+const JTRK=[[0,1.02],[-1.15,0],[0,-1.02],[1.15,0]],JTJ=[-.06,.13,.04,-.11];
+G3B.joker=()=>{const sc=g3Scene({cam:{yaw:0,pitch:.9,fov:.6,tgt:[0,0,.9],box:[[-6.05,0,-6.05],[6.05,.6,6.9]],dy:0,dp:0,dz:1,mx:.98,my:.96},shR:8.5,spot:[0,0,7.2,.55],yawMax:.35,pitchDown:.25,pitchUp:.3,bg:[.03,.022,.02],
+  anchors:[['.seat.top',[0,0,-6.6]],['.seat.left',[-4.6,0,-2.75]],['.seat.right',[4.6,0,-2.75]]]});
+ g3Table(sc,{y:-1.2,wood:'table'});mkModel(sc);
+ const felt=g3T('felt',()=>g3Tex(feltCv({a:'#2E7D59',b:'#123B29',ring:1})));
+ g3Static(sc,gDisc(5.45,96),g3Mat({t:felt,sh:6,sp:.04,gl:0}),[0,0,0],null,false);
+ g3Static(sc,gLathe([[5.4,-1.2],[5.42,-.02],[5.45,.02],[5.6,.1],[5.95,.16],[6.22,.1],[6.3,0],[6.25,-.16],[6.1,-.24],[5.8,-.3],[5.7,-1.2]],120,.6),g3Mat({t:woodTex('mahog'),uv:[0,0,8,1],sh:70,sp:.4,gl:.4}),[0,0,0]);
+ const atl=g3T('cards',()=>g3Tex(cardsCv(),{af:true}));
+ g3Model(sc,'card',[[gQuad(CDW,CDH),g3Mat({t:atl,cut:true,vary:true,sh:30,sp:.2,gl:.12})],[gQuad(CDW,CDH,true),g3Mat({t:atl,uv:cardUV(38),cut:true,sh:30,sp:.2,gl:.12})]],[CDW/2,CDH/2,.03]);
+ g3Model(sc,'deck',[[gBox(CDW,1,CDH,.0,1,(f,u,v)=>f===0?[cardUV(38)[0]+u*cardUV(38)[2],cardUV(38)[1]+v*cardUV(38)[3]]:[268/2048,170/2048]),g3Mat({t:atl,sh:20,sp:.15,gl:.1})]],null);
+ sc.tap=ray=>{const o=g3HitObj(sc,ray,o=>o.pick&&o.pick.i!=null);if(o)g3Act(sc.act||'jcard',{i:String(o.pick.i)})};
+ return sc};
+const lblModel=(sc,t)=>sc.models['l:'+t]||g3Model(sc,'l:'+t,[[gPlane(2.3,.58),g3Mat({t:labelTex(t),unlit:true})]],null);
+/* a fan of cards held by a seat: positions along an arc in the hand's own plane */
+function jFan(seat,i,n,o){const yaw=JSEAT[seat].yaw,tilt=o.tilt,sp=o.sp,ph=(i-(n-1)/2)*sp,q0=qt.mul(qt.ax(0,1,0,yaw),qt.ax(1,0,0,tilt)),right=qt.rot(q0,[1,0,0]),up=qt.rot(q0,[0,1,0]),nr=qt.rot(q0,[0,0,1]);
+ const x=Math.sin(ph)*o.R,y=(Math.cos(ph)-1)*o.R+(o.lift||0);return{p:v3.add(v3.add(v3.add(o.c,v3.mul(right,x)),v3.mul(up,y)),v3.mul(nr,i*o.dz)),q:qt.mul(q0,qt.ax(0,0,1,-ph))}}
+const JOPP={1:{c:[-4.75,.95,.15]},2:{c:[0,.95,-4.65]},3:{c:[4.75,.95,.15]}};
+const FACEUP=yaw=>qt.mul(qt.ax(0,1,0,yaw),qt.ax(1,0,0,-Math.PI/2)),FACEDN=yaw=>qt.mul(qt.ax(0,1,0,yaw),qt.ax(1,0,0,Math.PI/2));
+/* one picture of the table for both kinds of game: seats counted from me (0 me, 1 left, 2 across, 3 right) */
+function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4;sc.act=V.act;
+ const deal=V.deal!==sc.deal;if(deal)sc.deal=V.deal;const dealer=V.dealer!=null?rel(V.dealer):2,dp=v3.add(JSEAT[dealer].p,[0,.6,0]);
+ /* my hand */
+ const n=V.hand.length;V.hand.forEach((cd,i)=>{const ok=V.legal.includes(cd),f=jFan(0,i,n,{c:JKH.c,tilt:-JKH.b,sp:Math.min(.11,.9/Math.max(n,1)),R:JKH.R,dz:.01,lift:V.legal.length?(ok?.26:-.06):0});
+  const d={k:'c'+cardIdx(cd),m:'card',p:f.p,q:f.q,s:JKH.s,uv:cardUV(cardIdx(cd)),dim:V.legal.length&&!ok?.55:1,pick:V.mine?{i}:null};
+  if(deal){d.from={p:dp,q:FACEDN(0),s:.8};d.delay=i*70;d.dur=520}L.push(d)});
+ for(const s of[1,2,3]){const cnt=V.counts[s]||0,o=JOPP[s];for(let i=0;i<cnt;i++){const f=jFan(s,i,cnt,{c:o.c,tilt:.32,sp:.09,R:3.2,dz:-.006});const d={k:'h'+s+'-'+i,m:'card',p:f.p,q:f.q,s:.82,uv:cardUV(38),cast:true};if(deal){d.from={p:dp,q:FACEDN(0),s:.8};d.delay=(n+i*3+s)*45;d.dur=520}L.push(d)}}
+ /* the trick, each card a little toward whoever played it */
+ V.trick.forEach((e,k)=>{const r=rel(e.p),[tx,tz]=JTRK[r],idx=cardIdx(e.card),p=[tx,.01+k*.007,tz],d={k:'c'+idx,m:'card',p,q:FACEUP(JTJ[r]),uv:cardUV(idx),glow:V.win!=null&&rel(V.win)===r&&V.trick.length===4?[.16,.11,.03]:null};
+  if(r!==0||!sc.objs.has('k:c'+idx)){const o=r===0?{c:JKH.c}:JOPP[r];d.from={p:o.c.slice(),q:r===0?qt.ax(1,0,0,-JKH.b):qt.mul(qt.ax(0,1,0,JSEAT[r].yaw),qt.ax(1,0,0,.3)),s:r?.82:JKH.s};d.dur=520;d.arc=.6}
+  L.push(d);if(e.card.j){const t=(e.jm==='hi'?'მაღალი':'დაბალი')+(e.js?' '+SY[e.js]:'');lblModel(sc,t);L.push({k:'lb'+idx,m:'l:'+t,p:[tx,.03+k*.007,tz+1.0],q:qt.id(),cast:false,now:1})}});
+ /* the deck and the trump card under it */
+ if(V.trumpCard&&V.deckN>0&&['bid','play'].includes(V.phase)){const h=Math.max(.02,V.deckN*.007);L.push({k:'tc',m:'card',p:[.55,.006,-2.75],q:FACEUP(Math.PI/2),uv:cardUV(cardIdx(V.trumpCard)),cast:false});L.push({k:'deck',m:'deck',p:[0,h/2+.012,-2.75],s:[1,h,1],q:qt.ax(0,1,0,.06)})}
+ sc.jw=V.win!=null?rel(V.win):sc.jw;
+ sc.marks=M;g3Set(sc,L,{gone:o=>{if(o.m==='card'&&o.id.startsWith('k:c')){const w=sc.jw??0,p=v3.add(JSEAT[w].p,[0,.05,0]);return{p,a:0,dur:520,delay:120,s:.7}}if(o.id.startsWith('k:h'))return{a:0,dur:160};return{a:0,dur:250}}})}
+G3U.joker=sc=>{const G=JK,V={base:0,act:'jcard',hand:[],legal:[],counts:[0,0,0,0],trick:[],win:null,deal:null,dealer:null,phase:G.phase,mine:false,trumpCard:null,deckN:0};
+ if(G.hands){const tr=G.phase==='trump'&&G.cur===0;V.hand=tr?G.first3[0]:G.phase==='trump'?[]:G.hands[0];V.legal=G.phase==='play'&&G.cur===0&&G.win==null?G.legal(0):[];V.mine=V.legal.length>0;
+  V.counts=[0,1,2,3].map(p=>G.phase==='trump'?(p===0?0:3):G.hands[p].length);V.trick=G.trick;V.win=G.win;V.dealer=G.dealer;V.deal=G.len+':'+G.h+':'+G.dealer;V.trumpCard=G.trumpCard;V.deckN=36-4*G.n}
+ jkScene(sc,V)};
+G3U.jko=sc=>{const s=JO.st,me=JO.seat,V={base:me>=0?me:0,act:'jkocard',hand:[],legal:[],counts:[0,0,0,0],trick:[],win:null,deal:null,dealer:null,phase:s?s.phase:'wait',mine:false,trumpCard:null,deckN:0};
+ if(s&&s.counts){V.hand=me>=0?JO.hand:[];const myTurn=me>=0&&s.cur===me&&s.win==null&&!JO.wait&&s.phase==='play';V.legal=myTurn?JK.legal.call({hands:{[me]:JO.hand},trick:s.trick,trump:s.trump},me):[];V.mine=V.legal.length>0;
+  V.counts=[0,1,2,3].map(r=>s.counts[(r+V.base)%4]||0);V.trick=s.trick||[];V.win=s.win;V.dealer=s.dealer;V.deal=s.deal;V.trumpCard=s.trumpCard;V.deckN=36-4*s.n}
+ jkScene(sc,V)};
+
+/* ---------- domino ---------- */
+const DL=1.12,DW=.56,DT=.19,DB=4.75;
+G3B.domino=()=>{const sc=g3Scene({cam:{yaw:0,pitch:1.0,fov:.58,tgt:[0,0,.45],box:[[-6.4,0,-6.3],[6.4,.8,6.5]],dy:0,dp:0,dz:1,my:.96},shR:9,spot:[0,0,8,.6],yawMax:.4,bg:[.03,.022,.02],
+  anchors:[['.seat.top',[0,0,-7.7]],['.seat.left',[-5.1,0,-3.35]],['.seat.right',[5.1,0,-3.35]]]});
+ g3Table(sc,{y:-.6});mkModel(sc);
+ const felt=g3T('dfelt',()=>g3Tex(feltCv({a:'#245a73',b:'#0f2a38',ring:1})));const tw=g3Mat({t:woodTex('walnut'),sh:40,sp:.2,gl:.14});
+ g3Static(sc,gBox(13.4,.6,13.4,.25,4,(f,u,v)=>[u*3,v*.4],[1,2,3,4,5]),tw,[0,-.3,0]);
+ g3Static(sc,gBox(13.4,.6,13.4,.25,4,(f,u,v)=>[u*3,v*3],[0]),tw,[0,-.3,0]);
+ g3Static(sc,gBox(12.2,.02,12.2,.4,3,null,[0]),g3Mat({t:felt,sh:6,sp:.04,gl:0}),[0,-.002,0],null,false);
+ const atl=g3T('domino',()=>g3Tex(dominoCv())),iv=g3Mat({c:'#F2EAD8',sh:90,sp:.55,gl:.55});
+ const tile=[[gBox(DL,DT,DW,.04,3,null,[0]),g3Mat({t:atl,vary:true,sh:90,sp:.55,gl:.55})],[gBox(DL,DT,DW,.04,3,null,[1]),g3Mat({t:atl,uv:dmUV(28),sh:80,sp:.5,gl:.5})],[gBox(DL,DT,DW,.04,3,null,[2,3,4,5]),iv]];
+ g3Model(sc,'tile',tile,[DL/2,DT/2,DW/2]);
+ g3Model(sc,'ghost',[[gBox(DL,DT,DW,.04,3),g3Mat({c:'#F4BC4C',unlit:true,a:1})]],[DL/2,DT,DW/2]);
+ sc.tap=ray=>{const o=g3HitObj(sc,ray,o=>o.pick);if(!o)return;if(o.pick.e)g3Act('dmend',{e:o.pick.e});else if(o.pick.i!=null)g3Act('dmt',{i:String(o.pick.i)})};
+ return sc};
+/* where each tile of the line lies: from the first tile outward, along a row until the edge, then a turn and back */
+function dmLayout(G){const out=[],slots={};if(!G.root)return{out,slots};const rt=G.root.t,rd=rt[0]===rt[1];
+ out.push({t:rt,near:rt[0],x:0,z:0,yaw:rd?Math.PI/2:0,lo:Math.min(...rt)});
+ const arm=(list,d0,turns,key)=>{let d=d0,P=[d0[0]*(rd?DW/2:DL/2),d0[1]*(rd?DW/2:DL/2)],run=0,ti=0;
+  const place=(x,ghost)=>{const dbl=x?x.n===x.f:false,hor=d[1]===0;let ext=hor&&dbl?DW:DL;
+   if(hor&&Math.abs(P[0]+d[0]*ext)>DB||(!hor&&run>=1)){const nd=turns[ti++%turns.length];P=[P[0]+d[0]*DW/2-nd[0]*DW/2,P[1]+d[1]*DW/2-nd[1]*DW/2];d=nd;run=0;ext=DL}
+   const cross=d[1]===0&&dbl,yaw0=Math.atan2(-d[1],d[0]),c=[P[0]+d[0]*ext/2,P[1]+d[1]*ext/2];
+   if(ghost)return{x:c[0],z:c[1],yaw:yaw0};P=[P[0]+d[0]*ext,P[1]+d[1]*ext];run++;
+   const lo=Math.min(x.n,x.f);return{t:x.t,x:c[0],z:c[1],yaw:cross?yaw0+Math.PI/2:yaw0+(x.n===lo?0:Math.PI),lo}};
+  list.forEach(x=>out.push(place(x)));slots[key]=place(null,true)};
+ arm(G.R,[1,0],[[0,1],[-1,0],[0,1],[1,0]],'R');arm(G.L,[-1,0],[[0,-1],[1,0],[0,-1],[-1,0]],'L');return{out,slots}}
+const DSTAND=(yaw,tilt)=>qt.mul(qt.ax(0,1,0,yaw),qt.mul(qt.ax(1,0,0,Math.PI/2-tilt),qt.ax(0,1,0,Math.PI/2)));
+const DRACK={0:{c:[0,.52,5.25],yaw:0,dir:[1,0,0],sp:.7,tilt:.5},1:{c:[-5.45,.52,.1],yaw:-Math.PI/2,dir:[0,0,1],sp:.62,tilt:.22},2:{c:[0,.52,-5.3],yaw:Math.PI,dir:[-1,0,0],sp:.62,tilt:.22},3:{c:[5.45,.52,.1],yaw:Math.PI/2,dir:[0,0,-1],sp:.62,tilt:.22}};
+const dRack=(s,i,n)=>{const r=DRACK[s];return v3.add(r.c,v3.mul(r.dir,(i-(n-1)/2)*r.sp))};
+G3U.domino=sc=>{const G=DM,L=[],M=[],{out,slots}=dmLayout(G),mine=G.phase==='play'&&G.cur===0,ok=new Set(mine?G.moves(0).map(m=>m.i):[]);
+ const deal=G.round!==sc.round;if(deal)sc.round=G.round;
+ const flat=(t,x,z,yaw)=>({p:[x,DT/2,z],q:qt.ax(0,1,0,yaw),uv:dmUV(dmIdx(t[0],t[1]))});
+ out.forEach(o=>{const f=flat(o.t,o.x,o.z,o.yaw),key='t'+dmIdx(o.t[0],o.t[1]),d=Object.assign({k:key,m:'tile'},f);
+  if(!sc.objs.has('k:'+key)){const by=G.last&&G.last.t&&dmIdx(G.last.t[0],G.last.t[1])===dmIdx(o.t[0],o.t[1])?G.last.p:null;if(by!=null&&by!==0){const n=G.hands[by].length;d.from={p:dRack(by,n,n+1),q:DSTAND(DRACK[by].yaw,DRACK[by].tilt)};d.arc=.9;d.dur=560}}
+  L.push(d);M.push({m:'mk',p:[o.x,.003,o.z],s:[1.35,1,1.35],uv:MK.blob,c:[0,0,0],a:.22,q:qt.ax(0,1,0,o.yaw)})});
+ const n=G.hands[0].length;G.hands[0].forEach((t,i)=>{const lift=G.sel===i?.32:ok.has(i)?.12:0,p=v3.add(dRack(0,i,n),[0,lift,0]),d={k:'t'+dmIdx(t[0],t[1]),m:'tile',p,q:DSTAND(0,DRACK[0].tilt),uv:dmUV(dmIdx(t[0],t[1])),dim:mine&&!ok.has(i)?.6:1,glow:G.sel===i?[.12,.09,.02]:null,pick:mine?{i}:null};
+  if(deal){d.from={p:[0,1.2,0],q:DSTAND(0,0),a:0};d.delay=i*70;d.dur=520}L.push(d)});
+ for(const s of[1,2,3]){const cnt=G.hands[s].length;for(let i=0;i<cnt;i++){const d={k:'h'+s+'-'+i,m:'tile',p:dRack(s,i,cnt),q:DSTAND(DRACK[s].yaw,DRACK[s].tilt),uv:dmUV(28)};if(deal){d.from={p:[0,1.2,0],q:DSTAND(0,0),a:0};d.delay=(n+i*3+s)*45;d.dur=520}L.push(d)}}
+ if(mine&&G.sel!=null){for(const e of G.places(G.hands[0][G.sel]))if(slots[e]){const g=slots[e];L.push({k:'g'+e,m:'ghost',p:[g.x,DT/2,g.z],q:qt.ax(0,1,0,g.yaw),a:.5,cast:false,pick:{e},now:1})}}
+ sc.marks=M;g3Set(sc,L,{gone:o=>o.id.startsWith('k:h')?{a:0,dur:180}:o.m==='ghost'?{a:0,dur:120}:{p:[o.p[0]*.3,1,o.p[2]*.3],a:0,dur:500}})};
