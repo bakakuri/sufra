@@ -1,6 +1,6 @@
 /* shell: top bar, tabs, create button, realtime, deep links, install, back button */
 const TABS=[['home','მთავარი','home'],['clips','კლიპები','clips'],['date','გაცნობა','heart'],['games','თამაშები','dice'],['me','პროფილი','user']];
-const SVC=[['rooms','wine','ვირტუალური სუფრა'],['rooms','mic','ბირჟა','birja'],['rooms','live','ლაივი','live'],['places','map','ადგილები'],['sport','trophy','მატჩის ოთახი'],['help','help','დახმარება'],['rides','pin','ერთად წავიდეთ'],['jobs','school','ვაკანსიები და CV'],['friends','users','მეგობრები'],['groups','users','ჯგუფები'],['pages','mega','არხები და გვერდები'],['events','cal','ღონისძიებები'],['market','store','ბაზრობა'],['toasts','book','სადღეგრძელოები'],['namedays','cal','სახელის დღეები'],['tree','tree','ოჯახის ხე'],['calendar','gift','კალენდარი'],['tour','trophy','ტურნირი'],['saved','bookmark','შენახული'],['drafts','clock','დრაფტები'],['coins','coin','მონეტები'],['verify','shield','ვერიფიკაცია'],['settings','gear','პარამეტრები']];
+const SVC=[['rooms','wine','ვირტუალური სუფრა'],['rooms','mic','ბირჟა','birja'],['rooms','live','ლაივი','live'],['places','map','ადგილები'],['sport','trophy','მატჩის ოთახი'],['help','help','დახმარება'],['rides','pin','ერთად წავიდეთ'],['jobs','school','ვაკანსიები და CV'],['friends','users','მეგობრები'],['groups','users','ჯგუფები'],['pages','mega','არხები და გვერდები'],['events','cal','ღონისძიებები'],['albums','image','ალბომები'],['market','store','ბაზრობა'],['toasts','book','სადღეგრძელოები'],['namedays','cal','სახელის დღეები'],['tree','tree','ოჯახის ხე'],['calendar','gift','კალენდარი'],['tour','trophy','ტურნირი'],['saved','bookmark','შენახული'],['drafts','clock','დრაფტები'],['coins','coin','მონეტები'],['verify','shield','ვერიფიკაცია'],['settings','gear','პარამეტრები']];
 const today=()=>new Date().toISOString().slice(0,10);
 
 function renderTop(){if(!ME)return;$('#top').innerHTML=`<button class="logo" data-a="home" aria-label="სუფრა, მთავარზე დაბრუნება">სუფრა</button><span class="sp"></span>
@@ -104,6 +104,7 @@ function reState(){try{if(S.page)history.pushState({pg:S.page.id,arg:S.page.arg}
 window.addEventListener('popstate',e=>{if(!ME)return;
  if(!$('#call').hidden){reState();return}
  if(!$('#layer').hidden){closeLayer();reState();return}
+ if($('#pv.top')&&!$('#pv').hidden){closePV();reState();return}
  if(!$('#story').hidden){closeStory();reState();return}
  if(!$('#sheet').hidden){closeSheet();reState();return}
  if($('#pv')&&!$('#pv').hidden){closePV();reState();return}
@@ -124,7 +125,7 @@ $('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)r
 document.addEventListener('click',e=>{if(!e.target.closest('.rwrap'))$$('.picker').forEach(x=>x.remove());const t=e.target.closest('[data-a]');if(!t)return;const f=A[t.dataset.a];if(!f)return;if(t.tagName==='A')e.preventDefault();try{const r=f(t,e);if(r&&r.catch)r.catch(x=>toast(errMsg(x)))}catch(x){toast(errMsg(x))}});
 $('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeSheet()});
 $('#layer').addEventListener('click',e=>{if(e.target.id==='layer')closeLayer()});
-document.addEventListener('keydown',e=>{if(PV&&!$('#pv')?.hidden&&$('#sheet').hidden&&(e.key==='ArrowRight'||e.key==='ArrowLeft')){const b=$(`#pv .pmnav.${e.key==='ArrowRight'?'next':'prev'}`);if(b)b.click();return}if(e.key!=='Escape')return;if(!$('#layer').hidden)closeLayer();else if(!$('#story').hidden)closeStory();else if(!$('#sheet').hidden)closeSheet();else if($('#pv')&&!$('#pv').hidden)closePV()});
+document.addEventListener('keydown',e=>{if(PV&&!$('#pv')?.hidden&&$('#sheet').hidden&&(e.key==='ArrowRight'||e.key==='ArrowLeft')){const b=$(`#pv .pmnav.${e.key==='ArrowRight'?'next':'prev'}`);if(b)b.click();return}if(e.key!=='Escape')return;if(!$('#layer').hidden)closeLayer();else if($('#pv.top')&&!$('#pv').hidden)closePV();else if(!$('#story').hidden)closeStory();else if(!$('#sheet').hidden)closeSheet();else if($('#pv')&&!$('#pv').hidden)closePV()});
 {let lastY=0;view.addEventListener('scroll',()=>{const y=view.scrollTop,app=$('#app');$('#top').classList.toggle('shadow',y>4);if(view.classList.contains('is-clips'))return;
  if(y>lastY+8&&y>90)app.classList.add('barhidden');else if(y<lastY-8||y<40)app.classList.remove('barhidden');lastY=y},{passive:true})}
 try{const ro=new ResizeObserver(()=>{const r=document.documentElement.style;r.setProperty('--th',$('#top').offsetHeight+'px');r.setProperty('--bh',$('#tabs').offsetHeight+'px')});ro.observe($('#top'));ro.observe($('#tabs'))}catch(e){}

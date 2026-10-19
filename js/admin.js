@@ -1,7 +1,7 @@
 /* admin panel: stats, reports queue, verification, ads review, users, pages */
 Object.assign(ERR,{admin_only:'ეს მხოლოდ ადმინისტრატორს შეუძლია',cannot_ban_admin:'ადმინისტრატორს ვერ შეზღუდავ',cannot_demote_self:'საკუთარ თავს როლს ვერ ჩამოართმევ',not_pending:'ეს რეკლამა უკვე განხილულია',bad_type:'ამ ტიპის შინაარსს ასე ვერ დამალავ'});
 const ADM={tab:'reports',rst:'open',uf:'new',st:{}};
-const ATABS=[['reports','საჩივრები','open_reports'],['verify','ვერიფიკაცია','pending_verifications'],['ads','რეკლამა','pending_ads'],['users','მომხმარებლები',null],['pages','გვერდები',null]];
+const ATABS=[['reports','საჩივრები','open_reports'],['verify','ვერიფიკაცია','pending_verifications'],['ads','რეკლამა','pending_ads'],['users','მომხმარებლები',null],['pages','გვერდები',null],['words','სიტყვები',null]];
 const TTYPE={post:'პოსტი',comment:'კომენტარი',user:'პროფილი',listing:'განცხადება',message:'შეტყობინება',page:'გვერდი',story:'ისტორია',event:'ღონისძიება',job:'ვაკანსია',ride:'მგზავრობა',room:'ოთახი',fixture:'მატჩი',place:'ადგილი',review:'შეფასება',toast:'სადღეგრძელო',help:'დახმარების თხოვნა'};
 const ROLE_L={user:'მომხმარებელი',moderator:'მოდერატორი',admin:'ადმინისტრატორი'};
 
@@ -15,7 +15,7 @@ async function loadAdmin(){try{ADM.st=await rpc('admin_stats')||{}}catch(e){ADM.
 function drawAdTabs(){const el=$('#adtabs');if(!el)return;el.innerHTML=ATABS.map(([k,l,c])=>`<button data-a="adtab" data-k="${k}" aria-pressed="${ADM.tab===k}">${l}${c&&ADM.st[c]?` <span class="badge">${ADM.st[c]}</span>`:''}</button>`).join('')}
 A.adtab=t=>{ADM.tab=t.dataset.k;drawAdTabs();adminTab()};
 async function refreshStats(){try{ADM.st=await rpc('admin_stats')||{};drawAdTabs()}catch(e){}}
-function adminTab(){const el=$('#adb');if(!el)return;el.innerHTML=skel(3);({reports:admReports,verify:admVerify,ads:admAds,users:admUsers,pages:admPages})[ADM.tab](el).catch(e=>{if(el.isConnected)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e),'<button class="btn" data-a="adreload">თავიდან ცდა</button>')})}
+function adminTab(){const el=$('#adb');if(!el)return;el.innerHTML=skel(3);({reports:admReports,verify:admVerify,ads:admAds,users:admUsers,pages:admPages,words:admWords})[ADM.tab](el).catch(e=>{if(el.isConnected)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e),'<button class="btn" data-a="adreload">თავიდან ცდა</button>')})}
 A.adreload=()=>adminTab();
 
 /* reports: grouped by target, with a preview and one-tap actions */
@@ -120,3 +120,12 @@ async function admPageList(){const el=$('#apr');if(!el)return;const qv=clean($('
   el.innerHTML=rows.length?`<div class="list">${rows.map(g=>`<div class="row">${avAny({n:g.name,h:g.hue},44).replace('class="av"','class="av sq"')}<button class="grow" data-a="pagev" data-id="${g.id}" style="text-align:left"><b>${esc(g.name)}${g.verified?vb({verified:1}):''}</b><span class="sub">${g.kind==='business'?'ბიზნესი':'არხი'} · ${esc(pname(g.owner))}</span></button><button class="btn sm${g.verified?' ghost':''}" data-a="adpv" data-id="${g.id}" data-v="${g.verified?0:1}">${g.verified?'მოხსნა':ic('check')+'ვერიფიკაცია'}</button></div>`).join('')}</div>`:empty('გვერდები არ არის')}
  catch(e){el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))}}
 A.adpv=async t=>{t.disabled=true;try{await rpc('admin_verify_page',{p_page:+t.dataset.id,p_verified:t.dataset.v==='1'});toast(t.dataset.v==='1'?'გვერდი ვერიფიცირდა':'ვერიფიკაცია მოიხსნა');admPageList()}catch(e){toast(errMsg(e));t.disabled=false}};
+
+/* words that get masked in posts and comments; a word also catches its endings (ცუდი → ცუდისიტყვა) */
+async function admWords(el){const rows=await q(sb.from('bad_words').select('word,created_at').order('word'));
+ el.innerHTML=`<div class="form" style="gap:10px"><p class="note">ჩამოთვლილი სიტყვები პოსტებსა და კომენტარებში ავტომატურად იცვლება („ც***“). სიტყვა ფუძედაც მუშაობს: ჩაწერე ის ნაწილი, რომლითაც ყველა ფორმა იწყება. პირად მიმოწერაზე ფილტრი არ მოქმედებს.</p>
+  <form class="search" id="bwf" style="margin:0;gap:8px"><input class="field" id="bwi" maxlength="40" placeholder="სიტყვა ან ფუძე" aria-label="სიტყვა" autocomplete="off"><button class="btn">დამატება</button></form>
+  <div class="bwlist">${rows.map(r=>`<span class="bw">${esc(r.word)}<button data-a="bwdel" data-w="${esc(r.word)}" aria-label="წაშლა">${ic('x')}</button></span>`).join('')||'<p class="muted">სია ცარიელია.</p>'}</div>
+  <p class="note">ასევე ავტომატურად: ერთი ადამიანი წუთში 8 კომენტარზე, საათში 15 პოსტზე და წუთში 30 მესიჯზე მეტს ვერ წერს; ერთი და იგივე ტექსტი ბევრგან ჩერდება; ახალი ანგარიში (24 საათამდე) ბმულებს შეზღუდულად აზიარებს; 3 სხვადასხვა საჩივრის შემდეგ პოსტი ან კომენტარი იმალება, სანამ მოდერატორი ნახავს.</p></div>`;
+ $('#bwf').onsubmit=async e=>{e.preventDefault();const w=$('#bwi').value.trim().toLowerCase();if(w.length<2){toast('მინიმუმ 2 ასო');return}try{await q(sb.from('bad_words').insert({word:w}));adminTab()}catch(x){toast(errMsg(x))}}}
+A.bwdel=async t=>{try{await q(sb.from('bad_words').delete().eq('word',t.dataset.w));t.closest('.bw').remove()}catch(e){toast(errMsg(e))}};

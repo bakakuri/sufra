@@ -10,6 +10,8 @@ const IC={
  x:'<path d="M6 6l12 12M18 6L6 18"/>',
  star:'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
  comment:'<path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4A8 8 0 1 1 20 12z"/>',
+ mute:'<path d="M6 8a6 6 0 0 1 9.5-4.9M18 9.5c0 4.5 2 6.5 2 6.5H8"/><path d="M4 16s2-2 2-7"/><path d="M10 20a2 2 0 0 0 4 0"/><path d="M3 3l18 18"/>',
+ archive:'<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>',
  repost:'<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
  send:'<path d="M4 12l16-8-6 16-3-7z"/>',
  back:'<path d="M15 5l-7 7 7 7"/>',

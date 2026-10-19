@@ -1,5 +1,5 @@
 /* posts: loading, rendering, reactions, polls, comments, composer */
-const POSTSEL='id,author,body,media,poll,tags,group_id,page_id,is_clip,hidden,created_at,link,draft,publish_at,edited_at,repost_of,place_id,ap:profiles!posts_author_fkey(id,name,username,avatar_url,hue,verified,is_business),page:pages!posts_page_id_fkey(id,name,hue,avatar_url,verified,kind),grp:groups!posts_group_id_fkey(id,name),pl:places!posts_place_id_fkey(id,name,kind,city)';
+const POSTSEL='id,author,body,media,poll,tags,group_id,page_id,is_clip,hidden,created_at,link,draft,publish_at,edited_at,repost_of,place_id,pending,ap:profiles!posts_author_fkey(id,name,username,avatar_url,hue,verified,is_business),page:pages!posts_page_id_fkey(id,name,hue,avatar_url,verified,kind),grp:groups!posts_group_id_fkey(id,name),pl:places!posts_place_id_fkey(id,name,kind,city)';
 const POSTS=new Map(),STAT=new Map(),RS=new Map();
 const EMOJI=['👍','❤️','😂','😮','😢','😡','🍷'];
 const blankStat=id=>({post_id:id,reactions:{},my_reaction:null,comments:0,grade_avg:null,grade_n:0,my_grade:null,votes:{},my_vote:null,saved:false});
@@ -19,7 +19,7 @@ function pollBlock(p,s){if(!p.poll||!Array.isArray(p.poll.opts))return '';const 
  return `<div class="poll" role="group" aria-label="გამოკითხვა"><b>${esc(p.poll.q)}</b>${p.poll.opts.map((o,i)=>{const n=s.votes?.[i]||0,pc=tot?Math.round(n/tot*100):0;return `<button class="popt${s.my_vote===i?' mine':''}" data-a="vote" data-pid="${p.id}" data-i="${i}"${voted?` style="--pc:${pc}%"`:''}><span>${esc(o)}</span>${voted?`<em>${pc}%</em>`:''}</button>`}).join('')}<span class="note">${tot} ხმა${voted?'':' · აირჩიე პასუხი'}</span></div>`}
 /* a post: photos and videos fill the card with the author on top and grading and actions at the bottom, the caption sits underneath */
 const pmedia=p=>(Array.isArray(p.media)?p.media:[]).filter(m=>m&&/^https?:|^data:/.test(String(m.url||'')));
-function whoHTML(p,u,pg){const tags=`${p.grp?`<button class="ptag" data-a="group" data-id="${p.grp.id}">${esc(p.grp.name)}</button>`:''}${p.pl?`<button class="ptag plc" data-a="page" data-p="place" data-arg="${p.pl.id}">📍 ${esc(p.pl.name)}</button>`:''}${p.hidden?'<span class="ptag warn">დამალულია</span>':''}${p.ad?'<span class="ptag ad">რეკლამა</span>':''}`;
+function whoHTML(p,u,pg){const tags=`${p.grp?`<button class="ptag" data-a="group" data-id="${p.grp.id}">${esc(p.grp.name)}</button>`:''}${p.pl?`<button class="ptag plc" data-a="page" data-p="place" data-arg="${p.pl.id}">📍 ${esc(p.pl.name)}</button>`:''}${p.hidden?'<span class="ptag warn">დამალულია</span>':''}${p.pending?'<span class="ptag warn">ელოდება დამტკიცებას</span>':''}${p.ad?'<span class="ptag ad">რეკლამა</span>':''}`;
  return pg?`<button class="pwho" data-a="pagev" data-id="${pg.id}" aria-label="${esc(pg.name)}">${avAny({n:pg.name,h:pg.hue},38).replace('class="av"','class="av sq"')}</button><span class="pwt"><span class="pwn"><button class="pname" data-a="pagev" data-id="${pg.id}"><b>${esc(pg.name)}${pg.verified?vb({verified:1}):''}</b></button><span class="ptag">${pg.kind==='business'?'ბიზნესი':'არხი'}</span>${tags}</span><span class="pwtime">${ago(p.created_at)}${p.edited_at?' · რედაქტირებული':''}</span></span>`
   :`<button class="pwho" data-a="user" data-u="${u.id}" aria-label="${esc(u.name)}">${av(u,38)}</button><span class="pwt"><span class="pwn"><button class="pname" data-a="user" data-u="${u.id}"><b>${esc(u.name)}${vb(u)}</b></button>${tags}</span><span class="pwtime">${ago(p.created_at)}${p.edited_at?' · რედაქტირებული':''}</span></span>`}
 /* grading: only for photos, never for your own post (you still see the average) */
@@ -71,7 +71,7 @@ A.pmtap=t=>{const id=pidOf(t),i=+t.dataset.i||0,now=Date.now(),T=A.pmtap;
 
 /* the post viewer: rises from below, a fixed black frame, author above and actions below the photo */
 let PV=null;
-function openPV(id,i=0){const p=POSTS.get(id);if(!p)return;PV={id,i};let el=$('#pv');
+function openPV(id,i=0){const p=POSTS.get(id);if(!p)return;PV={id,i};let el=$('#pv');if(el)el.classList.remove('top');
  if(!el){el=document.createElement('div');el.id='pv';el.className='pv';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-label','პოსტი');document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)closePV()})}
  const s=STAT.get(id)||blankStat(id),u=p.ap||prof(p.author),media=pmedia(p),n=media.length;
  el.classList.remove('closing');el.hidden=false;
@@ -83,13 +83,13 @@ function openPV(id,i=0){const p=POSTS.get(id);if(!p)return;PV={id,i};let el=$('#
  const tr=$('.pvtrack',el);if(tr&&i)requestAnimationFrame(()=>{tr.scrollLeft=i*tr.clientWidth});
  document.documentElement.classList.add('pvopen');$$('.pmi video').forEach(v=>{try{v.pause()}catch(e){}})}
 function refreshPV(){const el=$('#pv');if(!el||el.hidden||!PV)return;const p=POSTS.get(PV.id);if(!p)return;const s=STAT.get(p.id)||blankStat(p.id);const b=$('.pvbot',el);if(b)b.innerHTML=gradeHTML(p,s)+actsHTML(p,s);const c=$('.pvdesc>[data-a="comments"]',el);if(c)c.innerHTML=`${ic('comment')}კომენტარები${s.comments?' · '+s.comments:''}`;const pl=$('.pvdesc .poll',el);if(pl)pl.outerHTML=pollBlock(p,s)}
-function closePV(){const el=$('#pv');if(!el||el.hidden)return;PV=null;$$('video',el).forEach(v=>{try{v.pause()}catch(e){}});document.documentElement.classList.remove('pvopen');
+function closePV(){const el=$('#pv');if(!el||el.hidden)return;PV=null;setTimeout(()=>el.classList.remove('top'),240);$$('video',el).forEach(v=>{try{v.pause()}catch(e){}});document.documentElement.classList.remove('pvopen');
  if(RM()){el.hidden=true;el.innerHTML='';return}el.classList.add('closing');setTimeout(()=>{if(el.classList.contains('closing')){el.hidden=true;el.innerHTML='';el.classList.remove('closing')}},220)}
 A.pvclose=()=>closePV();
 A.pvopen=t=>openPV(pidOf(t),+t.dataset.i||0);
 /* a single picture, e.g. someone's profile photo */
-function openImage(url){if(!/^https?:|^data:/.test(String(url||'')))return;let el=$('#pv');if(!el){el=document.createElement('div');el.id='pv';el.className='pv';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)closePV()})}
- PV={id:null,i:0};el.classList.remove('closing');el.hidden=false;el.innerHTML=`<div class="pvin"><div class="pvtop"><span class="grow"></span><button class="ibtn" data-a="pvclose" aria-label="დახურვა">${ic('x')}</button></div><div class="pvframe"><div class="pvtrack"><div class="pvs"><img src="${esc(url)}" alt=""></div></div></div></div>`;document.documentElement.classList.add('pvopen')}
+function openImage(url,opt={}){if(!/^https?:|^data:/.test(String(url||'')))return;let el=$('#pv');if(!el){el=document.createElement('div');el.id='pv';el.className='pv';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)closePV()})}
+ PV={id:null,i:0};el.classList.remove('closing');el.classList.toggle('top',!!opt.top);el.hidden=false;el.innerHTML=`<div class="pvin"><div class="pvtop"><span class="grow"></span><button class="ibtn" data-a="pvclose" aria-label="დახურვა">${ic('x')}</button></div><div class="pvframe"><div class="pvtrack"><div class="pvs"><img src="${esc(url)}" alt=""></div></div></div></div>`;document.documentElement.classList.add('pvopen')}
 function popAct(id){const b=$(`.post[data-id="${id}"] .rwrap .act`);if(b){pop(b);burst(b)}}
 async function setReaction(id,emoji){const s=STAT.get(id)||blankStat(id),old=s.my_reaction;
  if(old){s.reactions[old]=Math.max(0,(s.reactions[old]||1)-1);if(!s.reactions[old])delete s.reactions[old]}
@@ -119,12 +119,12 @@ A.unrepost=async t=>{const id=pidOf(t),rid=+t.dataset.rid||RS.get(id)?.mine;clos
 A.quote=t=>{const id=pidOf(t),o=POSTS.get(id);if(!o)return;
  sheet(`<div class="ph-head cmphead"><button class="ibtn" data-a="close" aria-label="დახურვა">${ic('x')}</button><h2>ციტირება</h2><span class="sp"></span><button class="btn" id="q_pub" disabled>გაზიარება</button></div>
   <div class="ph-body cmp"><div class="cmpwho">${av('me',46)}<div class="grow"><b>${esc(ME.name)}</b><span class="sub">${ic('globe')}ყველა ნახავს</span></div></div><textarea id="q_t" class="ctext big" rows="3" maxlength="2000" placeholder="დაამატე შენი აზრი…" aria-label="შენი ტექსტი"></textarea>${quoteHTML(o,1)}</div>`,'cmpanel');
- const ta=$('#q_t'),b=$('#q_pub');ta.oninput=()=>{b.disabled=!ta.value.trim()};setTimeout(()=>ta.focus(),250);
+ const ta=$('#q_t'),b=$('#q_pub');mentionable(ta);ta.oninput=()=>{b.disabled=!ta.value.trim()};setTimeout(()=>ta.focus(),250);
  b.onclick=async()=>{const body=ta.value.trim();if(!body)return;b.disabled=true;b.textContent='ქვეყნდება…';
   try{const row=await q(sb.from('posts').insert({author:ME.id,body,repost_of:id}).select(POSTSEL).single());await hydrate([row]);const r=RS.get(id)||{post_id:id,n:0,mine:null};r.n++;RS.set(id,r);closeSheet();toast('გაზიარდა');
    const feed=$('#feed');if(feed)feed.insertAdjacentHTML('afterbegin',postHTML(row));rerenderPost(id)}catch(e){toast(rpErr(e));b.disabled=false;b.textContent='გაზიარება'}}};
 A.copylink=t=>{const id=pidOf(t);closeSheet();shareLink(location.origin+'/#post-'+id)};
-A.sendpost=async t=>{const id=pidOf(t);if(!POSTS.get(id))return;let convs=[];try{convs=await rpc('my_conversations')}catch(e){}await loadProfiles(convs.flatMap(c=>c.members||[]));
+A.sendpost=async t=>{const id=pidOf(t);if(!POSTS.get(id))return;let convs=[];try{convs=await myChats()}catch(e){}await loadProfiles(convs.flatMap(c=>c.members||[]));
  sheet(head('მესიჯით გაგზავნა')+`<div class="ph-body" style="padding:0"><div class="list">${convs.slice(0,40).map(c=>{const o=!c.is_group&&c.members?.[0];return `<button class="row" data-a="sendpostto" data-pid="${id}" data-c="${c.conv_id}">${o?av(o,42):`<span class="av gav" style="--s:42px;--h:${(c.conv_id*47)%360}">${ic('users')}</span>`}<span class="grow"><b>${esc(c.is_group?(c.title||'ჯგუფი'):pname(o))}</b></span><span class="spst">${ic('send')}</span></button>`}).join('')||empty('საუბრები ჯერ არ გაქვს','მიწერე მეგობარს და აქ გამოჩნდება.')}</div></div>`)};
 A.sendpostto=async t=>{const id=pidOf(t),p=POSTS.get(id),cid=+t.dataset.c;if(!p||t.dataset.sent)return;t.disabled=true;const u=p.page?{name:p.page.name}:(p.ap||prof(p.author)),m=pmedia(p)[0];
  try{await q(sb.from('messages').insert({conv_id:cid,sender:ME.id,body:location.origin+'/#post-'+id,media:{post:{id,by:String(u.name||'').slice(0,60),t:String(p.body||'').slice(0,140),img:m?(m.type==='video'?mPoster(m):mSm(m))||'':''}}}));t.dataset.sent=1;const x=$('.spst',t);if(x)x.innerHTML='<span class="ptag">გაიგზავნა</span>'}catch(e){toast(errMsg(e))}t.disabled=false};
@@ -161,15 +161,25 @@ A.editpost=t=>{const id=pidOf(t),p=POSTS.get(id);if(!p||p.author!==ME.id)return;
  const drawM=()=>{const el=$('#e_m');if(!el)return;el.innerHTML=E.media.map((m,i)=>`<div class="catt">${m.type==='video'?(mPoster(m)?`<img src="${esc(mPoster(m))}" alt="">`:`<video src="${esc(m.url)}" muted playsinline preload="metadata"></video>`):`<img src="${esc(mSm(m))}" alt="">`}<button type="button" data-erm="${i}" aria-label="${m.type==='video'?'ვიდეოს':'ფოტოს'} მოშორება">${ic('x')}</button></div>`).join('');$$('[data-erm]',el).forEach(b=>b.onclick=()=>{E.media.splice(+b.dataset.erm,1);drawM()})};
  const drawPl=()=>{const el=$('#e_pl');if(!el)return;el.innerHTML=(E.place?`<span class="cplchip">📍 ${esc(E.place.name)}<button type="button" id="e_plx" aria-label="ადგილის მოშორება">${ic('x')}</button></span>`:'')+`<button type="button" class="btn sm ghost" id="e_plc">${ic('pin')}${E.place?'ადგილის შეცვლა':'ადგილის მითითება'}</button>`;
   const x=$('#e_plx');if(x)x.onclick=()=>{E.place=null;drawPl()};$('#e_plc').onclick=async()=>{const pl=await pickPlace();if(pl){E.place=pl;drawPl()}}};
- drawM();drawPl();
+ drawM();drawPl();mentionable($('#e_t'));
  $('#e_save').onclick=async()=>{const b=$('#e_save'),body=$('#e_t').value.trim();
   if(p.repost_of&&!body){toast('ციტირებას ტექსტი სჭირდება');return}if(!p.repost_of&&!body&&!E.media.length&&!p.poll&&!E.place){toast('პოსტი ცარიელი ვერ დარჩება');return}
   const upd={body};if(!p.repost_of){upd.media=E.media;upd.place_id=E.place?E.place.id:null}b.disabled=true;
   try{const row=await q(sb.from('posts').update(upd).eq('id',id).eq('author',ME.id).select(POSTSEL).single());await hydrate([row]);closeSheet();rerenderPost(id);toast('შესწორდა')}catch(e){toast(errMsg(e));b.disabled=false}}};
 A.lightbox=t=>openPV(pidOf(t),+t.dataset.i||0);
 A.pmore=t=>{const id=pidOf(t),p=POSTS.get(id);if(!p)return;const mine=p.author===ME.id;
- sheet(head('პოსტი')+`<div class="reasons">${mine?`${p.repost_of&&!p.body?'':`<button data-a="editpost" data-pid="${id}">რედაქტირება</button>`}<button data-a="delpost" data-pid="${id}">პოსტის წაშლა</button>${p.page_id?`<button data-a="adnew" data-pid="${id}">რეკლამის გაშვება</button>`:''}`:`<button data-a="hidepost" data-pid="${id}">დამალვა ჩემს ფიდში</button><button data-a="report" data-type="post" data-id="${id}" data-u="${p.author}">საჩივარი პოსტზე</button><button class="warnbtn" data-a="block" data-u="${p.author}">ავტორის დაბლოკვა</button>`}
+ sheet(head('პოსტი')+`<div class="reasons">${String(p.body||'').trim()?`<button data-a="speakpost" data-pid="${id}">${ic('mic')} მოსმენა</button>`:''}${mine?`${p.repost_of&&!p.body?'':`<button data-a="editpost" data-pid="${id}">რედაქტირება</button>`}<button data-a="delpost" data-pid="${id}">პოსტის წაშლა</button>${p.page_id?`<button data-a="adnew" data-pid="${id}">რეკლამის გაშვება</button>`:''}`:`<button data-a="hidepost" data-pid="${id}">დამალვა ჩემს ფიდში</button><button data-a="report" data-type="post" data-id="${id}" data-u="${p.author}">საჩივარი პოსტზე</button><button class="warnbtn" data-a="block" data-u="${p.author}">ავტორის დაბლოკვა</button>`}
  ${isStaff()?`<button data-a="modhide" data-type="post" data-id="${id}" data-h="${p.hidden?0:1}">${p.hidden?'მოდერაცია: გამოჩენა':'მოდერაცია: დამალვა ყველასთვის'}</button>${!mine?`<button class="warnbtn" data-a="ban" data-u="${p.author}">ავტორის შეზღუდვა</button>`:''}`:''}</div>`,'short')};
+/* read a post aloud with the device's voice (Georgian needs a Georgian voice on the device) */
+let SPEAKING=null;
+function speak(text){const s=window.speechSynthesis;if(!s||!window.SpeechSynthesisUtterance){toast('ამ ბრაუზერს ხმამაღლა წაკითხვა არ შეუძლია');return}
+ if(s.speaking||s.pending){s.cancel();if(SPEAKING===text){SPEAKING=null;toast('შეჩერდა');return}}
+ const t=String(text||'').replace(/https?:\/\/\S+/g,'').trim().slice(0,4000);if(!t)return;
+ const ka=/[\u10A0-\u10FF]/.test(t),cy=/[\u0400-\u04FF]/.test(t),lang=ka?'ka':cy?'ru':'en',voices=s.getVoices(),v=voices.find(x=>String(x.lang||'').toLowerCase().startsWith(lang));
+ if(ka&&!v){toast('შენს მოწყობილობაზე ქართული ხმა არ არის. დააყენე ტელეფონის პარამეტრებში: „ტექსტის ხმად გადაყვანა“ → ქართული');return}
+ const u=new window.SpeechSynthesisUtterance(t);u.lang=v?.lang||({ka:'ka-GE',ru:'ru-RU',en:'en-US'})[lang];if(v)u.voice=v;u.rate=.95;u.onend=()=>{if(SPEAKING===text)SPEAKING=null};SPEAKING=text;s.speak(u);toast('იკითხება. შესაჩერებლად ისევ „მოსმენა“')}
+try{window.speechSynthesis?.getVoices();window.speechSynthesis?.addEventListener?.('voiceschanged',()=>{})}catch(e){}
+A.speakpost=t=>{const p=POSTS.get(pidOf(t));closeSheet();if(p)speak(p.body)};
 A.hidepost=t=>{LOCALHIDE[pidOf(t)]=1;store.set('hidden',LOCALHIDE);closeSheet();$$(`.post[data-id="${pidOf(t)}"]`).forEach(e=>e.remove());toast('პოსტი დაიმალა')};
 A.delpost=t=>{const id=pidOf(t);confirmSheet('პოსტის წაშლა','წაშლილ პოსტს ვეღარ აღადგენ.','წაშლა',async()=>{await q(sb.from('posts').delete().eq('id',id));if(PV&&PV.id===id)closePV();$$(`.rpw[data-orig="${id}"],.rpw[data-rid="${id}"]`).forEach(e=>e.remove());$$(`.post[data-id="${id}"]`).forEach(e=>e.remove());POSTS.delete(id);toast('პოსტი წაიშალა')},true)};
 A.modhide=async t=>{try{await rpc('admin_hide',{p_type:t.dataset.type,p_id:+t.dataset.id,p_hidden:t.dataset.h==='1'});closeSheet();toast(t.dataset.h==='1'?'დაიმალა ყველასთვის':'ისევ ჩანს');if(t.dataset.type==='post'){const p=POSTS.get(+t.dataset.id);if(p){p.hidden=t.dataset.h==='1';rerenderPost(p.id)}}}catch(e){toast(errMsg(e))}};
@@ -191,7 +201,7 @@ function setCReply(c){if(!CMT)return;CMT.reply=c?{id:c.parent_id||c.id,name:pnam
  bar.hidden=false;bar.innerHTML=`${ic('reply')}<div class="grow"><b>პასუხი: ${esc(String(pname(c.author)).split(' ')[0])}</b><span>${esc(String(c.body).slice(0,80))}</span></div><button type="button" class="ibtn sm" id="crbx" aria-label="პასუხის გაუქმება">${ic('x')}</button>`;$('#crbx').onclick=()=>setCReply(null);
  const un=prof(c.author).username;if(c.parent_id&&un&&c.author!==ME.id&&!i.value.includes('@'+un))i.value=`@${un} `+i.value;i.placeholder=`უპასუხე ${String(pname(c.author)).split(' ')[0]}-ს…`;i.focus()}
 async function openComments(id){const p=POSTS.get(id),pa=p?.author;CMT={post:id,rows:new Map(),liked:new Set(),reply:null};const st=CMT;
- sheet(head('კომენტარები')+`<div class="ph-body" id="cb">${skel(2)}</div><form class="ph-foot chatfoot cfoot" id="cf"><div class="replybar" id="crb" hidden></div><div class="chrow"><input class="field" id="cin" maxlength="1000" placeholder="დაწერე კომენტარი…" aria-label="კომენტარი" autocomplete="off"><button class="btn" aria-label="გაგზავნა">${ic('send')}</button></div></form>`,'',()=>{if(CMT===st)CMT=null});
+ sheet(head('კომენტარები')+`<div class="ph-body" id="cb">${skel(2)}</div><form class="ph-foot chatfoot cfoot" id="cf"><div class="replybar" id="crb" hidden></div><div class="chrow"><input class="field" id="cin" maxlength="1000" placeholder="დაწერე კომენტარი…" aria-label="კომენტარი" autocomplete="off"><button class="btn" aria-label="გაგზავნა">${ic('send')}</button></div></form>`,'',()=>{if(CMT===st)CMT=null});mentionable($('#cin'));
  try{const rows=await q(sb.from('comments').select(CSEL).eq('post_id',id).order('created_at').limit(400));rows.forEach(c=>st.rows.set(c.id,c));
   if(rows.length){try{(await q(sb.from('comment_likes').select('comment_id').eq('user_id',ME.id).in('comment_id',rows.map(c=>c.id).slice(0,400)))).forEach(x=>st.liked.add(x.comment_id))}catch(e){}}
   const kids=new Map();rows.forEach(c=>{if(c.parent_id&&st.rows.has(c.parent_id)){if(!kids.has(c.parent_id))kids.set(c.parent_id,[]);kids.get(c.parent_id).push(c)}});
@@ -210,6 +220,24 @@ A.cmlike=async t=>{const st=CMT,c=st?.rows.get(+t.dataset.cid);if(!c)return;cons
 A.delcomment=t=>{const cid=+t.dataset.cid,st=CMT;confirmSheet('კომენტარის წაშლა','წაიშლება კომენტარი და მისი პასუხებიც.','წაშლა',async()=>{await q(sb.from('comments').delete().eq('id',cid));if(!st)return;const n=1+[...st.rows.values()].filter(c=>c.parent_id===cid).length;st.rows.delete(cid);
  const th=$(`.cth[data-th="${cid}"]`);if(th)th.remove();else $(`.trow[data-cid="${cid}"]`)?.remove();const s=STAT.get(st.post);if(s){s.comments=Math.max(0,s.comments-n);rerenderPost(st.post)}},true,true)};
 
+/* @mentions: typing "@" suggests friends and people by username */
+function mentionable(el){if(!el||el._ment)return;el._ment=1;let box=null,tm,tok=0,list=[],sel=0;
+ const close=()=>{box?.remove();box=null;list=[]};
+ const pick=u=>{const v=el.value,pos=el.selectionStart??v.length,before=v.slice(0,pos).replace(/@([A-Za-z0-9_.]{0,24})$/,'@'+u.username+' ');el.value=before+v.slice(pos);try{el.setSelectionRange(before.length,before.length)}catch(e){}el.focus();close();el.dispatchEvent(new Event('input'))};
+ const show=l=>{list=l.slice(0,6);sel=0;if(!list.length){close();return}if(!box){box=document.createElement('div');box.className='mbox';box.setAttribute('role','listbox');document.body.appendChild(box)}
+  box.innerHTML=list.map((u,i)=>`<button type="button" role="option" data-i="${i}" aria-selected="${!i}">${av(u,30)}<span><b>${esc(u.name)}${vb(u)}</b><small>@${esc(u.username)}</small></span></button>`).join('');
+  $$('button',box).forEach(b=>{b.onmousedown=e=>e.preventDefault();b.onclick=()=>pick(list[+b.dataset.i])});
+  const r=el.getBoundingClientRect(),h=Math.min(260,list.length*48+8),below=innerHeight-r.bottom;box.style.left=Math.max(8,Math.min(r.left,innerWidth-Math.min(320,innerWidth-16)-8))+'px';box.style.width=Math.min(320,innerWidth-16)+'px';
+  if(below>h+8){box.style.top=(r.bottom+4)+'px';box.style.bottom='auto'}else{box.style.top='auto';box.style.bottom=(innerHeight-r.top+4)+'px'}};
+ el.addEventListener('input',()=>{const m=el.value.slice(0,el.selectionStart??el.value.length).match(/(^|[^A-Za-z0-9_.@])@([A-Za-z0-9_.]{0,24})$/);if(!m){close();return}const pre=m[2].toLowerCase(),my=++tok;
+  const local=[...PC.values()].filter(u=>u&&u.username&&u.id!==ME.id&&!BLOCKED.has(u.id)&&(String(u.username).toLowerCase().startsWith(pre)||String(u.name||'').toLowerCase().split(' ').some(w=>w.startsWith(pre)))).sort((a,b)=>(FRIENDS.has(b.id)?1:0)-(FRIENDS.has(a.id)?1:0));
+  show(local);clearTimeout(tm);if(pre.length>=2)tm=setTimeout(async()=>{try{const rows=await q(sb.from('profiles').select(PCOLS).ilike('username',pre.replace(/[%_\\]/g,'\\$&')+'%').eq('onboarded',true).neq('id',ME.id).limit(6));if(my!==tok||!el.isConnected)return;
+   rows.forEach(p=>PC.set(p.id,Object.assign(PC.get(p.id)||{},p)));const all=[...local];rows.forEach(r=>{if(r.username&&!all.some(x=>x.id===r.id)&&!BLOCKED.has(r.id))all.push(r)});show(all)}catch(e){}},250)});
+ el.addEventListener('keydown',e=>{if(!box||!list.length)return;if(e.key==='Escape'){e.stopPropagation();close();return}
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();sel=(sel+(e.key==='ArrowDown'?1:list.length-1))%list.length;$$('button',box).forEach((b,i)=>b.setAttribute('aria-selected',String(i===sel)));return}
+  if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();pick(list[sel])}});
+ el.addEventListener('blur',()=>setTimeout(close,180))}
+
 /* composer */
 let CMP=null;
 async function myPages(){try{return await q(sb.from('pages').select('id,name,hue,kind').eq('owner',ME.id))}catch(e){return []}}
@@ -225,7 +253,7 @@ async function compose(opt={}){CMP={files:[],poll:null,page:opt.page_id||null,gr
   <span class="cnt" id="cc">#ჰეშთეგი · @მომხმარებელი · 0/2000</span></div>
   <div class="ph-foot cmptools" role="group" aria-label="დაამატე პოსტს"><button class="ctool t-img" id="c_img"><span>${ic('image')}</span>ფოტო</button><button class="ctool t-vid" id="c_vid"><span>${ic('clips')}</span>ვიდეო</button>${opt.clip?'':`<button class="ctool t-poll" id="c_poll"><span>${ic('poll')}</span>გამოკითხვა</button>`}<button class="ctool t-pl" id="c_pl"><span>${ic('pin')}</span>ადგილი</button><button class="ctool t-sch" id="c_sch"><span>${ic('clock')}</span>მოგვიანებით</button></div>`,'cmpanel');
  const updPub=()=>{const b=$('#c_pub');if(b&&CMP)b.disabled=!($('#ct').value.trim()||CMP.files.length||CMP.poll||CMP.place)};CMP.upd=updPub;
- const ta=$('#ct');ta.oninput=()=>{$('#cc').textContent=`#ჰეშთეგი · @მომხმარებელი · ${ta.value.length}/2000`;updPub();$('#tlc').hidden=!(ta.value.trim().length>5&&detect(ta.value)==='ka-lat');clearTimeout(CMP.lt);CMP.lt=setTimeout(checkLink,700)};
+ const ta=$('#ct');mentionable(ta);ta.oninput=()=>{$('#cc').textContent=`#ჰეშთეგი · @მომხმარებელი · ${ta.value.length}/2000`;updPub();$('#tlc').hidden=!(ta.value.trim().length>5&&detect(ta.value)==='ka-lat');clearTimeout(CMP.lt);CMP.lt=setTimeout(checkLink,700)};
  const drawLink=()=>{const el=$('#clink');if(!el)return;el.innerHTML=CMP.link&&!CMP.files.length?`<div class="clinkw">${linkCard(CMP.link)}<button type="button" class="ibtn sm" id="c_lrm" aria-label="ბარათის მოშორება">${ic('x')}</button></div>`:'';const x=$('#c_lrm');if(x)x.onclick=()=>{CMP.linkOff=CMP.linkUrl;CMP.link=null;drawLink()}};
  const checkLink=async()=>{const m=(ta.value.match(/https?:\/\/[^\s<]+/)||[])[0];if(!m){CMP.link=null;CMP.linkUrl=null;drawLink();return}if(m===CMP.linkUrl||m===CMP.linkOff)return;CMP.linkUrl=m;const d=await unfurl(m);if(CMP&&CMP.linkUrl===m){CMP.link=d;drawLink()}};
  const pad=n=>String(n).padStart(2,'0'),dl=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
