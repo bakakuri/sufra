@@ -29,7 +29,7 @@ function drawFS(){const w=FSW;if(!w)return;const i=w.step;
  let body='',main='';
  if(i===0){body=`<div class="fsstep"><button class="fsav" data-a="fsphoto" aria-label="ფოტოს არჩევა">${ME.avatar_url?av('me',120):`<span class="fsph">${ic('camera')}</span>`}<i>${ic('camera')}</i></button><h3>${ME.avatar_url?'კარგი ფოტოა!':'დაამატე პროფილის ფოტო'}</h3><p class="muted">ფოტოთი მეგობრები და ნაცნობები უფრო ადვილად გიცნობენ.</p></div>`;
   main=ME.avatar_url?`<button class="btn" data-a="fsnext">შემდეგი</button>`:`<button class="btn" data-a="fsphoto">ფოტოს არჩევა</button>`}
- else if(i===1){body=`<div class="fsstep left"><h3>საიდან ხარ?</h3><p class="muted">ქალაქით და კუთხით მოგძებნიან თანასოფლელები, შენი კუთხის ჯგუფშიც ავტომატურად გაწევრიანდები.</p>
+ else if(i===1){body=`<div class="fsstep left"><h3>საიდან ხარ?</h3><p class="muted">ქალაქით და კუთხით მოგძებნიან თანასოფლელები, „ჯგუფებში“ კი შენი კუთხის ჯგუფებს ნახავ.</p>
   <label class="fld">სად ცხოვრობ<input id="fs_c" list="fscities" maxlength="60" value="${esc(ME.city||'')}" placeholder="მაგ. თბილისი"></label><datalist id="fscities">${CITIES.map(c=>`<option value="${c}">`).join('')}</datalist>
   <label class="fld">მშობლიური კუთხე<select id="fs_r"><option value="">აირჩიე</option>${REGIONS.map(r=>`<option${ME.home_region===r?' selected':''}>${r}</option>`).join('')}</select></label>
   <label class="fld">სოფელი ან ქალაქი (არასავალდებულო)<input id="fs_p" maxlength="60" value="${esc(ME.home_place||'')}" placeholder="მაგ. სვირი, ონი, ზესტაფონი"></label></div>`;
@@ -45,12 +45,12 @@ function fsNext(){const w=FSW;if(!w)return;if(w.step>=3){FSW=null;closeSheet();l
 A.fsnext=()=>fsNext();
 A.fsphoto=async()=>{const before=ME.avatar_url;await setMyPic('avatar');if(!FSW)return;if(ME.avatar_url&&ME.avatar_url!==before){FSW.p.photo=true;fsNext()}else drawFS()};
 A.fsplace=async t=>{const c=$('#fs_c').value.trim(),r=$('#fs_r').value,pl=$('#fs_p').value.trim();if(!c&&!r&&!pl){fsNext();return}t.disabled=true;
- const upd={city:c,home_region:r||null,home_place:pl||null},changed=upd.home_region!==(ME.home_region||null)||upd.home_place!==(ME.home_place||null);
- try{await q(sb.from('profiles').update(upd).eq('id',ME.id));Object.assign(ME,upd);if(changed&&(upd.home_region||upd.home_place))rpc('join_place_groups').catch(()=>{});renderSide();fsNext()}catch(e){toast(errMsg(e));t.disabled=false}};
+ const upd={city:c,home_region:r||null,home_place:pl||null};
+ try{await q(sb.from('profiles').update(upd).eq('id',ME.id));Object.assign(ME,upd);renderSide();fsNext()}catch(e){toast(errMsg(e));t.disabled=false}};
 async function fsPeople(){const el=$('#fs_l');if(!el)return;let s=[];try{s=await rpc('friend_suggestions',{p_limit:15})}catch(e){}
  if(s.length<6){try{const more=await q(sb.from('profiles').select(PCOLS).eq('onboarded',true).neq('id',ME.id).order('last_seen',{ascending:false,nullsFirst:false}).limit(20));more.forEach(p=>{if(p.id!==ME.id&&!s.some(x=>x.id===p.id)&&!FRIENDS.has(p.id)&&!BLOCKED.has(p.id))s.push(p)})}catch(e){}}
  s=s.filter(p=>p.id!==ME.id);s.forEach(p=>PC.set(p.id,Object.assign(PC.get(p.id)||{},p)));const box=$('#fs_l');if(!box)return;
  box.innerHTML=s.slice(0,15).map(p=>`<div class="row fsp">${av(p,44)}<span class="grow"><b>${esc(p.name)}${vb(p)}</b><span class="sub">${p.mutual?p.mutual+' საერთო მეგობარი':esc([p.city,p.home_region].filter(Boolean).join(' · ')||'სუფრაზეა')}</span></span>${FRIENDS.has(p.id)||PENDING_OUT.has(p.id)?'<span class="ptag">გაგზავნილია</span>':`<button class="btn sm" data-a="fsadd" data-u="${p.id}">დამატება</button>`}</div>`).join('')||empty('ჯერ ვერავინ ვიპოვეთ','მოგვიანებით სცადე ან მოიწვიე მეგობრები.','<button class="btn ghost" data-a="invite">მეგობრის მოწვევა</button>')}
-A.fsadd=async t=>{const id=t.dataset.u;t.disabled=true;try{if(PENDING_IN.has(id)){await q(sb.from('friendships').update({status:'accepted'}).eq('requester',id).eq('addressee',ME.id));PENDING_IN.delete(id);FRIENDS.add(id)}else{await q(sb.from('friendships').insert({requester:ME.id,addressee:id}));PENDING_OUT.add(id)}
+A.fsadd=async t=>{const id=t.dataset.u;t.disabled=true;try{if(PENDING_IN.has(id)){await q(sb.from('friendships').update({status:'accepted'}).eq('requester',id).eq('addressee',ME.id));PENDING_IN.delete(id);FRIENDS.add(id);renderBadges()}else{await q(sb.from('friendships').insert({requester:ME.id,addressee:id}));PENDING_OUT.add(id)}
  t.outerHTML='<span class="ptag">გაგზავნილია</span>';if(FSW?.p){FSW.p.people++;const n=$('#fs_n');if(n){n.textContent=Math.min(FSW.p.people,5);pop(n.parentElement)}if(FSW.p.people===5)toast('ყოჩაღ! 5 ადამიანი დაემატა')}}catch(e){toast(errMsg(e));t.disabled=false}};
 A.fspost=t=>{const k=t.dataset.k;const text=k!=null?FS_IDEAS()[+k]||'':'';FSW=null;compose({text})};

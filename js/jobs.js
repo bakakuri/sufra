@@ -52,12 +52,16 @@ PG.myjobs={r(){view.innerHTML=pgHead('ჩემი ვაკანსიებ�
   el.innerHTML=`<h3 class="sec2">ჩემი გამოქვეყნებული</h3>${mine.length?`<div class="joblist">${mine.map(jobCard).join('')}</div>`:'<p class="hint" style="padding:0 16px">ჯერ არცერთი</p>'}<h3 class="sec2">სად გამოვეხმაურე</h3>${apps.length?`<div class="list">${apps.map(a=>{const j=jobs.find(x=>x.id===a.job_id);return j?`<button class="row" data-a="page" data-p="job" data-arg="${j.id}"><span class="jlogo" style="--h:${(j.id*53)%360}">${esc((j.company||j.title)[0])}</span><span class="grow"><b>${esc(j.title)}</b><span class="sub">${esc(j.company||'')} · ${APP_ST[a.status]}</span></span></button>`:''}).join('')}</div>`:'<p class="hint" style="padding:0 16px">ჯერ არცერთი</p>'}`}).catch(e=>{const el=$('#mjb');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))})}};
 
 /* CV view and editor */
-function cvHTML(cv,uid){const list=(a,f)=>(Array.isArray(a)?a:[]).filter(x=>x&&(x.a||x.b)).map(f).join('');
- return `<div class="cvv"><div class="row" style="padding:0">${av(uid,56)}<span class="grow"><b>${esc(pname(uid))}</b><span class="sub">${esc(cv.headline||'')}</span></span></div>${cv.summary?`<p>${esc(cv.summary)}</p>`:''}
- ${(cv.experience||[]).length?`<h3>გამოცდილება</h3>${list(cv.experience,x=>`<div class="cvi"><b>${esc(x.a||'')}</b><span>${esc(x.b||'')}${x.c?' · '+esc(x.c):''}</span></div>`)}`:''}
- ${(cv.education||[]).length?`<h3>განათლება</h3>${list(cv.education,x=>`<div class="cvi"><b>${esc(x.a||'')}</b><span>${esc(x.b||'')}${x.c?' · '+esc(x.c):''}</span></div>`)}`:''}
- ${(cv.skills||[]).length?`<h3>უნარები</h3><div class="chips">${cv.skills.map(s=>`<span>${esc(s)}</span>`).join('')}</div>`:''}
- ${(cv.languages||[]).length?`<h3>ენები</h3><div class="chips">${cv.languages.map(s=>`<span>${esc(s)}</span>`).join('')}</div>`:''}${cv.phone?`<p class="kv">${ic('phone')}<a href="tel:${esc(cv.phone.replace(/[^+0-9]/g,''))}">${esc(cv.phone)}</a></p>`:''}</div>`}
+function cvHTML(cv,uid){const rows=a=>(Array.isArray(a)?a:[]).filter(x=>x&&(x.a||x.b)),exp=rows(cv.experience),edu=rows(cv.education),sk=(cv.skills||[]).filter(Boolean),lg=(cv.languages||[]).filter(Boolean),p=prof(uid);
+ const item=(x,i)=>`<li class="cvit"><span class="cvdot">${ic(i)}</span><div class="grow"><b>${esc(x.a||x.b)}</b>${x.a&&x.b?`<span>${esc(x.b)}</span>`:''}</div>${x.c?`<em>${esc(x.c)}</em>`:''}</li>`;
+ const sec=(t,i,body)=>`<section class="cvsec"><h3>${ic(i)}${t}</h3>${body}</section>`,tel=String(cv.phone||'').replace(/[^+0-9]/g,'');
+ return `<div class="cvv"><section class="cvhero">${av(uid,68)}<div class="grow"><h2>${esc(pname(uid))}${vb(uid)}</h2>${cv.headline?`<p class="cvhl">${esc(cv.headline)}</p>`:''}${p.city?`<span class="cvmeta">${ic('pin')}${esc(p.city)}</span>`:''}</div></section>
+ ${cv.summary?sec('ჩემ შესახებ','user',`<div class="cvsum">${tx(cv.summary)}</div>`):''}
+ ${exp.length?sec('გამოცდილება','work',`<ul class="cvtl">${exp.map(x=>item(x,'work')).join('')}</ul>`):''}
+ ${edu.length?sec('განათლება','school',`<ul class="cvtl">${edu.map(x=>item(x,'school')).join('')}</ul>`):''}
+ ${sk.length?sec('უნარები','star',`<div class="cvchips">${sk.map(s=>`<span>${esc(s)}</span>`).join('')}</div>`):''}
+ ${lg.length?sec('ენები','globe',`<div class="cvchips lang">${lg.map(s=>`<span>${esc(s)}</span>`).join('')}</div>`):''}
+ ${tel?sec('კონტაქტი','phone',`<a class="cvcall" href="tel:${esc(tel)}"><span class="cvdot">${ic('phone')}</span><span class="grow"><b>${esc(cv.phone)}</b><small>დარეკვა</small></span>${ic('back')}</a>`):''}</div>`}
 PG.cv={async r(){view.innerHTML=pgHead('ჩემი CV')+`<div id="cvb">${skel(2)}</div>`;let cv=null;try{cv=await q(sb.from('cvs').select('*').eq('user_id',ME.id).maybeSingle())}catch(e){}
  cv=cv||{headline:'',summary:'',experience:[],education:[],skills:[],languages:['ქართული'],phone:'',visible:false};const el=$('#cvb');if(!el)return;
  const rows=(k,ph)=>`<div class="cvrows" data-k="${k}">${(cv[k].length?cv[k]:[{}]).map(x=>cvRow(x,ph)).join('')}</div><button type="button" class="btn sm ghost" data-addrow="${k}">${ic('plus')}დამატება</button>`;

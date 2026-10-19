@@ -20,7 +20,7 @@ function pollBlock(p,s){if(!p.poll||!Array.isArray(p.poll.opts))return '';const 
 /* a post: photos and videos fill the card with the author on top and grading and actions at the bottom, the caption sits underneath */
 const pmedia=p=>(Array.isArray(p.media)?p.media:[]).filter(m=>m&&/^https?:|^data:/.test(String(m.url||'')));
 function whoHTML(p,u,pg){const tags=`${p.grp?`<button class="ptag" data-a="group" data-id="${p.grp.id}">${esc(p.grp.name)}</button>`:''}${p.pl?`<button class="ptag plc" data-a="page" data-p="place" data-arg="${p.pl.id}">📍 ${esc(p.pl.name)}</button>`:''}${p.hidden?'<span class="ptag warn">დამალულია</span>':''}${p.pending?'<span class="ptag warn">ელოდება დამტკიცებას</span>':''}${p.ad?'<span class="ptag ad">რეკლამა</span>':''}`;
- return pg?`<button class="pwho" data-a="pagev" data-id="${pg.id}" aria-label="${esc(pg.name)}">${avAny({n:pg.name,h:pg.hue},38).replace('class="av"','class="av sq"')}</button><span class="pwt"><span class="pwn"><button class="pname" data-a="pagev" data-id="${pg.id}"><b>${esc(pg.name)}${pg.verified?vb({verified:1}):''}</b></button><span class="ptag">${pg.kind==='business'?'ბიზნესი':'არხი'}</span>${tags}</span><span class="pwtime">${ago(p.created_at)}${p.edited_at?' · რედაქტირებული':''}</span></span>`
+ return pg?`<button class="pwho" data-a="pagev" data-id="${pg.id}" aria-label="${esc(pg.name)}">${avAny({n:pg.name,h:pg.hue,u:pg.avatar_url},38).replace('class="av"','class="av sq"')}</button><span class="pwt"><span class="pwn"><button class="pname" data-a="pagev" data-id="${pg.id}"><b>${esc(pg.name)}${pg.verified?vb({verified:1}):''}</b></button><span class="ptag">${pg.kind==='business'?'ბიზნესი':'არხი'}</span>${tags}</span><span class="pwtime">${ago(p.created_at)}${p.edited_at?' · რედაქტირებული':''}</span></span>`
   :`<button class="pwho" data-a="user" data-u="${u.id}" aria-label="${esc(u.name)}">${av(u,38)}</button><span class="pwt"><span class="pwn"><button class="pname" data-a="user" data-u="${u.id}"><b>${esc(u.name)}${vb(u)}</b></button>${tags}</span><span class="pwtime">${ago(p.created_at)}${p.edited_at?' · რედაქტირებული':''}</span></span>`}
 /* grading: only for photos, never for your own post (you still see the average) */
 function gradeHTML(p,s){if(!pmedia(p).some(x=>x.type==='image'))return '';const sum=s.grade_n?`<em>საშ. ${s.grade_avg} · ${s.grade_n}</em>`:'';
@@ -57,7 +57,7 @@ function postHTML(p){if(p.repost_of&&!String(p.body||'').trim()){const o=POSTS.g
    ${descHTML(p,2)}${pollBlock(p,s)}</article>`}
  return `<article class="${cls} pc" data-id="${p.id}"><div class="pchead">${whoHTML(p,u,pg)}</div>
   ${media.length?`<button class="ecoimg" data-a="ecopost" data-pid="${p.id}">${ic(media.some(x=>x.type==='video')?'clips':'image')}<span>${media.length>1?media.length+' ფაილი':media[0].type==='video'?'ვიდეო':'ფოტო'} · დააჭირე ჩასატვირთად</span></button>`:''}
-  ${descHTML(p,6)}${p.repost_of?quoteHTML(POSTS.get(p.repost_of)):''}${p.link&&!media.length&&!p.repost_of?linkCard(p.link):''}${pollBlock(p,s)}${actsHTML(p,s)}</article>`}
+  ${descHTML(p,6)}${p.repost_of?quoteHTML(POSTS.get(p.repost_of)):''}${p.link&&!media.length&&!p.repost_of?linkCard(p.link):''}${pollBlock(p,s)}${gradeHTML(p,s)}${actsHTML(p,s)}</article>`}
 const pidOf=t=>+(t.dataset.pid||t.closest('.post,[data-pv]')?.dataset.id||t.closest('[data-pv]')?.dataset.pv);
 function rerenderPost(id){$$(`.post[data-id="${id}"]`).forEach(el=>{const p=POSTS.get(id);if(!p)return;const tr=$('.pmtrack',el),x=tr?tr.scrollLeft:0;el.outerHTML=postHTML(p);if(x){const n=$(`.post[data-id="${id}"] .pmtrack`);if(n){n.scrollLeft=x;pmSync(n)}}});if(PV&&PV.id===id)refreshPV()}
 /* carousel: counter, dots and arrows follow the swipe */
@@ -101,8 +101,15 @@ A.react=t=>{const id=pidOf(t),s=STAT.get(id);if(s&&s.my_reaction){setReaction(id
 A.pick=t=>setReaction(pidOf(t),t.dataset.e);
 A.ecopost=t=>{const p=POSTS.get(pidOf(t));if(p){p._eco=true;rerenderPost(p.id)}};
 A.dbl=t=>{const now=Date.now();if(now-(t._l||0)<330){t._l=0;const id=pidOf(t),b=$('.burst',t);if(b){b.classList.remove('go');void b.offsetWidth;b.classList.add('go')}const s=STAT.get(id);if(!s||s.my_reaction!=='❤️')setTimeout(()=>setReaction(id,'❤️'),500)}else t._l=now};
-A.grade=async t=>{const id=pidOf(t),g=t.dataset.g,s=STAT.get(id)||blankStat(id);if(POSTS.get(id)?.author===ME.id){toast('საკუთარ პოსტს ვერ შეაფასებ');return}s.my_grade=g;STAT.set(id,s);$$('button',t.parentElement).forEach(b=>b.classList.toggle('on',b===t));pop(t);
- try{await q(sb.from('post_grades').upsert({post_id:id,user_id:ME.id,grade:g},{onConflict:'post_id,user_id'}));toast(g==='5+'?'„5+“ გაეგზავნა ავტორს':'შეფასება შენახულია')}catch(e){toast(errMsg(e))}};
+const gval=x=>x==='5+'?6:+x;
+function refreshGrade(id){const p=POSTS.get(id);if(!p)return;const s=STAT.get(id)||blankStat(id),h=gradeHTML(p,s);$$(`.post[data-id="${id}"] .grade,[data-pv="${id}"] .grade`).forEach(el=>{el.outerHTML=h});$$(`.pgt[data-pid="${id}"] .pgg`).forEach(el=>{el.outerHTML=gridGrade(p,s)})}
+A.grade=async t=>{const id=pidOf(t),g=t.dataset.g,p=POSTS.get(id),s=STAT.get(id)||blankStat(id);if(p?.author===ME.id){toast('საკუთარ ფოტოს ვერ შეაფასებ');return}
+ const prev=s.my_grade;if(prev===g)return;const old={my_grade:s.my_grade,grade_n:s.grade_n,grade_avg:s.grade_avg},n=s.grade_n||0,avg=+s.grade_avg||0;
+ s.my_grade=g;s.grade_n=prev?n:n+1;s.grade_avg=Math.round((avg*n-(prev?gval(prev):0)+gval(g))/s.grade_n*10)/10;STAT.set(id,s);refreshGrade(id);
+ const nb=$(`.post[data-id="${id}"] .grade button[data-g="${g}"],[data-pv="${id}"] .grade button[data-g="${g}"]`);if(nb)pop(nb);
+ try{const paid=await rpc('grade_photo',{p_post:id,p_grade:g});
+  toast(prev?'შეფასება შეიცვალა':(g==='5+'?'„5+“ გაიგზავნა':'შეფასება გაიგზავნა')+(paid>0?` · ავტორს +${paid} მონეტა`:''))}
+ catch(e){Object.assign(s,old);STAT.set(id,s);refreshGrade(id);toast(errMsg(e))}};
 A.vote=async t=>{const id=pidOf(t),i=+t.dataset.i,s=STAT.get(id)||blankStat(id);if(s.my_vote!=null&&s.my_vote!==i){s.votes[s.my_vote]=Math.max(0,(s.votes[s.my_vote]||1)-1)}if(s.my_vote!==i)s.votes[i]=(s.votes[i]||0)+1;s.my_vote=i;STAT.set(id,s);rerenderPost(id);
  try{await q(sb.from('poll_votes').upsert({post_id:id,user_id:ME.id,opt:i},{onConflict:'post_id,user_id'}))}catch(e){toast(errMsg(e))}};
 A.save=async t=>{const id=pidOf(t),s=STAT.get(id)||blankStat(id);s.saved=!s.saved;STAT.set(id,s);rerenderPost(id);toast(s.saved?'შენახულია. ნახე პროფილში → შენახული':'შენახულიდან ამოიშალა');
@@ -240,7 +247,7 @@ function mentionable(el){if(!el||el._ment)return;el._ment=1;let box=null,tm,tok=
 
 /* composer */
 let CMP=null;
-async function myPages(){try{return await q(sb.from('pages').select('id,name,hue,kind').eq('owner',ME.id))}catch(e){return []}}
+async function myPages(){try{return await q(sb.from('pages').select('id,name,hue,kind,avatar_url').eq('owner',ME.id))}catch(e){return []}}
 async function compose(opt={}){CMP={files:[],poll:null,page:opt.page_id||null,group:opt.group_id||null,clip:!!opt.clip,place:opt.place||null};const pages=opt.group_id?[]:await myPages();
  const title=opt.clip?'ახალი კლიპი':opt.group_id?'პოსტი ჯგუფში':'ახალი პოსტი';
  sheet(`<div class="ph-head cmphead"><button class="ibtn" data-a="close" aria-label="დახურვა">${ic('x')}</button><h2>${title}</h2><span class="sp"></span><button class="btn" id="c_pub" disabled>გამოქვეყნება</button></div>

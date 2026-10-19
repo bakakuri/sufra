@@ -22,6 +22,7 @@ function text(kind: string, name: string, ref: Record<string, string>): string {
     case "comment_reply": return `${name} გიპასუხა: ${ref.text ?? ""}`;
     case "comment_like": return `${name} · მოიწონა შენი კომენტარი`;
     case "repost": return `${name} · ${String(ref.quote) === "true" ? "გააზიარა შენი პოსტი თავისი სიტყვით" : "გააზიარა შენი პოსტი"}`;
+    case "grade_plus": return `${name} · შენს ფოტოს „5+“ დაუწერა${Number(ref.coins) > 0 ? ` (+${ref.coins} მონეტა)` : ""}`;
     case "mention": return `${name} მოგიხსენია${ref.comment ? " კომენტარში" : ""}: ${ref.text ?? ""}`;
     case "msg_react": return `${name} · ${ref.emoji ?? "❤️"} შენს მესიჯზე`;
     case "story_react": return `${name} · ${ref.emoji ?? "❤️"} შენს ისტორიაზე`;
@@ -74,7 +75,7 @@ function route(kind: string, ref: Record<string, string>): string {
   if (kind === "message" && ref.conv) return `/#chat-${ref.conv}`;
   if (kind === "repost" && ref.post) return `/#post-${String(ref.quote) === "true" && ref.by ? ref.by : ref.post}`;
   if ((kind === "react" || kind === "comment" || kind === "comment_reply" || kind === "comment_like") && ref.post) return `/#post-${ref.post}`;
-  if (kind === "mention" && ref.post) return `/#post-${ref.post}`;
+  if ((kind === "mention" || kind === "grade_plus") && ref.post) return `/#post-${ref.post}`;
   if (kind === "msg_react" && ref.conv) return `/#chat-${ref.conv}`;
   if (kind.startsWith("event_") && ref.event) return `/#event-${ref.event}`;
   if (kind.startsWith("album_") && ref.album) return `/#album-${ref.album}`;

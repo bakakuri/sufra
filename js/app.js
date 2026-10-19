@@ -5,13 +5,15 @@ const today=()=>new Date().toISOString().slice(0,10);
 
 function renderTop(){if(!ME)return;$('#top').innerHTML=`<button class="logo" data-a="home" aria-label="სუფრა, მთავარზე დაბრუნება">სუფრა</button><span class="sp"></span>
  <button class="coinchip${ME.last_bonus===today()?'':' bonus'}" data-a="page" data-p="coins" aria-label="მონეტები">${ic('coin')}<span id="coinv">${ME.coins??0}</span></button>
- <button class="ibtn" data-a="search" aria-label="ძიება">${ic('search')}</button>
- <button class="ibtn" data-a="menu" aria-label="სერვისები">${ic('grid')}</button>
+ <span class="hicons"><button class="ibtn" data-a="search" aria-label="ძიება">${ic('search')}</button>
+ <button class="ibtn" data-a="chats" aria-label="მიმოწერა">${ic('msg')}<span class="dot" id="dm" hidden></span></button>
  <button class="ibtn" data-a="notifs" aria-label="შეტყობინებები">${ic('bell')}<span class="dot" id="dn" hidden></span></button>
- <button class="ibtn" data-a="chats" aria-label="მიმოწერა">${ic('msg')}<span class="dot" id="dm" hidden></span></button>`;renderBadges()}
+ <button class="ibtn" data-a="page" data-p="friends" aria-label="მეგობრები">${ic('users')}<span class="dot" id="df" hidden></span></button>
+ <button class="ibtn" data-a="guests" aria-label="სტუმრები">${ic('eye')}<span class="dot" id="dg" hidden></span></button>
+ <button class="ibtn" data-a="menu" aria-label="სერვისები">${ic('grid')}</button></span>`;renderBadges()}
 function renderTabs(){$('#tabs').innerHTML='<span class="tabind" aria-hidden="true"></span>'+TABS.map(([k,l,i])=>`<button class="tab" data-tab="${k}" aria-current="${k===S.tab}">${ic(i)}<span>${l}</span><i class="tdot" hidden></i></button>`).join('')}
 function renderBadges(){const set=(id,n)=>{const d=$('#'+id);if(!d)return;const was=d.hidden?0:parseInt(d.textContent,10)||0;d.hidden=!n;d.textContent=n>99?'99+':String(n);if(n>was)pop(d)};
- set('dn',S.unreadNotes);set('dm',S.unreadMsgs);set('dn2',S.unreadNotes);set('dm2',S.unreadMsgs);
+ set('dn',S.unreadNotes);set('dm',S.unreadMsgs);set('dn2',S.unreadNotes);set('dm2',S.unreadMsgs);set('df',typeof PENDING_IN!=='undefined'?PENDING_IN.size:0);set('dg',S.newGuests||0);
  const me=$('.tab[data-tab="me"] .tdot');if(me)me.hidden=!(typeof PENDING_IN!=='undefined'&&PENDING_IN.size);
  const tot=(S.unreadNotes||0)+(S.unreadMsgs||0);document.title=tot?`(${tot}) სუფრა`:'სუფრა';
  try{if(tot&&navigator.setAppBadge)navigator.setAppBadge(tot);else if(navigator.clearAppBadge)navigator.clearAppBadge()}catch(e){}}
@@ -83,7 +85,7 @@ function listenNotes(){sb.channel('notes-'+ME.id).on('postgres_changes',{event:'
 async function onNote(n){const r=n.ref||{};if(n.actor)try{await loadProfiles([n.actor])}catch(e){}
  const who=n.actor?`${av(n.actor,36)}<span class="grow"><b>${esc(pname(n.actor))}</b>`:'<span class="grow">';
  if(n.kind==='message'){if(S.openConv===r.conv)return;S.unreadMsgs++;renderBadges();banner(`${who}<span>${esc(r.text||'ახალი შეტყობინება')}</span></span>`,()=>openChat(+r.conv));return}
- if(n.kind==='friend_req'&&n.actor){PENDING_IN.add(n.actor)}else if(n.kind==='friend_ok'&&n.actor){FRIENDS.add(n.actor);PENDING_OUT.delete(n.actor)}else if(n.kind==='verified'){ME.verified=true}
+ if(n.kind==='friend_req'&&n.actor){PENDING_IN.add(n.actor);if(S.page?.id==='friends')rp()}else if(n.kind==='friend_ok'&&n.actor){FRIENDS.add(n.actor);PENDING_OUT.delete(n.actor)}else if(n.kind==='verified'){ME.verified=true}
  S.unreadNotes++;renderBadges();
  banner(`${who}<span>${esc((NOTE_TXT[n.kind]||(()=>'ახალი შეტყობინება'))(r))}</span></span>`,()=>{const t=document.createElement('button');t.dataset.k=n.kind;t.dataset.r=JSON.stringify(r);t.dataset.u=n.actor||'';A.note(t)})}
 
