@@ -34,7 +34,7 @@ A.chatwith=t=>openChatWith(t.dataset.u);
 async function openChatWith(uid,draft){try{const c=await rpc('start_dm',{other:uid});openChat(c,draft)}catch(e){toast(errMsg(e))}}
 
 /* one message */
-const snip=m=>!m?'შეტყობინება':m.deleted?'წაშლილი შეტყობინება':m.kind==='voice'?'🎤 ხმოვანი':m.kind==='image'?'📷 ფოტო':m.media?.sticker?'სტიკერი':m.media?.card?'🎉 მისალოცი ბარათი':m.media?.loc?'📍 ლოკაცია':m.media?.post?'📝 პოსტი':m.media?.story?(m.media.act==='react'?m.body+' ისტორიაზე':'ისტორიაზე: '+String(m.body||'').slice(0,80)):String(m.body||'').slice(0,90);
+const snip=m=>!m?'შეტყობინება':m.deleted?'წაშლილი შეტყობინება':m.kind==='voice'?'🎤 ხმოვანი':m.kind==='image'?'📷 ფოტო':m.media?.sticker?'სტიკერი':m.media?.card?'🎉 მისალოცი ბარათი':m.media?.loc?'📍 ლოკაცია':m.media?.post?'📝 პოსტი':m.media?.call?'📹 ჯგუფური ვიდეოზარი':m.media?.story?(m.media.act==='react'?m.body+' ისტორიაზე':'ისტორიაზე: '+String(m.body||'').slice(0,80)):String(m.body||'').slice(0,90);
 const hhmm=ts=>new Date(ts).toLocaleTimeString('ka-GE',{hour:'2-digit',minute:'2-digit'});
 /* a small map made of OpenStreetMap tiles, centred on the point (no map library needed) */
 function locCard(l){const lat=+l.lat,lng=+l.lng;if(!isFinite(lat)||!isFinite(lng))return '';const href=`https://www.openstreetmap.org/?mlat=${lat.toFixed(6)}&mlon=${lng.toFixed(6)}#map=16/${lat.toFixed(5)}/${lng.toFixed(5)}`;
@@ -64,6 +64,7 @@ function msgHTML(m){const me=m.sender===ME.id,u=prof(m.sender);let body;
  else if(m.media?.card)body=cardHTML(m.media.card);
  else if(m.media?.loc)body=locCard(m.media.loc);
  else if(m.media?.post)body=postMsg(m.media.post,me);
+ else if(m.media?.call&&/^\d{1,18}$/.test(String(m.media.call)))body=`<button class="callmsg${me?' me':''}" data-a="joincall" data-r="${m.media.call}"><span class="cmi">${ic('video')}</span><span class="grow"><b>ჯგუფური ვიდეოზარი</b><small>${esc(String(pname(m.sender)).split(' ')[0])} იწყებს · შემოერთება</small></span></button>`;
  else body=(me?`<div class="bubble me">${linkify(m.body)}</div>`:tx(m.body,'bubble'))+(m.media?.link?linkCard(m.media.link,'inchat'):'');
  const r=m.reply_to&&!m.deleted?CHAT?.msgs.get(m.reply_to):null;
  const rq=m.reply_to&&!m.deleted?`<button class="rquote" data-a="jumpmsg" data-mid="${m.reply_to}"><b>${r?esc(String(pname(r.sender)).split(' ')[0]):'პასუხი'}</b><span>${esc(snip(r))}</span></button>`:'';
@@ -78,7 +79,7 @@ async function openChat(cid,draft=''){let conv=CONVS.find(c=>c.conv_id===cid);
  const other=!conv.is_group&&conv.members?.[0],title=conv.is_group?(conv.title||'ჯგუფი'):pname(other);
  let chan=null;const st=CHAT={cid,conv,other,msgs:new Map(),reply:null,edit:null,pinned:null,ttl:null,timers:[],seen:new Map(),typing:new Map(),reacts:new Map(),more:false,oldBusy:false};
  navMark('chat',()=>openChat(cid));sheet(`<div class="ph-head"><button class="ibtn" data-a="chats" aria-label="უკან">${ic('back')}</button>${conv.is_group?`<span class="av gav" style="--s:34px;--h:${(cid*47)%360}">${ic('users')}</span>`:`<button data-a="user" data-u="${other}" aria-label="პროფილი">${av(other,34)}</button>`}<div class="grow"><b>${esc(title)}${other?vb(other):''}${fire(cid)}</b><span class="sub" id="chsub">${conv.is_group?(conv.members.length+1)+' წევრი':isOnline(other)?'ონლაინ':'ბოლოს იყო '+ago(prof(other).last_seen||Date.now())}</span></div>
- ${other?`<button class="ibtn" data-a="call" data-u="${other}" data-v="0" aria-label="ხმოვანი ზარი">${ic('phone')}</button><button class="ibtn" data-a="call" data-u="${other}" data-v="1" aria-label="ვიდეოზარი">${ic('video')}</button>`:''}<button class="ibtn" data-a="chatmore" data-c="${cid}" aria-label="მეტი">${ic('more')}</button></div>
+ ${other?`<button class="ibtn" data-a="call" data-u="${other}" data-v="0" aria-label="ხმოვანი ზარი">${ic('phone')}</button><button class="ibtn" data-a="call" data-u="${other}" data-v="1" aria-label="ვიდეოზარი">${ic('video')}</button>`:`<button class="ibtn" data-a="gcall" data-c="${cid}" aria-label="ჯგუფური ვიდეოზარი">${ic('video')}</button>`}<button class="ibtn" data-a="chatmore" data-c="${cid}" aria-label="მეტი">${ic('more')}</button></div>
  <button class="pinbar" id="pinb" data-a="jumppin" hidden></button>
  <div class="ph-body chatb" id="cb">${skel(2)}</div>
  <form class="ph-foot chatfoot" id="chf"><div class="replybar" id="rpb" hidden></div><div class="chrow"><button type="button" class="ibtn" id="ch_more" aria-label="დამატება">${ic('plus')}</button><button type="button" class="ibtn" id="ch_mic" aria-label="ხმოვანი შეტყობინება">${ic('mic')}</button><button type="button" class="ibtn stkb" id="ch_stk" aria-label="სტიკერი">🍷</button><input class="field" id="cin" maxlength="4000" placeholder="შეტყობინება…" aria-label="შეტყობინება" autocomplete="off"><button class="btn" aria-label="გაგზავნა">${ic('send')}</button></div></form>`,'',()=>{if(chan)sb.removeChannel(chan);st.timers.forEach(clearTimeout);st.typing.forEach(clearTimeout);if(CHAT===st)CHAT=null;S.openConv=null});
@@ -154,6 +155,9 @@ A.chatmore=t=>{const cid=+t.dataset.c,conv=CONVS.find(c=>c.conv_id===cid);const 
 A.chttl=async t=>{const cid=+t.dataset.c;let cur=null;try{cur=(await q(sb.from('conversations').select('ttl').eq('id',cid).maybeSingle()))?.ttl||null}catch(e){}
  sheet(head('თვითგაქრობა')+`<p class="hint" style="padding:12px 16px 0">ჩართვის შემდეგ ახალი შეტყობინებები ორივე მხარეს თავისით გაქრება. ეკრანის სურათს ეს ვერ შეაჩერებს.</p><div class="reasons">${[[null,'გამორთული'],[3600,'1 საათში'],[86400,'24 საათში'],[604800,'7 დღეში']].map(([v,l])=>`<button data-a="setttl" data-c="${cid}" data-v="${v||''}"${v===cur?' aria-pressed="true"':''}>${v===cur?ic('check')+' ':''}${l}</button>`).join('')}</div>`,'short')};
 A.setttl=async t=>{const cid=+t.dataset.c,v=t.dataset.v?+t.dataset.v:null;try{await rpc('set_chat_ttl',{p_conv:cid,p_ttl:v});toast(v?'თვითგაქრობა ჩაირთო':'თვითგაქრობა გამოირთო');openChat(cid)}catch(e){toast(errMsg(e))}};
+/* a video call for the whole group chat: everyone in it gets a card to join */
+A.gcall=async t=>{const cid=+t.dataset.c;try{const id=await rpc('start_group_call',{p_conv:cid});openPage('room',id)}catch(e){toast(errMsg(e))}};
+A.joincall=t=>openPage('room',+t.dataset.r);
 function friendPicker(title,okLabel,cb,exclude=new Set()){const ids=[...FRIENDS].filter(i=>!exclude.has(i));
  sheet(head(title)+`<div class="ph-body">${cb.withTitle?'<label class="fld">ჯგუფის სახელი<input id="gct" maxlength="80" placeholder="მაგ. სუფრის ბიჭები"></label>':''}${ids.map(id=>`<label class="row pick"><input type="checkbox" value="${id}">${av(id,40)}<span class="grow"><b>${esc(pname(id))}</b></span></label>`).join('')||'<p class="muted">მეგობრები ჯერ არ გყავს.</p>'}</div><div class="ph-foot"><span class="sp"></span><button class="btn" id="pk_ok">${okLabel}</button></div>`);
  $('#pk_ok').onclick=async()=>{const sel=$$('.pick input:checked',$('#sheet')).map(i=>i.value);if(!sel.length){toast('აირჩიე მინიმუმ ერთი მეგობარი');return}try{await cb(sel,$('#gct')?.value||'')}catch(e){toast(errMsg(e))}}}

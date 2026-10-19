@@ -22,6 +22,9 @@ function text(kind: string, name: string, ref: Record<string, string>): string {
     case "comment_reply": return `${name} გიპასუხა: ${ref.text ?? ""}`;
     case "comment_like": return `${name} · მოიწონა შენი კომენტარი`;
     case "repost": return `${name} · ${String(ref.quote) === "true" ? "გააზიარა შენი პოსტი თავისი სიტყვით" : "გააზიარა შენი პოსტი"}`;
+    case "story_mention": return `${name} მოგნიშნა თავის ისტორიაზე`;
+    case "recipe_cook": return `${name} · შენი რეცეპტით მოამზადა კერძი 🍲`;
+    case "jk_invite": return `${name} გეპატიჟება ჯოკერზე 🃏`;
     case "grade_plus": return `${name} · შენს ფოტოს „5+“ დაუწერა${Number(ref.coins) > 0 ? ` (+${ref.coins} მონეტა)` : ""}`;
     case "mention": return `${name} მოგიხსენია${ref.comment ? " კომენტარში" : ""}: ${ref.text ?? ""}`;
     case "msg_react": return `${name} · ${ref.emoji ?? "❤️"} შენს მესიჯზე`;
@@ -77,6 +80,9 @@ function route(kind: string, ref: Record<string, string>): string {
   if ((kind === "react" || kind === "comment" || kind === "comment_reply" || kind === "comment_like") && ref.post) return `/#post-${ref.post}`;
   if ((kind === "mention" || kind === "grade_plus") && ref.post) return `/#post-${ref.post}`;
   if (kind === "msg_react" && ref.conv) return `/#chat-${ref.conv}`;
+  if (kind === "recipe_cook" && ref.recipe) return `/#recipe-${ref.recipe}`;
+  if (kind === "jk_invite" && ref.table) return `/#jktable-${ref.table}`;
+  if (kind === "story_mention" && ref.story) return `/#storyv-${ref.story}`;
   if (kind.startsWith("event_") && ref.event) return `/#event-${ref.event}`;
   if (kind.startsWith("album_") && ref.album) return `/#album-${ref.album}`;
   if (kind === "group_post_ok" && ref.post) return `/#post-${ref.post}`;

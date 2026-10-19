@@ -114,8 +114,8 @@ A.grade=async t=>{const id=pidOf(t),g=t.dataset.g,p=POSTS.get(id),s=STAT.get(id)
  catch(e){Object.assign(s,old);STAT.set(id,s);refreshGrade(id);toast(errMsg(e))}};
 A.vote=async t=>{const id=pidOf(t),i=+t.dataset.i,s=STAT.get(id)||blankStat(id);if(s.my_vote!=null&&s.my_vote!==i){s.votes[s.my_vote]=Math.max(0,(s.votes[s.my_vote]||1)-1)}if(s.my_vote!==i)s.votes[i]=(s.votes[i]||0)+1;s.my_vote=i;STAT.set(id,s);rerenderPost(id);
  try{await q(sb.from('poll_votes').upsert({post_id:id,user_id:ME.id,opt:i},{onConflict:'post_id,user_id'}))}catch(e){toast(errMsg(e))}};
-A.save=async t=>{const id=pidOf(t),s=STAT.get(id)||blankStat(id);s.saved=!s.saved;STAT.set(id,s);rerenderPost(id);toast(s.saved?'შენახულია. ნახე პროფილში → შენახული':'შენახულიდან ამოიშალა');
- try{if(s.saved)await q(sb.from('saves').insert({user_id:ME.id,post_id:id}));else await q(sb.from('saves').delete().eq('user_id',ME.id).eq('post_id',id))}catch(e){toast(errMsg(e))}};
+A.save=async t=>{const id=pidOf(t),s=STAT.get(id)||blankStat(id);s.saved=!s.saved;STAT.set(id,s);rerenderPost(id);if(!s.saved)toast('შენახულიდან ამოიშალა');
+ try{if(s.saved){await q(sb.from('saves').insert({user_id:ME.id,post_id:id}));savedBanner(id)}else await q(sb.from('saves').delete().eq('user_id',ME.id).eq('post_id',id))}catch(e){toast(errMsg(e))}};
 async function shareLink(url,title){try{if(navigator.share){await navigator.share({title:title||'სუფრა',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast('ბმული დაკოპირდა')}catch(e){toast(url)}}
 /* sharing: repost, quote, story, message, link */
 A.share=t=>{const id=pidOf(t),p=POSTS.get(id);if(!p)return;const r=RS.get(id)||{n:0,mine:null},own=p.author===ME.id,canRp=!p.group_id&&!own&&!p.hidden&&!p.draft;
@@ -198,11 +198,17 @@ A.uname=async t=>{try{const d=await q(sb.from('profiles').select(PCOLS).eq('user
 A.user=t=>openPage('user',t.dataset.u);
 
 /* comments: one level of replies, likes */
-const CSEL='id,body,created_at,author,parent_id,likes,profiles!comments_author_fkey(id,name,username,avatar_url,hue,verified)';
+const CSEL='id,body,media,created_at,author,parent_id,likes,profiles!comments_author_fkey(id,name,username,avatar_url,hue,verified)';
 let CMT=null;
 function commentRow(c,pa,hide){const u=c.profiles||prof(c.author);if(c.profiles)PC.set(u.id,Object.assign(PC.get(u.id)||{},u));const can=c.author===ME.id||pa===ME.id||isStaff(),liked=!!CMT?.liked.has(c.id),rep=!!c.parent_id;
- return `<div class="trow cmt${rep?' rep':''}" data-cid="${c.id}"${rep?` data-parent="${c.parent_id}"`:''}${hide?' hidden':''}><button data-a="user" data-u="${u.id}" aria-label="${esc(u.name)}">${av(u,rep?28:34)}</button><div class="grow"><div class="cbub"><b>${esc(u.name)}${vb(u)}</b>${tx(c.body)}</div>
+ return `<div class="trow cmt${rep?' rep':''}" data-cid="${c.id}"${rep?` data-parent="${c.parent_id}"`:''}${hide?' hidden':''}><button data-a="user" data-u="${u.id}" aria-label="${esc(u.name)}">${av(u,rep?28:34)}</button><div class="grow"><div class="cbub${cmMedia(c)?' hasm':''}${c.media&&c.media.sticker&&!cmBody(c)?' stkonly':''}"><b>${esc(u.name)}${vb(u)}</b>${cmBody(c)}${cmMedia(c)}</div>
   <div class="cmeta"><span>${ago(c.created_at)}</span><button data-a="cmlike" data-cid="${c.id}" class="${liked?'on':''}" aria-pressed="${liked}">${liked?'მოგწონს':'მოწონება'}</button><button data-a="creply" data-cid="${c.id}">პასუხი</button>${can?`<button data-a="delcomment" data-cid="${c.id}">წაშლა</button>`:''}${c.likes?`<span class="clk" aria-label="${c.likes} მოწონება">${ic('heart','currentColor')}${c.likes}</span>`:''}</div></div></div>`}
+/* a comment can be a sticker or a photo; the placeholder text the server keeps for it is not shown */
+const cmStk=k=>(STICKERS.find(x=>x[0]===k)||[])[1];
+function cmBody(c){const m=c.media||{},b=String(c.body||'');if(m.sticker&&(b==='✨'||b===cmStk(m.sticker)))return '';if(m.url&&b==='📷')return '';return tx(b)}
+function cmMedia(c){const m=c.media;if(!m)return '';if(m.sticker)return `<span class="cstk">${stickerSVG(m.sticker)}</span>`;
+ if(m.url)return `<button class="cimg" data-a="cimgv" data-src="${esc(m.url)}" style="--ar:${m.w>0&&m.h>0?m.w+'/'+m.h:'4/3'}" aria-label="ფოტოს გადიდება"><img src="${esc(m.sm||m.url)}" alt="" loading="lazy"></button>`;return ''}
+A.cimgv=t=>openImage(t.dataset.src,{top:true});
 function threadHTML(c,kids,pa){const hid=kids.length>3?kids.length-2:0;
  return `<div class="cth" data-th="${c.id}">${commentRow(c,pa)}<div class="creps">${hid?`<button class="cmore" data-a="cmore" data-th="${c.id}">${ic('reply')}კიდევ ${hid} პასუხის ნახვა</button>`:''}${kids.map((r,i)=>commentRow(r,pa,i<hid)).join('')}</div></div>`}
 function setCReply(c){if(!CMT)return;CMT.reply=c?{id:c.parent_id||c.id,name:pname(c.author)}:null;const bar=$('#crb'),i=$('#cin');if(!bar||!i)return;
@@ -210,16 +216,20 @@ function setCReply(c){if(!CMT)return;CMT.reply=c?{id:c.parent_id||c.id,name:pnam
  bar.hidden=false;bar.innerHTML=`${ic('reply')}<div class="grow"><b>პასუხი: ${esc(String(pname(c.author)).split(' ')[0])}</b><span>${esc(String(c.body).slice(0,80))}</span></div><button type="button" class="ibtn sm" id="crbx" aria-label="პასუხის გაუქმება">${ic('x')}</button>`;$('#crbx').onclick=()=>setCReply(null);
  const un=prof(c.author).username;if(c.parent_id&&un&&c.author!==ME.id&&!i.value.includes('@'+un))i.value=`@${un} `+i.value;i.placeholder=`უპასუხე ${String(pname(c.author)).split(' ')[0]}-ს…`;i.focus()}
 async function openComments(id){const p=POSTS.get(id),pa=p?.author;CMT={post:id,rows:new Map(),liked:new Set(),reply:null};const st=CMT;
- navMark('comments',()=>openComments(id));sheet(head('კომენტარები')+`<div class="ph-body" id="cb">${skel(2)}</div><form class="ph-foot chatfoot cfoot" id="cf"><div class="replybar" id="crb" hidden></div><div class="chrow"><input class="field" id="cin" maxlength="1000" placeholder="დაწერე კომენტარი…" aria-label="კომენტარი" autocomplete="off"><button class="btn" aria-label="გაგზავნა">${ic('send')}</button></div></form>`,'',()=>{if(CMT===st)CMT=null});mentionable($('#cin'));
+ navMark('comments',()=>openComments(id));sheet(head('კომენტარები')+`<div class="ph-body" id="cb">${skel(2)}</div><form class="ph-foot chatfoot cfoot" id="cf"><div class="replybar" id="crb" hidden></div><div class="chrow"><button type="button" class="ibtn" id="c_stk" aria-label="სტიკერი">${ic('smile')}</button><button type="button" class="ibtn" id="c_img" aria-label="ფოტო">${ic('image')}</button><input class="field" id="cin" maxlength="1000" placeholder="დაწერე კომენტარი…" aria-label="კომენტარი" autocomplete="off"><button class="btn" aria-label="გაგზავნა">${ic('send')}</button></div></form>`,'',()=>{if(CMT===st)CMT=null});mentionable($('#cin'));
  try{const rows=await q(sb.from('comments').select(CSEL).eq('post_id',id).order('created_at').limit(400));rows.forEach(c=>st.rows.set(c.id,c));
   if(rows.length){try{(await q(sb.from('comment_likes').select('comment_id').eq('user_id',ME.id).in('comment_id',rows.map(c=>c.id).slice(0,400)))).forEach(x=>st.liked.add(x.comment_id))}catch(e){}}
   const kids=new Map();rows.forEach(c=>{if(c.parent_id&&st.rows.has(c.parent_id)){if(!kids.has(c.parent_id))kids.set(c.parent_id,[]);kids.get(c.parent_id).push(c)}});
   const top=rows.filter(c=>!c.parent_id||!st.rows.has(c.parent_id));if(CMT!==st)return;
   $('#cb').innerHTML=top.map(c=>threadHTML(c,kids.get(c.id)||[],pa)).join('')||'<p class="muted" id="cempty">ჯერ არავის დაუწერია. იყავი პირველი.</p>';$('#cb').scrollTop=S.openComments===false?0:1e6}catch(e){$('#cb').innerHTML=`<p class="muted">${errMsg(e)}</p>`}
- $('#cf').onsubmit=async e=>{e.preventDefault();const i=$('#cin'),v=i.value.trim();if(!v)return;i.value='';const par=st.reply;setCReply(null);
-  try{const c=await q(sb.from('comments').insert({post_id:id,author:ME.id,body:v,parent_id:par?par.id:null}).select(CSEL).single());st.rows.set(c.id,c);$('#cempty')?.remove();const cb=$('#cb');
+ const send=async(v,media)=>{const par=st.reply;setCReply(null);
+  try{const c=await q(sb.from('comments').insert({post_id:id,author:ME.id,body:v,parent_id:par?par.id:null,media:media||null}).select(CSEL).single());if(CMT!==st)return true;st.rows.set(c.id,c);$('#cempty')?.remove();const cb=$('#cb');
    const th=c.parent_id&&$(`.cth[data-th="${c.parent_id}"] .creps`,cb);if(th){th.insertAdjacentHTML('beforeend',commentRow(c,pa));th.lastElementChild.scrollIntoView({block:'nearest'})}else{cb.insertAdjacentHTML('beforeend',threadHTML(c,[],pa));cb.scrollTop=1e6}
-   const s=STAT.get(id)||blankStat(id);s.comments++;STAT.set(id,s);rerenderPost(id)}catch(x){toast(errMsg(x));i.value=v}}}
+   const s=STAT.get(id)||blankStat(id);s.comments++;STAT.set(id,s);rerenderPost(id);return true}catch(x){toast(errMsg(x));return false}};
+ $('#cf').onsubmit=async e=>{e.preventDefault();const i=$('#cin'),v=i.value.trim();if(!v)return;i.value='';if(!await send(v))i.value=v};
+ $('#c_stk').onclick=async()=>{const k=await pickSticker();if(!k||CMT!==st)return;send(cmStk(k)||'✨',{sticker:k})};
+ $('#c_img').onclick=async()=>{const b=await pickImage({max:ECO()?1080:1600});if(!b||CMT!==st)return;const i=$('#cin'),v=i?i.value.trim():'';
+  try{toast('იტვირთება…');const m=await uploadMedia(b,'image');if(i)i.value='';if(!await send(v||'📷',{url:m.url,sm:m.sm||undefined,w:m.w,h:m.h})&&i)i.value=v}catch(e){toast(errMsg(e))}}}
 A.comments=t=>openComments(pidOf(t));
 A.creply=t=>{const c=CMT?.rows.get(+t.dataset.cid);if(c)setCReply(c)};
 A.cmore=t=>{const th=t.closest('.cth');if(!th)return;$$('.trow[hidden]',th).forEach(r=>r.hidden=false);t.remove()};

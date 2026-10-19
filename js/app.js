@@ -1,6 +1,6 @@
 /* shell: top bar, tabs, create button, realtime, deep links, install, back button */
 const TABS=[['home','მთავარი','home'],['clips','კლიპები','clips'],['date','გაცნობა','heart'],['games','თამაშები','dice'],['me','პროფილი','user']];
-const SVC=[['rooms','wine','ვირტუალური სუფრა'],['rooms','mic','ბირჟა','birja'],['rooms','live','ლაივი','live'],['places','map','ადგილები'],['sport','trophy','მატჩის ოთახი'],['help','help','დახმარება'],['rides','pin','ერთად წავიდეთ'],['jobs','school','ვაკანსიები და CV'],['friends','users','მეგობრები'],['groups','users','ჯგუფები'],['pages','mega','არხები და გვერდები'],['events','cal','ღონისძიებები'],['albums','image','ალბომები'],['market','store','ბაზრობა'],['toasts','book','სადღეგრძელოები'],['namedays','cal','სახელის დღეები'],['tree','tree','ოჯახის ხე'],['calendar','gift','კალენდარი'],['tour','trophy','ტურნირი'],['saved','bookmark','შენახული'],['drafts','clock','დრაფტები'],['coins','coin','მონეტები'],['verify','shield','ვერიფიკაცია'],['settings','gear','პარამეტრები']];
+const SVC=[['rooms','wine','ვირტუალური სუფრა'],['rooms','mic','ბირჟა','birja'],['rooms','live','ლაივი','live'],['places','map','ადგილები'],['sport','trophy','მატჩის ოთახი'],['help','help','დახმარება'],['rides','pin','ერთად წავიდეთ'],['jobs','school','ვაკანსიები და CV'],['friends','users','მეგობრები'],['groups','users','ჯგუფები'],['pages','mega','არხები და გვერდები'],['events','cal','ღონისძიებები'],['albums','image','ალბომები'],['market','store','ბაზრობა'],['toasts','book','სადღეგრძელოები'],['recipes','pot','სამზარეულო'],['namedays','cal','სახელის დღეები'],['tree','tree','ოჯახის ხე'],['calendar','gift','კალენდარი'],['tour','trophy','ტურნირი'],['saved','bookmark','შენახული'],['storyarch','archive','ისტორიების არქივი'],['drafts','clock','დრაფტები'],['coins','coin','მონეტები'],['verify','shield','ვერიფიკაცია'],['settings','gear','პარამეტრები']];
 const today=()=>new Date().toISOString().slice(0,10);
 
 function renderTop(){if(!ME)return;$('#top').innerHTML=`<button class="logo" data-a="home" aria-label="სუფრა, მთავარზე დაბრუნება">სუფრა</button><span class="sp"></span>
@@ -33,9 +33,10 @@ A.home=()=>{if(S.tab==='home'&&!S.page){view.scrollTo({top:0,behavior:RM()?'auto
 A.menu=()=>{navMark('menu',A.menu);const svc=[...SVC];if(isStaff())svc.push(['admin','shield','ადმინ პანელი']);
  const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
  sheet(head('სერვისები')+`<div class="svc">${svc.map(([p,i,l,a])=>`<button data-a="page" data-p="${p}"${a?` data-arg="${a}"`:''}>${ic(i)}${l}</button>`).join('')}${standalone?'':`<button data-a="install">${ic('download')}აპად დაყენება</button>`}<button data-a="rules">${ic('flag')}წესები</button></div>`,'short')};
-const CREATE=[['cpost','edit','პოსტი','ტექსტი, ფოტო, ჰეშთეგი'],['croom','wine','სუფრის გაშლა','ვიდეო, თამადა, სადღეგრძელოები'],['cbirja','mic','ბირჟა','ხმოვანი ოთახი თემაზე'],['cphoto','image','ფოტო','ფილტრით და ჭრით'],['cclip','clips','კლიპი','მოკლე ვერტიკალური ვიდეო'],['cpoll','poll','გამოკითხვა','მეგობრების აზრი'],['cstory','story','ისტორია','ქრება 24 საათში'],['cevent','cal','ღონისძიება','სუფრა, შეხვედრა, ქორწილი'],['clisting','store','განცხადება','გაყიდე ან გააჩუქე'],['cgroup','users','ჯგუფი','საერთო ინტერესით'],['cpage','mega','არხი ან გვერდი','ბიზნესი და რეკლამა'],['cgchat','msg','ჯგუფური ჩატი','რამდენიმე მეგობართან'],['clive','live','ლაივი','პირდაპირი ეთერი'],['cplace','map','ადგილი','რესტორანი, მარანი, სასტუმრო'],['chelp','help','დახმარების თხოვნა','სისხლი, ცხოველი, მოხალისე'],['ctoast','book','სადღეგრძელო','თამადის წიგნისთვის'],['cride','pin','მგზავრობა','ადგილები მანქანაში'],['cjob','school','ვაკანსია','მოძებნე თანამშრომელი']];
+const CREATE=[['cpost','edit','პოსტი','ტექსტი, ფოტო, ჰეშთეგი'],['crecipe','pot','რეცეპტი','შენი კერძი ნაბიჯ-ნაბიჯ'],['croom','wine','სუფრის გაშლა','ვიდეო, თამადა, სადღეგრძელოები'],['cbirja','mic','ბირჟა','ხმოვანი ოთახი თემაზე'],['cphoto','image','ფოტო','ფილტრით და ჭრით'],['cclip','clips','კლიპი','მოკლე ვერტიკალური ვიდეო'],['cpoll','poll','გამოკითხვა','მეგობრების აზრი'],['cstory','story','ისტორია','ქრება 24 საათში'],['cevent','cal','ღონისძიება','სუფრა, შეხვედრა, ქორწილი'],['clisting','store','განცხადება','გაყიდე ან გააჩუქე'],['cgroup','users','ჯგუფი','საერთო ინტერესით'],['cpage','mega','არხი ან გვერდი','ბიზნესი და რეკლამა'],['cgchat','msg','ჯგუფური ჩატი','რამდენიმე მეგობართან'],['clive','live','ლაივი','პირდაპირი ეთერი'],['cplace','map','ადგილი','რესტორანი, მარანი, სასტუმრო'],['chelp','help','დახმარების თხოვნა','სისხლი, ცხოველი, მოხალისე'],['ctoast','book','სადღეგრძელო','თამადის წიგნისთვის'],['cride','pin','მგზავრობა','ადგილები მანქანაში'],['cjob','school','ვაკანსია','მოძებნე თანამშრომელი']];
 A.create=()=>(navMark('create',A.create),sheet(head('შექმნა')+`<div class="createg">${CREATE.map(([a,i,l,s])=>`<button data-a="${a}"><span class="cgi">${ic(i)}</span><b>${l}</b><small>${s}</small></button>`).join('')}</div>`,'short'));
 A.cpost=()=>compose();
+A.crecipe=()=>{closeSheet();A.recipenew()};
 A.croom=()=>{S.rkind='supra';closeSheet();A.newroom()};
 A.cbirja=()=>{S.rkind='birja';closeSheet();A.newroom()};
 A.cride=()=>openPage('ridenew',undefined,['rides']);
@@ -98,6 +99,7 @@ function route(h){h=String(h||'');if(!h||h==='#'||h.includes('='))return false;l
  const base=()=>{if(!view.childElementCount)go('home')};
  if(id==='chat'&&arg){base();openChat(+arg);return true}
  if(id==='notifications'){base();openNotes();return true}
+ if(id==='storyv'&&arg){base();openStoryById(+arg);return true}
  if(id==='chats'){base();openChats();return true}
  if(R[id]){go(id);return true}
  if(PG[id]){openPage(id,arg);return true}
@@ -132,6 +134,6 @@ async function enterApp(){if(ENTERED)return;ENTERED=true;
  navInit();renderBadges();
  if(ME.banned)toast('შენი ანგარიში შეზღუდულია: პოსტები და შეტყობინებები დროებით გამორთულია');
  try{netInit()}catch(e){}try{listenCalls()}catch(e){}try{listenNotes()}catch(e){}
- countUnread();touchSeen();setInterval(touchSeen,120000);registerSW();
+ countUnread();touchSeen();setInterval(touchSeen,120000);registerSW();loadTagFollows();setTimeout(()=>checkBadges(),6000);
  if(store.get('fsw',null)===ME.id){store.set('fsw',null);setTimeout(()=>firstSteps(ME.avatar_url?1:0),700)}}
 bootAuth().catch(e=>{toast(errMsg(e));showAuth('in')});
