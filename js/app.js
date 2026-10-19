@@ -11,7 +11,8 @@ function renderTop(){if(!ME)return;$('#top').innerHTML=`<button class="logo" dat
  <button class="ibtn" data-a="page" data-p="friends" aria-label="მეგობრები">${ic('users')}<span class="dot" id="df" hidden></span></button>
  <button class="ibtn" data-a="guests" aria-label="სტუმრები">${ic('eye')}<span class="dot" id="dg" hidden></span></button>
  <button class="ibtn" data-a="menu" aria-label="სერვისები">${ic('grid')}</button></span>`;renderBadges()}
-function renderTabs(){$('#tabs').innerHTML='<span class="tabind" aria-hidden="true"></span>'+TABS.map(([k,l,i])=>`<button class="tab" data-tab="${k}" aria-current="${k===S.tab}">${ic(i)}<span>${l}</span><i class="tdot" hidden></i></button>`).join('')}
+const visTabs=()=>TABS.filter(t=>typeof tabOk!=='function'||tabOk(t[0]));
+function renderTabs(){const v=visTabs(),el=$('#tabs');el.style.setProperty('--tn',v.length);el.innerHTML='<span class="tabind" aria-hidden="true"></span>'+v.map(([k,l,i])=>`<button class="tab" data-tab="${k}" aria-current="${k===S.tab}">${ic(i)}<span>${l}</span><i class="tdot" hidden></i></button>`).join('')}
 function renderBadges(){const set=(id,n)=>{const d=$('#'+id);if(!d)return;const was=d.hidden?0:parseInt(d.textContent,10)||0;d.hidden=!n;d.textContent=n>99?'99+':String(n);if(n>was)pop(d)};
  set('dn',S.unreadNotes);set('dm',S.unreadMsgs);set('dn2',S.unreadNotes);set('dm2',S.unreadMsgs);set('df',typeof PENDING_IN!=='undefined'?PENDING_IN.size:0);set('dg',S.newGuests||0);
  const me=$('.tab[data-tab="me"] .tdot');if(me)me.hidden=!(typeof PENDING_IN!=='undefined'&&PENDING_IN.size);
@@ -20,7 +21,7 @@ function renderBadges(){const set=(id,n)=>{const d=$('#'+id);if(!d)return;const 
 
 /* tabs and pages */
 function go(tab,dx){if(!R[tab])tab='home';const oi=TABS.findIndex(t=>t[0]===S.tab),ni=TABS.findIndex(t=>t[0]===tab),wasPage=!!S.page;
- closeSheet(true);closePV(true);stopMedia();S.page=null;S.tab=tab;$$('.tab').forEach(b=>b.setAttribute('aria-current',String(b.dataset.tab===tab)));moveInd(ni);
+ closeSheet(true);closePV(true);stopMedia();S.page=null;S.tab=tab;$$('.tab').forEach(b=>b.setAttribute('aria-current',String(b.dataset.tab===tab)));moveInd(tab);
  const app=$('#app');app.classList.toggle('media',tab==='clips');app.classList.remove('barhidden');view.className=tab==='clips'?'is-clips':'';view.scrollTop=0;
  navStep();
  R[tab]();updateFab();markSide();
@@ -30,11 +31,11 @@ function updateFab(){const f=$('#fab');if(f)f.hidden=document.body.classList.con
 A.home=()=>{if(S.tab==='home'&&!S.page){view.scrollTo({top:0,behavior:RM()?'auto':'smooth'});return}go('home')};
 
 /* services menu and the create sheet */
-A.menu=()=>{navMark('menu',A.menu);const svc=[...SVC];if(isStaff())svc.push(['admin','shield','ადმინ პანელი']);
+A.menu=()=>{navMark('menu',A.menu);const svc=SVC.filter(x=>pageOk(x[0]));if(isStaff())svc.push(['admin','shield','ადმინ პანელი']);
  const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
  sheet(head('სერვისები')+`<div class="svc">${svc.map(([p,i,l,a])=>`<button data-a="page" data-p="${p}"${a?` data-arg="${a}"`:''}>${ic(i)}${l}</button>`).join('')}${standalone?'':`<button data-a="install">${ic('download')}აპად დაყენება</button>`}<button data-a="rules">${ic('flag')}წესები</button></div>`,'short')};
 const CREATE=[['cpost','edit','პოსტი','ტექსტი, ფოტო, ჰეშთეგი'],['crecipe','pot','რეცეპტი','შენი კერძი ნაბიჯ-ნაბიჯ'],['croom','wine','სუფრის გაშლა','ვიდეო, თამადა, სადღეგრძელოები'],['cbirja','mic','ბირჟა','ხმოვანი ოთახი თემაზე'],['cphoto','image','ფოტო','ფილტრით და ჭრით'],['cclip','clips','კლიპი','მოკლე ვერტიკალური ვიდეო'],['cpoll','poll','გამოკითხვა','მეგობრების აზრი'],['cstory','story','ისტორია','ქრება 24 საათში'],['cevent','cal','ღონისძიება','სუფრა, შეხვედრა, ქორწილი'],['clisting','store','განცხადება','გაყიდე ან გააჩუქე'],['cgroup','users','ჯგუფი','საერთო ინტერესით'],['cpage','mega','არხი ან გვერდი','ბიზნესი და რეკლამა'],['cgchat','msg','ჯგუფური ჩატი','რამდენიმე მეგობართან'],['clive','live','ლაივი','პირდაპირი ეთერი'],['cplace','map','ადგილი','რესტორანი, მარანი, სასტუმრო'],['chelp','help','დახმარების თხოვნა','სისხლი, ცხოველი, მოხალისე'],['ctoast','book','სადღეგრძელო','თამადის წიგნისთვის'],['cride','pin','მგზავრობა','ადგილები მანქანაში'],['cjob','school','ვაკანსია','მოძებნე თანამშრომელი']];
-A.create=()=>(navMark('create',A.create),sheet(head('შექმნა')+`<div class="createg">${CREATE.map(([a,i,l,s])=>`<button data-a="${a}"><span class="cgi">${ic(i)}</span><b>${l}</b><small>${s}</small></button>`).join('')}</div>`,'short'));
+A.create=()=>(navMark('create',A.create),sheet(head('შექმნა')+`<div class="createg">${CREATE.filter(x=>createOk(x[0])).map(([a,i,l,s])=>`<button data-a="${a}"><span class="cgi">${ic(i)}</span><b>${l}</b><small>${s}</small></button>`).join('')}</div>`,'short'));
 A.cpost=()=>compose();
 A.crecipe=()=>{closeSheet();A.recipenew()};
 A.croom=()=>{S.rkind='supra';closeSheet();A.newroom()};
@@ -59,9 +60,9 @@ A.cgchat=()=>A.newgroupchat();
 const WIDE=matchMedia('(min-width:1000px)');
 function renderSide(){const on=WIDE.matches&&!!ME;document.body.classList.toggle('wide',on);if(!on){$('#sidel')?.remove();$('#sider')?.remove();return}
  let L=$('#sidel');if(!L){L=document.createElement('aside');L.id='sidel';L.className='side-l';L.setAttribute('aria-label','ნავიგაცია');document.body.appendChild(L)}
- L.innerHTML=`<button class="logo" data-a="home" aria-label="სუფრა">სუფრა</button><nav class="snavs">${TABS.map(([k,l,i])=>`<button class="snav" data-tab2="${k}">${ic(i)}<span>${l}</span></button>`).join('')}
+ L.innerHTML=`<button class="logo" data-a="home" aria-label="სუფრა">სუფრა</button><nav class="snavs">${visTabs().map(([k,l,i])=>`<button class="snav" data-tab2="${k}">${ic(i)}<span>${l}</span></button>`).join('')}
   <button class="snav" data-a="chats">${ic('msg')}<span>მიმოწერა</span><i class="sdot" id="dm2" hidden></i></button><button class="snav" data-a="notifs">${ic('bell')}<span>შეტყობინებები</span><i class="sdot" id="dn2" hidden></i></button>
-  <span class="snavsep"></span>${SVC.slice(0,8).map(([p,i,l,a])=>`<button class="snav sm" data-a="page" data-p="${p}"${a?` data-arg="${a}"`:''}>${ic(i)}<span>${l}</span></button>`).join('')}<button class="snav sm" data-a="menu">${ic('grid')}<span>ყველა სერვისი</span></button></nav>
+  <span class="snavsep"></span>${SVC.filter(x=>pageOk(x[0])).slice(0,8).map(([p,i,l,a])=>`<button class="snav sm" data-a="page" data-p="${p}"${a?` data-arg="${a}"`:''}>${ic(i)}<span>${l}</span></button>`).join('')}<button class="snav sm" data-a="menu">${ic('grid')}<span>ყველა სერვისი</span></button></nav>
   <button class="btn wide" data-a="create">${ic('plus')}შექმნა</button><button class="smine" data-tab2="me">${av('me',40)}<span class="grow"><b>${esc(ME.name)}</b><small>${ME.username?'@'+esc(ME.username):'პროფილი'}</small></span></button>`;
  let Rr=$('#sider');if(!Rr){Rr=document.createElement('aside');Rr.id='sider';Rr.className='side-r';Rr.setAttribute('aria-label','აღმოაჩინე');document.body.appendChild(Rr);loadSideR()}
  markSide();renderBadges()}
@@ -134,6 +135,6 @@ async function enterApp(){if(ENTERED)return;ENTERED=true;
  navInit();renderBadges();
  if(ME.banned)toast('შენი ანგარიში შეზღუდულია: პოსტები და შეტყობინებები დროებით გამორთულია');
  try{netInit()}catch(e){}try{listenCalls()}catch(e){}try{listenNotes()}catch(e){}
- countUnread();touchSeen();setInterval(touchSeen,120000);registerSW();loadTagFollows();setTimeout(()=>checkBadges(),6000);
+ loadAppSettings();countUnread();touchSeen();setInterval(touchSeen,120000);registerSW();loadTagFollows();setTimeout(()=>checkBadges(),6000);
  if(store.get('fsw',null)===ME.id){store.set('fsw',null);setTimeout(()=>firstSteps(ME.avatar_url?1:0),700)}}
 bootAuth().catch(e=>{toast(errMsg(e));showAuth('in')});

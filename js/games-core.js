@@ -51,7 +51,7 @@ async function joinGame(gid,gt,side,opp,oppId,watch){netLeave();const G=GAME[gt]
  const names=watch?{1:opp.a,'-1':opp.b}:{[side]:ME.name,[-side]:opp.nm},avs=watch?{1:{n:opp.a,h:200},'-1':{n:opp.b,h:20}}:{[side]:'me',[-side]:oppId?Object.assign({},prof(oppId),{name:opp.nm}):{n:opp.nm,h:opp.hu}};
  const ch=sb.channel('game-'+gid,{config:{presence:{key:ME.id},broadcast:{self:false}}});
  const ctx={mode:watch?'netwatch':'online',side:watch?1:side,names,avs,gid,opp:oppId,seq:0,gr:{ch,emit:(ev,p)=>ch.send({type:'broadcast',event:ev,payload:p})}};
- if(S.page)S.page=null;if(S.tab!=='games'){S.tab='games';$$('.tab').forEach(b=>b.setAttribute('aria-current',String(b.dataset.tab==='games')));view.className='';$('#app').classList.remove('media');moveInd(3)}
+ if(S.page)S.page=null;if(S.tab!=='games'){S.tab='games';$$('.tab').forEach(b=>b.setAttribute('aria-current',String(b.dataset.tab==='games')));view.className='';$('#app').classList.remove('media');moveInd('games')}
  {const fresh=!S.game;S.game=gt;G.ctx=ctx;G.start();NET.gr=ctx.gr;if(fresh)navOpen('game')}
  ch.on('broadcast',{event:'st'},({payload:d})=>{if(G.ctx!==ctx||!d||typeof d!=='object'||!(Number(d.seq)>ctx.seq)||!d.s)return;try{G.load(d.s);ctx.seq=Number(d.seq);G.render();if(G.checkEnd)G.checkEnd()}catch(e){}})
   .on('broadcast',{event:'need'},()=>{if(G.ctx===ctx&&ctx.mode==='online'&&side===1)netSend()})

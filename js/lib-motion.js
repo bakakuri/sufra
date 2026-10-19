@@ -6,7 +6,7 @@ function staggerIn(els,step=45,delay=30){els.forEach((el,i)=>anim(el,[{opacity:0
 const REVEAL='.post,.evcard,.gcard,.mitem,.lcard,.tile,.orow,.chpost,.list>.row,.rrow,.lgcard,.pgrid img,.tourcard,.ghero,.vcard,.setrow,.hist>div';
 function enterView(dx){anim(view,[{opacity:0,translate:`${dx}px 0`},{opacity:1,translate:'0 0'}],{duration:360,easing:EASE});
  staggerIn($$(REVEAL,view).filter(el=>el.getBoundingClientRect().top<innerHeight).slice(0,9))}
-function moveInd(i){const t=$('.tabind');if(t)t.style.transform=`translateX(${i*100}%)`}
+function moveInd(i){if(typeof i==='string'){const v=typeof visTabs==='function'?visTabs():TABS;i=Math.max(0,v.findIndex(t=>t[0]===i))}const t=$('.tabind');if(t)t.style.transform=`translateX(${i*100}%)`}
 function burst(el,color){if(!el||RM())return;const r=el.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,cols=color?[color]:['#EC5A88','#EDB54A','#A8164A','#55C08C'];
  for(let i=0;i<10;i++){const d=document.createElement('i');d.className='spark';d.style.left=cx+'px';d.style.top=cy+'px';d.style.background=cols[i%cols.length];document.body.appendChild(d);
   const a=i/10*Math.PI*2+Math.random()*.4,dist=26+Math.random()*20;
