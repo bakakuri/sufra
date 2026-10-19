@@ -1073,3 +1073,21 @@ button.qcard:hover{border-color:color-mix(in srgb,var(--wine) 35%,var(--line))}
 .fsp .ptag{flex:none}
 .fsideas{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:6px}
 .fsideas .tchip{height:auto;min-height:34px;padding:6px 14px;white-space:normal;text-align:center}
+
+/* menus with icons, sheets that scroll */
+.reasons button{display:flex;align-items:center;gap:12px;justify-content:flex-start}
+.reasons button>svg{width:20px;height:20px;flex:none;color:var(--muted)}
+.reasons button.warnbtn>svg{color:inherit}
+.panel>.svc,.panel>.reasons,.panel>.shgrid{overflow-y:auto;min-height:0;flex:0 1 auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.panel>.svc{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+
+/* chat rows: no native long-press highlight or text callout, no composited filters inside the scroller */
+.chatb{overflow-x:hidden}
+#cb .mrow{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#cb .mrow a,#cb .mrow audio{-webkit-touch-callout:default}
+.stkmsg .stk{filter:none}
+.stkmsg{animation:none}
+.seenmark{animation:none}
+@keyframes flashmsg{0%,40%{box-shadow:0 0 0 3px rgba(201,138,18,.7)}100%{box-shadow:0 0 0 0 rgba(201,138,18,0)}}
+@media (hover:none){.mact{display:none}}
+#cb .mrow.held .mcol{transform:scale(.97);transition:transform .2s var(--ease-out)}

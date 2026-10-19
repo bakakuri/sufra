@@ -72,6 +72,7 @@ async function openChat(cid,draft=''){let conv=CONVS.find(c=>c.conv_id===cid);
   rows.forEach(r=>st.msgs.set(r.id,r));cb.innerHTML=rows.length?rows.map(msgHTML).join(''):'<p class="muted" id="chempty">დაწერე პირველი შეტყობინება.</p>';rows.forEach(expire);cb.scrollTop=1e6}catch(e){cb.innerHTML=`<p class="muted">${errMsg(e)}</p>`}
  q(sb.from('conversation_members').select('user_id,seen_at').eq('conv_id',cid)).then(ms=>{if(CHAT!==st)return;ms.forEach(r=>{if(r.user_id!==ME.id)st.seen.set(r.user_id,r.seen_at)});drawSeen()}).catch(()=>{});
  meta();markRead(cid);
+ if(matchMedia('(hover:none)').matches&&!store.get('tip:hold',0)){store.set('tip:hold',1);setTimeout(()=>{if(CHAT===st)toast('შეტყობინებას დიდხანს დააჭირე: პასუხი, გადაგზავნა, მიმაგრება')},1200)}
  chan=sb.channel('conv-'+cid).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'conv_id=eq.'+cid},async pl=>{const m=pl.new;await loadProfiles([m.sender]);$('#chempty')?.remove();stopTyping(m.sender);add(m);if(m.kind==='system')meta();if(m.sender!==ME.id)markRead(cid)})
   .on('postgres_changes',{event:'UPDATE',schema:'public',table:'conversation_members',filter:'conv_id=eq.'+cid},pl=>{const r=pl.new;if(!r||r.user_id===ME.id)return;st.seen.set(r.user_id,r.seen_at);drawSeen()})
   .on('broadcast',{event:'typing'},({payload})=>{const u=payload&&payload.u;if(!u||u===ME.id||!(conv.members||[]).includes(u))return;clearTimeout(st.typing.get(u));st.typing.set(u,setTimeout(()=>stopTyping(u),4500));drawTyping()})
@@ -125,7 +126,15 @@ A.gcadd=t=>{const cid=+t.dataset.c,conv=CONVS.find(c=>c.conv_id===cid);friendPic
 A.gcmembers=t=>{const conv=CONVS.find(c=>c.conv_id===+t.dataset.c);sheet(head('წევრები')+`<div class="ph-body">${personRow(ME)}${(conv?.members||[]).map(id=>personRow(prof(id))).join('')}</div>`)};
 A.gcrename=t=>{const cid=+t.dataset.c;sheet(head('სახელის შეცვლა')+`<form class="ph-body" id="gcr"><input class="field sq" id="gcn" maxlength="80" required></form><div class="ph-foot"><span class="sp"></span><button class="btn" id="gcok">შენახვა</button></div>`,'short');$('#gcok').onclick=async()=>{try{await q(sb.from('conversations').update({title:$('#gcn').value.trim()}).eq('id',cid));CONVS=await rpc('my_conversations');openChat(cid)}catch(e){toast(errMsg(e))}}};
 A.gcleave=t=>{const cid=+t.dataset.c;confirmSheet('ჯგუფიდან გასვლა','ამ ჯგუფის შეტყობინებებს აღარ მიიღებ.','გასვლა',async()=>{await q(sb.from('conversation_members').delete().eq('conv_id',cid).eq('user_id',ME.id));CONVS=CONVS.filter(c=>c.conv_id!==cid)},true)};
-document.addEventListener('contextmenu',e=>{const row=e.target.closest('#cb .mrow');if(!row||e.target.closest('a,audio,video'))return;e.preventDefault();A.msgact({dataset:{mid:row.dataset.mid}})});
+/* hold a message for its menu: right click on a computer, a long press on a phone (iOS has no contextmenu event) */
+let LP=null;
+document.addEventListener('contextmenu',e=>{const row=e.target.closest('#cb .mrow');if(!row||e.target.closest('a,audio,video'))return;e.preventDefault();if(LP&&LP.fired&&Date.now()-LP.fired<1200)return;A.msgact({dataset:{mid:row.dataset.mid}})});
+document.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;const row=e.target.closest('#cb .mrow');if(!row||e.target.closest('a,audio,video,button.mact')||!row.dataset.mid)return;
+ clearTimeout(LP?.t);LP={x:e.clientX,y:e.clientY,row,t:setTimeout(()=>{if(!LP||LP.row!==row)return;LP.fired=Date.now();try{navigator.vibrate&&navigator.vibrate(12)}catch(x){}row.classList.add('held');setTimeout(()=>row.classList.remove('held'),260);A.msgact({dataset:{mid:row.dataset.mid}})},480)}},{passive:true});
+const lpCancel=e=>{if(!LP)return;if(LP.fired){if(e.type!=='pointermove')LP.upAt=Date.now();return}if(e.type==='pointermove'&&Math.hypot(e.clientX-LP.x,e.clientY-LP.y)<10)return;clearTimeout(LP.t);LP=null};
+['pointerup','pointercancel','pointermove'].forEach(t=>document.addEventListener(t,lpCancel,{passive:true}));
+/* the finger that opened the menu must not also press whatever opens under it */
+document.addEventListener('click',e=>{if(LP&&LP.fired&&(!LP.upAt||Date.now()-LP.upAt<450)){e.stopPropagation();e.preventDefault();LP=null}},true);
 
 /* calls: WebRTC with signaling over realtime broadcast */
 const CALL={pc:null,peer:null,local:null,video:false,chan:null,mine:null,ring:null,t:null,state:'idle'};
