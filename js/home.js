@@ -1,5 +1,19 @@
 /* home feed, reminders, trends, search, hashtags, saved, single post */
-const SHORT=[['rooms','wine','სუფრა'],['places','map','ადგილები'],['sport','trophy','მატჩები'],['help','help','დახმარება'],['toasts','book','სადღეგრძელოები'],['events','cal','ღონისძიებები'],['albums','image','ალბომები'],['groups','users','ჯგუფები'],['rides','pin','ერთად წავიდეთ'],['jobs','school','ვაკანსიები'],['market','store','ბაზრობა'],['pages','mega','არხები'],['friends','user','მეგობრები'],['calendar','gift','კალენდარი']];
+/* the services strip: small pictures of the pages, what each one is for, and a live number where there is one */
+const SHORT=[['rooms','wine','სუფრა','ვიდეო-სუფრა თამადით',340,n=>`${n} ცოცხლად`],['places','map','ადგილები','რესტორნები და მარნები რუკაზე',150,n=>`${n} ადგილი`],['sport','trophy','მატჩები','პროგნოზები მეგობრებთან',28,n=>`${n} მატჩი წინ`],['help','help','დახმარება','დონორები, ცხოველები, მოხალისეები',4,n=>`${n} აქტიური თხოვნა`],['events','cal','ღონისძიებები','სუფრები და შეხვედრები',262,n=>`${n} ამ კვირაში`],['toasts','book','სადღეგრძელოები','თამადის წიგნი',42,n=>`${n} სადღეგრძელო`],['albums','image','ალბომები','საერთო ფოტოები ერთად',200,n=>`${n} ალბომი`],['groups','users','ჯგუფები','შენი კუთხე და ინტერესები',290,n=>`${n} ჯგუფი`],['rides','pin','ერთად წავიდეთ','მგზავრობა ერთ მანქანაში',178,n=>`${n} მგზავრობა`],['jobs','work','ვაკანსიები','სამსახური და CV',222,n=>`${n} ვაკანსია`],['market','store','ბაზრობა','იყიდე, გაყიდე, გააჩუქე',18,n=>`${n} განცხადება`],['pages','mega','არხები','სიახლეები და ბიზნესი',312,n=>`${n} გვერდი`],['friends','user','მეგობრები','ძველი და ახალი ნაცნობები',330,n=>`${n} ახალი მოთხოვნა`],['calendar','gift','კალენდარი','დაბადების და სახელის დღეები',52,null]];
+const svcCard=([p,i,l,d,h])=>`<button class="svcard" data-a="page" data-p="${p}" style="--h:${h}"><span class="svart"><span class="svbig" aria-hidden="true">${ic(i)}</span><span class="svico">${ic(i)}</span><em class="svlive${p==='rooms'?' red':''}" data-k="${p}" hidden></em></span><b>${l}</b><small>${d}</small></button>`;
+let SVC_N={at:0,data:null};
+async function svcCounts(){const el=$('#svtrack');if(!el)return;
+ try{if(!SVC_N.data||Date.now()-SVC_N.at>180000){SVC_N={at:Date.now(),data:await rpc('service_counts')}}}catch(e){return}
+ const d=Object.assign({},SVC_N.data||{},{friends:typeof PENDING_IN!=='undefined'?PENDING_IN.size:0});
+ SHORT.forEach(([p,,,,,f])=>{const x=$(`.svlive[data-k="${p}"]`,el),n=+d[p]||0;if(!x||!f)return;x.hidden=!n;if(n)x.textContent=f(n)})}
+/* a slow slideshow: one card at a time while the strip is on screen; a touch stops it for good */
+function svcAuto(){const tr=$('#svtrack');if(!tr||RM()||ECO())return;let on=true,vis=true,t=0;const stop=()=>{on=false;clearInterval(t)};
+ ['pointerdown','wheel','keydown','touchstart'].forEach(k=>tr.addEventListener(k,stop,{passive:true,once:true}));
+ try{new IntersectionObserver(es=>{vis=es[0].isIntersecting}).observe(tr)}catch(e){}
+ t=setInterval(()=>{if(!tr.isConnected){clearInterval(t);return}if(!on||!vis||document.hidden||S.page||S.tab!=='home')return;const c=$('.svcard',tr);if(!c)return;const step=c.offsetWidth+10;
+  if(tr.scrollLeft+tr.clientWidth>=tr.scrollWidth-4)tr.scrollTo({left:0,behavior:'smooth'});else tr.scrollBy({left:step,behavior:'smooth'})},3200)}
+A.svscroll=t=>{const tr=$('#svtrack');if(!tr)return;tr.dispatchEvent(new Event('wheel'));const c=$('.svcard',tr);tr.scrollBy({left:(+t.dataset.d)*((c?c.offsetWidth+10:150)*2),behavior:RM()?'auto':'smooth'})};
 const FEED={done:false,loading:false,cursor:null,ads:[],adsShown:new Set(),count:0,seen:new Set()};
 /* a post and its plain reposts show once in the feed */
 const feedKey=p=>p.repost_of&&!String(p.body||'').trim()?p.repost_of:p.id;
@@ -7,12 +21,12 @@ const score=p=>{const s=STAT.get(p.id)||blankStat(p.id),h=(Date.now()-new Date(p
 const firstName=()=>esc(String(ME.name||'').split(' ')[0]);
 R.home=()=>{
  view.innerHTML=`<div class="stories" id="stories" role="list">${'<span class="story sk" aria-hidden="true"><span class="ring seen"><span class="av" style="--s:58px"></span></span><span></span></span>'.repeat(5)}</div>
- <nav class="shortcuts" aria-label="სერვისები">${SHORT.map(([p,i,l])=>`<button class="sc" data-a="page" data-p="${p}">${ic(i)}${l}</button>`).join('')}</nav>
+ <section class="svstrip" aria-label="სუფრის სერვისები"><div class="svhd"><h3>სუფრის სერვისები</h3><span class="sp"></span><button class="ibtn sm svarr" data-a="svscroll" data-d="-1" aria-label="წინა">${ic('back')}</button><button class="ibtn sm svarr nx" data-a="svscroll" data-d="1" aria-label="შემდეგი">${ic('back')}</button><button class="svall" data-a="menu">ყველა</button></div><div class="svtrack" id="svtrack">${SHORT.map(svcCard).join('')}</div></section>
  <div id="fsteps"></div><div id="remind"></div><div id="memo"></div><div id="trends"></div>
  <button class="compose cbtn" data-a="compose">${av('me')}<span class="cph">რა ხდება, ${firstName()}?</span><span class="cq" aria-hidden="true">${ic('image')}${ic('poll')}</span></button>
  <div class="seg feedsw" role="group" aria-label="ფიდის რეჟიმი">${[['for','შენთვის'],['friends','მეგობრები'],['new','ახალი']].map(([k,l])=>`<button data-a="feed" data-f="${k}" aria-pressed="${S.feed===k}">${l}</button>`).join('')}</div>
  <div id="feed">${skel(3)}</div><div id="more" class="morebox" aria-live="polite"></div>`;
- loadStories();loadFirstSteps();loadRemind();loadMemories();loadTrends();loadFeed(true);
+ loadStories();loadFirstSteps();loadRemind();loadMemories();loadTrends();loadFeed(true);svcCounts();svcAuto();
  const io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting))loadFeed(false)},{root:view,rootMargin:'600px'});io.observe($('#more'))};
 A.feed=t=>{S.feed=t.dataset.f;$$('.feedsw button').forEach(b=>b.setAttribute('aria-pressed',String(b===t)));$('#feed').innerHTML=skel(3);loadFeed(true)};
 async function loadAds(){try{const ads=await q(sb.from('ads').select('id,post_id').eq('status','active').limit(6));if(!ads.length)return [];const rows=await fetchPosts(b=>b.in('id',ads.map(a=>a.post_id)));return rows.map(p=>Object.assign(p,{ad:ads.find(a=>a.post_id===p.id).id}))}catch(e){return []}}

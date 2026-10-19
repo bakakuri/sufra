@@ -34,7 +34,7 @@ A.chatwith=t=>openChatWith(t.dataset.u);
 async function openChatWith(uid,draft){try{const c=await rpc('start_dm',{other:uid});openChat(c,draft)}catch(e){toast(errMsg(e))}}
 
 /* one message */
-const snip=m=>!m?'შეტყობინება':m.deleted?'წაშლილი შეტყობინება':m.kind==='voice'?'🎤 ხმოვანი':m.kind==='image'?'📷 ფოტო':m.media?.sticker?'სტიკერი':m.media?.card?'🎉 მისალოცი ბარათი':m.media?.loc?'📍 ლოკაცია':m.media?.post?'📝 პოსტი':String(m.body||'').slice(0,90);
+const snip=m=>!m?'შეტყობინება':m.deleted?'წაშლილი შეტყობინება':m.kind==='voice'?'🎤 ხმოვანი':m.kind==='image'?'📷 ფოტო':m.media?.sticker?'სტიკერი':m.media?.card?'🎉 მისალოცი ბარათი':m.media?.loc?'📍 ლოკაცია':m.media?.post?'📝 პოსტი':m.media?.story?(m.media.act==='react'?m.body+' ისტორიაზე':'ისტორიაზე: '+String(m.body||'').slice(0,80)):String(m.body||'').slice(0,90);
 const hhmm=ts=>new Date(ts).toLocaleTimeString('ka-GE',{hour:'2-digit',minute:'2-digit'});
 /* a small map made of OpenStreetMap tiles, centred on the point (no map library needed) */
 function locCard(l){const lat=+l.lat,lng=+l.lng;if(!isFinite(lat)||!isFinite(lng))return '';const href=`https://www.openstreetmap.org/?mlat=${lat.toFixed(6)}&mlon=${lng.toFixed(6)}#map=16/${lat.toFixed(5)}/${lng.toFixed(5)}`;
@@ -48,11 +48,18 @@ A.chpost=t=>{const id=+t.dataset.pid;if(!id)return;closeSheet();openPage('post',
 const MREACT=['❤️','😂','😮','😢','👍','🍷','🔥','🙏'];
 function reactPill(id){const r=CHAT?.reacts?.get(id);if(!r||!r.size)return '';const cnt={};r.forEach(e=>{cnt[e]=(cnt[e]||0)+1});const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>rg(x[0])).join('');
  return `<button class="mreact${r.has(ME.id)?' mine':''}" data-a="mreacts" data-mid="${id}" aria-label="რეაქციები: ${r.size}">${top}${r.size>1?`<b>${r.size}</b>`:''}</button>`}
+/* an answer or an emoji on a story: the story's picture with what happened */
+function storyMsg(m,me){const d=m.media,react=d.act==='react',vid=d.type==='video';
+ const lbl=react?(me?'რეაქცია ისტორიაზე':'რეაქცია შენს ისტორიაზე'):(me?'პასუხი ისტორიაზე':'პასუხი შენს ისტორიაზე');
+ return `<div class="stmsg${me?' me':''}"><span class="stlbl">${ic('story')}${lbl}</span><button class="stthumb" data-a="stview" data-src="${esc(d.url)}" data-v="${vid?1:0}" aria-label="ისტორიის ნახვა">${vid?`<video src="${esc(d.url)}#t=0.5" muted playsinline preload="metadata"></video><i class="svplay">${ic('play')}</i>`:`<img src="${esc(d.url)}" alt="" loading="lazy">`}<span class="stgone">ისტორია აღარ არის</span></button>${react?`<span class="stemo">${m.body==='🍷'?rg(m.body):esc(String(m.body||'').slice(0,16))}</span>`:me?`<div class="bubble me">${linkify(m.body)}</div>`:tx(m.body,'bubble')}</div>`}
+A.stview=t=>{if(t.closest('.stmsg.gone'))return;openImage(t.dataset.src,{top:true,video:t.dataset.v==='1'})};
+document.addEventListener('error',e=>{const el=e.target;if(el&&el.closest&&el.closest('.stthumb'))el.closest('.stmsg')?.classList.add('gone')},true);
 function msgHTML(m){const me=m.sender===ME.id,u=prof(m.sender);let body;
  if(m.kind==='system')return `<div class="sysmsg" data-mid="${m.id}">${esc(m.body)}</div>`;
  if(m.deleted)body=`<div class="bubble del${me?' me':''}">${ic('block')}შეტყობინება წაიშალა</div>`;
  else if(m.kind==='voice'&&m.media?.url)body=`<div class="bubble vmsg${me?' me':''}"><audio controls preload="metadata" src="${esc(m.media.url)}"></audio><span>${m.media.dur?m.media.dur+' წმ':'ხმოვანი'}</span></div>`;
  else if(m.kind==='image'&&m.media?.url)body=`<div class="bubble img${me?' me':''}"><img src="${esc(mSm(m.media))}" alt="" loading="lazy" data-a="imgview" data-src="${esc(m.media.url)}"></div>`;
+ else if(m.media?.story&&safeU(m.media.url))body=storyMsg(m,me);
  else if(m.media?.sticker)body=`<div class="stkmsg">${stickerSVG(m.media.sticker)}</div>`;
  else if(m.media?.card)body=cardHTML(m.media.card);
  else if(m.media?.loc)body=locCard(m.media.loc);

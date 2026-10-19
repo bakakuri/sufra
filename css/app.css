@@ -1335,3 +1335,95 @@ button.gbig>i svg{width:13px;height:13px}
 .sheet .cvv .cvhero{margin-top:2px}
 .placec .sub,.picf .sub{white-space:normal;overflow:visible;text-overflow:clip}
 .btn.ghost.warnbtn{color:var(--nope)}
+
+/* stories: hold to pause, the controls step aside; the picture keeps its own shape */
+.sv-in>img{object-fit:contain;background:#000}
+.sv.holding .sv-head,.sv.holding .sv-rx,.sv.holding .sv-foot,.sv.holding .sv-bars,.sv.holding .sv-post,.sv.holding .svpoll{opacity:0;transition:opacity .2s}
+.sv-head,.sv-rx,.sv-foot,.sv-bars{transition:opacity .2s}
+#svpz svg{width:20px;height:20px}
+.sv-prev,.sv-next{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+
+/* a reply or an emoji on a story, in the chat */
+.stmsg{display:flex;flex-direction:column;align-items:flex-start;gap:6px;max-width:78%}
+.stmsg.me{align-items:flex-end;margin-left:auto}
+.stlbl{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+.stlbl svg{width:14px;height:14px}
+.stthumb{position:relative;width:132px;aspect-ratio:9/16;border-radius:16px;overflow:hidden;background:#000;display:block;box-shadow:0 2px 10px rgb(20 10 30/.15);border:2px solid var(--surface)}
+.stmsg.me .stthumb{border-color:color-mix(in srgb,var(--wine) 35%,var(--surface))}
+.stthumb img,.stthumb video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.stthumb .svplay{position:absolute;inset:auto auto 8px 8px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:rgb(0 0 0/.55);color:#fff}
+.stthumb .svplay svg{width:15px;height:15px}
+.stgone{display:none;position:absolute;inset:0;place-items:center;text-align:center;padding:10px;font-size:12px;color:#fff;background:linear-gradient(160deg,#3a2a40,#151018)}
+.stmsg.gone .stgone{display:grid}
+.stmsg.gone .stthumb img,.stmsg.gone .stthumb video{visibility:hidden}
+.stemo{font-size:44px;line-height:1}
+.stemo svg{width:46px;height:46px}
+.stmsg .bubble{max-width:100%}
+
+/* sheets whose content is a grid or a form scroll inside the panel (the create sheet, gifts, matches) */
+.panel>.createg,.panel>.match,.panel>.jchoice,.panel>.gifts,.panel>.form{overflow-y:auto;min-height:0;flex:0 1 auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.panel>.createg{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));align-content:start}
+
+/* home: the services strip, small pictures of the pages */
+.svstrip{background:var(--surface);border-bottom:1px solid var(--line);padding:10px 0 14px}
+.svhd{display:flex;align-items:center;gap:4px;padding:0 10px 8px 16px}
+.svhd h3{font-size:15px;font-weight:700}
+.svall{height:30px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:600;color:var(--wine);background:var(--wine-soft)}
+.svarr{display:none;width:30px;height:30px}
+.svarr svg{width:18px;height:18px}
+.svarr.nx svg{transform:rotate(180deg)}
+@media (hover:hover) and (pointer:fine){.svarr{display:grid}}
+.svtrack{display:flex;gap:10px;overflow-x:auto;padding:2px 16px 4px;scroll-snap-type:x mandatory;scroll-padding:0 16px;scrollbar-width:none;overscroll-behavior-x:contain}
+.svtrack::-webkit-scrollbar{display:none}
+.svcard{flex:0 0 136px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:stretch;text-align:left;border-radius:18px;overflow:hidden;background:var(--sunk);border:1px solid var(--line);transition:transform .2s var(--ease-out)}
+.svcard:active{transform:scale(.97)}
+.svart{position:relative;height:78px;overflow:hidden;background:linear-gradient(140deg,hsl(var(--h) 74% 60%),hsl(calc(var(--h) + 34) 68% 40%));display:flex;align-items:flex-end;padding:10px}
+.svart::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 18% 12%,rgb(255 255 255/.32),transparent 46%)}
+.svbig{position:absolute;right:-14px;bottom:-16px;color:#fff;opacity:.2;transform:rotate(-12deg)}
+.svbig svg{width:78px;height:78px;stroke-width:1.4}
+.svico{position:relative;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:rgb(255 255 255/.94);color:hsl(var(--h) 62% 38%);box-shadow:0 3px 10px rgb(0 0 0/.16)}
+.svico svg{width:21px;height:21px}
+.svlive{position:absolute;top:8px;left:8px;max-width:calc(100% - 16px);height:20px;padding:0 8px;border-radius:999px;background:rgb(0 0 0/.42);color:#fff;font-style:normal;font-size:11px;font-weight:700;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.svlive.red::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#FF4D6D;margin-right:5px;vertical-align:1px;animation:pulse 1.4s ease-in-out infinite}
+.svcard b{font-size:14px;line-height:1.25;padding:9px 11px 0}
+.svcard small{font-size:11.5px;line-height:1.35;color:var(--muted);margin:2px 11px 11px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;height:calc(2 * 1.35em)}
+@media (prefers-reduced-motion:reduce){.svlive.red::before{animation:none}}
+
+/* photos are never cropped and nothing lies on top of them: the author row above, the photo in its own shape
+   (between 4:5 and 1.91:1, the rest is the theme's background), grades and actions below; the viewer letterboxes on black */
+.pmw{aspect-ratio:auto;max-height:none;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);box-shadow:none}
+.pmmedia{position:relative;aspect-ratio:var(--ar,1);max-height:68dvh;background:var(--sunk);overflow:hidden;flex:none}
+.pmi img,.pmi video{object-fit:contain;object-position:center}
+.pmw .pmtop{position:static;height:auto;padding:10px 12px;background:none;color:var(--ink);-webkit-backdrop-filter:none;backdrop-filter:none;pointer-events:auto}
+.pmw .pmtop .av{box-shadow:none}
+.pmw .pmtop .pname,.pmw .pmtop .pname b{color:var(--ink)}
+.pmw .pmtop .pwtime{color:var(--muted)}
+.pmw .pmtop .ptag{background:var(--sunk);color:var(--muted)}
+.pmw .pmtop .ptag.plc{background:var(--wine-soft);color:var(--wine)}
+.pmw .pmtop .ptag.warn{background:color-mix(in srgb,var(--nope) 16%,transparent);color:var(--nope)}
+.pmw .pmtop .ptag.ad{background:color-mix(in srgb,var(--gold) 20%,transparent);color:var(--gold)}
+.pmw .pmtop .vb{color:#fff}
+.pmw .pmcount{background:var(--sunk);color:var(--ink)}
+.pmw .pmbot{position:static;padding:4px 6px 2px 12px;background:none;color:var(--ink);-webkit-backdrop-filter:none;backdrop-filter:none;pointer-events:auto}
+.pmw .pmdots i{background:color-mix(in srgb,var(--ink) 22%,transparent)}
+.pmw .pmdots i.on{background:var(--wine)}
+.pmw .pmbot .grade{color:var(--muted)}
+.pmw .pmbot .grade button{border-color:var(--line);color:var(--ink)}
+.pmw .pmbot .grade button.plus{color:var(--gold);border-color:var(--gold)}
+.pmw .pmbot .grade button.on{background:var(--gold);border-color:var(--gold);color:var(--on-gold)}
+.pmw .pmbot .act{color:var(--muted)}
+.pmw .pmbot .act:hover{background:var(--sunk)}
+.pmw .pmbot .act.on{color:var(--wine)}
+html.eco .pmw .pmtop,html.eco .pmw .pmbot{-webkit-backdrop-filter:none;backdrop-filter:none}
+.pvs{position:relative}
+.pvs img,.pvs video{position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:contain}
+
+/* profile: the actions sit in one labeled row under the name, so settings are easy to find */
+.pro2row{display:flex;gap:8px;margin-top:14px;align-items:center}
+.pro2row .btn{flex:1 1 0;min-width:0;height:42px;padding:0 10px;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pro2row .btn svg{width:18px;height:18px;flex:none}
+.pro2row .ibtn.sq{width:42px;height:42px;flex:none}
+.pro2row .btn.ghost{background:var(--sunk);border-color:var(--line)}
+html.zoomed .pmw{max-height:none}html.zoomed .pmmedia{max-height:calc(68dvh / var(--z))}
+.pro2row .btn{font-size:14px}.pro2row .btn:first-child{flex-grow:1.35}
+.stlbl{white-space:nowrap}

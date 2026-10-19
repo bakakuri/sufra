@@ -17,6 +17,8 @@ const rTotal=s=>Object.values(s.reactions||{}).reduce((a,b)=>a+b,0);
 const rTop=s=>Object.entries(s.reactions||{}).sort((a,b)=>b[1]-a[1]).slice(0,3).map(e=>rg(e[0])).join('');
 function pollBlock(p,s){if(!p.poll||!Array.isArray(p.poll.opts))return '';const tot=Object.values(s.votes||{}).reduce((a,b)=>a+b,0),voted=s.my_vote!=null;
  return `<div class="poll" role="group" aria-label="გამოკითხვა"><b>${esc(p.poll.q)}</b>${p.poll.opts.map((o,i)=>{const n=s.votes?.[i]||0,pc=tot?Math.round(n/tot*100):0;return `<button class="popt${s.my_vote===i?' mine':''}" data-a="vote" data-pid="${p.id}" data-i="${i}"${voted?` style="--pc:${pc}%"`:''}><span>${esc(o)}</span>${voted?`<em>${pc}%</em>`:''}</button>`}).join('')}<span class="note">${tot} ხმა${voted?'':' · აირჩიე პასუხი'}</span></div>`}
+/* the photo keeps its own shape: the card follows it (between 4:5 and 1.91:1) and anything left over is plain background */
+const boxRatio=m=>{const w=+(m&&m.w),h=+(m&&m.h);if(!(w>0&&h>0))return 1;return Math.round(Math.min(1.91,Math.max(.8,w/h))*1000)/1000};
 /* a post: photos and videos fill the card with the author on top and grading and actions at the bottom, the caption sits underneath */
 const pmedia=p=>(Array.isArray(p.media)?p.media:[]).filter(m=>m&&/^https?:|^data:/.test(String(m.url||'')));
 function whoHTML(p,u,pg){const tags=`${p.grp?`<button class="ptag" data-a="group" data-id="${p.grp.id}">${esc(p.grp.name)}</button>`:''}${p.pl?`<button class="ptag plc" data-a="page" data-p="place" data-arg="${p.pl.id}">📍 ${esc(p.pl.name)}</button>`:''}${p.hidden?'<span class="ptag warn">დამალულია</span>':''}${p.pending?'<span class="ptag warn">ელოდება დამტკიცებას</span>':''}${p.ad?'<span class="ptag ad">რეკლამა</span>':''}`;
@@ -49,10 +51,10 @@ function postHTML(p){if(p.repost_of&&!String(p.body||'').trim()){const o=POSTS.g
  const cls=`post${p.hidden?' is-hidden':''}`;
  if(media.length&&!(ECO()&&!p._eco)){const n=media.length;
   return `<article class="${cls} pm" data-id="${p.id}"><div class="pmw${n>1?' multi':''}">
-   <div class="pmtrack">${media.map((m,i)=>mediaTile(m,i,p)).join('')}</div>
    <div class="pmtop">${whoHTML(p,u,pg)}${n>1?`<span class="pmcount" aria-hidden="true"><b>1</b>/${n}</span>`:''}</div>
+   <div class="pmmedia" style="--ar:${boxRatio(media[0])}"><div class="pmtrack">${media.map((m,i)=>mediaTile(m,i,p)).join('')}</div>
    ${n>1?`<button class="pmnav prev" data-a="pmnav" data-d="-1" aria-label="წინა">${ic('back')}</button><button class="pmnav next" data-a="pmnav" data-d="1" aria-label="შემდეგი">${ic('back')}</button>`:''}
-   <span class="burst">${ic('heart','currentColor')}</span>
+   <span class="burst">${ic('heart','currentColor')}</span></div>
    <div class="pmbot">${n>1?`<div class="pmdots" aria-hidden="true">${media.map((_,i)=>`<i${i?'':' class="on"'}></i>`).join('')}</div>`:''}${gradeHTML(p,s)}${actsHTML(p,s)}</div></div>
    ${descHTML(p,2)}${pollBlock(p,s)}</article>`}
  return `<article class="${cls} pc" data-id="${p.id}"><div class="pchead">${whoHTML(p,u,pg)}</div>
@@ -89,7 +91,7 @@ A.pvclose=()=>closePV();
 A.pvopen=t=>openPV(pidOf(t),+t.dataset.i||0);
 /* a single picture, e.g. someone's profile photo */
 function openImage(url,opt={}){if(!/^https?:|^data:/.test(String(url||'')))return;let el=$('#pv');if(!el){el=document.createElement('div');el.id='pv';el.className='pv';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)closePV()})}
- PV={id:null,i:0};el.classList.remove('closing');el.classList.toggle('top',!!opt.top);el.hidden=false;navOpen('pv');el.innerHTML=`<div class="pvin"><div class="pvtop"><span class="grow"></span><button class="ibtn" data-a="pvclose" aria-label="დახურვა">${ic('x')}</button></div><div class="pvframe"><div class="pvtrack"><div class="pvs"><img src="${esc(url)}" alt=""></div></div></div></div>`;document.documentElement.classList.add('pvopen')}
+ PV={id:null,i:0};el.classList.remove('closing');el.classList.toggle('top',!!opt.top);el.hidden=false;navOpen('pv');el.innerHTML=`<div class="pvin"><div class="pvtop"><span class="grow"></span><button class="ibtn" data-a="pvclose" aria-label="დახურვა">${ic('x')}</button></div><div class="pvframe"><div class="pvtrack"><div class="pvs">${opt.video?`<video src="${esc(url)}" controls autoplay playsinline></video>`:`<img src="${esc(url)}" alt="">`}</div></div></div></div>`;document.documentElement.classList.add('pvopen')}
 function popAct(id){const b=$(`.post[data-id="${id}"] .rwrap .act`);if(b){pop(b);burst(b)}}
 async function setReaction(id,emoji){const s=STAT.get(id)||blankStat(id),old=s.my_reaction;
  if(old){s.reactions[old]=Math.max(0,(s.reactions[old]||1)-1);if(!s.reactions[old])delete s.reactions[old]}
