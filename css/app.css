@@ -1902,3 +1902,81 @@ html.zoomed .pmw{max-height:none}html.zoomed .pmmedia{max-height:calc(68dvh / va
 .gendt span{display:flex;flex-direction:column;align-items:center;min-width:64px;padding:6px 10px;border-radius:12px;background:rgb(255 255 255/.06);font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
 .gendt span b{font-size:11px;font-weight:600;color:var(--muted);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gendt span:first-child{background:rgb(242 184 75/.16);color:#F2B84B}
+
+/* ---------- games lobby ----------
+   the shelf is the page: every game is a poster rendered with its own 3D board (icons/g). the last game played is the big one.
+   --ac is each game's accent, taken from its board (amber walnut, crimson lacquer, ivory, card-table green, billiard teal) */
+.gs-page{gap:18px}
+.gs-head{display:flex;flex-direction:column;gap:10px;padding-top:2px}
+.gs-head h2{font-size:clamp(32px,9vw,42px);font-weight:900;font-stretch:62.5%;line-height:1;letter-spacing:-.01em}
+.gs-chips{display:flex;gap:8px;flex-wrap:wrap}
+.gs-chips>span{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:13px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.gs-chips .live i{background:var(--vine)}
+.gs-rt svg{width:15px;height:15px;color:var(--gold)}
+.gs-rt span{color:var(--muted);font-weight:500}.gs-rt b{color:var(--ink);font-weight:700}
+
+.gs-shelf{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.gs-post{position:relative;display:block;width:100%;aspect-ratio:4/5;border-radius:20px;overflow:hidden;isolation:isolate;background:#1B120C;color:#FBF4E8;text-align:left;
+ box-shadow:0 14px 30px -18px rgb(20 10 4/.75),0 2px 6px -2px rgb(20 10 4/.35);transition:transform .25s var(--ease-out),box-shadow .25s}
+.gs-post.big{grid-column:1/-1;aspect-ratio:1/1;border-radius:24px}
+@media (min-width:520px){.gs-post.big{aspect-ratio:16/10}}
+.gs-pic{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 34%;z-index:-2;transition:transform .9s var(--ease-out)}
+.gs-post.big .gs-pic{object-position:50% 40%}
+/* the dark lower third that carries the name, then a low glow in the game's own colour, then a hairline rim */
+.gs-post::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgb(16 10 6/0) 34%,rgb(16 10 6/.62) 62%,rgb(13 8 5/.93) 100%)}
+.gs-post::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+ background:radial-gradient(120% 34% at 50% 104%,color-mix(in srgb,var(--ac) 34%,transparent),transparent 72%);box-shadow:inset 0 0 0 1px rgb(255 236 210/.09),inset 0 1px 0 rgb(255 236 210/.12)}
+.gs-body{position:absolute;left:0;right:0;bottom:0;padding:14px 14px 14px;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.gs-name{display:block;font-family:var(--f-display);font-weight:900;font-stretch:62.5%;font-size:31px;line-height:.92;letter-spacing:0;text-shadow:0 2px 14px rgb(0 0 0/.55)}
+.gs-post.big .gs-body{padding:20px;gap:9px}
+.gs-post.big::before{background:linear-gradient(180deg,rgb(16 10 6/0) 26%,rgb(16 10 6/.66) 56%,rgb(13 8 5/.95) 100%)}
+.gs-desc,.gs-meta{text-shadow:0 1px 6px rgb(0 0 0/.6)}
+.gs-post.big .gs-name{font-size:clamp(48px,14vw,64px)}
+.gs-last{position:absolute;top:14px;left:14px;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border-radius:999px;font-size:12.5px;font-weight:600;color:#FBF4E8;background:rgb(16 10 6/.5);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:inset 0 0 0 1px rgb(255 236 210/.12)}
+.gs-last::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ac)}
+.gs-desc{font-size:14px;line-height:1.4;color:rgb(251 244 232/.84);max-width:34ch}
+.gs-cta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px}
+.gs-cta .btn{height:40px;padding:0 18px;font-size:15px;box-shadow:0 8px 20px -8px color-mix(in srgb,var(--gold) 70%,transparent)}
+.gs-cta .btn svg{width:16px;height:16px}
+.gs-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:12.5px;font-weight:500;color:rgb(251 244 232/.8);font-variant-numeric:tabular-nums}
+.gs-meta .on{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-weight:600;color:#DFFBEA;background:rgb(47 191 113/.24);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.gs-meta .on i{width:6px;height:6px;border-radius:50%;background:#6CF2A8;animation:pulse 1.6s infinite}
+.gs-post:active{transform:scale(.985)}
+.gs-post:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+@media (hover:hover){.gs-post:hover{box-shadow:0 22px 40px -20px rgb(20 10 4/.85),0 2px 6px -2px rgb(20 10 4/.35)}.gs-post:hover .gs-pic{transform:scale(1.045)}}
+@media (max-width:359px){.gs-name{font-size:26px}.gs-body{padding:11px}}
+
+.gs-tour{display:flex;align-items:center;gap:14px;width:100%;padding:14px 16px;border-radius:18px;text-align:left;color:var(--ink);
+ background:linear-gradient(100deg,color-mix(in srgb,var(--gold) 15%,var(--surface)),var(--surface) 72%);border:1px solid color-mix(in srgb,var(--gold) 32%,var(--line))}
+.gs-medal{flex:none;width:50px;height:50px;border-radius:50%;display:grid;place-items:center;color:#3B2404;
+ background:radial-gradient(circle at 34% 28%,#FFE9AE,#E0A93A 52%,#9C6512 100%);box-shadow:inset 0 -3px 5px rgb(80 40 0/.3),0 6px 14px -6px rgb(201 138 18/.7)}
+.gs-medal svg{width:24px;height:24px}
+.gs-tour b{display:block;font-family:var(--f-display);font-size:19px;font-weight:800;line-height:1.2}
+.gs-tour small{display:block;color:var(--muted);font-size:13px;line-height:1.35;margin-top:2px}
+.gs-tour .gs-chev{flex:none;display:grid;color:var(--muted)}.gs-tour .gs-chev svg{width:18px;height:18px;transform:scaleX(-1)}
+.gs-tour:focus-visible,.livegames .lgcard:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+
+.ohint{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ohint p{margin:0;flex:1 1 200px}
+
+.livegames{gap:12px;margin:0 -16px;padding:2px 16px 4px;scroll-snap-type:x mandatory;scroll-padding:0 16px}
+.livegames .lgcard{width:218px;padding:0;gap:0;overflow:hidden;border-radius:16px;scroll-snap-align:start}
+.gs-mini{position:relative;display:block;aspect-ratio:16/9;overflow:hidden;background:#1B120C}
+.gs-mini img{width:100%;height:100%;object-fit:cover;object-position:50% 30%}
+.gs-mini::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgb(13 8 5/.85)),radial-gradient(90% 40% at 50% 110%,color-mix(in srgb,var(--ac) 30%,transparent),transparent 70%)}
+.gs-mini em{position:absolute;left:12px;bottom:8px;z-index:1;font-style:normal;font-family:var(--f-display);font-weight:900;font-stretch:62.5%;font-size:22px;line-height:1;color:#FBF4E8;text-shadow:0 1px 8px rgb(0 0 0/.6)}
+.livegames .lgcard .vsn{padding:10px 12px 0}
+.livegames .lgcard small{padding:3px 12px 12px}
+.vsn .gs-avs{display:inline-flex}.vsn .gs-avs>*+*{margin-left:-8px;box-shadow:0 0 0 2px var(--surface);border-radius:50%}
+
+.gs-lb{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:2px 12px}
+.gs-lb .lb tr:last-child td{border-bottom:0}
+.gs-lb .lb td{padding:9px 4px}
+.gs-lb .lb td:first-child{width:36px}
+.lb .gs-rk{display:inline-grid;place-items:center;min-width:24px;height:24px;border-radius:999px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.lb .gs-rk.r1{background:linear-gradient(#FFE29A,#D9A030);color:#3B2404}
+.lb .gs-rk.r2{background:linear-gradient(#F4F4F7,#AEB4BF);color:#23262C}
+.lb .gs-rk.r3{background:linear-gradient(#F5C9A0,#B5703B);color:#3A1E08}
+.lb tr.mine td{color:var(--wine)}
+
+@media (prefers-reduced-motion:reduce){.gs-post,.gs-pic{transition:none}.gs-post:hover .gs-pic{transform:none}.gs-post:active{transform:none}}

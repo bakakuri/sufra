@@ -3,7 +3,7 @@ const RM=()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches}
 const EASE='cubic-bezier(.22,1,.36,1)',SPRING='cubic-bezier(.34,1.56,.64,1)';
 const anim=(el,kf,o)=>{if(!el||RM()||!el.animate)return null;try{return el.animate(kf,o)}catch(e){return null}};
 function staggerIn(els,step=45,delay=30){els.forEach((el,i)=>anim(el,[{opacity:0,translate:'0 16px'},{opacity:1,translate:'0 0'}],{duration:480,delay:delay+i*step,easing:EASE,fill:'backwards'}))}
-const REVEAL='.post,.evcard,.gcard,.mitem,.lcard,.tile,.orow,.chpost,.list>.row,.rrow,.lgcard,.pgrid img,.tourcard,.ghero,.vcard,.setrow,.hist>div';
+const REVEAL='.post,.evcard,.gcard,.gs-post,.gs-tour,.mitem,.lcard,.tile,.orow,.chpost,.list>.row,.rrow,.lgcard,.pgrid img,.tourcard,.ghero,.vcard,.setrow,.hist>div';
 function enterView(dx){anim(view,[{opacity:0,translate:`${dx}px 0`},{opacity:1,translate:'0 0'}],{duration:360,easing:EASE});
  staggerIn($$(REVEAL,view).filter(el=>el.getBoundingClientRect().top<innerHeight).slice(0,9))}
 function moveInd(i){if(typeof i==='string'){const v=typeof visTabs==='function'?visTabs():TABS;i=Math.max(0,v.findIndex(t=>t[0]===i))}const t=$('.tabind');if(t)t.style.transform=`translateX(${i*100}%)`}
