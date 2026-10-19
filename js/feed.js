@@ -19,6 +19,8 @@ function pollBlock(p,s){if(!p.poll||!Array.isArray(p.poll.opts))return '';const 
  return `<div class="poll" role="group" aria-label="გამოკითხვა"><b>${esc(p.poll.q)}</b>${p.poll.opts.map((o,i)=>{const n=s.votes?.[i]||0,pc=tot?Math.round(n/tot*100):0;return `<button class="popt${s.my_vote===i?' mine':''}" data-a="vote" data-pid="${p.id}" data-i="${i}"${voted?` style="--pc:${pc}%"`:''}><span>${esc(o)}</span>${voted?`<em>${pc}%</em>`:''}</button>`}).join('')}<span class="note">${tot} ხმა${voted?'':' · აირჩიე პასუხი'}</span></div>`}
 /* the photo keeps its own shape: the card follows it (between 4:5 and 1.91:1) and anything left over is plain background */
 const boxRatio=m=>{const w=+(m&&m.w),h=+(m&&m.h);if(!(w>0&&h>0))return 1;return Math.round(Math.min(1.91,Math.max(.8,w/h))*1000)/1000};
+/* older photos have no saved size: the frame takes the photo's shape once it has loaded */
+document.addEventListener('load',e=>{const im=e.target;if(!im||im.tagName!=='IMG')return;const box=im.closest('.pmmedia[data-fit]');if(!box||im.closest('.pmi')?.dataset.i!=='0'||!im.naturalWidth)return;box.removeAttribute('data-fit');box.style.setProperty('--ar',boxRatio({w:im.naturalWidth,h:im.naturalHeight}))},true);
 /* a post: photos and videos fill the card with the author on top and grading and actions at the bottom, the caption sits underneath */
 const pmedia=p=>(Array.isArray(p.media)?p.media:[]).filter(m=>m&&/^https?:|^data:/.test(String(m.url||'')));
 function whoHTML(p,u,pg){const tags=`${p.grp?`<button class="ptag" data-a="group" data-id="${p.grp.id}">${esc(p.grp.name)}</button>`:''}${p.pl?`<button class="ptag plc" data-a="page" data-p="place" data-arg="${p.pl.id}">📍 ${esc(p.pl.name)}</button>`:''}${p.hidden?'<span class="ptag warn">დამალულია</span>':''}${p.pending?'<span class="ptag warn">ელოდება დამტკიცებას</span>':''}${p.ad?'<span class="ptag ad">რეკლამა</span>':''}`;
@@ -52,7 +54,7 @@ function postHTML(p){if(p.repost_of&&!String(p.body||'').trim()){const o=POSTS.g
  if(media.length&&!(ECO()&&!p._eco)){const n=media.length;
   return `<article class="${cls} pm" data-id="${p.id}"><div class="pmw${n>1?' multi':''}">
    <div class="pmtop">${whoHTML(p,u,pg)}${n>1?`<span class="pmcount" aria-hidden="true"><b>1</b>/${n}</span>`:''}</div>
-   <div class="pmmedia" style="--ar:${boxRatio(media[0])}"><div class="pmtrack">${media.map((m,i)=>mediaTile(m,i,p)).join('')}</div>
+   <div class="pmmedia" style="--ar:${boxRatio(media[0])}"${media[0]&&+media[0].w>0&&+media[0].h>0?'':' data-fit'}><div class="pmtrack">${media.map((m,i)=>mediaTile(m,i,p)).join('')}</div>
    ${n>1?`<button class="pmnav prev" data-a="pmnav" data-d="-1" aria-label="წინა">${ic('back')}</button><button class="pmnav next" data-a="pmnav" data-d="1" aria-label="შემდეგი">${ic('back')}</button>`:''}
    <span class="burst">${ic('heart','currentColor')}</span></div>
    <div class="pmbot">${n>1?`<div class="pmdots" aria-hidden="true">${media.map((_,i)=>`<i${i?'':' class="on"'}></i>`).join('')}</div>`:''}${gradeHTML(p,s)}${actsHTML(p,s)}</div></div>

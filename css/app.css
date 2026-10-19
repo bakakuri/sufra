@@ -1393,7 +1393,8 @@ button.gbig>i svg{width:13px;height:13px}
    (between 4:5 and 1.91:1, the rest is the theme's background), grades and actions below; the viewer letterboxes on black */
 .pmw{aspect-ratio:auto;max-height:none;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);box-shadow:none}
 .pmmedia{position:relative;aspect-ratio:var(--ar,1);max-height:68dvh;background:var(--sunk);overflow:hidden;flex:none}
-.pmi img,.pmi video{object-fit:contain;object-position:center}
+/* the photo fills its frame edge to edge: the frame takes the photo's shape (from 4:5 to 1.91:1), only photos beyond that are trimmed a little */
+.pmi img,.pmi video{object-fit:cover;object-position:center}
 .pmw .pmtop{position:static;height:auto;padding:10px 12px;background:none;color:var(--ink);-webkit-backdrop-filter:none;backdrop-filter:none;pointer-events:auto}
 .pmw .pmtop .av{box-shadow:none}
 .pmw .pmtop .pname,.pmw .pmtop .pname b{color:var(--ink)}
