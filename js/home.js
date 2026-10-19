@@ -1,25 +1,27 @@
 /* home feed, reminders, trends, search, hashtags, saved, single post */
 const SHORT=[['rooms','wine','სუფრა'],['places','map','ადგილები'],['sport','trophy','მატჩები'],['help','help','დახმარება'],['toasts','book','სადღეგრძელოები'],['events','cal','ღონისძიებები'],['groups','users','ჯგუფები'],['rides','pin','ერთად წავიდეთ'],['jobs','school','ვაკანსიები'],['market','store','ბაზრობა'],['pages','mega','არხები'],['friends','user','მეგობრები'],['calendar','gift','კალენდარი']];
-const FEED={done:false,loading:false,cursor:null,ads:[],adsShown:new Set(),count:0};
+const FEED={done:false,loading:false,cursor:null,ads:[],adsShown:new Set(),count:0,seen:new Set()};
+/* a post and its plain reposts show once in the feed */
+const feedKey=p=>p.repost_of&&!String(p.body||'').trim()?p.repost_of:p.id;
 const score=p=>{const s=STAT.get(p.id)||blankStat(p.id),h=(Date.now()-new Date(p.created_at).getTime())/36e5;return (1+rTotal(s)+s.comments*2+s.grade_n+(FRIENDS.has(p.author)?3:0)+(p.author===ME.id?1:0))/Math.pow(h+2,1.3)};
 const firstName=()=>esc(String(ME.name||'').split(' ')[0]);
 R.home=()=>{
  view.innerHTML=`<div class="stories" id="stories" role="list">${'<span class="story sk" aria-hidden="true"><span class="ring seen"><span class="av" style="--s:58px"></span></span><span></span></span>'.repeat(5)}</div>
  <nav class="shortcuts" aria-label="სერვისები">${SHORT.map(([p,i,l])=>`<button class="sc" data-a="page" data-p="${p}">${ic(i)}${l}</button>`).join('')}</nav>
- <div id="remind"></div><div id="memo"></div><div id="trends"></div>
+ <div id="fsteps"></div><div id="remind"></div><div id="memo"></div><div id="trends"></div>
  <button class="compose cbtn" data-a="compose">${av('me')}<span class="cph">რა ხდება, ${firstName()}?</span><span class="cq" aria-hidden="true">${ic('image')}${ic('poll')}</span></button>
  <div class="seg feedsw" role="group" aria-label="ფიდის რეჟიმი">${[['for','შენთვის'],['friends','მეგობრები'],['new','ახალი']].map(([k,l])=>`<button data-a="feed" data-f="${k}" aria-pressed="${S.feed===k}">${l}</button>`).join('')}</div>
  <div id="feed">${skel(3)}</div><div id="more" class="morebox" aria-live="polite"></div>`;
- loadStories();loadRemind();loadMemories();loadTrends();loadFeed(true);
+ loadStories();loadFirstSteps();loadRemind();loadMemories();loadTrends();loadFeed(true);
  const io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting))loadFeed(false)},{root:view,rootMargin:'600px'});io.observe($('#more'))};
 A.feed=t=>{S.feed=t.dataset.f;$$('.feedsw button').forEach(b=>b.setAttribute('aria-pressed',String(b===t)));$('#feed').innerHTML=skel(3);loadFeed(true)};
 async function loadAds(){try{const ads=await q(sb.from('ads').select('id,post_id').eq('status','active').limit(6));if(!ads.length)return [];const rows=await fetchPosts(b=>b.in('id',ads.map(a=>a.post_id)));return rows.map(p=>Object.assign(p,{ad:ads.find(a=>a.post_id===p.id).id}))}catch(e){return []}}
-async function loadFeed(reset){if(reset){FEED.done=false;FEED.cursor=null;FEED.count=0}if(FEED.loading||FEED.done)return;FEED.loading=true;const mode=S.feed,lim=mode==='for'?30:20,my=++FEED.tok;
+async function loadFeed(reset){if(reset){FEED.done=false;FEED.cursor=null;FEED.count=0;FEED.seen=new Set()}if(FEED.loading||FEED.done)return;FEED.loading=true;const mode=S.feed,lim=mode==='for'?30:20,my=++FEED.tok;
  const more=$('#more');if(more&&!reset)more.innerHTML='<span class="spin" aria-label="იტვირთება"></span>';
  try{let rows=await fetchPosts(b=>{b=b.is('group_id',null).eq('hidden',false).order('created_at',{ascending:false}).limit(lim);if(FEED.cursor)b=b.lt('created_at',FEED.cursor);if(mode==='friends')b=b.in('author',[ME.id,...FRIENDS]);return b});
   if(my!==FEED.tok)return;
   if(rows.length)FEED.cursor=rows[rows.length-1].created_at;if(rows.length<lim)FEED.done=true;
-  rows=rows.filter(p=>!LOCALHIDE[p.id]);if(mode==='for')rows.sort((a,b)=>score(b)-score(a));
+  rows=rows.filter(p=>!LOCALHIDE[p.id]&&!LOCALHIDE[feedKey(p)]&&!(p.repost_of&&!p.body&&!POSTS.has(p.repost_of))).filter(p=>{const k=feedKey(p);if(FEED.seen.has(k))return false;FEED.seen.add(k);return true});if(mode==='for')rows.sort((a,b)=>score(b)-score(a));
   if(reset&&mode!=='friends')FEED.ads=await loadAds();
   const feed=$('#feed');if(!feed)return;let html='';
   rows.forEach(p=>{FEED.count++;html+=postHTML(p);if(FEED.count%6===0&&FEED.ads.length){const ad=FEED.ads.shift();html+=postHTML(ad);if(!FEED.adsShown.has(ad.ad)){FEED.adsShown.add(ad.ad);sb.rpc('ad_impression',{p_ad:ad.ad}).then(()=>{})}}if(reset&&FEED.count===2)html+='<div id="sugg"></div>'});

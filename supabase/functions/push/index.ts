@@ -19,6 +19,9 @@ function text(kind: string, name: string, ref: Record<string, string>): string {
   switch (kind) {
     case "react": return `${name} · ${ref.emoji ?? "👍"} შენს პოსტზე`;
     case "comment": return `${name} · ახალი კომენტარი: ${ref.text ?? ""}`;
+    case "comment_reply": return `${name} გიპასუხა: ${ref.text ?? ""}`;
+    case "comment_like": return `${name} · მოიწონა შენი კომენტარი`;
+    case "repost": return `${name} · ${String(ref.quote) === "true" ? "გააზიარა შენი პოსტი თავისი სიტყვით" : "გააზიარა შენი პოსტი"}`;
     case "friend_req": return `${name} · მეგობრობის მოთხოვნა`;
     case "friend_ok": return `${name} · მეგობრობა დადასტურდა`;
     case "message": return `${name}: ${ref.text ?? ""}`;
@@ -56,7 +59,8 @@ function text(kind: string, name: string, ref: Record<string, string>): string {
 
 function route(kind: string, ref: Record<string, string>): string {
   if (kind === "message" && ref.conv) return `/#chat-${ref.conv}`;
-  if ((kind === "react" || kind === "comment") && ref.post) return `/#post-${ref.post}`;
+  if (kind === "repost" && ref.post) return `/#post-${String(ref.quote) === "true" && ref.by ? ref.by : ref.post}`;
+  if ((kind === "react" || kind === "comment" || kind === "comment_reply" || kind === "comment_like") && ref.post) return `/#post-${ref.post}`;
   if (kind === "match" || kind === "super") return "/#date";
   if (kind === "room_invite" && ref.room) return `/#room-${ref.room}`;
   if (kind.startsWith("bet_") && ref.fixture) return `/#fixture-${ref.fixture}`;
@@ -77,6 +81,9 @@ Deno.serve(async (req) => {
     const { id } = await req.json();
     const { data: n } = await sb.from("notifications").select("id,user_id,actor,kind,ref").eq("id", id).maybeSingle();
     if (!n) return new Response("ok");
+    // muted categories and quiet hours: the notification stays in the app, only the push is skipped
+    const { data: allowed, error: pe } = await sb.rpc("push_allowed", { p_user: n.user_id, p_kind: n.kind });
+    if (!pe && allowed === false) return new Response("quiet");
     let name = "სუფრა";
     if (n.actor) {
       const { data: a } = await sb.from("profiles").select("name").eq("id", n.actor).maybeSingle();

@@ -41,7 +41,7 @@ function showOnboarding(){
  <p class="aerr" id="aerr" role="alert"></p><button class="btn wide">დაწყება</button></form><button class="trb" data-a="signout">სხვა ანგარიშით შესვლა</button>`);
  $('#o_u').oninput=e=>{e.target.value=e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g,'')};
  $('#of').onsubmit=async e=>{e.preventDefault();const b=$('#of button.btn');b.disabled=true;
-  try{await rpc('complete_onboarding',{p_name:$('#o_n').value.trim(),p_birthday:$('#o_b').value,p_username:$('#o_u').value.trim(),p_city:$('#o_c').value.trim()});ME=await rpc('my_profile');$('#auth').hidden=true;enterApp()}
+  try{await rpc('complete_onboarding',{p_name:$('#o_n').value.trim(),p_birthday:$('#o_b').value,p_username:$('#o_u').value.trim(),p_city:$('#o_c').value.trim()});ME=await rpc('my_profile');store.set('fsw',ME.id);$('#auth').hidden=true;enterApp()}
   catch(x){$('#aerr').textContent=/username|unique/i.test(x.message)?'ეს მომხმარებლის სახელი დაკავებულია':errMsg(x);b.disabled=false}}}
 A.signout=async()=>{await sb.auth.signOut();location.hash='';location.reload()};
 let AFTER=false;

@@ -15,21 +15,25 @@ A.chatwith=t=>openChatWith(t.dataset.u);
 async function openChatWith(uid,draft){try{const c=await rpc('start_dm',{other:uid});openChat(c,draft)}catch(e){toast(errMsg(e))}}
 
 /* one message */
-const snip=m=>!m?'შეტყობინება':m.deleted?'წაშლილი შეტყობინება':m.kind==='voice'?'🎤 ხმოვანი':m.kind==='image'?'📷 ფოტო':m.media?.sticker?'სტიკერი':m.media?.card?'🎉 მისალოცი ბარათი':m.media?.loc?'📍 ლოკაცია':String(m.body||'').slice(0,90);
+const snip=m=>!m?'შეტყობინება':m.deleted?'წაშლილი შეტყობინება':m.kind==='voice'?'🎤 ხმოვანი':m.kind==='image'?'📷 ფოტო':m.media?.sticker?'სტიკერი':m.media?.card?'🎉 მისალოცი ბარათი':m.media?.loc?'📍 ლოკაცია':m.media?.post?'📝 პოსტი':String(m.body||'').slice(0,90);
 const hhmm=ts=>new Date(ts).toLocaleTimeString('ka-GE',{hour:'2-digit',minute:'2-digit'});
 /* a small map made of OpenStreetMap tiles, centred on the point (no map library needed) */
 function locCard(l){const lat=+l.lat,lng=+l.lng;if(!isFinite(lat)||!isFinite(lng))return '';const href=`https://www.openstreetmap.org/?mlat=${lat.toFixed(6)}&mlon=${lng.toFixed(6)}#map=16/${lat.toFixed(5)}/${lng.toFixed(5)}`;
  let tiles='';if(!ECO()){const z=15,W=240,H=140,n=256*2**z,px=(lng+180)/360*n,r=lat*Math.PI/180,py=(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n,x0=px-W/2,y0=py-H/2;
   for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+W)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+H)/256);ty++)tiles+=`<img src="https://tile.openstreetmap.org/${z}/${tx}/${ty}.png" alt="" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" style="left:${Math.round(tx*256-x0)}px;top:${Math.round(ty*256-y0)}px">`}
  return `<a class="loccard" href="${href}" target="_blank" rel="noopener">${tiles?`<span class="locmap">${tiles}<i class="locpin">${ic('pin','currentColor')}</i></span>`:''}<span class="loct">${ic('pin')}<b>ლოკაცია</b><small>${l.acc?'±'+Math.round(l.acc)+' მ · ':''}რუკაზე ნახვა</small></span></a><span class="osmc">© OpenStreetMap</span>`}
+/* a shared post inside a chat */
+const postMsg=(p,me)=>`<button class="mpost${me?' me':''}" data-a="chpost" data-pid="${+p.id||0}">${safeU(p.img)?`<img src="${esc(p.img)}" alt="" loading="lazy">`:`<span class="mpi">${ic('image')}</span>`}<span class="mpt"><b>${esc(p.by||'პოსტი')}</b><small>${esc(String(p.t||'').slice(0,120))||'პოსტის ნახვა'}</small></span></button>`;
+A.chpost=t=>{const id=+t.dataset.pid;if(!id)return;closeSheet();openPage('post',id)};
 function msgHTML(m){const me=m.sender===ME.id,u=prof(m.sender);let body;
  if(m.kind==='system')return `<div class="sysmsg" data-mid="${m.id}">${esc(m.body)}</div>`;
  if(m.deleted)body=`<div class="bubble del${me?' me':''}">${ic('block')}შეტყობინება წაიშალა</div>`;
  else if(m.kind==='voice'&&m.media?.url)body=`<div class="bubble vmsg${me?' me':''}"><audio controls preload="metadata" src="${esc(m.media.url)}"></audio><span>${m.media.dur?m.media.dur+' წმ':'ხმოვანი'}</span></div>`;
- else if(m.kind==='image'&&m.media?.url)body=`<div class="bubble img${me?' me':''}"><img src="${esc(m.media.url)}" alt="" loading="lazy" data-a="imgview" data-src="${esc(m.media.url)}"></div>`;
+ else if(m.kind==='image'&&m.media?.url)body=`<div class="bubble img${me?' me':''}"><img src="${esc(mSm(m.media))}" alt="" loading="lazy" data-a="imgview" data-src="${esc(m.media.url)}"></div>`;
  else if(m.media?.sticker)body=`<div class="stkmsg">${stickerSVG(m.media.sticker)}</div>`;
  else if(m.media?.card)body=cardHTML(m.media.card);
  else if(m.media?.loc)body=locCard(m.media.loc);
+ else if(m.media?.post)body=postMsg(m.media.post,me);
  else body=(me?`<div class="bubble me">${linkify(m.body)}</div>`:tx(m.body,'bubble'))+(m.media?.link?linkCard(m.media.link,'inchat'):'');
  const r=m.reply_to&&!m.deleted?CHAT?.msgs.get(m.reply_to):null;
  const rq=m.reply_to&&!m.deleted?`<button class="rquote" data-a="jumpmsg" data-mid="${m.reply_to}"><b>${r?esc(String(pname(r.sender)).split(' ')[0]):'პასუხი'}</b><span>${esc(snip(r))}</span></button>`:'';
@@ -41,33 +45,47 @@ async function openChat(cid,draft=''){let conv=CONVS.find(c=>c.conv_id===cid);
  try{if(!conv){CONVS=await rpc('my_conversations');conv=CONVS.find(c=>c.conv_id===cid)}}catch(e){}
  if(!conv){toast('საუბარი ვერ მოიძებნა');return}await loadProfiles(conv.members||[]);S.chatGroup=conv.is_group;
  const other=!conv.is_group&&conv.members?.[0],title=conv.is_group?(conv.title||'ჯგუფი'):pname(other);
- let chan=null;const st=CHAT={cid,conv,other,msgs:new Map(),reply:null,edit:null,pinned:null,ttl:null,timers:[]};
+ let chan=null;const st=CHAT={cid,conv,other,msgs:new Map(),reply:null,edit:null,pinned:null,ttl:null,timers:[],seen:new Map(),typing:new Map()};
  sheet(`<div class="ph-head"><button class="ibtn" data-a="chats" aria-label="უკან">${ic('back')}</button>${conv.is_group?`<span class="av gav" style="--s:34px;--h:${(cid*47)%360}">${ic('users')}</span>`:`<button data-a="user" data-u="${other}" aria-label="პროფილი">${av(other,34)}</button>`}<div class="grow"><b>${esc(title)}${other?vb(other):''}${fire(cid)}</b><span class="sub" id="chsub">${conv.is_group?(conv.members.length+1)+' წევრი':isOnline(other)?'ონლაინ':'ბოლოს იყო '+ago(prof(other).last_seen||Date.now())}</span></div>
  ${other?`<button class="ibtn" data-a="call" data-u="${other}" data-v="0" aria-label="ხმოვანი ზარი">${ic('phone')}</button><button class="ibtn" data-a="call" data-u="${other}" data-v="1" aria-label="ვიდეოზარი">${ic('video')}</button>`:''}<button class="ibtn" data-a="chatmore" data-c="${cid}" aria-label="მეტი">${ic('more')}</button></div>
  <button class="pinbar" id="pinb" data-a="jumppin" hidden></button>
  <div class="ph-body chatb" id="cb">${skel(2)}</div>
- <form class="ph-foot chatfoot" id="chf"><div class="replybar" id="rpb" hidden></div><div class="chrow"><button type="button" class="ibtn" id="ch_more" aria-label="დამატება">${ic('plus')}</button><button type="button" class="ibtn" id="ch_mic" aria-label="ხმოვანი შეტყობინება">${ic('mic')}</button><button type="button" class="ibtn stkb" id="ch_stk" aria-label="სტიკერი">🍷</button><input class="field" id="cin" maxlength="4000" placeholder="შეტყობინება…" aria-label="შეტყობინება" autocomplete="off"><button class="btn" aria-label="გაგზავნა">${ic('send')}</button></div></form>`,'',()=>{if(chan)sb.removeChannel(chan);st.timers.forEach(clearTimeout);if(CHAT===st)CHAT=null;S.openConv=null});
+ <form class="ph-foot chatfoot" id="chf"><div class="replybar" id="rpb" hidden></div><div class="chrow"><button type="button" class="ibtn" id="ch_more" aria-label="დამატება">${ic('plus')}</button><button type="button" class="ibtn" id="ch_mic" aria-label="ხმოვანი შეტყობინება">${ic('mic')}</button><button type="button" class="ibtn stkb" id="ch_stk" aria-label="სტიკერი">🍷</button><input class="field" id="cin" maxlength="4000" placeholder="შეტყობინება…" aria-label="შეტყობინება" autocomplete="off"><button class="btn" aria-label="გაგზავნა">${ic('send')}</button></div></form>`,'',()=>{if(chan)sb.removeChannel(chan);st.timers.forEach(clearTimeout);st.typing.forEach(clearTimeout);if(CHAT===st)CHAT=null;S.openConv=null});
  S.openConv=cid;const cb=$('#cb'),inp=$('#cin');if(draft){inp.value=draft}
  const expire=m=>{if(!m.expires_at)return;const ms=new Date(m.expires_at)-Date.now();if(ms<2147e6)st.timers.push(setTimeout(()=>{st.msgs.delete(m.id);$(`#cb [data-mid="${m.id}"]`)?.remove()},Math.max(0,ms)))};
- const add=m=>{if(st.msgs.has(m.id))return;st.msgs.set(m.id,m);const c=$('#cb');if(!c)return;const near=c.scrollHeight-c.scrollTop-c.clientHeight<120;c.insertAdjacentHTML('beforeend',msgHTML(m));expire(m);if(near||m.sender===ME.id)c.scrollTop=1e6};
+ const add=m=>{if(st.msgs.has(m.id))return;st.msgs.set(m.id,m);const c=$('#cb');if(!c)return;const near=c.scrollHeight-c.scrollTop-c.clientHeight<120;c.insertAdjacentHTML('beforeend',msgHTML(m));expire(m);drawSeen();if(near||m.sender===ME.id)c.scrollTop=1e6};
+ /* "seen" under my last message, when it is the last one; hidden both ways for people who turned read receipts off */
+ const drawSeen=()=>{const c=$('#cb');if(!c||CHAT!==st)return;$$('.seenmark',c).forEach(e=>e.remove());if(ME.privacy?.read===false)return;
+  const last=[...st.msgs.values()].filter(m=>!m._old&&m.kind!=='system').sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).pop();if(!last||last.sender!==ME.id||last.deleted)return;
+  const t=new Date(last.created_at).getTime(),by=[...st.seen.entries()].filter(([,v])=>v&&new Date(v).getTime()>=t).map(([u])=>u),row=$(`[data-mid="${last.id}"]`,c);if(!row)return;
+  const txt=by.length?(conv.is_group?`ნახა ${by.length}`:`ნანახია · ${hhmm(st.seen.get(by[0]))}`):'გაგზავნილია';
+  row.insertAdjacentHTML('afterend',`<div class="seenmark${by.length?' on':''}">${ic(by.length?'eye':'check')}${txt}</div>`)};
+ const drawTyping=()=>{const s=$('#chsub');if(!s||CHAT!==st)return;const who=[...st.typing.keys()];
+  if(!who.length){if(st.subBase!=null){s.innerHTML=st.subBase;st.subBase=null}s.classList.remove('typing');return}
+  if(st.subBase==null)st.subBase=s.innerHTML;s.classList.add('typing');s.innerHTML=(conv.is_group?esc(who.map(u=>String(pname(u)).split(' ')[0]).slice(0,2).join(', '))+' ':'')+'წერს<span class="tdots" aria-hidden="true"><i></i><i></i><i></i></span>'};
+ const stopTyping=u=>{if(!st.typing.has(u))return;clearTimeout(st.typing.get(u));st.typing.delete(u);drawTyping()};
  st.add=add;
  const meta=async()=>{try{const c=await q(sb.from('conversations').select('pinned_msg,ttl').eq('id',cid).maybeSingle());if(CHAT!==st||!c)return;st.ttl=c.ttl;st.pinned=c.pinned_msg;
   if(st.pinned&&!st.msgs.has(st.pinned)){const pm=await q(sb.from('messages').select(MSEL).eq('id',st.pinned).maybeSingle());if(pm)st.pinMsg=pm}drawPin();const s=$('#chsub');if(s&&st.ttl&&!s.querySelector('.ttlc'))s.insertAdjacentHTML('afterbegin',`<span class="ttlc">${ic('timer')}${TTL_TXT[st.ttl]}</span> · `);else if(s&&!st.ttl)s.querySelector('.ttlc')?.remove()}catch(e){}};
  try{const rows=await q(sb.from('messages').select(MSEL).eq('conv_id',cid).order('created_at',{ascending:false}).limit(60));await loadProfiles(rows.map(r=>r.sender));rows.reverse();
   const miss=[...new Set(rows.map(r=>r.reply_to).filter(id=>id&&!rows.some(x=>x.id===id)))];if(miss.length){try{(await q(sb.from('messages').select(MSEL).in('id',miss))).forEach(x=>st.msgs.set(x.id,Object.assign(x,{_old:1})))}catch(e){}}
   rows.forEach(r=>st.msgs.set(r.id,r));cb.innerHTML=rows.length?rows.map(msgHTML).join(''):'<p class="muted" id="chempty">დაწერე პირველი შეტყობინება.</p>';rows.forEach(expire);cb.scrollTop=1e6}catch(e){cb.innerHTML=`<p class="muted">${errMsg(e)}</p>`}
+ q(sb.from('conversation_members').select('user_id,seen_at').eq('conv_id',cid)).then(ms=>{if(CHAT!==st)return;ms.forEach(r=>{if(r.user_id!==ME.id)st.seen.set(r.user_id,r.seen_at)});drawSeen()}).catch(()=>{});
  meta();markRead(cid);
- chan=sb.channel('conv-'+cid).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'conv_id=eq.'+cid},async pl=>{const m=pl.new;await loadProfiles([m.sender]);$('#chempty')?.remove();add(m);if(m.kind==='system')meta();if(m.sender!==ME.id)markRead(cid)})
+ chan=sb.channel('conv-'+cid).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'conv_id=eq.'+cid},async pl=>{const m=pl.new;await loadProfiles([m.sender]);$('#chempty')?.remove();stopTyping(m.sender);add(m);if(m.kind==='system')meta();if(m.sender!==ME.id)markRead(cid)})
+  .on('postgres_changes',{event:'UPDATE',schema:'public',table:'conversation_members',filter:'conv_id=eq.'+cid},pl=>{const r=pl.new;if(!r||r.user_id===ME.id)return;st.seen.set(r.user_id,r.seen_at);drawSeen()})
+  .on('broadcast',{event:'typing'},({payload})=>{const u=payload&&payload.u;if(!u||u===ME.id||!(conv.members||[]).includes(u))return;clearTimeout(st.typing.get(u));st.typing.set(u,setTimeout(()=>stopTyping(u),4500));drawTyping()})
   .on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages',filter:'conv_id=eq.'+cid},pl=>{const m=pl.new;if(!st.msgs.has(m.id))return;st.msgs.set(m.id,Object.assign(st.msgs.get(m.id),m));redrawMsg(m.id);if(m.deleted&&st.pinned===m.id){st.pinned=null;drawPin()}}).subscribe();
  const send=async(row)=>{if(st.reply){row.reply_to=st.reply.id;setReply(null)}try{const m=await q(sb.from('messages').insert(Object.assign({conv_id:cid,sender:ME.id},row)).select(MSEL).single());$('#chempty')?.remove();add(m)}catch(e){toast(errMsg(e))}};
  st.send=send;
+ let typT=0;inp.addEventListener('input',()=>{if(ME.privacy?.read===false||!chan||!inp.value.trim())return;const n=Date.now();if(n-typT<2500)return;typT=n;try{chan.send({type:'broadcast',event:'typing',payload:{u:ME.id}})}catch(e){}});
  $('#chf').onsubmit=async e=>{e.preventDefault();const v=inp.value.trim();if(!v)return;inp.value='';
   if(st.edit){const m=st.edit;setEdit(null);try{await rpc('edit_message',{p_id:m.id,p_body:v});Object.assign(m,{body:v,edited_at:new Date().toISOString()});redrawMsg(m.id)}catch(x){toast(errMsg(x));inp.value=v}return}
   const u=(v.match(/https?:\/\/[^\s<]+/)||[])[0];let link=null;if(u)link=await Promise.race([unfurl(u),new Promise(r=>setTimeout(()=>r(null),2500))]);send(link?{body:v,media:{link}}:{body:v})};
  $('#ch_stk').onclick=async()=>{const id=await pickSticker();if(!id)return;const s=STICKERS.find(x=>x[0]===id);send({body:s[1],media:{sticker:id}})};
  $('#ch_mic').onclick=async()=>{const b=await recordVoice();if(!b)return;try{const url=await uploadBlob(b,extOf(b));send({kind:'voice',media:{url,dur:b.dur||0}})}catch(e){toast(errMsg(e))}};
  $('#ch_more').onclick=()=>layer(lhead('დამატება')+`<div class="reasons"><button data-a="chimg">${ic('image')} ფოტო</button><button data-a="chloc">${ic('pin')} ჩემი ლოკაცია</button><button data-a="chcard">${ic('card')} მისალოცი ბარათი</button></div>`)}
-A.chimg=async()=>{closeLayer();const st=CHAT;if(!st)return;const b=await pickImage({max:ECO()?1080:1600});if(!b)return;try{toast('იტვირთება…');const url=await uploadBlob(b,'jpg');st.send({kind:'image',media:{url}})}catch(e){toast(errMsg(e))}};
+A.chimg=async()=>{closeLayer();const st=CHAT;if(!st)return;const b=await pickImage({max:ECO()?1080:1600});if(!b)return;try{toast('იტვირთება…');const m=await uploadMedia(b,'image');st.send({kind:'image',media:{url:m.url,sm:m.sm||undefined,w:m.w,h:m.h}})}catch(e){toast(errMsg(e))}};
 A.chloc=()=>{closeLayer();const st=CHAT;if(!st)return;if(!navigator.geolocation){toast('ამ მოწყობილობაზე ლოკაცია მიუწვდომელია');return}toast('ლოკაციას ვადგენ…');
  navigator.geolocation.getCurrentPosition(p=>{const{latitude:lat,longitude:lng,accuracy:acc}=p.coords;st.send({body:'📍 ლოკაცია',media:{loc:{lat:+lat.toFixed(6),lng:+lng.toFixed(6),acc:Math.round(acc)}}})},()=>toast('ლოკაციაზე წვდომა არ მოგვეცა. ჩართე ბრაუზერის პარამეტრებში'),{enableHighAccuracy:true,timeout:15000,maximumAge:30000})};
 A.chcard=()=>{closeLayer();if(CHAT)openCardPicker({cid:CHAT.cid,uid:CHAT.other||null,kind:'g'})};

@@ -12,6 +12,7 @@ PG.settings={r(){const push=store.get('push',false);view.innerHTML=pgHead('პ�
  ${isAdult()?`<button class="setrow" data-a="datesettings">${ic('heart')}<div class="grow"><span>გაცნობის პროფილი</span><small>${ME.dating?'ჩართულია':'გამორთულია'}</small></div></button>`:''}
  <h3 class="sec" style="margin:18px 0 4px">შეტყობინებები და აპი</h3>
  <div class="setrow"><div class="grow"><span>Push შეტყობინებები</span><small>მოწონებები, კომენტარები, მესიჯები, ზარები, როცა აპი დახურულია</small></div><button class="switch" role="switch" aria-checked="${push}" data-a="pushtog" aria-label="Push შეტყობინებები"></button></div>
+ <button class="setrow" data-a="page" data-p="notifset">${ic('bell')}<div class="grow"><span>რა შეტყობინებები მივიღო</span><small>${notifSummary()}</small></div></button>
  <div class="setrow"><div class="grow"><span>ეკონომიური რეჟიმი</span><small>სუსტი ინტერნეტისთვის: ფოტო და ვიდეო იტვირთება შეხებით, კლიპები თავისით არ ირთვება, ატვირთვა უფრო მსუბუქია</small></div><button class="switch" role="switch" aria-checked="${!!S.eco}" data-a="ecotog" aria-label="ეკონომიური რეჟიმი"></button></div>
  <button class="setrow" data-a="page" data-p="close">${ic('star')}<div class="grow"><span>ახლო მეგობრები</span><small>ვინ ნახავს „ახლო მეგობრების“ ისტორიებს</small></div></button>
  <button class="setrow" data-a="install">${ic('download')}<div class="grow"><span>ტელეფონზე დაყენება</span><small>სუფრა აპივით მთავარ ეკრანზე</small></div></button>
@@ -19,6 +20,7 @@ PG.settings={r(){const push=store.get('push',false);view.innerHTML=pgHead('პ�
  <h3 class="sec" style="margin:18px 0 4px">კონფიდენციალურობა</h3>
  ${sw('online','ონლაინ სტატუსის ჩვენება','გამორთვისას სხვები ვერ ნახავენ, რომ ონლაინ ხარ')}
  ${sw('guest','უხილავი სტუმარი','სხვის პროფილს ისე ნახავ, რომ მის სტუმრებში არ გამოჩნდე')}
+ <div class="setrow"><div class="grow"><span>„ნანახია“ და „წერს…“</span><small>გამორთვისას სხვები ვერ ნახავენ, რომ წაიკითხე ან წერ. შენც ვერ დაინახავ მათსას</small></div><button class="switch" role="switch" aria-checked="${ME.privacy?.read!==false}" data-a="readtog" aria-label="ნანახია და წერს"></button></div>
  ${segSet('dm','ვინ მომწეროს',[['all','ყველამ'],['friends','მეგობრებმა']])}
  ${segSet('chal','ვინ გამომიწვიოს თამაშში',[['all','ყველამ'],['friends','მეგობრებმა'],['none','არავინ']])}
  <h3 class="sec" style="margin:18px 0 4px">დაბლოკილები</h3><div id="blk">${BLOCKED.size?'':'<p class="note">არავინ.</p>'}</div>
@@ -31,6 +33,25 @@ PG.settings={r(){const push=store.get('push',false);view.innerHTML=pgHead('პ�
  if(BLOCKED.size)loadProfiles([...BLOCKED]).then(()=>{const el=$('#blk');if(el)el.innerHTML=[...BLOCKED].map(id=>`<div class="setrow">${av(id,36)}<div class="grow"><span>${esc(pname(id))}</span></div><button class="btn sm ghost" data-a="unblock" data-u="${id}">განბლოკვა</button></div>`).join('')})}};
 async function savePrivacy(){try{await q(sb.from('profiles').update({privacy:ME.privacy}).eq('id',ME.id))}catch(e){toast(errMsg(e))}}
 A.tog=t=>{const k=t.dataset.k;ME.privacy=Object.assign({},ME.privacy,{[k]:!ME.privacy?.[k]});t.setAttribute('aria-checked',String(!!ME.privacy[k]));savePrivacy();if(k==='online')netPresence()};
+A.readtog=t=>{const on=ME.privacy?.read===false;ME.privacy=Object.assign({},ME.privacy,{read:on});t.setAttribute('aria-checked',String(on));savePrivacy();toast(on?'„ნანახია“ ჩაირთო':'„ნანახია“ გამოირთო')};
+/* notification settings: categories and quiet hours */
+const NCATS=[['reactions','heart','მოწონებები და რეპოსტები','რეაქციები, კომენტარის მოწონება, გაზიარება'],['comments','comment','კომენტარები და პასუხები',''],['friends','users','მეგობრობა და ოჯახის ხე','მოთხოვნები და დადასტურება'],['messages','msg','მესიჯები','მხოლოდ push ითიშება, მესიჯები ჩატში მაინც მოვა'],['celebrations','gift','ანგელოზის და დაბადების დღეები','მეგობრების დღესასწაულები'],['live','live','ლაივები','როცა მეგობარი ეთერში გადის'],['rooms','wine','სუფრის და ბირჟის მოსაწვევები',''],['help','help','დახმარების თხოვნები ახლოს','დონორი, მოხალისე, დაკარგული ცხოველი'],['dating','heart','გაცნობა','წყვილები და სუპერ მოწონებები'],['gifts','gift','საჩუქრები',''],['sport','trophy','მატჩები და პროგნოზები',''],['deals','pin','მგზავრობა და ვაკანსიები','ჯავშნები და გამოხმაურებები']];
+const notifCfg=()=>{const n=ME.notif&&typeof ME.notif==='object'?ME.notif:{};return {off:Object.assign({},n.off||{}),quiet:Object.assign({on:false,from:23,to:8},n.quiet||{})}};
+function notifSummary(){const n=notifCfg(),off=NCATS.filter(c=>n.off[c[0]]).length;return [off?`${off} ტიპი გამორთულია`:'ყველა ჩართულია',n.quiet.on?`ღამის საათები ${String(n.quiet.from).padStart(2,'0')}:00–${String(n.quiet.to).padStart(2,'0')}:00`:''].filter(Boolean).join(' · ')}
+async function saveNotif(n){const tz=(()=>{try{const z=Intl.DateTimeFormat().resolvedOptions().timeZone;return /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/.test(z||'')?z:'Asia/Tbilisi'}catch(e){return 'Asia/Tbilisi'}})();
+ n.quiet.tz=tz;ME.notif=n;try{await q(sb.from('profiles').update({notif:n}).eq('id',ME.id))}catch(e){toast(errMsg(e))}}
+const hourOpts=v=>Array.from({length:24},(_,h)=>`<option value="${h}"${+v===h?' selected':''}>${String(h).padStart(2,'0')}:00</option>`).join('');
+PG.notifset={r(){const n=notifCfg();view.innerHTML=pgHead('შეტყობინებები')+`<div class="form" style="gap:0">
+ <p class="note" style="margin:0 0 8px">გამორთული ტიპის შეტყობინება აღარ მოვა: არც შეტყობინებების სიაში, არც ტელეფონზე. სისტემური შეტყობინებები (ვერიფიკაცია, რეკლამა, დახმარების პასუხები) ყოველთვის მოდის.</p>
+ ${NCATS.filter(c=>c[0]!=='dating'||isAdult()).map(([k,i,l,sub])=>`<div class="setrow"><span class="nsic">${ic(i)}</span><div class="grow"><span>${l}</span>${sub?`<small>${sub}</small>`:''}</div><button class="switch" role="switch" aria-checked="${!n.off[k]}" data-a="ncat" data-k="${k}" aria-label="${l}"></button></div>`).join('')}
+ <h3 class="sec" style="margin:18px 0 4px">ღამის საათები</h3>
+ <div class="setrow"><span class="nsic">${ic('clock')}</span><div class="grow"><span>არ შემაწუხო</span><small>ამ საათებში ტელეფონზე push არ მოვა. შეტყობინებები მაინც შეგროვდება და დილით ნახავ</small></div><button class="switch" role="switch" aria-checked="${!!n.quiet.on}" data-a="nquiet" aria-label="ღამის საათები"></button></div>
+ <div class="frow nqhours" id="nqh"${n.quiet.on?'':' hidden'}><label class="fld">დან<select id="nq_f">${hourOpts(n.quiet.from)}</select></label><label class="fld">მდე<select id="nq_t">${hourOpts(n.quiet.to)}</select></label></div>
+ <p class="note" id="nqs" style="margin-top:6px"${n.quiet.on?'':' hidden'}></p></div>`;
+ const qs=()=>{const c=notifCfg(),el=$('#nqs');if(el)el.textContent=+c.quiet.from===+c.quiet.to?'დასაწყისი და დასასრული ერთნაირია, ამიტომ არაფერი ჩუმდება.':`ყოველდღე ${String(c.quiet.from).padStart(2,'0')}:00-დან ${String(c.quiet.to).padStart(2,'0')}:00-მდე push ჩუმადაა.`};qs();
+ const hs=()=>{const c=notifCfg();c.quiet.from=+$('#nq_f').value;c.quiet.to=+$('#nq_t').value;saveNotif(c).then(qs);qs()};$('#nq_f').onchange=hs;$('#nq_t').onchange=hs}};
+A.ncat=t=>{const c=notifCfg(),k=t.dataset.k,on=!!c.off[k];if(on)delete c.off[k];else c.off[k]=true;t.setAttribute('aria-checked',String(on));saveNotif(c)};
+A.nquiet=t=>{const c=notifCfg();c.quiet.on=!c.quiet.on;t.setAttribute('aria-checked',String(c.quiet.on));$('#nqh').hidden=!c.quiet.on;$('#nqs').hidden=!c.quiet.on;saveNotif(c).then(()=>{const el=$('#nqs');if(el&&c.quiet.on)el.textContent=`ყოველდღე ${String(c.quiet.from).padStart(2,'0')}:00-დან ${String(c.quiet.to).padStart(2,'0')}:00-მდე push ჩუმადაა.`})};
 A.pset=t=>{ME.privacy=Object.assign({},ME.privacy,{[t.dataset.k]:t.dataset.v});$$(`[data-a="pset"][data-k="${t.dataset.k}"]`).forEach(b=>b.setAttribute('aria-pressed',String(b===t)));savePrivacy()};
 A.setlang=()=>{};
 A.ecotog=t=>{S.eco=!S.eco;store.set('eco',S.eco);document.documentElement.classList.toggle('eco',S.eco);t.setAttribute('aria-checked',String(S.eco));toast(S.eco?'ეკონომიური რეჟიმი ჩართულია':'ეკონომიური რეჟიმი გამორთულია')};

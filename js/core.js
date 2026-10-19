@@ -43,7 +43,9 @@ function sheet(html,cls='',onClose){if(SHEET_CB){const f=SHEET_CB;SHEET_CB=null;
 function closeSheet(){const s=$('#sheet');if(s.hidden)return;if(SHEET_CB){const f=SHEET_CB;SHEET_CB=null;try{f()}catch(e){}}const tok=++SHEET_TOK;if(RM()||!$('.panel',s)){s.hidden=true;s.innerHTML='';return}s.classList.add('closing');setTimeout(()=>{if(tok!==SHEET_TOK)return;s.hidden=true;s.innerHTML='';s.classList.remove('closing')},220)}
 const head=(t,extra='')=>`<div class="ph-head"><h2>${t}</h2><span class="sp"></span>${extra}<button class="ibtn" data-a="close" aria-label="დახურვა">${ic('x')}</button></div>`;
 A.close=()=>closeSheet();
-function confirmSheet(title,text,okLabel,onOk,danger){sheet(head(title)+`<div class="ph-body"><p>${text}</p></div><div class="ph-foot"><button class="btn ghost" data-a="close">გაუქმება</button><span class="sp"></span><button class="btn${danger?' danger':''}" id="cfok">${okLabel}</button></div>`,'short');$('#cfok').onclick=async()=>{const b=$('#cfok');b.disabled=true;try{await onOk();closeSheet()}catch(e){toast(errMsg(e));b.disabled=false}}}
+function confirmSheet(title,text,okLabel,onOk,danger,inLayer){
+ if(inLayer){layer(lhead(title)+`<div class="ph-body"><p>${text}</p></div><div class="ph-foot"><button class="btn ghost" data-a="closelayer">გაუქმება</button><span class="sp"></span><button class="btn${danger?' danger':''}" id="cfokl">${okLabel}</button></div>`);$('#cfokl').onclick=async()=>{const b=$('#cfokl');b.disabled=true;try{await onOk();closeLayer()}catch(e){toast(errMsg(e));b.disabled=false}};return}
+ sheet(head(title)+`<div class="ph-body"><p>${text}</p></div><div class="ph-foot"><button class="btn ghost" data-a="close">გაუქმება</button><span class="sp"></span><button class="btn${danger?' danger':''}" id="cfok">${okLabel}</button></div>`,'short');$('#cfok').onclick=async()=>{const b=$('#cfok');b.disabled=true;try{await onOk();closeSheet()}catch(e){toast(errMsg(e));b.disabled=false}}}
 const skel=(n=3)=>Array.from({length:n},()=>'<div class="skel"><span class="sk-av"></span><span class="sk-lines"><i></i><i></i><i style="width:60%"></i></span></div>').join('');
 const empty=(t,sub='',btn='')=>`<div class="empty3"><h3>${t}</h3>${sub?`<p>${sub}</p>`:''}${btn}</div>`;
 
@@ -89,6 +91,25 @@ const loadImg=src=>new Promise((res,rej)=>{const im=new Image();im.onload=()=>re
 async function uploadBlob(blob,ext,bucket='media'){const path=`${ME.id}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}.${ext}`;
  const{error}=await sb.storage.from(bucket).upload(path,blob,{contentType:blob.type||undefined,cacheControl:'31536000',upsert:false});if(error)throw error;
  return bucket==='media'?sb.storage.from('media').getPublicUrl(path).data.publicUrl:path}
+/* small copies: lists load a ~1080px or ~480px copy, the viewer opens the full photo; videos get a poster frame */
+async function scaledCopy(src,max,qual){const im=await loadImg(src);const W=im.naturalWidth||im.width,H=im.naturalHeight||im.height,sc=Math.min(1,max/Math.max(W,H));
+ const c=document.createElement('canvas');c.width=Math.max(1,Math.round(W*sc));c.height=Math.max(1,Math.round(H*sc));c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+ return {b:await new Promise(r=>c.toBlob(r,'image/jpeg',qual)),w:W,h:H}}
+function videoPoster(blob,max=720){return new Promise(res=>{const v=document.createElement('video'),u=URL.createObjectURL(blob);let done=false;
+ const fin=x=>{if(done)return;done=true;clearTimeout(tm);URL.revokeObjectURL(u);v.removeAttribute('src');res(x)},tm=setTimeout(()=>fin(null),8000);
+ v.muted=true;v.playsInline=true;v.preload='auto';
+ v.onloadeddata=()=>{try{v.currentTime=Math.min(.5,(v.duration||1)/4)}catch(e){fin(null)}};
+ v.onseeked=()=>{try{const sc=Math.min(1,max/Math.max(v.videoWidth,v.videoHeight)||1),c=document.createElement('canvas');c.width=Math.max(1,Math.round(v.videoWidth*sc));c.height=Math.max(1,Math.round(v.videoHeight*sc));c.getContext('2d').drawImage(v,0,0,c.width,c.height);c.toBlob(b=>fin(b?{b,w:v.videoWidth,h:v.videoHeight}:null),'image/jpeg',.78)}catch(e){fin(null)}};
+ v.onerror=()=>fin(null);v.src=u})}
+async function uploadMedia(blob,type){
+ if(type==='video'){const m={url:await uploadBlob(blob,extOf(blob)),type:'video'};try{const p=await videoPoster(blob);if(p&&p.b){m.poster=await uploadBlob(p.b,'jpg');m.w=p.w;m.h=p.h}}catch(e){}return m}
+ const gif=blob.type==='image/gif',m={url:await uploadBlob(blob,gif?'gif':'jpg'),type:'image'};if(gif)return m;
+ const src=URL.createObjectURL(blob);
+ try{const md=await scaledCopy(src,1080,.82);m.w=md.w;m.h=md.h;const big=Math.max(md.w,md.h)>1200;
+  const sm=await scaledCopy(src,480,.74);const[a,b]=await Promise.all([big&&md.b?uploadBlob(md.b,'jpg'):null,sm.b&&Math.max(md.w,md.h)>560?uploadBlob(sm.b,'jpg'):null]);if(a)m.md=a;if(b)m.sm=b}catch(e){}
+ finally{URL.revokeObjectURL(src)}return m}
+const safeU=u=>/^https?:\/\//.test(String(u||''))?String(u):'';
+const mMd=m=>safeU(m.md)||m.url,mSm=m=>safeU(m.sm)||safeU(m.md)||m.url,mPoster=m=>safeU(m.poster);
 const extOf=f=>{const m=(f.type||'').split('/')[1]||'';return({jpeg:'jpg','quicktime':'mov','x-m4a':'m4a','mpeg':'mp3'})[m]||m.replace(/[^a-z0-9]/g,'').slice(0,5)||'bin'};
 const FILTERS=[['none','ბუნებრივი',''],['warm','თბილი','sepia(.25) saturate(1.3) hue-rotate(-8deg)'],['cool','ცივი','saturate(1.1) hue-rotate(12deg) brightness(1.03)'],['bw','შავ-თეთრი','grayscale(1) contrast(1.1)'],['vintage','ვინტაჟი','sepia(.45) contrast(.95) brightness(1.05) saturate(.85)'],['vivid','კაშკაშა','saturate(1.6) contrast(1.08)'],['fade','მქრქალი','contrast(.85) brightness(1.1) saturate(.8)']];
 const RATIOS=[['orig','ორიგინალი',0],['1','1:1',1],['45','4:5',.8],['169','16:9',16/9],['916','9:16',9/16]];

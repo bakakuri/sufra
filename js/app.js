@@ -139,5 +139,6 @@ async function enterApp(){if(ENTERED)return;ENTERED=true;
  renderBadges();
  if(ME.banned)toast('შენი ანგარიში შეზღუდულია: პოსტები და შეტყობინებები დროებით გამორთულია');
  try{netInit()}catch(e){}try{listenCalls()}catch(e){}try{listenNotes()}catch(e){}
- countUnread();touchSeen();setInterval(touchSeen,120000);registerSW()}
+ countUnread();touchSeen();setInterval(touchSeen,120000);registerSW();
+ if(store.get('fsw',null)===ME.id){store.set('fsw',null);setTimeout(()=>firstSteps(ME.avatar_url?1:0),700)}}
 bootAuth().catch(e=>{toast(errMsg(e));showAuth('in')});
