@@ -209,7 +209,7 @@ function g3Insets(sc){const cv=G3D.cv,gx=cv&&cv.isConnected&&cv.closest('.gx'),c
  const top=gx.querySelector('.ghud.top'),bot=gx.querySelector('.ghud.bot'),tr=top&&top.getBoundingClientRect();let t=0,b=0,rr=0;
  const vis=el=>el&&[...el.children].filter(x=>x.offsetHeight&&getComputedStyle(x).position!=='absolute');
  if(tr&&tr.left>r.left+r.width*.3)rr=r.right-tr.left;
- else{const lt=vis(top).pop(),fb=vis(bot)[0];if(lt)t=lt.getBoundingClientRect().bottom-r.top+8;if(fb)b=r.bottom-fb.getBoundingClientRect().top+8}
+ else{const lt=vis(top).pop(),fb=vis(bot)[0],gt=gx.getBoundingClientRect().top,ct=r.top-gt;if(lt)t=g3Lay(lt,gx)+lt.offsetHeight-ct+8;if(fb)b=ct+r.height-g3Lay(fb,gx)+8}
  const q=(v,m)=>Math.round(clamp(v,0,m)/8)*8;c.inset={t:q(t,r.height*.4),b:q(b,r.height*.48),l:0,r:q(rr,r.width*.5)};G3D.cw=r.width;G3D.ch=r.height}
 
 /* ---------- drawing ---------- */
@@ -253,7 +253,18 @@ function g3Draw(sc,now){const gl=G3D.gl,cv=G3D.cv,C=g3Cam(sc),L=sc.light;sc.camN
  for(const o of tr){const md=sc.models[o.m];for(const pt of md.parts)g3Part(pt,o.M,o.dim,o.glow,o.a,!!sm,o.uv)}
  gl.depthMask(true);gl.disable(gl.BLEND)}
 /* names and scores float over the table at points projected from the 3D seats */
-function g3Labels(sc){const C=sc.camNow,cv=G3D.cv,root=cv&&cv.parentNode&&cv.parentNode.parentNode;if(!C||!root||!sc.anchors)return;const W=root.clientWidth,H=root.clientHeight;if(!W||!H)return;
+/* where an element sits in the game screen by layout alone (slides and animations do not count) */
+function g3Lay(el,root){let y=0,e=el;while(e&&e!==root){y+=e.offsetTop;e=e.offsetParent}return y}
+/* tall screens leave room above and below a board: the two players' plates move in to sit just off its edges, as in chess apps.
+   the offsets live on the view, so a new render of the game screen starts with them and nothing jumps */
+function g3Hug(sc){const cv=G3D.cv,gx=cv&&cv.isConnected&&cv.closest('.gx'),C=sc.camNow;let T=0,B=0;
+ if(gx&&C&&sc.hug&&(G3D.asp||1)<.8){const H=cv.clientHeight,ct=cv.getBoundingClientRect().top-gx.getBoundingClientRect().top,c=sc.cam,bx=c.box;let y0=1e9,y1=-1e9;
+  for(const x of[bx[0][0],bx[1][0]])for(const y of[bx[0][1],bx[1][1]])for(const z of[bx[0][2],bx[1][2]]){const q=m4.xf(C.VP,[x,y,z]);if(q[3]<=0)continue;const py=(1-q[1])/2*H+ct;if(py<y0)y0=py;if(py>y1)y1=py}
+  const tg=[...gx.querySelectorAll('.ghud.top>.pl,.ghud.top>.mvs')].filter(e=>e.offsetHeight).pop(),bg=gx.querySelector('.ghud.bot>.pl');
+  if(tg&&y0<1e9)T=Math.max(0,Math.round((y0-4-g3Lay(tg,gx)-tg.offsetHeight)/2)*2);
+  if(bg&&y1>-1e9)B=Math.max(0,Math.round((g3Lay(bg,gx)-y1-4)/2)*2)}
+ if(G3D.hugT!==T||G3D.hugB!==B){G3D.hugT=T;G3D.hugB=B;view.style.setProperty('--hugT',T+'px');view.style.setProperty('--hugB',B+'px')}view.classList.toggle('ghug',T>0||B>0)}
+function g3Labels(sc){g3Hug(sc);const C=sc.camNow,cv=G3D.cv,root=cv&&cv.parentNode&&cv.parentNode.parentNode;if(!C||!root||!sc.anchors)return;const W=root.clientWidth,H=root.clientHeight;if(!W||!H)return;
  for(const[sel,p]of sc.anchors){const el=root.querySelector(sel);if(!el)continue;const r=m4.xf(C.VP,p);if(r[3]<=0)continue;const w=el.offsetWidth/2+6,h=el.offsetHeight/2+6;
   el.style.left=clamp((r[0]*.5+.5)*W,w,W-w).toFixed(1)+'px';el.style.top=clamp((.5-r[1]*.5)*H,h,H-h).toFixed(1)+'px'}}
 function g3Need(){if(!G3D.raf&&G3D.ok)G3D.raf=requestAnimationFrame(g3Frame)}

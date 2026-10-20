@@ -17,7 +17,7 @@ const blob=(x,y,z,s,a=.42)=>({m:'mk',p:[x,y+.002,z],s:[s,1,s],uv:MK.blob,c:[0,0,
 
 /* ---------- chess ---------- */
 const CHT=.42;
-G3B.chess=()=>{const sc=g3Scene({cam:{yaw:0,pitch:.9,pp:.16,fov:.56,tgt:[0,.25,.3],box:[[-4.75,0,-5.7],[4.75,1.2,5.7]],dy:0,dp:0,dz:1,my:.97,mxp:.995},shR:8.5,spot:[0,0,7.6,.85]});
+G3B.chess=()=>{const sc=g3Scene({hug:1,cam:{yaw:0,pitch:.9,pp:.16,fov:.56,tgt:[0,.25,.3],box:[[-4.75,0,-5.7],[4.75,1.2,5.7]],dy:0,dp:0,dz:1,my:.97,mxp:.995},shR:8.5,spot:[0,0,7.6,.85]});
  g3Table(sc);mkModel(sc);const W=9.5,T=CHT;
  const bt=g3T('bchess',()=>g3Tex(boardCv({size:W,border:.75,frame:'frame',light:'maple',dark:'wenge',inlay:'rgba(226,184,96,.95)',ink:'rgba(244,214,156,.9)',coords:1})));
  sc.statics.push({parts:[{mesh:g3Mesh(gBox(W,T,W,.07,4,null,[0])),mat:g3Mat({t:bt,sh:70,sp:.35,gl:.3}),cast:true},{mesh:g3Mesh(gBox(W,T,W,.07,4,(f,u,v)=>[u*2.5,v*.35],[1,2,3,4,5])),mat:g3Mat({t:woodTex('frame'),sh:60,sp:.35,gl:.3}),cast:true}],M:m4.trs([0,T/2,0],qt.id(),1),cast:true});
@@ -45,7 +45,7 @@ G3U.chess=sc=>{const G=CH,st=G.st,c=G.ctx,T=CHT;sc.cam.yaw=c.side===-1?Math.PI:0
 
 /* ---------- checkers ---------- */
 const CKT=.42;
-G3B.shashi=()=>{const sc=g3Scene({cam:{yaw:0,pitch:.92,pp:.14,fov:.56,tgt:[0,.2,.3],box:[[-4.75,0,-5.6],[4.75,.8,5.6]],dy:0,dp:0,dz:1,my:.97,mxp:.995},shR:8.5,spot:[0,0,7.6,.85]});
+G3B.shashi=()=>{const sc=g3Scene({hug:1,cam:{yaw:0,pitch:.92,pp:.14,fov:.56,tgt:[0,.2,.3],box:[[-4.75,0,-5.6],[4.75,.8,5.6]],dy:0,dp:0,dz:1,my:.97,mxp:.995},shR:8.5,spot:[0,0,7.6,.85]});
  g3Table(sc);mkModel(sc);const W=9.5,T=CKT;
  const bt=g3T('bck',()=>g3Tex(boardCv({size:W,border:.75,frame:'rose',light:'birch',dark:'mahog',inlay:'rgba(226,184,96,.95)',ink:'rgba(244,220,170,.9)',coords:1})));
  sc.statics.push({parts:[{mesh:g3Mesh(gBox(W,T,W,.07,4,null,[0])),mat:g3Mat({t:bt,sh:70,sp:.35,gl:.3}),cast:true},{mesh:g3Mesh(gBox(W,T,W,.07,4,(f,u,v)=>[u*2.5,v*.35],[1,2,3,4,5])),mat:g3Mat({t:woodTex('rose'),sh:60,sp:.35,gl:.3}),cast:true}],M:m4.trs([0,T/2,0],qt.id(),1),cast:true});
@@ -81,7 +81,7 @@ G3U.shashi=sc=>{const G=CK,c=G.ctx,T=CKT;sc.cam.yaw=c.side===-1?Math.PI:0;const 
 /* ---------- nardi ---------- */
 const NT=.35,NRIM=.13;
 const nCol=di=>di>=12?{col:di<18?di-12:di-11,top:1}:{col:di>=6?11-di:12-di,top:0};
-G3B.nardi=()=>{const sc=g3Scene({cam:{yaw:0,pitch:1.08,pp:.14,fov:.56,tgt:[.8,.2,.35],box:[[-7,0,-6.1],[8.6,.9,6.1]],dy:0,dp:0,dz:1,mxp:.995},shR:10.5,shC:[.8,0,0],spot:[.8,0,10,.65],yawMax:.5});
+G3B.nardi=()=>{const sc=g3Scene({hug:1,cam:{yaw:0,pitch:1.08,pp:.14,fov:.56,tgt:[.8,.2,.35],box:[[-7,0,-6.1],[8.6,.9,6.1]],dy:0,dp:0,dz:1,mxp:.995},shR:10.5,shC:[.8,0,0],spot:[.8,0,10,.65],yawMax:.5});
  g3Table(sc);mkModel(sc);const fr=g3Mat({t:woodTex('frame'),sh:60,sp:.35,gl:.32});
  const top=g3T('bnardi',()=>g3Tex(nardiCv()));
  sc.statics.push({parts:[{mesh:g3Mesh(gBox(15.6,NT,12.2,.08,3,null,[0])),mat:g3Mat({t:top,sh:55,sp:.3,gl:.25}),cast:true},{mesh:g3Mesh(gBox(15.6,NT,12.2,.08,3,(f,u,v)=>[u*3,v*.3],[1,2,3,4,5])),mat:fr,cast:true}],M:m4.trs([.8,NT/2,0],qt.id(),1),cast:true});

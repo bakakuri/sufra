@@ -62,10 +62,10 @@ const DM=GAME.domino={title:'დომინო',
    <button class="btn" data-a="dmnext" style="align-self:center">შემდეგი ხელი</button>`}
   let res='';if(this.phase==='over'){const win=this.score[0]>this.score[1];res=gResBox(this,{title:win?'მოიგეთ!':'წააგეთ',sub:win?'შენ და ანამ 101 ქულა პირველებმა დააგროვეთ':'გიორგიმ და ლევანმა 101 ქულა პირველებმა დააგროვეს',kind:win?'win':'lose',
    more:`<div class="gendt"><span><b>ჩვენ</b>${this.score[0]}</span><span><b>მეტოქეები</b>${this.score[1]}</span></div>`,again:'<button class="btn gold" data-a="dmagain">ახალი თამაში</button>'})}
-  const info=`<div class="ginfo"><span class="trump">ჩვენ ${this.score[0]} · მეტოქეები ${this.score[1]}</span><span>ხელი ${this.round} · ${DM_TO}-მდე</span></div>`;
+  const info=`<div class="ginfo"><span class="gscore" aria-label="ანგარიში: ჩვენ ${this.score[0]}, მეტოქეები ${this.score[1]}"><span>ჩვენ</span><b>${this.score[0]}</b><i>:</i><b>${this.score[1]}</b><span>მეტოქეები</span></span><span>ხელი ${this.round}, ${DM_TO} ქულამდე</span></div>`;
   const stage=`<div class="jt dmtab${g3?' g3jt':''}">${seat(2,'top')}${seat(1,'left')}${seat(3,'right')}<div class="trick dmchain${g3?' g3sr':''}" aria-label="მაგიდა">${chain||'<span class="muted">მაგიდა ცარიელია</span>'}</div>${g3?`<div class="g3 g3-domino${G3W.ready?'':' loading'}">${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div>`:''}</div>`;
   const st=this.status()+(mine&&g3&&ok.size&&this.sel==null&&this.root?' · შეეხე ქვას ან გადაათრიე':'');
-  view.innerHTML=gShell('domino',{stage,mid:stage,top:gTop('დომინო',c)+info,bot:`<div class="pl me${mine?' turn':''}">${av('me',34)}<span class="pln"><b>${esc(ME.name)}</b><span class="muted">შენ და ანა ერთ გუნდში ხართ</span></span></div>
+  view.innerHTML=gShell('domino',{stage,mid:stage,top:gTop('დომინო',c)+info,bot:`<div class="pl me${mine?' turn':''}"><span class="plav">${av('me',34)}</span><span class="pln"><b>${esc(ME.name)}</b><span class="muted">შენ და ანა ერთ გუნდში ხართ</span></span></div>
    <div class="dmhand${g3?' g3sr':''}" aria-label="შენი ქვები">${hand}</div><div class="status${mine&&ok.size?' mine':''}" role="status">${st}</div>${panel}`,res});
   g3After('domino')}};
 A.dmt=t=>{const G=DM;if(G.phase!=='play'||G.cur!==0)return;const i=+t.dataset.i,pl=G.places(G.hands[0][i]);if(!pl.length){G.sel=null;G.render();return}

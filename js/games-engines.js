@@ -54,7 +54,7 @@ const CK=GAME.shashi={title:'შაში',
   let cells='';for(let dr=0;dr<8;dr++)for(let dc=0;dc<8;dc++){const r=flip?7-dr:dr,cc=flip?7-dc:dc,d=(r+cc)%2,p=b[r][cc],k=r+','+cc;
    cells+=`<button class="sq ${d?'d':'l'}${sel&&sel.join()===k?' sel':''}${tg.includes(k)?' tgt':''}${this.last.some(x=>x.join()===k)?' last':''}"${d?` data-a="ck" data-r="${r}" data-c="${cc}"`:' disabled tabindex="-1"'} aria-label="${'abcdefgh'[cc]}${8-r}${p?(p>0?' თეთრი':' შავი')+(Math.abs(p)===2?' დამა':''):''}">${p?`<span class="man ${p>0?'w':'b'}${Math.abs(p)===2?' k':''}${must&&movable.has(k)?' can':''}"></span>`:''}</button>`}
   const dom=`<div class="ck" aria-label="შაშის დაფა">${cells}</div>`;
-  gview('shashi','შაში',g3Board('shashi',dom),this.status(must),`<div class="gacts">${resignBtn(this)}</div><p class="note">${isPlayer(c)?'შენ '+(c.side===1?'თეთრებით':'შავებით')+' თამაშობ. ':''}ქვა უკანაც ჭრის, დამა მთელ დიაგონალზე დადის. ქვები: თეთრი ${this.cnt(1)}, შავი ${this.cnt(-1)}.</p>${tourBack(c)}`,s=>`<span class="gcap">${'●'.repeat(Math.max(0,12-this.cnt(-s)))}</span>`);
+  gview('shashi','შაში',g3Board('shashi',dom),this.status(must),`<div class="gacts">${resignBtn(this)}</div><p class="note">${isPlayer(c)?'შენ '+(c.side===1?'თეთრებით':'შავებით')+' თამაშობ. ':''}ქვა უკანაც ჭრის, დამა მთელ დიაგონალზე დადის. ქვები: თეთრი ${this.cnt(1)}, შავი ${this.cnt(-1)}.</p>${tourBack(c)}`,s=>{const n=Math.max(0,12-this.cnt(-s));return n?`<span class="gcap ckd ${s===1?'b':'w'}" aria-label="აღებული ქვები: ${n}"><i></i>${n}</span>`:''});
   g3After('shashi')},
  play(m){const p0=this.b[m.path[0][0]][m.path[0][1]];this.b=ckApply(this.b,m);this.last=m.path;this.lcap=m.caps;this.sel=null;this.turn*=-1;this.moves=ckAll(this.b,this.turn);
   const fl=this.b.flat(),kings=s=>fl.includes(2*s),pcs=s=>fl.filter(v=>Math.sign(v)===s);
@@ -148,9 +148,9 @@ const NR=GAME.nardi={title:'ნარდი',
   const bar=`<button class="barc${s==='bar'?' sel':''}" data-a="npt" data-k="bar" aria-label="ზარი: ${this.bar[me]} შენი, ${this.bar[-me]} მეტოქის">${bch(-me,this.bar[-me])}<span class="sp"></span>${bch(me,this.bar[me])}</button>`;
   const shown=this.dice.length?this.dice.map(v=>dieHTML(v)).join(''):this.last.map(v=>dieHTML(v,1)).join('');
   const ctl=`<div class="nctl"><div class="dice g3hide" aria-label="კამათელი">${shown}</div><span class="sp"></span>${mine&&!this.rolled?`<button class="btn" data-a="nroll">${ic('dice')}გაგორება</button>`:''}${resignBtn(this)}</div>
-  <div class="offs"><button class="offbtn${tg.includes('off')?' tgt':''}" data-a="npt" data-k="off">გატანილი: ${isPlayer(c)?'შენ':esc(c.names[me])} ${this.off[me]}/15</button><span class="offbtn" style="border-style:solid">${esc(c.names[-me])} ${this.off[-me]}/15</span></div>
+  ${tg.includes('off')?`<div class="offs"><button class="btn" data-a="npt" data-k="off">${ic('check')}ქვის გატანა</button></div>`:''}
   ${isPlayer(c)?`<p class="note">შენ ${me===1?'თეთრი':'შავი'} ქვებით თამაშობ და ქვედა მარჯვენა სახლისკენ მოძრაობ. შეეხე ქვას, შემდეგ ოქროსფრად მონიშნულ პუნქტს. თუ ორივე კამათლის გამოყენება შეიძლება, ორივე უნდა გამოიყენო, თუ მხოლოდ ერთის, უფრო დიდის. მარტოხელა ქვა იჭრება და ზარზე გადადის. როცა ყველა ქვა სახლშია, გაიტანე ისინი.</p>`:''}${tourBack(c)}`;
-  gview('nardi','ნარდი',g3Board('nardi',`<div class="nb" aria-label="ნარდის დაფა">${pts}${bar}</div>`),this.status(),ctl);g3After('nardi')}};
+  gview('nardi','ნარდი',g3Board('nardi',`<div class="nb" aria-label="ნარდის დაფა">${pts}${bar}</div>`),this.status(),ctl,s=>`<span class="goff" aria-label="გატანილი ${this.off[s]} ქვა 15-დან"><i style="--p:${this.off[s]/15}"></i>${this.off[s]}/15</span>`);g3After('nardi')}};
 A.nroll=()=>{const G=NR;if(!G.mine()||G.rolled)return;G.roll();if(G.ctx.mode==='online')netSend();G.render();
  if(!G.any(G.ctx.side)){const c=G.ctx;setTimeout(()=>{if(G.ctx===c&&G.turn===c.side&&G.rolled)G.endTurn()},1500)}};
 A.npt=t=>{const G=NR,me=G.ctx.side;if(!G.mine()||!G.rolled)return;const k=t.dataset.k,id=k==='bar'||k==='off'?k:+k;
@@ -199,6 +199,17 @@ function chInsuf(b){const pc=[];for(let i=0;i<64;i++){const p=b[i];if(p&&p.toLow
  if(pc.every(([t])=>t==='b')){const sq=pc.map(([,i])=>((i>>3)+(i&7))%2);return sq.every(v=>v===sq[0])}return false}
 /* pieces each side has taken, for the trays next to the board */
 const CH_ALL={p:8,n:2,b:2,r:2,q:1};
+/* short algebraic notation with figurines: ♘f3, e×d5, O-O, e8=♕, check +, mate # */
+const FIG={k:'♔',q:'♕',r:'♖',b:'♗',n:'♘'},FILES='abcdefgh';
+function chSan(ps,st){const[f,t]=st.last,p=ps.b[f];if(!p)return '';const k=p.toLowerCase(),side=colOf(p),sq=i=>FILES[i&7]+(8-(i>>3));let s;
+ if(k==='k'&&Math.abs((f&7)-(t&7))===2)s=(t&7)>(f&7)?'O-O':'O-O-O';
+ else{const cap=!!ps.b[t]||(k==='p'&&(f&7)!==(t&7));
+  if(k==='p')s=(cap?FILES[f&7]+'×':'')+sq(t);
+  else{const o=chLegal(ps,side).filter(m=>m.t===t&&m.f!==f&&ps.b[m.f]===p);let d='';
+   if(o.length)d=!o.some(m=>(m.f&7)===(f&7))?FILES[f&7]:!o.some(m=>(m.f>>3)===(f>>3))?String(8-(f>>3)):sq(f);
+   s=FIG[k]+d+(cap?'×':'')+sq(t)}
+  if(k==='p'&&(t>>3)%7===0&&st.b[t])s+='='+FIG[st.b[t].toLowerCase()]}
+ return s+(chAttacked(st.b,chKing(st.b,st.turn),-st.turn)?(chLegal(st,st.turn).length?'+':'#'):'')}
 function chTaken(b,col){const n={p:0,n:0,b:0,r:0,q:0};for(const p of b)if(p&&colOf(p)===col&&n[p.toLowerCase()]!=null)n[p.toLowerCase()]++;const out=[];for(const t of'qrbnp')for(let k=n[t];k<CH_ALL[t];k++)out.push(t);return out}
 const PST=[0,1,2,3,3,2,1,0];
 function chEval(b){let s=0;for(let i=0;i<64;i++){const p=b[i];if(!p)continue;const t=p.toLowerCase(),w=isW(p)?1:-1,r=i>>3,c=i&7;let v=CPV[t];
@@ -208,7 +219,7 @@ function chSearch(st,depth,al,be){if(chKing(st.b,1)<0)return -1e5;if(chKing(st.b
  let best=side===1?-1e9:1e9;for(const m of ms){const v=chSearch(chApply(st,m),depth-1,al,be);if(side===1){if(v>best)best=v;if(v>al)al=v}else{if(v<best)best=v;if(v<be)be=v}if(be<=al)break}return best}
 function chBot(st){const side=st.turn;let best=null,bv=-1e9;for(const m of chLegal(st,side)){const v=side*chSearch(chApply(st,m),2,-1e9,1e9)+Math.random()*8;if(v>bv){bv=v;best=m}}return best}
 const CH=GAME.chess={title:'ჭადრაკი',
- start(){this.st=chInit();this.sel=null;this.pend=null;this.moves=chLegal(this.st,1)},
+ start(){this.st=chInit();this.sel=null;this.pend=null;this.moves=chLegal(this.st,1);this.mv=[];this.ps=this.st;this.full=true},
  snap(){return this.st},
  load(s){if(!Array.isArray(s.b)||s.b.length!==64)throw 0;const ok=/^[pnbrqkPNBRQK]?$/;
   this.st={b:s.b.map(x=>typeof x==='string'&&ok.test(x)?x:''),turn:s.turn===-1?-1:1,cs:String(s.cs||'').replace(/[^KQkq]/g,''),ep:Number.isInteger(s.ep)&&s.ep>=0&&s.ep<64?s.ep:-1,last:Array.isArray(s.last)?s.last.slice(0,2).map(Number).filter(x=>x>=0&&x<64):[],over:[1,-1,2].includes(s.over)?s.over:0,hm:Math.max(0,Math.min(200,Number(s.hm)||0)),rep:repOk(s.rep),why:['mate','stale','rep','mat','50','resign'].includes(s.why)?s.why:''};
@@ -216,13 +227,22 @@ const CH=GAME.chess={title:'ჭადრაკი',
  mine(){return isPlayer(this.ctx)&&this.st.turn===this.ctx.side&&!this.st.over&&!this.ctx.gone&&!this.ctx.syncing},
  res(){return this.st.over?{w:this.st.over,why:this.st.why}:null},turnSide(){return this.st.over?null:this.st.turn},
  inCheck(){const st=this.st;return chAttacked(st.b,chKing(st.b,st.turn),-st.turn)},
+ /* the move list is read off each new position as it arrives, so it is the same for bots, online games and watching.
+    if a position does not follow from the last one (joined late, reconnected), the list starts again without move numbers */
+ note(){const st=this.st;if(st===this.ps)return;const ps=this.ps;this.ps=st;if(!this.mv)this.mv=[];
+  if(!st.last.length&&st.rep.length<=1){this.mv=[];this.full=true;return}
+  const ok=ps&&st.last.length===2&&ps.turn!==st.turn&&chLegal(ps,ps.turn).some(m=>m.f===st.last[0]&&m.t===st.last[1]);
+  if(!ok){if(ps&&ps.b.join()===st.b.join())return;this.mv=[];this.full=false;return}this.mv.push(chSan(ps,st))},
+ movesHTML(){const mv=this.mv||[],from=Math.max(0,mv.length-12);let h='';
+  for(let j=from;j<mv.length;j++){if(this.full&&j%2===0)h+=`<span class="n">${j/2+1}.</span>`;h+=`<span${j===mv.length-1?' class="now"':''}>${mv[j].replace(/[♔♕♖♗♘]/g,'<i class="fg">$&</i>')}</span>`}
+  return `<div class="mvs" aria-label="სვლები">${h}</div>`},
  status(){const c=this.ctx,st=this.st;if(st.over)return overMsg(c,st.over,st.why);if(c.gone)return 'მოწინააღმდეგე გავიდა თამაშიდან';const chk=this.inCheck()?'ქიში! ':'';
   return this.mine()?chk+(this.sel!==null?'აირჩიე უჯრა':'შენი სვლაა'):chk+esc(c.names[st.turn])+' ფიქრობს…'},
- render(){const c=this.ctx,flip=c.side===-1,st=this.st,sel=this.sel,tg=sel!==null?this.moves.filter(m=>m.f===sel):[],chkK=this.inCheck()?chKing(st.b,st.turn):-1;
+ render(){this.note();const c=this.ctx,flip=c.side===-1,st=this.st,sel=this.sel,tg=sel!==null?this.moves.filter(m=>m.f===sel):[],chkK=this.inCheck()?chKing(st.b,st.turn):-1;
   let cells='';for(let di=0;di<64;di++){const i=flip?63-di:di,r=i>>3,cc=i&7,p=st.b[i],t=tg.find(m=>m.t===i);
    cells+=`<button class="cs ${(r+cc)%2?'d':'l'}${sel===i?' sel':''}${t?' tgt'+(p||t.ep?' cap':''):''}${st.last.includes(i)?' last':''}${i===chkK?' chk':''}" data-a="chm" data-i="${i}" aria-label="${'abcdefgh'[cc]}${8-r}${p?' '+(isW(p)?'თეთრი ':'შავი ')+PNAME[p.toLowerCase()]:''}">${p?`<span class="${isW(p)?'pw':'pb'}">${GLY[p.toLowerCase()]}</span>`:''}</button>`}
   const tk=s=>{const t=chTaken(st.b,-s),adv=t.reduce((a,x)=>a+CPV[x],0)-chTaken(st.b,s).reduce((a,x)=>a+CPV[x],0);return t.length?`<span class="gcap ${s===1?'b':'w'}">${t.map(x=>GLY[x]).join('')}${adv>0?` <small>+${Math.round(adv/100)}</small>`:''}</span>`:''};
-  gview('chess','ჭადრაკი',g3Board('chess',`<div class="cb" aria-label="ჭადრაკის დაფა">${cells}</div>`),this.status(),`<div class="gacts">${resignBtn(this)}</div><p class="note">${isPlayer(c)?'შენ '+(c.side===1?'თეთრებით':'შავებით')+' თამაშობ. ':''}ბოლო ხაზამდე მისული პაიკი შენს არჩეულ ფიგურად იქცევა. ფრეა პატი, სამჯერ განმეორებული პოზიცია, 50 სვლა აყვანის გარეშე და მატისთვის არასაკმარისი ფიგურები.</p>${tourBack(c)}`,tk);
+  gview('chess','ჭადრაკი',g3Board('chess',`<div class="cb" aria-label="ჭადრაკის დაფა">${cells}</div>`),this.status(),`<div class="gacts">${resignBtn(this)}</div><p class="note">${isPlayer(c)?'შენ '+(c.side===1?'თეთრებით':'შავებით')+' თამაშობ. ':''}ბოლო ხაზამდე მისული პაიკი შენს არჩეულ ფიგურად იქცევა. ფრეა პატი, სამჯერ განმეორებული პოზიცია, 50 სვლა აყვანის გარეშე და მატისთვის არასაკმარისი ფიგურები.</p>${tourBack(c)}`,tk,this.movesHTML());
   g3After('chess')},
  play(m){const prev=this.st,n=chApply(prev,m);this.sel=null;this.pend=null;this.moves=chLegal(n,n.turn);const k=chKey(n);n.rep=n.hm===0?[k]:[...(prev.rep||[]),k].slice(-120);this.st=n;
   if(!this.moves.length){n.over=this.inCheck()?-n.turn:2;n.why=n.over===2?'stale':'mate'}
@@ -264,6 +284,11 @@ const jRow=(h,nm)=>h.pr?`<tr class="prem"><td>პრემია</td>${h.p.map(x
 function jSheetHTML(hist,score,names){let k=0;return `<div class="sheet-tbl"><table><thead><tr><th>ხელი</th>${names.map(n=>`<th>${esc(n)}</th>`).join('')}</tr></thead><tbody>${hist.map(h=>jRow(h,h.pr?'':++k)).join('')}<tr class="tot"><td>სულ</td>${score.map(x=>`<td>${x}</td>`).join('')}</tr></tbody></table></div>`}
 function jLastHTML(hist,score,names){const{hand,prem}=jLast(hist);if(!hand)return '';
  return `<div class="sheet-tbl"><table><thead><tr><th></th>${names.map(n=>`<th>${esc(n)}</th>`).join('')}</tr></thead><tbody><tr><td>თქვა / წაიღო</td>${[0,1,2,3].map(p=>`<td>${hand.b[p]} / ${hand.t[p]}</td>`).join('')}</tr><tr><td>ქულა</td>${hand.p.map(x=>`<td class="${x<0?'neg':''}">${x>0?'+':''}${x}</td>`).join('')}</tr>${prem?jRow(prem):''}<tr class="tot"><td>სულ</td>${score.map(x=>`<td>${x}</td>`).join('')}</tr></tbody></table></div>`}
+/* what a player said and took: one pip per trick said, filled when taken; extra tricks in red; a pass shows the word */
+function jPips(b,t){const lab=`aria-label="ნათქვამი ${b??'ჯერ არა'}, წაღებული ${t}"`;if(b==null)return `<span class="bt pips" ${lab}>–</span>`;
+ if(b===0)return `<span class="bt pips z${t?' over':''}" ${lab}>${t?'პასი, +'+t:'პასი'}</span>`;
+ return `<span class="bt pips${t>b?' over':''}" ${lab}>${Array.from({length:b},(_,k)=>`<i${k<t?' class="on"':''}></i>`).join('')}${t>b?`<em>+${t-b}</em>`:''}</span>`}
+const jBidCols=n=>n+1<=8?n+1:Math.ceil((n+1)/2);
 const JK=GAME.joker={title:'ჯოკერი',
  start(){this.tk=(this.tk||0)+1;this.phase='setup';this.ids=['me',{n:JK_BOTS[0],h:20},{n:JK_BOTS[1],h:200},{n:JK_BOTS[2],h:120}]},
  nm(p){return p===0?ME.name:JK_BOTS[p-1]},
@@ -312,7 +337,8 @@ const JK=GAME.joker={title:'ჯოკერი',
    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-a="jstart" data-m="quick">სწრაფი · 8 ხელი</button><button class="btn ghost" data-a="jstart" data-m="full">სრული · 24 ხელი</button></div>
    <div class="jkonline"><div><b>მეგობრებთან ონლაინ</b><p class="note">გაშალე მაგიდა და მოიწვიე მეგობრები. ცარიელ ადგილებზე ბოტები ჩაჯდებიან.</p></div><button class="btn ghost" data-a="jkonew">${ic('users')}მაგიდის გაშლა</button></div></section>`,bot:''});return}
   const g3=g3Want(),mine=this.cur===0&&['bid','play','trump'].includes(this.phase)&&this.win==null;gTurnSnd(this,mine);
-  const seat=(p,pos)=>`<div class="seat ${pos}${this.cur===p&&(this.phase==='bid'||this.phase==='play'||this.phase==='trump')?' turn':''}">${avAny(this.ids[p],38)}<b>${esc(this.nm(p))}</b><span class="bt" aria-label="ნათქვამი ${this.bids[p]??'ჯერ არა'}, წაღებული ${this.taken[p]}">${this.bids[p]??'–'} / ${this.taken[p]}</span><span>${this.score[p]}</span></div>`;
+  const pips=p=>jPips(this.bids[p],this.taken[p]);
+  const seat=(p,pos)=>`<div class="seat ${pos}${this.cur===p&&(this.phase==='bid'||this.phase==='play'||this.phase==='trump')?' turn':''}">${avAny(this.ids[p],38)}<b>${esc(this.nm(p))}</b>${pips(p)}<span>${this.score[p]}</span></div>`;
   const tr=this.trick.map(e=>{const h=jCardHTML(e.card).replace('class="card','class="card p'+e.p);return e.card.j?h.replace('</div>',`<span class="jm">${e.jm==='hi'?'მაღალი':'დაბალი'}${e.js?' '+SY[e.js]:''}</span></div>`):h}).join('');
   const trumpTxt=this.phase==='trump'?'კოზირი ირჩევა':this.trump?`კოზირი: <b style="color:${isRed(this.trump)?'#FF8A9A':'inherit'}">${SY[this.trump]}</b> ${SN[this.trump]}`:'უკოზირო';
   const L=this.phase==='play'&&this.cur===0?this.legal(0):[];
@@ -320,16 +346,16 @@ const JK=GAME.joker={title:'ჯოკერი',
    :this.hands[0].map((c,i)=>`<button class="card${c.j?' jk':''}${!c.j&&isRed(c.s)?' red':''}" data-a="jcard" data-i="${i}" aria-label="${cardName(c)}"${L.includes(c)?'':' disabled'}>${c.j?'<i>★</i>ჯოკერი':`<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span>`}</button>`).join('');
   let panel='',st='';
   if(this.phase==='trump'){if(this.cur===0){st='ნახე პირველი სამი კარტი და აირჩიე კოზირი';panel=`<div class="suits">${SUITS.map(s=>`<button class="${isRed(s)?'red':''}" data-a="jtrump" data-s="${s}" aria-label="${SN[s]}">${SY[s]}</button>`).join('')}</div><button class="btn ghost" data-a="jtrump" data-s="" style="align-self:center">უკოზირო</button>`}else st=esc(this.nm(this.cur))+' ირჩევს კოზირს…'}
-  else if(this.phase==='bid'){if(this.cur===0){const f=this.forbidden(0);st='რამდენს წაიღებ?'+(f>=0?` დამრიგებელი ხარ, ${f}-ს ვერ იტყვი`:'');panel=`<div class="bids" role="group" aria-label="ნათქვამი">${Array.from({length:this.n+1},(_,v)=>`<button data-a="jbid" data-v="${v}"${v===f?' disabled':''}>${v===0?'პასი':v}</button>`).join('')}</div>`}else st=esc(this.nm(this.cur))+' ამბობს…'}
+  else if(this.phase==='bid'){if(this.cur===0){const f=this.forbidden(0);st='რამდენს წაიღებ?'+(f>=0?` დამრიგებელი ხარ, ${f}-ს ვერ იტყვი`:'');panel=`<div class="bids" role="group" aria-label="ნათქვამი" style="--c:${jBidCols(this.n)}">${Array.from({length:this.n+1},(_,v)=>`<button data-a="jbid" data-v="${v}"${v===f?' disabled':''}>${v===0?'პასი':v}</button>`).join('')}</div>`}else st=esc(this.nm(this.cur))+' ამბობს…'}
   else if(this.phase==='play'){st=this.win!=null?(this.win===0?'ეს ხელი შენ წაიღე':esc(JK_ERG[this.win-1])+' წაიღო ხელი'):this.cur===0?(g3?'შენი სვლაა · შეეხე კარტს ორჯერ ან გადაათრიე':'შენი სვლაა'):esc(this.nm(this.cur))+' ფიქრობს…'}
   else if(this.phase==='handover'||this.phase==='over'){const{hand:last,prem}=jLast(this.hist);const mn=last.p[0]+(prem?prem.p[0]:0);
    st=this.phase==='over'?(this.score[0]===Math.max(...this.score)?'მოიგე! +12 რეიტინგი, +10 მონეტა':'თამაში დასრულდა'):`ხელი დასრულდა. შენ: ${mn>0?'+':''}${mn}`+(prem?' · სექციის პრემია':'');
    panel=jLastHTML(this.hist,this.score,[0,1,2,3].map(p=>this.nm(p)))+(this.phase==='over'?'<button class="btn" data-a="jagain" style="align-self:center">ახალი თამაში</button>':'<button class="btn" data-a="jnext" style="align-self:center">შემდეგი ხელი</button>')}
-  const info=`<div class="ginfo"><span class="trump">${trumpTxt}</span><span>ხელი ${Math.min(this.h+1,JSEQ[this.len].length)}/${JSEQ[this.len].length} · ${this.n} კარტი</span></div>`;
+  const info=`<div class="ginfo"><span class="trump">${trumpTxt}</span><span>ხელი ${Math.min(this.h+1,JSEQ[this.len].length)}/${JSEQ[this.len].length}, ${this.n} კარტი</span></div>`;
   const stage=`<div class="jt${g3?' g3jt':''}">${seat(2,'top')}${seat(1,'left')}${seat(3,'right')}<div class="trick" aria-label="მაგიდა">${tr}</div>${g3?`<div class="g3 g3-joker${G3W.ready?'':' loading'}">${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div>`:''}</div>`;
   let res='';if(this.phase==='over'){const mx=Math.max(...this.score),win=this.score[0]===mx,pl=[0,1,2,3].sort((a,b)=>this.score[b]-this.score[a]);
    res=gResBox(this,{title:win?'მოიგე!':'თამაში დასრულდა',sub:win?'ყველაზე მეტი ქულა შენ დააგროვე':'გაიმარჯვა: '+esc(this.nm(pl[0])),kind:win?'win':'lose',more:`<div class="gendt">${pl.map(p=>`<span><b>${esc(this.nm(p))}</b>${this.score[p]}</span>`).join('')}</div>`,again:'<button class="btn gold" data-a="jagain">ახალი თამაში</button>'})}
-  view.innerHTML=gShell('joker',{stage,mid:stage,top:top+info,bot:`<div class="pl me${mine?' turn':''}">${av('me',34)}<span class="pln"><b>${esc(ME.name)}</b><span class="muted">${this.bids[0]??'–'} / ${this.taken[0]} · ${this.score[0]} ქულა</span></span><span class="sp"></span><button class="btn ghost sm" data-a="jsheet">ქულები</button></div>
+  view.innerHTML=gShell('joker',{stage,mid:stage,top:top+info,bot:`<div class="pl me${mine?' turn':''}"><span class="plav">${av('me',34)}</span><span class="pln"><b>${esc(ME.name)}</b><span class="muted jme">${pips(0)}<span>${this.score[0]} ქულა</span></span></span><span class="sp"></span><button class="btn ghost sm" data-a="jsheet">ქულები</button></div>
    <div class="hand${g3?' g3sr':''}" aria-label="შენი კარტები">${hand}</div><div class="status${mine?' mine':''}" role="status">${st}</div>${panel}`,res});
   g3After('joker')}};
 const JK_RULES='ფერი უნდა აჰყვე. თუ ფერი არ გაქვს, კოზირი უნდა დადო. ჯოკერი ნებისმიერ დროს შეგიძლია დადო: „მაღალი“ წაიღებს ხელს, „დაბალი“ არ წაიღებს. მოგვიანებით დადებული მაღალი ჯოკერი უფრო ძლიერია. ჯოკერით დაწყებისას ითხოვ ფერს: „მაღალი“ ნიშნავს, რომ ყველამ ამ ფრის უმაღლესი კარტი უნდა დადოს და ხელი შენია, თუმცა თუ ფერი კოზირი არ არის და ვინმემ კოზირი დადო, უმაღლესი კოზირი წაიღებს. „დაბალი“ ნიშნავს, რომ ამ ფრის უმაღლესი კარტი წაიღებს. ქულები: ზუსტად ნათქვამი 50 თითო ხელზე და 50 ბონუსი, ყველა ხელის წაღება 100 თითოზე, პასი და ნული 50. მეტის ან ნაკლების წაღებისას 10 თითოზე. თუ თქვი და ვერცერთი ვერ წაიღე, ხიშტი: −200, ცხრიან სექციებში −500. ვინც სექციის ყველა ხელში ზუსტად ნათქვამს წაიღებს, პრემიას იღებს: მისი საუკეთესო ხელი ორმაგდება, დანარჩენებს კი საუკეთესო ხელი ეშლებათ.';

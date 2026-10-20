@@ -157,7 +157,7 @@ function joDraw(){const el=$('#jko');if(!el||!JO.t||!joHere(JO.id))return;const 
  if(t.status==='wait'){plain(joWaitHTML());return}
  const s=JO.st;if(!s){plain('<p class="hint">მასპინძელი კარტს არიგებს…</p>');return}const g3=g3Want();if(s.deal!==JO.resDeal){JO.resDeal=s.deal;JO.resHide=0;JO.resSnd=0}
  const me=JO.seat,base=me>=0?me:0,P=k=>(base+k)%4,host=joIsHost(),live=['bid','play','trump'].includes(s.phase);
- const seat=(p,pos)=>`<div class="seat ${pos}${s.cur===p&&s.win==null&&live?' turn':''}">${joAv(p,38)}<b>${esc(joName(p))}</b><span class="bt" aria-label="ნათქვამი ${s.bids[p]??'ჯერ არა'}, წაღებული ${s.taken[p]}">${s.bids[p]??'–'} / ${s.taken[p]}</span><span>${s.score[p]}</span></div>`;
+ const seat=(p,pos)=>`<div class="seat ${pos}${s.cur===p&&s.win==null&&live?' turn':''}">${joAv(p,38)}<b>${esc(joName(p))}</b>${jPips(s.bids[p],s.taken[p])}<span>${s.score[p]}</span></div>`;
  const tr=(s.trick||[]).map(e=>{const h=jCardHTML(e.card).replace('class="card','class="card p'+((e.p-base+4)%4));return e.card.j?h.replace('</div>',`<span class="jm">${e.jm==='hi'?'მაღალი':'დაბალი'}${e.js?' '+SY[e.js]:''}</span></div>`):h}).join('');
  const trumpTxt=s.phase==='trump'?'კოზირი ირჩევა':s.trump?`კოზირი: <b style="color:${isRed(s.trump)?'#FF8A9A':'inherit'}">${SY[s.trump]}</b> ${SN[s.trump]}`:'უკოზირო';
  const myTurn=me>=0&&s.cur===me&&s.win==null&&!JO.wait;
@@ -166,16 +166,16 @@ function joDraw(){const el=$('#jko');if(!el||!JO.t||!joHere(JO.id))return;const 
   :JO.hand.map((c,i)=>`<button class="card${c.j?' jk':''}${!c.j&&isRed(c.s)?' red':''}" data-a="jkocard" data-i="${i}" aria-label="${cardName(c)}"${L.includes(c)?'':' disabled'}>${c.j?'<i>★</i>ჯოკერი':`<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span>`}</button>`).join('')}
  let panel='';
  if(myTurn&&s.phase==='trump')panel=`<div class="suits">${SUITS.map(x=>`<button class="${isRed(x)?'red':''}" data-a="jkotrump" data-s="${x}" aria-label="${SN[x]}">${SY[x]}</button>`).join('')}</div><button class="btn ghost" data-a="jkotrump" data-s="" style="align-self:center">უკოზირო</button>`;
- else if(myTurn&&s.phase==='bid'){const f=JK.forbidden.call({dealer:s.dealer,n:s.n,bids:s.bids},me);panel=`<div class="bids" role="group" aria-label="ნათქვამი">${Array.from({length:s.n+1},(_,v)=>`<button data-a="jkobid" data-v="${v}"${v===f?' disabled':''}>${v===0?'პასი':v}</button>`).join('')}</div>`}
+ else if(myTurn&&s.phase==='bid'){const f=JK.forbidden.call({dealer:s.dealer,n:s.n,bids:s.bids},me);panel=`<div class="bids" role="group" aria-label="ნათქვამი" style="--c:${jBidCols(s.n)}">${Array.from({length:s.n+1},(_,v)=>`<button data-a="jkobid" data-v="${v}"${v===f?' disabled':''}>${v===0?'პასი':v}</button>`).join('')}</div>`}
  else if((s.phase==='handover'||s.phase==='over')&&s.hist.length){
   panel=jLastHTML(s.hist,s.score,[0,1,2,3].map(joShort))
    +(s.phase==='over'?(host?'<div class="jkacts"><button class="btn" data-a="jkoagain">ახალი პარტია იმავე მაგიდაზე</button><button class="btn ghost sm" data-a="jkoclose">მაგიდის დახურვა</button></div>':'<p class="hint">მასპინძელს შეუძლია ახალი პარტიის დაწყება.</p>')
     :host?'<button class="btn" data-a="jkonext" style="align-self:flex-start">შემდეგი ხელი</button>':'<p class="hint">შემდეგი ხელი რამდენიმე წამში დაირიგდება.</p>')}
  const turn=myTurn&&live;gTurnSnd(JO,turn);
- const mine=me>=0?`<div class="pl me${turn?' turn':''}">${av('me',34)}<span class="pln"><b>${esc(ME.name)}</b><span class="muted">${s.bids[me]??'–'} / ${s.taken[me]} · ${s.score[me]} ქულა</span></span><span class="sp"></span><button class="btn ghost sm" data-a="jkosheet">ქულები</button></div><div class="hand${g3?' g3sr':''}" aria-label="შენი კარტები">${hand}</div>`
+ const mine=me>=0?`<div class="pl me${turn?' turn':''}"><span class="plav">${av('me',34)}</span><span class="pln"><b>${esc(ME.name)}</b><span class="muted jme">${jPips(s.bids[me],s.taken[me])}<span>${s.score[me]} ქულა</span></span></span><span class="sp"></span><button class="btn ghost sm" data-a="jkosheet">ქულები</button></div><div class="hand${g3?' g3sr':''}" aria-label="შენი კარტები">${hand}</div>`
   :`<div class="pl"><span class="muted">შენ უყურებ. კარტები მხოლოდ მოთამაშეებს უჩანთ.</span><span class="sp"></span><button class="btn ghost sm" data-a="jkosheet">ქულები</button></div>`;
  const stage=`<div class="jt${g3?' g3jt':''}">${seat(P(2),'top')}${seat(P(1),'left')}${seat(P(3),'right')}<div class="trick" aria-label="მაგიდა">${tr}</div>${g3?`<div class="g3 g3-joker${G3W.ready?'':' loading'}">${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div>`:''}</div>`;
- const info=`<div class="ginfo"><span class="trump">${trumpTxt}</span><span>ხელი ${Math.min(s.h+1,JSEQ[s.len].length)}/${JSEQ[s.len].length} · ${s.n} კარტი</span></div>`;
+ const info=`<div class="ginfo"><span class="trump">${trumpTxt}</span><span>ხელი ${Math.min(s.h+1,JSEQ[s.len].length)}/${JSEQ[s.len].length}, ${s.n} კარტი</span></div>`;
  let res='';if(s.phase==='over'){const mx=Math.max(...s.score),w=[0,1,2,3].filter(p=>s.score[p]===mx),win=me>=0&&w.includes(me),order=[0,1,2,3].sort((a,b)=>s.score[b]-s.score[a]);
   res=gResBox(JO,{title:win?'მოიგე!':'თამაში დასრულდა',sub:win?'ყველაზე მეტი ქულა შენ დააგროვე':'გაიმარჯვა: '+w.map(p=>esc(joName(p))).join(', '),kind:win?'win':'lose',more:`<div class="gendt">${order.map(p=>`<span><b>${esc(joShort(p))}</b>${s.score[p]}</span>`).join('')}</div>`,
    again:host?'<button class="btn gold" data-a="jkoagain">ახალი პარტია</button>':'',leave:'<button class="btn ghost" data-a="back">მაგიდიდან გასვლა</button>'})}

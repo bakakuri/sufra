@@ -11,15 +11,18 @@ const BOT={n:'ბ',h:42};
 function startGame(id,ctx){const G=GAME[id],fresh=!S.game;if(fresh&&(!ctx||ctx.mode!=='watch')&&GAMES.some(g=>g.id===id))store.set('glast',id);S.game=id;G.ctx=Object.assign({mode:'bot',side:1,names:{1:ME.name,'-1':'სუფრა ბოტი'},avs:{1:'me','-1':BOT},seq:0},ctx||{});
  G.resHide=0;G.resSnd=0;G.wasMine=false;G.start();view.scrollTop=0;if(fresh){fsEnter();g3Intro(id)}G.render();if(G.kick)G.kick();if(fresh)navOpen('game')}
 const isPlayer=c=>c.mode==='bot'||c.mode==='online'||c.mode==='tour';
-function plSub(c,s){if(c.mode==='watch'||c.mode==='netwatch')return '';if(s===c.side)return 'რეიტინგი '+(ME.rating??1500);return c.mode==='online'?(c.gone?'გავიდა':'ონლაინ'):'ბოტი'}
+/* under the name: a small disc in the player's colour (side 1 plays white in every two-player game), then rating or connection */
+function plSub(c,s){const col=`<i class="pc ${s===1?'w':'b'}"></i>`,cn=s===1?'თეთრები':'შავები';if(c.mode==='watch'||c.mode==='netwatch')return col+cn;if(s===c.side)return col+'რეიტინგი '+(ME.rating??1500);return col+(c.mode==='online'?(c.gone?'გავიდა':'ონლაინ'):cn)}
 const gTag=c=>c.mode==='online'?'<span class="gtag">ონლაინ</span>':c.mode==='tour'?'<span class="gtag">ტურნირი</span>':c.mode==='watch'||c.mode==='netwatch'?'<span class="gtag">ყურება</span>':'';
 const gTop=(t,c,back='lobby')=>`<div class="gtop"><button class="ibtn gb" data-a="${back}" aria-label="თამაშიდან გასვლა">${ic('back')}</button><h2>${t}</h2>${c?gTag(c):''}<span class="sp"></span>${gTools()}</div>`;
 /* the game screen: the board fills the screen, the players and controls float over it */
 function gShellParts(o){const w=g3Want()&&!o.center;return{w,html:`${w?`<div class="gstage">${o.stage||''}</div>`:''}<div class="ghud top">${o.top||''}</div><div class="gmid">${o.center||(w?'':o.mid||'')}</div><div class="ghud bot">${o.bot||''}</div>${o.res||''}`}}
 function gShell(id,o){const P=gShellParts(o);return `<div class="view-pad game gx${P.w?' is3d':''}" data-g="${id}">${P.html}</div>`}
-const plCard=(c,s,turn,plx)=>`<div class="pl${s===c.side?' me':''}${turn?' turn':''}">${avAny(c.avs[s],34)}<span class="pln"><b>${esc(c.names[s])}</b><span class="muted">${plSub(c,s)}</span></span>${plx?plx(s):''}</div>`;
-function gview(id,title,board,status,extra='',plx=null){if(S.tab!=='games'||S.game!==id||S.page)return;const G=GAME[id],c=G.ctx,ts=G.turnSide?G.turnSide():null,mine=!!(G.mine&&G.mine());gTurnSnd(G,mine);
- view.innerHTML=gShell(id,{stage:board,mid:board,top:gTop(title,c)+plCard(c,-c.side,ts===-c.side,plx),bot:plCard(c,c.side,ts===c.side,plx)+`<div class="status${mine?' mine':''}" role="status">${status}</div>${extra}`,res:gResHTML(G)})}
+/* a player's plate. while it is their move a gold ring turns around the avatar; an opponent who is thinking shows three dots */
+const plThink='<span class="think" aria-label="ფიქრობს"><i></i><i></i><i></i></span>';
+const plCard=(c,s,turn,plx)=>`<div class="pl${s===c.side?' me':''}${turn?' turn':''}"><span class="plav">${avAny(c.avs[s],34)}</span><span class="pln"><b>${esc(c.names[s])}${turn&&!(s===c.side&&isPlayer(c))?plThink:''}</b><span class="muted">${plSub(c,s)}</span></span>${plx?plx(s):''}</div>`;
+function gview(id,title,board,status,extra='',plx=null,topx=''){if(S.tab!=='games'||S.game!==id||S.page)return;const G=GAME[id],c=G.ctx,ts=G.turnSide?G.turnSide():null,mine=!!(G.mine&&G.mine());gTurnSnd(G,mine);
+ view.innerHTML=gShell(id,{stage:board,mid:board,top:gTop(title,c)+plCard(c,-c.side,ts===-c.side,plx)+topx,bot:plCard(c,c.side,ts===c.side,plx)+`<div class="status${mine?' mine':''}" role="status">${status}</div>${extra}`,res:gResHTML(G)})}
 /* a chime when the turn comes to you */
 function gTurnSnd(G,mine){if(mine&&!G.wasMine&&typeof gSnd==='function'){gSnd('turn');gBuzz(12)}G.wasMine=mine}
 /* the end of a game: a card over the board with the result and what to do next */

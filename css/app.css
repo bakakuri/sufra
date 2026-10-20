@@ -1834,14 +1834,50 @@ html.zoomed .pmw{max-height:none}html.zoomed .pmmedia{max-height:calc(68dvh / va
 .gx .pl .pln b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gx .pl .muted{font-size:11.5px}
 .gx .pl .sp{flex:1}
-.gx .pl.turn{border-color:rgb(242 184 75/.75);box-shadow:0 0 0 2px rgb(242 184 75/.32),0 0 24px rgb(242 184 75/.32)}
-.gx .pl.turn>.av{animation:gpulse 1.6s ease-in-out infinite}
-@keyframes gpulse{50%{box-shadow:0 0 0 4px rgb(242 184 75/.55)}}
-.gx .gcap{color:#D9CBBB;margin-left:4px}
-.gx .status{align-self:center;text-align:center;min-height:0;padding:8px 18px;border-radius:999px;background:rgb(18 12 9/.72);border:1px solid rgb(255 255 255/.08);font-size:14px;color:#F3ECE2;font-weight:600;box-shadow:0 4px 14px rgb(0 0 0/.35);max-width:100%}
+.gx .pl.turn{border-color:rgb(242 184 75/.5);box-shadow:0 6px 22px rgb(0 0 0/.4),0 0 22px rgb(242 184 75/.18)}
+/* the turn ring: a gold arc turning around the avatar */
+.gx .plav{position:relative;flex:none;display:grid;border-radius:50%}
+.gx .plav::after{content:"";position:absolute;inset:-4px;border-radius:50%;opacity:0;transition:opacity .3s;pointer-events:none;
+ background:conic-gradient(from 0deg,#FFD98A,rgb(242 184 75/0) 38%,rgb(242 184 75/0) 52%,#F2B84B 92%,#FFD98A);
+ -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px))}
+.gx .pl.turn .plav::after{opacity:1;animation:spin 2.2s linear infinite}
+.gx .think{display:inline-flex;gap:3px;margin-left:7px;vertical-align:middle}
+.gx .think i{width:4px;height:4px;border-radius:50%;background:#F2B84B;animation:gdot 1.2s ease-in-out infinite}
+.gx .think i:nth-child(2){animation-delay:.16s}.gx .think i:nth-child(3){animation-delay:.32s}
+@keyframes gdot{0%,60%,100%{opacity:.25;transform:none}30%{opacity:1;transform:translateY(-2px)}}
+.gx .pc{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px;box-shadow:inset 0 0 0 1px rgb(255 255 255/.3),0 1px 2px rgb(0 0 0/.4)}
+.gx .pc.w{background:linear-gradient(#FFF9EE,#CDBEA6)}.gx .pc.b{background:linear-gradient(#6E3B2C,#2A1610)}
+/* what a player has taken: chess pieces as glyphs (+material), checkers as one disc and a count, nardi as a progress ring */
+.gx .gcap{margin-left:auto;padding-left:10px;font-size:16px;letter-spacing:-.18em;color:#F4EADB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;font-family:"Noto Sans Symbols 2","Segoe UI Symbol","DejaVu Sans",sans-serif}
+.gx .gcap.b{color:#3A2219;text-shadow:0 0 1px #EADCC7,0 0 1px #EADCC7,0 0 2px rgb(234 220 199/.6)}
+.gx .gcap small{letter-spacing:0;font-family:var(--f-body);font-size:11.5px;font-weight:800;color:#F2C46A;margin-left:.4em;text-shadow:none}
+.gx .gcap.ckd{display:inline-flex;align-items:center;gap:6px;letter-spacing:0;font-family:var(--f-body);font-size:12.5px;font-weight:700;line-height:1;color:#E9DCC6;text-shadow:none}
+.gx .gcap.ckd i{width:15px;height:15px;border-radius:50%;box-shadow:0 1px 2px rgb(0 0 0/.55),inset 0 -2px 0 rgb(0 0 0/.18)}
+.gx .gcap.ckd.w i{background:radial-gradient(circle at 40% 35%,#FFFBF2,#D8C9B0)}.gx .gcap.ckd.b i{background:radial-gradient(circle at 40% 35%,#6A3E2E,#22130D)}
+.gx .goff{display:inline-flex;align-items:center;gap:6px;margin-left:auto;padding-left:10px;font-size:12.5px;font-weight:700;color:#E9DCC6;font-variant-numeric:tabular-nums}
+.gx .goff i{width:18px;height:18px;border-radius:50%;background:conic-gradient(#F2B84B calc(var(--p)*1turn),rgb(255 255 255/.14) 0);
+ -webkit-mask:radial-gradient(farthest-side,transparent 52%,#000 56%);mask:radial-gradient(farthest-side,transparent 52%,#000 56%)}
+/* chess: the last moves under the opponent, newest on the right */
+.gx .mvs{display:flex;justify-content:flex-end;align-items:center;gap:7px;height:22px;overflow:hidden;white-space:nowrap;padding:0 4px;font-size:13px;font-weight:600;color:#DCCFBF;font-variant-numeric:tabular-nums;
+ -webkit-mask:linear-gradient(90deg,transparent,#000 22%);mask:linear-gradient(90deg,transparent,#000 22%)}
+.gx .mvs .n{color:#8E8070;font-weight:500;margin-right:-3px}
+.gx .mvs .now{color:#1B1205;background:#F2B84B;border-radius:6px;padding:1px 6px}
+/* joker: said and taken */
+.pips{display:inline-flex;align-items:center;gap:3px;min-height:12px;vertical-align:middle}
+.pips i{width:7px;height:7px;border-radius:50%;box-shadow:inset 0 0 0 1.5px rgb(242 196 106/.8)}
+.pips i.on{background:#F2C46A;box-shadow:0 0 6px rgb(242 196 106/.6)}
+.pips.over i{box-shadow:inset 0 0 0 1.5px #FF9A86}.pips.over i.on{background:#FF9A86;box-shadow:none}
+.pips em{font-style:normal;font-size:11px;font-weight:800;color:#FF9A86;margin-left:2px}
+.pips.z{font-size:11px;color:#E9DCC6}.pips.z.over{color:#FF9A86}
+.gx .jme{display:inline-flex;align-items:center;gap:8px}
+.gx .gscore{display:inline-flex;align-items:center;gap:6px}
+.gx .ginfo>span.gscore{padding:3px 12px}
+.gx .gscore b{font-size:15px;font-weight:800;color:#F2C46A;font-variant-numeric:tabular-nums}.gx .gscore i{font-style:normal;color:#8E8070}
+.gx .status{align-self:center;text-align:center;min-height:0;padding:7px 14px;border-radius:12px;background:rgb(12 8 5/.5);border:1px solid rgb(255 255 255/.07);font-size:13.5px;color:#E7DCCE;font-weight:500;line-height:1.35;max-width:100%;text-wrap:balance;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 .gx .status:empty{display:none}
-.gx .status.mine{background:linear-gradient(180deg,#F8CA6A,#D8952A);border-color:transparent;color:#1b1205;box-shadow:0 6px 22px rgb(242 184 75/.38);animation:gpop .45s var(--ease-spring) both}
-@keyframes gpop{from{transform:scale(.86);opacity:.4}}
+.gx .status.mine{background:rgb(242 184 75/.12);border-color:rgb(242 184 75/.36);color:#FFE4A8;font-weight:600;animation:gpop .4s var(--ease-out) both}
+.gx .status.mine::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#F2B84B;margin-right:8px;vertical-align:1px;box-shadow:0 0 8px #F2B84B}
+@keyframes gpop{from{transform:translateY(5px);opacity:0}}
 .gx .note,.gx details,.gx .gacts,.gx .gres,.gx .tourcard>.note{display:none}
 .gx .btn{border-radius:15px}
 .gx .ghud .btn:not(.ghost):not(.sm){height:48px;padding:0 24px;font-size:16px;font-weight:800;background:linear-gradient(180deg,#F8CA6A,#D38E22);color:#1b1205;box-shadow:0 6px 20px rgb(242 184 75/.32),inset 0 1px 0 rgb(255 255 255/.5)}
@@ -1852,7 +1888,11 @@ html.zoomed .pmw{max-height:none}html.zoomed .pmmedia{max-height:calc(68dvh / va
 .gx .offs{justify-content:center}
 .gx .offbtn{height:32px;font-size:12px;background:rgb(18 12 9/.6);border-color:rgb(255 255 255/.16)}
 .gx .offbtn.tgt{background:var(--gold);color:#1b1205}
-.gx .bids button{background:rgb(255 255 255/.1);border-color:rgb(255 255 255/.16);color:#F3ECE2;min-width:46px;height:46px;border-radius:13px;font-size:16px}
+.gx .bids{display:grid;grid-template-columns:repeat(var(--c,8),minmax(0,1fr));gap:7px;width:100%;max-width:min(440px,calc(var(--c,8) * 60px));align-self:center}
+.gx .bids button{display:grid;place-items:center;min-width:0;padding:0;height:48px;border-radius:14px;font-size:18px;font-weight:800;background:rgb(255 255 255/.08);border:1px solid rgb(255 255 255/.15);color:#F3ECE2;font-variant-numeric:tabular-nums}
+.gx .bids button[data-v="0"]{font-size:13px;font-weight:700}
+.gx .bids button:disabled{opacity:1;color:rgb(243 236 226/.28);background:transparent;border-style:dashed;text-decoration:line-through}
+.gx .bids button:not(:disabled):hover{background:rgb(242 184 75/.16);border-color:rgb(242 184 75/.5)}
 .gx .bids button:not(:disabled):active{transform:scale(.94)}
 .gx .sheet-tbl{background:rgb(18 12 9/.72);border-radius:14px;padding:4px 6px;border:1px solid rgb(255 255 255/.08)}
 .gx .ghud .hand{padding-top:8px;min-height:0}
@@ -1980,3 +2020,18 @@ html.zoomed .pmw{max-height:none}html.zoomed .pmmedia{max-height:calc(68dvh / va
 .lb tr.mine td{color:var(--wine)}
 
 @media (prefers-reduced-motion:reduce){.gs-post,.gs-pic{transition:none}.gs-post:hover .gs-pic{transform:none}.gs-post:active{transform:none}}
+/* plates that sit just off the board's edges on tall screens (offsets from g3Hug) */
+.ghug .gx.is3d .ghud.top>.pl,.ghug .gx.is3d .ghud.top>.mvs{translate:0 var(--hugT,0px);transition:translate .5s var(--ease-out)}
+.ghug .gx.is3d .ghud.bot>.pl{translate:0 calc(-1 * var(--hugB,0px));transition:translate .5s var(--ease-out)}
+.ghug .gx.is3d .ghud.bot{overflow:visible}
+@media (prefers-reduced-motion:reduce){.ghug .gx.is3d .ghud .pl,.ghug .gx.is3d .mvs{transition:none}}
+.gx .mvs .fg{font-style:normal;font-size:1.22em;line-height:1;margin-right:.04em;font-family:"Noto Sans Symbols 2","Segoe UI Symbol","DejaVu Sans","Apple Symbols",serif}
+/* flat boards on a tall screen: the plates sit against the board too, the status and buttons stay down by the thumb */
+@media (max-aspect-ratio:4/5){
+ .gx:not(.is3d):is([data-g="chess"],[data-g="shashi"],[data-g="nardi"]){--ar:1}
+ .gx:not(.is3d)[data-g="nardi"]{--ar:calc(11 / 13)}
+ .gx:not(.is3d):is([data-g="chess"],[data-g="shashi"],[data-g="nardi"]) .ghud.top{flex:1;justify-content:flex-end;padding-bottom:6px}
+ .gx:not(.is3d):is([data-g="chess"],[data-g="shashi"],[data-g="nardi"]) .ghud.top>.gtop{margin-bottom:auto}
+ .gx:not(.is3d):is([data-g="chess"],[data-g="shashi"],[data-g="nardi"]) .gmid{flex:none;height:calc((100vw - 20px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)) * var(--ar) + 8px)}
+ .gx:not(.is3d):is([data-g="chess"],[data-g="shashi"],[data-g="nardi"]) .ghud.bot{flex:1;max-height:none;padding-top:6px}
+ .gx:not(.is3d):is([data-g="chess"],[data-g="shashi"],[data-g="nardi"]) .ghud.bot>.pl+*{margin-top:auto}}
