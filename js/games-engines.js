@@ -265,7 +265,7 @@ const rkTxt=r=>RK[r]||String(r);
 const isRed=s=>s==='h'||s==='d';
 function jDeck(){const d=[];for(const s of SUITS)for(let r=6;r<=14;r++)if(!(r===6&&(s==='s'||s==='c')))d.push({s,r});d.push({j:1},{j:2});return d}
 const sortHand=h=>h.sort((a,b)=>(a.j?99:SUITS.indexOf(a.s)*20+a.r)-(b.j?99:SUITS.indexOf(b.s)*20+b.r));
-const jCardHTML=(c,extra='')=>c.j?`<div class="card jk"${extra}><i>★</i>ჯოკერი</div>`:`<div class="card${isRed(c.s)?' red':''}"${extra}><span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span></div>`;
+const jCardHTML=(c,extra='')=>c.j?`<div class="card jk"${extra}><i>★</i>ჯოკერი</div>`:`<div class="card${isRed(c.s)?' red':''}" data-s="${SY[c.s]}"${extra}><span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span></div>`;
 const cardName=c=>c.j?'ჯოკერი':rkTxt(c.r)+' '+SN[c.s];
 const JSEQ={quick:[1,2,3,4,5,6,7,8],full:[1,2,3,4,5,6,7,8,9,9,9,9,8,7,6,5,4,3,2,1,9,9,9,9]};
 /* the full game has four sections: 1 to 8, four nines, 8 to 1, four nines; the quick game is one section */
@@ -280,10 +280,20 @@ function jScore(E){const sec=jSec(E.len,E.h),kh=sec%2?500:200,pts=[0,1,2,3].map(
  E.hist.push({n:E.n,b:E.bids.slice(),t:E.taken.slice(),p:pts,s:sec});
  if(jSecEnd(E.len,E.h)){const pr=jPremium(E.hist,sec);if(pr.some(Boolean)){pr.forEach((x,p)=>E.score[p]+=x);E.hist.push({pr:1,n:0,s:sec,b:[],t:[],p:pr})}}E.h++}
 const jLast=hist=>{const n=hist.length,l=hist[n-1];return l&&l.pr?{hand:hist[n-2],prem:l}:{hand:l,prem:null}};
-const jRow=(h,nm)=>h.pr?`<tr class="prem"><td>პრემია</td>${h.p.map(x=>`<td class="${x<0?'neg':''}">${x>0?'+':''}${x||''}</td>`).join('')}</tr>`:`<tr><td>${nm} · ${h.n}</td>${[0,1,2,3].map(p=>`<td class="${h.p[p]<0?'neg':''}">${h.b[p]}/${h.t[p]} · ${h.p[p]}</td>`).join('')}</tr>`;
-function jSheetHTML(hist,score,names){let k=0;return `<div class="sheet-tbl"><table><thead><tr><th>ხელი</th>${names.map(n=>`<th>${esc(n)}</th>`).join('')}</tr></thead><tbody>${hist.map(h=>jRow(h,h.pr?'':++k)).join('')}<tr class="tot"><td>სულ</td>${score.map(x=>`<td>${x}</td>`).join('')}</tr></tbody></table></div>`}
-function jLastHTML(hist,score,names){const{hand,prem}=jLast(hist);if(!hand)return '';
- return `<div class="sheet-tbl"><table><thead><tr><th></th>${names.map(n=>`<th>${esc(n)}</th>`).join('')}</tr></thead><tbody><tr><td>თქვა / წაიღო</td>${[0,1,2,3].map(p=>`<td>${hand.b[p]} / ${hand.t[p]}</td>`).join('')}</tr><tr><td>ქულა</td>${hand.p.map(x=>`<td class="${x<0?'neg':''}">${x>0?'+':''}${x}</td>`).join('')}</tr>${prem?jRow(prem):''}<tr class="tot"><td>სულ</td>${score.map(x=>`<td>${x}</td>`).join('')}</tr></tbody></table></div>`}
+/* the score sheet as it is kept at a real table: squared notebook paper, blue ballpoint, minus in red.
+   one column a player; a row a hand (cards dealt in the margin), with what they said small in the corner and the points;
+   a bid that took nothing (ხიშტი) is struck through; a double line closes each section with the running totals */
+const jInk=s=>[...String(s)].map((ch,i)=>{if(ch===' ')return ' ';const h=(ch.charCodeAt(0)*7+i*13)%17;return `<i style="--r:${((h%7)-3)*1.3}deg;--y:${((h%5)-2)*.7}px">${esc(ch)}</i>`}).join('');
+function jNoteHTML(hist,score,names,o={}){const rows=[],run=[0,0,0,0];hist=hist||[];
+ hist.forEach((h,ix)=>{h.p.forEach((x,p)=>run[p]+=x);const nw=o.hl&&ix>=hist.length-(hist[hist.length-1]&&hist[hist.length-1].pr?2:1)?' new':'';
+  if(h.pr)rows.push(`<div class="jn-r jn-pr${nw}"><span class="jn-m">★</span>${h.p.map(x=>`<span class="jn-c${x<0?' neg':''}">${x?jInk((x>0?'+':'')+x):''}</span>`).join('')}</div>`);
+  else rows.push(`<div class="jn-r${nw}"><span class="jn-m">${jInk(h.n)}</span>${[0,1,2,3].map(p=>{const b=h.b[p],t=h.t[p],x=h.p[p];return `<span class="jn-c${x<0?' neg':''}${b>0&&t===0?' kh':''}"><sup>${b===0?'—':jInk(b)}</sup>${jInk(x)}</span>`}).join('')}</div>`);
+  const nx=hist[ix+1];if(nx&&nx.s!==h.s)rows.push(`<div class="jn-r jn-sub"><span class="jn-m"></span>${run.map(x=>`<span class="jn-c${x<0?' neg':''}">${jInk(x)}</span>`).join('')}</div>`)});
+ const body=o.last?rows.slice(-o.last):rows;
+ return `<div class="jnote" aria-label="ქულების ფურცელი"><div class="jn-r jn-h"><span class="jn-m"></span>${names.map(n=>`<span class="jn-c">${jInk(String(n).split(' ')[0])}</span>`).join('')}</div>${body.join('')}${hist.length?`<div class="jn-r jn-tot"><span class="jn-m">${jInk('სულ')}</span>${score.map(x=>`<span class="jn-c${x<0?' neg':''}">${jInk(x)}</span>`).join('')}</div>`:''}</div>`}
+/* the sheet lies small in the corner; after a hand it slides out for a moment with the new row; a tap opens it in full */
+const jMiniHTML=(hist,score,names,pop,a)=>`<button class="jsm${pop?' pop':''}" data-a="${a}" aria-label="ქულების ფურცელი">${jNoteHTML(hist,score,names,{last:pop?4:8,hl:pop})}</button>`;
+function jSheetOpen(hist,score,names){sheet(head('ქულების ფურცელი')+`<div class="ph-body jnbody">${jNoteHTML(hist,score,names)}</div>`,'jnp')}
 /* what a player said and took: one pip per trick said, filled when taken; extra tricks in red; a pass shows the word */
 function jPips(b,t){const lab=`aria-label="ნათქვამი ${b??'ჯერ არა'}, წაღებული ${t}"`;if(b==null)return `<span class="bt pips" ${lab}>–</span>`;
  if(b===0)return `<span class="bt pips z${t?' over':''}" ${lab}>${t?'პასი, +'+t:'პასი'}</span>`;
@@ -321,7 +331,7 @@ const JK=GAME.joker={title:'ჯოკერი',
  /* bid and made: 50 a trick plus 50; all tricks bid and taken: 100 a trick; pass and none: 50; otherwise 10 a trick; bid but took none (ხიშტი): −200, or −500 in the nine-card sections */
  pts(b,t,n,kh=200){if(t===b)return b===n?100*n:b===0?50:50*b+50;if(b>0&&t===0)return -kh;return 10*t},
  endHand(){jScore(this);
-  if(this.h>=JSEQ[this.len].length){this.phase='over';const win=this.score[0]===Math.max(...this.score);gameResult('joker',win)}else this.phase='handover';this.render()},
+  if(this.h>=JSEQ[this.len].length){this.phase='over';const win=this.score[0]===Math.max(...this.score);gameResult('joker',win)}else{this.phase='handover';this.later(()=>{if(this.phase==='handover')this.newHand()},3800)}this.render()},
  val(c){return c.j?60:(this.trump&&c.s===this.trump?20+c.r:c.r)},
  botTrump(p){const sc={};for(const c of this.first3[p])if(!c.j)sc[c.s]=(sc[c.s]||0)+c.r;const best=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];return best&&best[1]>=11?best[0]:null},
  botBid(p){const hand=this.hands[p],n=hand.length;let e=0;for(const c of hand){if(c.j)e+=1;else if(this.trump&&c.s===this.trump)e+=c.r>=13?.9:c.r>=11?.55:.3;else e+=c.r===14?.7:c.r===13?.3:0}
@@ -343,19 +353,19 @@ const JK=GAME.joker={title:'ჯოკერი',
   const trumpTxt=this.phase==='trump'?'კოზირი ირჩევა':this.trump?`კოზირი: <b style="color:${isRed(this.trump)?'#FF8A9A':'inherit'}">${SY[this.trump]}</b> ${SN[this.trump]}`:'უკოზირო';
   const L=this.phase==='play'&&this.cur===0?this.legal(0):[];
   const hand=this.phase==='trump'&&this.cur===0?this.first3[0].map(c=>jCardHTML(c)).join('')+'<div class="card" style="opacity:.25" aria-hidden="true"></div>'.repeat(this.n-3)
-   :this.hands[0].map((c,i)=>`<button class="card${c.j?' jk':''}${!c.j&&isRed(c.s)?' red':''}" data-a="jcard" data-i="${i}" aria-label="${cardName(c)}"${L.includes(c)?'':' disabled'}>${c.j?'<i>★</i>ჯოკერი':`<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span>`}</button>`).join('');
+   :this.hands[0].map((c,i)=>`<button class="card${c.j?' jk':''}${!c.j&&isRed(c.s)?' red':''}" data-a="jcard" data-i="${i}"${c.j?'':` data-s="${SY[c.s]}"`} aria-label="${cardName(c)}"${L.includes(c)?'':' disabled'}>${c.j?'<i>★</i>ჯოკერი':`<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span>`}</button>`).join('');
   let panel='',st='';
   if(this.phase==='trump'){if(this.cur===0){st='ნახე პირველი სამი კარტი და აირჩიე კოზირი';panel=`<div class="suits">${SUITS.map(s=>`<button class="${isRed(s)?'red':''}" data-a="jtrump" data-s="${s}" aria-label="${SN[s]}">${SY[s]}</button>`).join('')}</div><button class="btn ghost" data-a="jtrump" data-s="" style="align-self:center">უკოზირო</button>`}else st=esc(this.nm(this.cur))+' ირჩევს კოზირს…'}
   else if(this.phase==='bid'){if(this.cur===0){const f=this.forbidden(0);st='რამდენს წაიღებ?'+(f>=0?` დამრიგებელი ხარ, ${f}-ს ვერ იტყვი`:'');panel=`<div class="bids" role="group" aria-label="ნათქვამი" style="--c:${jBidCols(this.n)}">${Array.from({length:this.n+1},(_,v)=>`<button data-a="jbid" data-v="${v}"${v===f?' disabled':''}>${v===0?'პასი':v}</button>`).join('')}</div>`}else st=esc(this.nm(this.cur))+' ამბობს…'}
-  else if(this.phase==='play'){st=this.win!=null?(this.win===0?'ეს ხელი შენ წაიღე':esc(JK_ERG[this.win-1])+' წაიღო ხელი'):this.cur===0?(g3?'შენი სვლაა · შეეხე კარტს ორჯერ ან გადაათრიე':'შენი სვლაა'):esc(this.nm(this.cur))+' ფიქრობს…'}
+  else if(this.phase==='play'){st=this.win!=null?(this.win===0?'ეს ხელი შენ წაიღე':esc(JK_ERG[this.win-1])+' წაიღო ხელი'):this.cur===0?(g3?'შენი სვლაა. შეეხე კარტს ორჯერ ან აიტანე მაგიდაზე':'შენი სვლაა'):esc(this.nm(this.cur))+' ფიქრობს…'}
   else if(this.phase==='handover'||this.phase==='over'){const{hand:last,prem}=jLast(this.hist);const mn=last.p[0]+(prem?prem.p[0]:0);
    st=this.phase==='over'?(this.score[0]===Math.max(...this.score)?'მოიგე! +12 რეიტინგი, +10 მონეტა':'თამაში დასრულდა'):`ხელი დასრულდა. შენ: ${mn>0?'+':''}${mn}`+(prem?' · სექციის პრემია':'');
-   panel=jLastHTML(this.hist,this.score,[0,1,2,3].map(p=>this.nm(p)))+(this.phase==='over'?'<button class="btn" data-a="jagain" style="align-self:center">ახალი თამაში</button>':'<button class="btn" data-a="jnext" style="align-self:center">შემდეგი ხელი</button>')}
+   panel=''}
   const info=`<div class="ginfo"><span class="trump">${trumpTxt}</span><span>ხელი ${Math.min(this.h+1,JSEQ[this.len].length)}/${JSEQ[this.len].length}, ${this.n} კარტი</span></div>`;
   const stage=`<div class="jt${g3?' g3jt':''}">${seat(2,'top')}${seat(1,'left')}${seat(3,'right')}<div class="trick" aria-label="მაგიდა">${tr}</div>${g3?`<div class="g3 g3-joker${G3W.ready?'':' loading'}">${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div>`:''}</div>`;
   let res='';if(this.phase==='over'){const mx=Math.max(...this.score),win=this.score[0]===mx,pl=[0,1,2,3].sort((a,b)=>this.score[b]-this.score[a]);
    res=gResBox(this,{title:win?'მოიგე!':'თამაში დასრულდა',sub:win?'ყველაზე მეტი ქულა შენ დააგროვე':'გაიმარჯვა: '+esc(this.nm(pl[0])),kind:win?'win':'lose',more:`<div class="gendt">${pl.map(p=>`<span><b>${esc(this.nm(p))}</b>${this.score[p]}</span>`).join('')}</div>`,again:'<button class="btn gold" data-a="jagain">ახალი თამაში</button>'})}
-  view.innerHTML=gShell('joker',{stage,mid:stage,top:top+info,bot:`<div class="pl me${mine?' turn':''}"><span class="plav">${av('me',34)}</span><span class="pln"><b>${esc(ME.name)}</b><span class="muted jme">${pips(0)}<span>${this.score[0]} ქულა</span></span></span><span class="sp"></span><button class="btn ghost sm" data-a="jsheet">ქულები</button></div>
+  view.innerHTML=gShell('joker',{stage,mid:stage,top:top+info+jMiniHTML(this.hist,this.score,[0,1,2,3].map(p=>this.nm(p)),this.phase==='handover','jsheet'),bot:`<div class="pl me${mine?' turn':''}"><span class="plav">${av('me',34)}</span><span class="pln"><b>${esc(ME.name)}</b><span class="muted jme">${pips(0)}<span>${this.score[0]} ქულა</span></span></span></div>
    <div class="hand${g3?' g3sr':''}" aria-label="შენი კარტები">${hand}</div><div class="status${mine?' mine':''}" role="status">${st}</div>${panel}`,res});
   g3After('joker')}};
 const JK_RULES='ფერი უნდა აჰყვე. თუ ფერი არ გაქვს, კოზირი უნდა დადო. ჯოკერი ნებისმიერ დროს შეგიძლია დადო: „მაღალი“ წაიღებს ხელს, „დაბალი“ არ წაიღებს. მოგვიანებით დადებული მაღალი ჯოკერი უფრო ძლიერია. ჯოკერით დაწყებისას ითხოვ ფერს: „მაღალი“ ნიშნავს, რომ ყველამ ამ ფრის უმაღლესი კარტი უნდა დადოს და ხელი შენია, თუმცა თუ ფერი კოზირი არ არის და ვინმემ კოზირი დადო, უმაღლესი კოზირი წაიღებს. „დაბალი“ ნიშნავს, რომ ამ ფრის უმაღლესი კარტი წაიღებს. ქულები: ზუსტად ნათქვამი 50 თითო ხელზე და 50 ბონუსი, ყველა ხელის წაღება 100 თითოზე, პასი და ნული 50. მეტის ან ნაკლების წაღებისას 10 თითოზე. თუ თქვი და ვერცერთი ვერ წაიღე, ხიშტი: −200, ცხრიან სექციებში −500. ვინც სექციის ყველა ხელში ზუსტად ნათქვამს წაიღებს, პრემიას იღებს: მისი საუკეთესო ხელი ორმაგდება, დანარჩენებს კი საუკეთესო ხელი ეშლებათ.';
@@ -369,8 +379,7 @@ const jkJokerSheet=(lead,a)=>sheet(head('ჯოკერი')+(lead?`<div class=
 A.jcard=t=>{if(JK.phase!=='play'||JK.cur!==0)return;const c=JK.hands[0][+t.dataset.i];if(!c||!JK.legal(0).includes(c))return;
  if(!c.j){JK.playCard(0,c);return}JK.pj=c;jkJokerSheet(!JK.trick.length,'jj')};
 A.jj=t=>{closeSheet();if(JK.pj&&JK.phase==='play'&&JK.cur===0){const c=JK.pj;JK.pj=null;JK.playCard(0,c,t.dataset.m,t.dataset.s||null)}};
-A.jsheet=()=>{if(!JK.hist||!JK.hist.length){toast('ქულების ფურცელი პირველი ხელის შემდეგ შეივსება');return}
- sheet(head('ქულების ფურცელი')+`<div class="ph-body">${jSheetHTML(JK.hist,JK.score,[0,1,2,3].map(p=>JK.nm(p)))}</div>`)};
+A.jsheet=()=>jSheetOpen(JK.hist,JK.score||[0,0,0,0],[0,1,2,3].map(p=>JK.nm(p)));
 
 /* flat boards: moving pieces, rolling dice, dealt cards (the 3D boards animate by themselves) */
 {const p=CH.play,r=CH.render,l=CH.load;

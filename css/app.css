@@ -2035,3 +2035,48 @@ html.zoomed .pmw{max-height:none}html.zoomed .pmmedia{max-height:calc(68dvh / va
  .gx:not(.is3d):is([data-g="chess"],[data-g="shashi"],[data-g="nardi"]) .gmid{flex:none;height:calc((100vw - 20px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)) * var(--ar) + 8px)}
  .gx:not(.is3d):is([data-g="chess"],[data-g="shashi"],[data-g="nardi"]) .ghud.bot{flex:1;max-height:none;padding-top:6px}
  .gx:not(.is3d):is([data-g="chess"],[data-g="shashi"],[data-g="nardi"]) .ghud.bot>.pl+*{margin-top:auto}}
+/* joker at the 3D table: your cards are held along the bottom of the screen, so the panels sit just above them */
+.gx.is3d:is([data-g="joker"],.jko) .ghud.bot{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 18.5vh);background:linear-gradient(transparent,rgb(9 6 4/.35) 40%,rgb(9 6 4/.55))}
+@media (min-aspect-ratio:5/4){.gx.is3d:is([data-g="joker"],.jko) .ghud.bot{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 12px)}}
+/* ---------- the joker score sheet: a page of a squared school notebook, written in blue ballpoint ---------- */
+.jnote{--c:20px;--ink:#1F3C98;--red:#C62F2B;position:relative;padding:calc(var(--c)*.5) 6px var(--c) 0;color:var(--ink);background-color:#FBFBF5;
+ background-image:linear-gradient(rgb(70 125 205/.22) 1px,transparent 1px),linear-gradient(90deg,rgb(70 125 205/.22) 1px,transparent 1px),radial-gradient(120% 80% at 30% 0%,rgb(255 255 255/.6),transparent 60%);
+ background-size:var(--c) var(--c),var(--c) var(--c),100% 100%;background-position:-1px -1px;font-family:"Caveat","Segoe Print","Bradley Hand",var(--f-body);line-height:1;text-align:left;
+ border-radius:3px;box-shadow:0 1px 1px rgb(0 0 0/.08),0 12px 30px rgb(0 0 0/.3);overflow:hidden;-webkit-user-select:none;user-select:none}
+.jnote::before{content:"";position:absolute;left:calc(var(--c)*2.2 - 1px);top:0;bottom:0;width:2px;background:rgb(222 82 82/.55);pointer-events:none}
+.jnote i{font-style:normal;display:inline-block;transform:translateY(var(--y,0)) rotate(var(--r,0))}
+.jn-r{display:grid;grid-template-columns:calc(var(--c)*2.2) repeat(4,minmax(0,1fr));height:calc(var(--c)*2);align-items:center}
+.jn-m{text-align:center;font-size:19px;color:rgb(31 60 152/.62)}
+.jn-c{position:relative;text-align:center;font-size:23px;font-weight:500;white-space:nowrap;letter-spacing:.01em}
+.jn-c sup{position:absolute;left:5px;top:3px;font-size:14px;font-weight:700;opacity:.7;line-height:1}
+.jn-c.neg{color:var(--red)}
+.jn-c.kh::after{content:"";position:absolute;left:22%;right:22%;top:52%;height:2px;border-radius:2px;background:var(--red);opacity:.75;transform:rotate(-9deg)}
+.jn-h{height:calc(var(--c)*1.5)}
+.jn-h .jn-c{font-family:var(--f-body);font-size:15px;font-weight:500;font-style:italic;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis}
+.jn-h .jn-c::after{content:"";position:absolute;left:16%;right:16%;bottom:-3px;height:1.5px;background:var(--ink);opacity:.6;transform:rotate(-1.2deg)}
+.jn-pr .jn-m{color:#C9871A;font-size:20px}.jn-pr .jn-c{font-size:21px}
+.jn-sub{border-top:1.5px solid rgb(31 60 152/.75);position:relative}.jn-sub::before{content:"";position:absolute;left:calc(var(--c)*2.2);right:4px;top:3px;height:1.5px;background:rgb(31 60 152/.75)}
+.jn-sub .jn-c{font-weight:700}
+.jn-tot{height:calc(var(--c)*2.2)}.jn-tot .jn-m{font-family:var(--f-body);font-size:12px;font-style:italic}
+.jn-tot .jn-c{font-size:26px;font-weight:700;text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:4px}
+.jn-r.new .jn-c,.jn-r.new .jn-m{animation:jnw .9s steps(9,end) both}.jn-r.new .jn-c:nth-child(3){animation-delay:.25s}.jn-r.new .jn-c:nth-child(4){animation-delay:.5s}.jn-r.new .jn-c:nth-child(5){animation-delay:.75s}
+@keyframes jnw{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+/* the full page in a sheet */
+.panel.jnp .ph-body.jnbody{padding:10px 12px 18px;background:var(--sunk)}
+.panel.jnp .jnote{--c:22px;transform:rotate(-.4deg);margin:4px 2px}
+/* the small page in the corner of the table */
+.gx .ghud.top .jsm{position:absolute;right:calc(env(safe-area-inset-right,0px) + 10px);top:calc(env(safe-area-inset-top,0px) + 56px);width:64px;height:84px;padding:0;border-radius:3px;overflow:hidden;
+ background:#FBFBF5;transform:rotate(4deg);box-shadow:0 8px 18px rgb(0 0 0/.5),0 0 0 1px rgb(0 0 0/.06);z-index:5;transition:width .45s var(--ease-out),height .45s var(--ease-out),transform .45s var(--ease-out),right .45s var(--ease-out)}
+.gx .ghud.top .jsm .jnote{width:300px;transform:scale(.215);transform-origin:0 0;box-shadow:none;border-radius:0}
+.gx .ghud.top .jsm::after{content:"";position:absolute;left:50%;top:-4px;width:26px;height:12px;margin-left:-13px;border-radius:2px;background:rgb(238 228 196/.85);box-shadow:0 1px 2px rgb(0 0 0/.25);transform:rotate(-4deg)}
+.gx .ghud.top .jsm:active{transform:rotate(4deg) scale(.96)}
+.gx .ghud.top .jsm.pop{width:min(86vw,360px);height:auto;right:50%;transform:translateX(50%) rotate(-1.2deg);top:calc(env(safe-area-inset-top,0px) + 64px)}
+.gx .ghud.top .jsm.pop .jnote{width:100%;transform:none}
+@media (min-aspect-ratio:5/4){.gx .ghud.top .jsm.pop{right:calc(var(--hw) * .5);transform:translateX(50%) rotate(-1.2deg);width:min(60vw,360px)}}
+@media (prefers-reduced-motion:reduce){.gx .ghud.top .jsm{transition:none}.jn-r.new .jn-c,.jn-r.new .jn-m{animation:none}}
+/* flat joker cards: bigger, with rank and suit together in the corner so they stay readable where cards overlap */
+.gx .jt .card,.gx .hand .card{width:56px;height:80px;border-radius:8px;padding:5px 6px;justify-content:flex-start;align-items:flex-start;gap:1px;font-size:19px}
+.gx .jt .card .s2,.gx .hand .card .s2{align-self:flex-start;font-size:19px;line-height:1}
+.gx .jt .card:not(.jk)::after,.gx .hand .card:not(.jk)::after{content:attr(data-s);position:absolute;right:6px;bottom:4px;font-size:30px;opacity:.9}
+.gx .hand .card{margin-left:-20px}.gx .hand .card:first-child{margin-left:0}
+.gx .jt .card.jk,.gx .hand .card.jk{align-items:center;justify-content:center;font-size:11px}

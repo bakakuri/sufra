@@ -198,7 +198,8 @@ function g3Fit(c,dir,asp,sh){const B=asp<.8&&c.boxp?c.boxp:c.box,pts=[];for(cons
  for(let it=0;it<26;it++){const d=(lo+hi)/2,e=v3.add(c.tgt,v3.mul(dir,d)),VP=m4.mul(P,m4.look(e,c.tgt,[0,1,0]));let ok=true;
   for(const p of pts){const r=m4.xf(VP,p);if(r[3]<=0||Math.abs(r[0]-sh.cx)>mx||Math.abs(r[1]-sh.cy)>my){ok=false;break}}if(ok)hi=d;else lo=d}
  return hi}
-function g3Cam(sc){const c=sc.cam,asp=G3D.asp||1,dir=g3Dir(c),sh=g3Shift(c),key=[asp.toFixed(3),c.yaw,c.dy.toFixed(3),c.dp.toFixed(3),c.pitch,c.fov,JSON.stringify(c.box),JSON.stringify(c.inset||0)].join();
+function g3Cam(sc){const c=sc.cam,asp=G3D.asp||1;if(c.fixed){const f=c.fixed(asp);c.tgt=f.tgt;c.fov=f.fov;const P=m4.persp(f.fov,asp,.1,160);P[8]=-(f.sx||0);P[9]=-(f.sy||0);return{eye:f.eye,VP:m4.mul(P,m4.look(f.eye,f.tgt,[0,1,0])),dist:v3.len(v3.sub(f.eye,f.tgt)),cx:f.sx||0,cy:f.sy||0}}
+ const dir=g3Dir(c),sh=g3Shift(c),key=[asp.toFixed(3),c.yaw,c.dy.toFixed(3),c.dp.toFixed(3),c.pitch,c.fov,JSON.stringify(c.box),JSON.stringify(c.inset||0)].join();
  if(c.fk!==key){c.fd=g3Fit(c,dir,asp,sh);c.fk=key}
  if(c.fdc==null||c.snap){c.fdc=c.fd;c.cxc=sh.cx;c.cyc=sh.cy;c.snap=0}else{const k=.2;c.fdc+=(c.fd-c.fdc)*k;c.cxc+=(sh.cx-c.cxc)*k;c.cyc+=(sh.cy-c.cyc)*k;
   if(Math.abs(c.fd-c.fdc)>c.fd*.002||Math.abs(sh.cx-c.cxc)>.002||Math.abs(sh.cy-c.cyc)>.002)sc.camBusy=true;else{c.fdc=c.fd;c.cxc=sh.cx;c.cyc=sh.cy}}
@@ -275,7 +276,7 @@ function g3Size(){const cv=G3D.cv,el=cv.parentNode;if(!el)return;const r=el.getB
  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}G3D.asp=w/h}
 /* put the canvas into a board on screen and draw at once, so there is no empty frame */
 function g3Mount(el,sc){if(!g3Init())return false;const cv=G3D.cv;if(cv.parentNode!==el)el.prepend(cv);G3D.sc=sc;
- if(window.ResizeObserver){if(!G3D.ro)G3D.ro=new ResizeObserver(()=>{if(G3D.sc&&G3D.cv.isConnected){g3Size();g3Insets(G3D.sc);G3D.sc.cam.snap=1;g3Draw(G3D.sc,performance.now());g3Labels(G3D.sc)}});G3D.ro.disconnect();G3D.ro.observe(el)}
+ if(window.ResizeObserver){if(!G3D.ro)G3D.ro=new ResizeObserver(()=>{if(G3D.sc&&G3D.cv.isConnected){g3Size();g3Insets(G3D.sc);if(G3D.sc.onResize)try{G3D.sc.onResize()}catch(e){}G3D.sc.cam.snap=1;g3Draw(G3D.sc,performance.now());g3Labels(G3D.sc)}});G3D.ro.disconnect();G3D.ro.observe(el)}
  el.classList.toggle('moved',!sc.intro&&!!(sc.cam.dy||sc.cam.dp||sc.cam.dz!==1));g3Size();g3Insets(sc);try{g3Draw(sc,performance.now());g3Labels(sc)}catch(e){}g3Need();return true}
 function g3Reset(){const sc=G3D.sc;if(!sc)return;const c=sc.cam,a={dy:c.dy,dp:c.dp,dz:c.dz},t0=performance.now();
  const f=t=>{const k=Math.min(1,(t-t0)/380),e=easeOut(k);c.dy=a.dy*(1-e);c.dp=a.dp*(1-e);c.dz=a.dz+(1-a.dz)*e;g3Moved(true);if(k<1)requestAnimationFrame(f);else{c.dy=c.dp=0;c.dz=1;g3Moved(true)}};requestAnimationFrame(f)}
@@ -298,9 +299,9 @@ const g3HitY=(ray,y)=>{if(Math.abs(ray.d[1])<1e-6)return null;const t=(y-ray.o[1
 /* one finger on your own piece drags it; anywhere else it turns the board; two fingers zoom; a short touch is a tap */
 function g3Input(cv){const P=new Map();let st=null,pin=null,hovT=0;
  const back=o=>{if(!o||o.tw||o.dying)return;if(v3.len(v3.sub(o.p,o.p1))>.01){o.tw={t0:performance.now(),d:230,p0:o.p.slice(),q0:o.q.slice(),s0:o.s,a0:o.a,p1:o.p1.slice(),q1:(o.q1||o.q).slice(),s1:o.s1??o.s,a1:o.a1??o.a,arc:0,land:true};g3Need()}};
- cv.addEventListener('pointerdown',e=>{const sc=G3D.sc;if(!sc)return;P.set(e.pointerId,[e.clientX,e.clientY]);if(sc.intro){sc.intro=null;g3Moved()}
+ cv.addEventListener('pointerdown',e=>{const sc=G3D.sc;if(!sc)return;P.set(e.pointerId,[e.clientX,e.clientY]);if(sc.intro){sc.intro=null;g3Moved()}if(sc.zoom===false&&P.size>1)return;
   if(P.size===1){let obj=null;if(sc.drag){try{obj=g3HitObj(sc,g3Ray(e.clientX,e.clientY),o=>o.drag)}catch(x){}}st={x:e.clientX,y:e.clientY,dy:sc.cam.dy,dp:sc.cam.dp,drag:false,obj}}
-  else if(P.size===2){if(st&&st.obj&&st.drag){st.obj.held=0;back(st.obj);sc.hm=null}st=null;const[a,b]=[...P.values()];pin={d:Math.hypot(a[0]-b[0],a[1]-b[1])||1,z:sc.cam.dz}}});
+  else if(P.size===2&&sc.zoom!==false){if(st&&st.obj&&st.drag){st.obj.held=0;back(st.obj);sc.hm=null}st=null;const[a,b]=[...P.values()];pin={d:Math.hypot(a[0]-b[0],a[1]-b[1])||1,z:sc.cam.dz}}});
  cv.addEventListener('pointermove',e=>{const sc=G3D.sc;if(!sc)return;
   if(!P.has(e.pointerId)){if(e.pointerType==='mouse'&&!e.buttons&&performance.now()-hovT>45){hovT=performance.now();let h=null;try{h=g3HitObj(sc,g3Ray(e.clientX,e.clientY),o=>o.drag||(o.pick&&sc.hoverAll))}catch(x){}const id=h?h.id:null;if(id!==sc.hov){sc.hov=id;cv.style.cursor=h?'pointer':'';g3Need()}}return}
   P.set(e.pointerId,[e.clientX,e.clientY]);
@@ -315,7 +316,7 @@ function g3Input(cv){const P=new Map();let st=null,pin=null,hovT=0;
   if(e.type==='pointerup'&&!s.drag)g3Tap(e.clientX,e.clientY)};
  cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);cv.addEventListener('lostpointercapture',e=>{if(P.has(e.pointerId)&&e.pointerType==='mouse')up(e)});
  cv.addEventListener('pointerleave',()=>{const sc=G3D.sc;if(sc&&sc.hov){sc.hov=null;cv.style.cursor='';g3Need()}});
- cv.addEventListener('wheel',e=>{const sc=G3D.sc;if(!sc||!(cv.closest('.gx')||e.ctrlKey))return;e.preventDefault();sc.cam.dz=clamp(sc.cam.dz*Math.exp(-e.deltaY*.0012),.85,1.9);g3Moved()},{passive:false});
+ cv.addEventListener('wheel',e=>{const sc=G3D.sc;if(!sc||sc.zoom===false||!(cv.closest('.gx')||e.ctrlKey))return;e.preventDefault();sc.cam.dz=clamp(sc.cam.dz*Math.exp(-e.deltaY*.0012),.85,1.9);g3Moved()},{passive:false});
  cv.addEventListener('contextmenu',e=>e.preventDefault())}
 function g3Tap(x,y){const sc=G3D.sc;if(!sc||!sc.tap)return;try{sc.tap(g3Ray(x,y))}catch(e){}}
 /* call a game action the same way a button on the flat board would */
