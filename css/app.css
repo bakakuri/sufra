@@ -2138,3 +2138,18 @@ html.c4 .card[data-s="♦"],html.c4 .suits button[data-s="d"]{color:#1A55C4}
 .gamemsg .gmb{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px 12px;min-width:0}
 .gamemsg .gmb b{font-size:15px}.gamemsg .gmb small{font-size:12.5px;color:var(--muted)}
 .gamemsg .gmb .btn{margin-top:6px}
+/* my character */
+.gs-lk{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:13px;font-weight:600;color:var(--ink)}
+.gs-lk svg{width:15px;height:15px;color:var(--vine)}
+.lked{display:flex;flex-direction:column;gap:12px}
+.lkprev{position:relative;flex:none;height:min(40vh,280px);border-radius:18px;overflow:hidden;background:#140e0b;display:grid;place-items:center}
+.lkprev .g3load{position:absolute;inset:0;margin:auto}
+#lkopts{display:flex;flex-direction:column;gap:12px}
+.lkrow{display:flex;align-items:center;gap:10px}
+.lkn{flex:0 0 92px;font-size:13.5px;font-weight:600;color:var(--muted)}
+.lkv{flex:1;min-width:0}
+.lkv .seg{margin:0}
+.lksw{display:flex;gap:8px;flex-wrap:wrap}
+.lksw{gap:7px}.lksw button{width:29px;height:29px;border-radius:50%;background:var(--c);border:2px solid rgb(255 255 255/.16);box-shadow:inset 0 0 0 1px rgb(0 0 0/.2);transition:transform .12s}
+.lksw button[aria-pressed="true"]{outline:2.5px solid var(--gold);outline-offset:2px;transform:scale(1.06)}
+.lksw button:active{transform:scale(.92)}

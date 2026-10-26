@@ -103,14 +103,15 @@ async function joinGame(gid,gt,side,opp,oppId,watch){netLeave();const G=GAME[gt]
  ch.on('broadcast',{event:'rx'},({payload:d})=>{if(G.ctx!==ctx||!d||!GRX[+d.i]||Date.now()-(ctx.rxAt||0)<900)return;ctx.rxAt=Date.now();const s=+d.s;if(ctx.mode==='netwatch'?(s===1||s===-1):s===-ctx.side)gRxShow(s,+d.i)})
   .on('broadcast',{event:'rem'},({payload:d})=>{if(G.ctx!==ctx||!d||!okGid(d.gid)||!ctx.finished||ctx.mode!=='online')return;if(ctx.remSent){gRematch(G,ctx.remSent<d.gid?ctx.remSent:d.gid);return}ctx.remIn=d.gid;G.resHide=0;G.render();if(typeof gSnd==='function')gSnd('turn')})
   .on('broadcast',{event:'remok'},({payload:d})=>{if(G.ctx===ctx&&d&&d.gid===ctx.remSent)gRematch(G,d.gid)})
-  .on('presence',{event:'sync'},()=>{if(G.ctx!==ctx)return;let n=0;try{const st=ch.presenceState();for(const k in st)if((st[k]||[]).some(x=>x&&x.w))n++}catch(e){}if(n!==(ctx.wn||0)){ctx.wn=n;G.render()}});
+  .on('presence',{event:'sync'},()=>{if(G.ctx!==ctx)return;let n=0,lk=null;try{const st=ch.presenceState();for(const k in st){if((st[k]||[]).some(x=>x&&x.w))n++;if(oppId&&k===oppId){const e=(st[k]||[]).find(x=>x&&x.lk);if(e)lk=lkClean(e.lk)}}}catch(e){}
+   const lkc=JSON.stringify(lk)!==JSON.stringify(ctx.olk||null);if(lk)ctx.olk=lk;if(n!==(ctx.wn||0)||lkc){ctx.wn=n;G.render()}});
  ch.on('broadcast',{event:'st'},({payload:d})=>{if(G.ctx!==ctx||!d||typeof d!=='object'||!(Number(d.seq)>ctx.seq)||!d.s)return;try{G.load(d.s);ctx.seq=Number(d.seq);ctx.syncing=false;
    if(ctx.clk){const k=ctx.clk,o=-ctx.side,ck=d.ck;if(ck&&typeof ck==='object'){if(Number(ck.n)>k.n)k.n=Number(ck.n);if(Number.isFinite(+ck[o]))k.t[o]=Math.max(0,Math.min(k.base*3,+ck[o]))}clkTurn(G);if(ck&&Number.isFinite(+ck[o]))k.t[o]=Math.max(0,Math.min(k.base*3,+ck[o]))}
    G.render();if(G.checkEnd)G.checkEnd()}catch(e){}})
   .on('broadcast',{event:'need'},()=>{if(G.ctx===ctx&&ctx.mode==='online'&&side===1)netSend()})
   .on('broadcast',{event:'bye'},({payload:d})=>{if(G.ctx===ctx&&d&&d.from===oppId){ctx.gone=1;G.render()}})
   .on('presence',{event:'leave'},({key})=>{if(G.ctx===ctx&&oppId&&key===oppId){ctx.gone=1;G.render()}})
-  .subscribe(st=>{if(st!=='SUBSCRIBED')return;ch.track({w:watch?1:0});if(watch||side===-1)ctx.gr.emit('need',{});else netSend()});
+  .subscribe(st=>{if(st!=='SUBSCRIBED')return;ch.track(watch?{w:1}:{w:0,lk:myLook()});if(watch||side===-1)ctx.gr.emit('need',{});else netSend()});
  NET.state={st:watch?'watch':'play',gt,g:gid,vs:watch?null:String(opp.nm).slice(0,40)};netPresence();view.scrollTop=0;G.render()}
 function netSend(){const G=GAME[S.game];if(!G||!G.ctx||G.ctx.mode!=='online'||!G.ctx.gr)return;const c=G.ctx;clkTurn(G);c.seq++;const k=c.clk;c.gr.emit('st',Object.assign({seq:c.seq,s:G.snap()},k?{ck:{[c.side]:Math.round(k.t[c.side]),n:k.n}}:{}))}
 function netLeave(){if(NET.gr){const g=NET.gr;NET.gr=null;try{g.emit('bye',{from:ME.id})}catch(e){}setTimeout(()=>sb.removeChannel(g.ch),400)}NET.state=null;netPresence()}
@@ -144,7 +145,7 @@ function gShelf(){const last=store.get('glast',null),f=GAMES.find(g=>g.id===last
 function gLobbyLive(){const lv=$('#glive');if(lv){const n=gLiveList().length;lv.hidden=!n;if(n)lv.lastChild.innerHTML=gLiveHTML()}const o=$('#gonl');if(o){o.hidden=!S.online.size;o.lastChild.textContent=S.online.size+' ონლაინ'}$$('.gs-post[data-g]').forEach(b=>{const g=GAMES.find(x=>x.id===b.dataset.g),m=g&&b.querySelector('.gs-meta');if(m)m.outerHTML=gMeta(g)})}
 R.games=()=>{if(S.game&&GAME[S.game])return GAME[S.game].render();
  const tour=S.tour?(tourMy()?'შენი შემდეგი მატჩი გელოდება':'ნახე, როგორ დასრულდა'):'კვირის ტურნირი 8 მოთამაშეზე. რეგისტრაცია უფასოა';
- view.innerHTML=`<div class="view-pad gs-page"><header class="gs-head"><h2>სამაგიდო თამაშები</h2><div class="gs-chips"><span class="live" id="gonl"${S.online.size?'':' hidden'}><i></i>${S.online.size} ონლაინ</span><span class="gs-rt">${ic('trophy')}<span>შენი რეიტინგი <b>${ME.rating??1500}</b></span></span></div></header>
+ view.innerHTML=`<div class="view-pad gs-page"><header class="gs-head"><h2>სამაგიდო თამაშები</h2><div class="gs-chips"><span class="live" id="gonl"${S.online.size?'':' hidden'}><i></i>${S.online.size} ონლაინ</span><span class="gs-rt">${ic('trophy')}<span>შენი რეიტინგი <b>${ME.rating??1500}</b></span></span><button class="gs-lk" data-a="glook">${ic('user')}პერსონაჟი</button></div></header>
  ${gShelf()}
  <button class="gs-tour" data-a="page" data-p="tour"><span class="gs-medal">${ic('trophy')}</span><span class="grow"><b>ნარდის თასი</b><small>${tour}</small></span><span class="gs-chev">${ic('back')}</span></button>
  <section><h3 class="sec">ონლაინ ახლა</h3><div id="onl">${onlineHTML()}</div></section>
@@ -196,6 +197,7 @@ A.gmenu=()=>{const id=gCur(),G=GAME[id],c=G&&G.ctx,sw=on=>`<i class="sw${on?' on
   <button data-a="gsnd" aria-pressed="${GS.on}">${ic('mic')}<span>ხმა და ვიბრაცია</span>${sw(GS.on)}</button>
   ${g3Want()?`<button data-a="gqual">${ic('gear')}<span>გრაფიკა</span><small class="gmv">${GQN[gqSet()]}${gqSet()==='auto'?', '+GQN[gqLevel()].toLowerCase():''}</small></button>`:''}
   ${c&&c.mode==='bot'&&!S.page?`<button data-a="gbot">${ic('user')}<span>ბოტის დონე</span><small class="gmv">${BLV[bLvl(id)].n}</small></button>`:''}
+  ${g3Want()&&['chess','shashi','nardi'].includes(id)?`<button data-a="gppl" aria-pressed="${gPplOn()}">${ic('users')}<span>მეტოქე მაგიდასთან</span>${sw(gPplOn())}</button>`:''}
   ${id==='joker'?`<button data-a="gc4" aria-pressed="${c4On()}">${ic('cards')}<span>ოთხფერიანი დასტა</span>${sw(c4On())}</button>`:''}
   ${id==='joker'&&c&&c.mode==='bot'&&!S.page?`<button data-a="ghint" aria-pressed="${jHintOn()}">${ic('help')}<span>ნათქვამის რჩევა</span>${sw(jHintOn())}</button>`:''}
   ${rules?'<button data-a="grules">'+ic('book')+'<span>წესები</span></button>':''}
@@ -275,3 +277,25 @@ A.chgamejoin=t=>{const gt=t.dataset.g;if(gt==='joker'){const id=+t.dataset.t;if(
  if(!S.online.has(u)){toast(String(pname(u)).split(' ')[0]+' ახლა ონლაინ არ არის. როცა შემოვა, გამოიწვიე');return}
  if(okGid(gid)&&Date.now()-at<45e3){closeSheet();lsend('acc',{to:u,gid});joinGame(gid,gt,-1,{nm:String(pname(u)).slice(0,40),id:u},u,false).catch(()=>toast('დაკავშირება ვერ მოხერხდა'));return}
  const ng='g'+Math.random().toString(36).slice(2,12);NET.pending={gid:ng,gt,to:u};lsend('chal',{to:u,gt,gid:ng,nm:ME.name});setTimeout(()=>{if(NET.pending&&NET.pending.gid===ng)NET.pending=null},45000);toast('გამოწვევა გაიგზავნა. ველოდებით პასუხს')};
+/* ---------- my character: how I look sitting at a table on other people's screens ----------
+   kept on the phone (and on the profile once the profile can hold it); sent to the others at an online table */
+const LKO={fem:[[0,'კაცი'],[1,'ქალი']],style:[['short','მოკლე'],['long','გრძელი'],['bald','მელოტი']],mus:[[0,'არა'],[1,'კი']]};
+const LKC={skin:['#F2CDB0','#EBC0A0','#E2AF8C','#D69C77','#C08261','#8D5A3B'],hair:['#1A120D','#2E2219','#4E3220','#7A4A2A','#B8875A','#8A8580'],shirt:['#2F5D8A','#8E3047','#3E6B47','#2C2C34','#C9A227','#6A4C93','#D9D4C7']};
+const LKN={fem:'სახე',style:'თმა',mus:'ულვაში',skin:'კანი',hair:'თმის ფერი',shirt:'პერანგი'};
+function lkClean(o){o=o&&typeof o==='object'?o:{};const hx=v=>typeof v==='string'&&/^#[0-9a-fA-F]{6}$/.test(v);
+ return{fem:o.fem?1:0,style:['short','long','bald'].includes(o.style)?o.style:'short',mus:o.mus&&!o.fem?1:0,skin:hx(o.skin)?o.skin:LKC.skin[2],hair:hx(o.hair)?o.hair:LKC.hair[1],shirt:hx(o.shirt)?o.shirt:LKC.shirt[0]}}
+function myLook(){const s=store.get('mylook',null)||(ME&&ME.look);if(s)return lkClean(s);const fem=ME&&ME.gender==='f';let k=0;for(const ch of String(ME&&ME.id||'x'))k=(k*31+ch.charCodeAt(0))>>>0;
+ return lkClean({fem:fem?1:0,style:fem?'long':'short',skin:LKC.skin[k%4],hair:LKC.hair[(k>>3)%3],shirt:LKC.shirt[(k>>5)%LKC.shirt.length]})}
+let LKD=null;
+function lkOptsHTML(){const d=LKD,row=(k,body)=>`<div class="lkrow"><span class="lkn">${LKN[k]}</span><div class="lkv">${body}</div></div>`;
+ const seg=k=>row(k,`<div class="seg" role="group" aria-label="${LKN[k]}">${LKO[k].map(([v,l])=>`<button data-a="glk" data-k="${k}" data-v="${v}" aria-pressed="${String(d[k])===String(v)}"${k==='mus'&&d.fem?' disabled':''}>${l}</button>`).join('')}</div>`);
+ const sw=k=>row(k,`<div class="lksw" role="group" aria-label="${LKN[k]}">${LKC[k].map(c=>`<button data-a="glk" data-k="${k}" data-v="${c}" style="--c:${c}" aria-pressed="${d[k]===c}" aria-label="${LKN[k]} ${c}"></button>`).join('')}</div>`);
+ return seg('fem')+seg('style')+seg('mus')+sw('skin')+sw('hair')+sw('shirt')}
+A.glook=()=>{LKD=myLook();sheet(head('ჩემი პერსონაჟი')+`<div class="ph-body lked"><div class="lkprev" id="lkp">${g3Can()?'<span class="g3load" aria-hidden="true"></span>':`<span class="lkflat">${av('me',72)}</span>`}</div><div id="lkopts">${lkOptsHTML()}</div><p class="note">ასე გამოჩნდები ონლაინ: ჯოკერის მაგიდასთან და ჭადრაკის, შაშისა და ნარდის დაფის მეორე მხარეს.</p><button class="btn" data-a="glooksave" style="width:100%">შენახვა</button></div>`);lkPrev()};
+function lkPrev(){if(!g3Can())return;g3Load().then(()=>{const el=$('#lkp');if(!el||!G3W.ready||typeof G3B==='undefined')return;const sc=G3S.look||(G3S.look=G3B.look());sc.host='look';sc.lk=LKD;if(!g3Mount(el,sc))return;try{G3U.look(sc)}catch(e){}$('.g3load',el)?.remove();g3Need()}).catch(()=>{})}
+A.glk=t=>{if(!LKD)return;const k=t.dataset.k,v=t.dataset.v;LKD[k]=k==='fem'||k==='mus'?+v:v;if(k==='fem'){LKD.style=LKD.fem?'long':'short';if(LKD.fem)LKD.mus=0}LKD=lkClean(LKD);const o=$('#lkopts');if(o)o.innerHTML=lkOptsHTML();
+ if(typeof G3S!=='undefined'&&G3S.look&&G3D.sc===G3S.look){G3S.look.lk=LKD;try{G3U.look(G3S.look)}catch(e){}}};
+A.glooksave=async()=>{if(!LKD)return;const L=lkClean(LKD);store.set('mylook',L);ME.look=L;closeSheet();toast('პერსონაჟი შენახულია');netPresence();
+ try{await sb.from('profiles').update({look:L}).eq('id',ME.id)}catch(e){}};
+const gPplOn=()=>store.get('gppl',true)!==false;
+A.gppl=t=>{const on=!gPplOn();store.set('gppl',on);gSwFlip(t,on);gRedraw()};

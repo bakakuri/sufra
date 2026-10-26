@@ -170,7 +170,7 @@ function personGeo(o){const S=v=>v,body={shirt:[],skin:[],chair:[]},head={face:[
  head.skin.push(gEll(.15,.24,.17,[0,.93,1.16]));
  /* hair is a shell over the head between two lines that change around it: high on the forehead, low at the nape */
  const hs=(top,bot,keep)=>{const g=geo(),sg=44,rows=9,cols=[];for(let j=0;j<=sg;j++){const th=j/sg*Math.PI*2,f=Math.sin(th);if(keep&&!keep(f)){cols.push(null);continue}const t0=top(f),b0=bot(f),col=[];
-   for(let i=0;i<=rows;i++){const y=t0+(b0-t0)*i/rows,r=headR(y)*1.05+.055,x=Math.cos(th)*r,z=Math.sin(th)*r*1.06,n=v3.norm([x/1.04,y/1.5,z/1.12]);col.push(gv(g,x+HC[0],y+HC[1],z+HC[2],n[0],n[1],n[2],j/sg,i/rows))}cols.push(col)}
+   for(let i=0;i<=rows;i++){const y=t0+(b0-t0)*i/rows,r=y>=1.3?0:headR(y)*1.05+.055,x=Math.cos(th)*r,z=Math.sin(th)*r*1.06,n=v3.norm([x/1.04,y/1.5,z/1.12]);col.push(gv(g,x+HC[0],y+HC[1],z+HC[2],n[0],n[1],n[2],j/sg,i/rows))}cols.push(col)}
   for(let j=0;j<sg;j++){const A=cols[j],B=cols[j+1];if(!A||!B)continue;for(let i=0;i<rows;i++)g.i.push(A[i],B[i],B[i+1],A[i],B[i+1],A[i+1])}return g};
  const crown=()=>1.32;
  if(o.style==='long'){head.hair.push(hs(crown,f=>f>0?.62*Math.pow(f,1.4)-.05:-.05-.95*Math.pow(-f,.8)),gXf(gBox(2.0,2.5,.7,.34,3),[0,.05,-.62],qt.ax(1,0,0,.1)));
@@ -181,6 +181,8 @@ function personGeo(o){const S=v=>v,body={shirt:[],skin:[],chair:[]},head={face:[
  const m=a=>a.length?gMerge(...a):null;return{body:{shirt:m(body.shirt),skin:m(body.skin),chair:m(body.chair)},head:{face:m(head.face),skin:m(head.skin),hair:m(head.hair)}}}
 /* the face painted on the head: brows, eyes with a catch light, a soft smile and warm cheeks */
 function faceCv(o){const c=cvs(512,256),x=c.getContext('2d');x.fillStyle=o.skin;x.fillRect(0,0,512,256);
+ /* under the hair the scalp is painted in the hair colour, so no skin shows through where the hair is thin */
+ if(!o.bald&&o.hair){x.fillStyle=o.hair;x.fillRect(0,0,512,Math.round(headV(.98)*256))}
  const U=128,ey=headV(.12)*256,by=headV(.4)*256,my=headV(-.56)*256,cy=headV(-.24)*256,dx=30;
  for(const s of[-1,1]){const g=x.createRadialGradient(U+s*38,cy,1,U+s*38,cy,17);g.addColorStop(0,'rgba(226,112,100,.32)');g.addColorStop(1,'rgba(226,112,100,0)');x.fillStyle=g;x.fillRect(U+s*38-18,cy-18,36,36)}
  for(const s of[-1,1]){const ex=U+s*dx;

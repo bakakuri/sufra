@@ -41,7 +41,7 @@ G3U.chess=sc=>{const G=CH,st=G.st,c=G.ctx,T=CHT;sc.cam.yaw=c.side===-1?Math.PI:0
  st.last.forEach(i=>mk(i,MK.dot,GOLDS,.38,1.25));
  if(G.inCheck()&&!st.over){const k=chKing(st.b,st.turn);if(k>=0)mk(k,MK.dot,RED,.85,1.5,{add:true,pulse:true})}
  if(G.sel!=null){mk(G.sel,MK.sq,GOLD,1,1.02,{add:true});for(const m of G.moves.filter(m=>m.f===G.sel))(st.b[m.t]||m.ep)?mk(m.t,MK.ring,GOLD,.95,.95,{add:true}):mk(m.t,MK.dot,GOLD,.9,.38,{add:true})}
- sc.marks=M;g3Set(sc,L,{delay:(o,d)=>d.s<1?280:0,dur:(o,d,far)=>d.m[1]==='n'&&far>1?560:Math.min(620,280+90*Math.sqrt(far))})};
+ oppAdd(sc,'chess',G,L,c.side===-1?1:-1);sc.marks=M;g3Set(sc,L,{delay:(o,d)=>d.s<1&&d.m.length===2?280:0,dur:(o,d,far)=>d.m[1]==='n'&&far>1?560:Math.min(620,280+90*Math.sqrt(far))})};
 
 /* ---------- checkers ---------- */
 const CKT=.42;
@@ -74,7 +74,7 @@ G3U.shashi=sc=>{const G=CK,c=G.ctx,T=CKT;sc.cam.yaw=c.side===-1?Math.PI:0;const 
  const mine=G.mine(),must=mine&&G.moves.length&&G.moves[0].caps.length;
  if(must&&!G.sel)for(const k of new Set(G.moves.map(m=>m.path[0].join()))){const[r,cc]=k.split(',').map(Number);mk(r,cc,MK.ring,GOLD,.9,1.05,{add:true,pulse:true})}
  if(G.sel){mk(G.sel[0],G.sel[1],MK.sq,GOLD,1,1.02,{add:true});for(const k of G.targets()){const[r,cc]=k.split(',').map(Number);mk(r,cc,MK.dot,GOLD,.9,.4,{add:true})}}
- sc.marks=M;const caps=(G.lcap||[]).map(([r,cc])=>xz(r,cc));
+ oppAdd(sc,'shashi',G,L,c.side===-1?1:-1);sc.marks=M;const caps=(G.lcap||[]).map(([r,cc])=>xz(r,cc));
  g3Set(sc,L,{gone:o=>fresh&&G.last.length&&Math.abs(o.p[0]-(G.last[0][1]-3.5))<.01&&Math.abs(o.p[2]-(G.last[0][0]-3.5))<.01?{a:0,dur:1}:null,
   delay:(o,d)=>{if(!fresh)return 0;const k=caps.findIndex(([x,z])=>Math.abs(o.p[0]-x)<.01&&Math.abs(o.p[2]-z)<.01);return k<0?0:180+k*300}})};
 
@@ -122,7 +122,7 @@ G3U.nardi=sc=>{const G=NR,c=G.ctx,me=c.side,flip=me===-1,L=[],M=[],dI=i=>flip?23
   for(const o of G.opts(me,sel)){if(o.to==='off'){mk([7.55,NT+.005,3],MK.sq,GOLD,.95,[1.1,1,5.2],{add:true,pulse:true});continue}const n=Math.abs(G.p[o.to]),p=nSlot(dI(o.to),G.p[o.to]*me<0?0:n);mk([p[0],p[1]+.01,p[2]],MK.dot,GOLD,.95,[.62,1,.62],{add:true,pulse:true})}}
  else if(mine&&G.legal().length){const from=new Set(G.legal().map(m=>m.f));for(const f of from){if(f==='bar'){const k=G.bar[me]-1;mk([0,NT+NRIM+.03+Math.floor(k/4)*.165+.17,1.05+(k%4)*.9],MK.ring,GOLD,.9,[1.05,1,1.05],{add:true,pulse:true});continue}
    const n=Math.abs(G.p[f]),p=nSlot(dI(f),n-1);mk([p[0],p[1]+.17,p[2]],MK.ring,GOLD,.9,[1.05,1,1.05],{add:true,pulse:true})}}
- sc.marks=M;g3Set(sc,L,{gone:o=>o.m==='die'?{a:0,dur:220}:null,delay:(o,d)=>d.m!=='die'&&Math.abs(d.p[0])<.01&&o.p[0]!==0?260:0})};
+ oppAdd(sc,'nardi',G,L,-1);sc.marks=M;g3Set(sc,L,{gone:o=>o.m==='die'?{a:0,dur:220}:null,delay:(o,d)=>d.m!=='die'&&Math.abs(d.p[0])<.01&&o.p[0]!==0?260:0})};
 
 /* ---------- cards: the joker table, seen from your own chair ----------
    a round table in a dim room under one lamp. the three others sit at it, hold their cards and look at whoever is playing.
@@ -143,30 +143,38 @@ function jkScr(asp,nx,ny,d){const C=jkCam(asp),F=v3.norm(v3.sub(C.tgt,C.eye)),R=
  return v3.add(C.eye,v3.add(v3.mul(F,d),v3.add(v3.mul(R,(nx-C.sx)*t*asp*d),v3.mul(U,(ny-C.sy)*t*d))))}
 const jkFace=asp=>{const C=jkCam(asp),F=v3.norm(v3.sub(C.tgt,C.eye));return qt.ax(1,0,0,-Math.atan2(-F[1],-F[2]))};
 /* who sits where: bots get a look of their own; people online get one picked from their name */
-const JLOOK={'ნინო':{style:'long',fem:1,skin:'#EFC2A2',hair:'#2A1A12',shirt:'#8E3047'},'ლუკა':{style:'short',skin:'#E2AF8C',hair:'#1E140F',shirt:'#2F5D8A'},'დათო':{style:'bald',mus:1,skin:'#D69C77',hair:'#6F6862',brow:'#4A3F38',shirt:'#3E6B47'}};
+const JLOOK={'სუფრა ბოტი':{style:'short',mus:1,skin:'#E4B08C',hair:'#3A2C24',brow:'#2E241E',shirt:'#2C4A6E'},'ანა':{style:'long',fem:1,skin:'#F1C9AC',hair:'#4A2A18',shirt:'#3F6E8C'},'გიორგი':{style:'short',skin:'#E6B593',hair:'#24170F',shirt:'#7A3B2E'},'ლევანი':{style:'short',mus:1,skin:'#DCA683',hair:'#2B1E16',shirt:'#4E5E3A'},'ნინო':{style:'long',fem:1,skin:'#EFC2A2',hair:'#2A1A12',shirt:'#8E3047'},'ლუკა':{style:'short',skin:'#E2AF8C',hair:'#1E140F',shirt:'#2F5D8A'},'დათო':{style:'bald',mus:1,skin:'#D69C77',hair:'#6F6862',brow:'#4A3F38',shirt:'#3E6B47'}};
 function jkLook(nm,h){if(JLOOK[nm])return JLOOK[nm];let k=0;for(const ch of String(nm||''))k=(k*31+ch.charCodeAt(0))>>>0;
  const sk=['#EBC0A0','#DDA984','#F2CDB0','#C99169'],hr=['#24170F','#1A120D','#4E3220','#2E2219'];
  return{style:k%5===0?'bald':'short',mus:k%3===0,skin:sk[k%4],hair:hr[(k>>3)%4],shirt:`hsl(${h??(k%360)} 38% 36%)`}}
 const hex=c=>{if(c[0]==='#')return c;const d=document.createElement('canvas').getContext('2d');d.fillStyle=c;return d.fillStyle};
 function jkPerson(sc,key,L){if(sc.models['pb:'+key])return;const g=personGeo(L),fem=!!L.fem;
  const skin=g3Mat({c:L.skin,sh:14,sp:.12,gl:.03}),shirt=g3Mat({c:hex(L.shirt),sh:6,sp:.05,gl:0}),hair=g3Mat({c:L.hair,sh:12,sp:.09,gl:.02}),chair=g3Mat({t:woodTex('walnut'),uv:[0,0,1,1],sh:50,sp:.3,gl:.25});
- const face=g3Mat({t:g3T('face:'+key,()=>g3Tex(faceCv({skin:L.skin,hair:L.hair,brow:L.brow,fem}))),sh:14,sp:.12,gl:.03});
+ const face=g3Mat({t:g3T('face:'+key,()=>g3Tex(faceCv({skin:L.skin,hair:L.hair,brow:L.brow,fem,bald:L.style==='bald'}))),sh:14,sp:.12,gl:.03});
  g3Model(sc,'pb:'+key,[[g.body.shirt,shirt],[g.body.skin,skin],[g.body.chair,chair]],null);
  g3Model(sc,'ph:'+key,[[g.head.face,face],[g.head.skin,skin],...(g.head.hair?[[g.head.hair,hair]]:[])],null)}
+/* ---------- the opponent across the board ----------
+   chess, checkers and nardi get the other player on the far side: the same people as at the card table, a little bigger.
+   they watch the board, lean in while they think, look up at you when the game ends, and act out their reactions */
+const OPPS={chess:{z:7.95,s:1,y:-.55,x:0,e:5.25},shashi:{z:7.95,s:1,y:-.55,x:0,e:5.25},nardi:{z:9.0,s:1,y:-.6,x:.8,e:6.45}};
+const oppOn=()=>typeof store==='undefined'||store.get('gppl',true)!==false;
+function oppLookOf(c){const s=-c.side,a=c.avs&&c.avs[s],nm=String((c.names&&c.names[s])||'მოთამაშე').replace(/ \(ბოტი\)$/,'');if(c.olk&&typeof c.olk==='object')return c.olk;if(a&&a.look&&typeof a.look==='object')return a.look;return jkLook(nm,a&&(a.h??a.hue))}
+function oppAdd(sc,id,G,L,far){const o=OPPS[id],c=G.ctx,cm=sc.cam;if(!o||!c||!oppOn()){if(cm.p0!=null){cm.pitch=cm.p0;cm.pp=cm.pp0;cm.tgt=cm.t0.slice()}cm.extraW=null;sc.people=null;return}const lk=oppLook(oppLookOf(c)),key='o:'+lkKey(lk);jkPerson(sc,key,lk);
+ const yaw=far<0?0:Math.PI,ts=G.turnSide?G.turnSide():null,over=G.res&&G.res(),think=!over&&ts===-c.side,lean=think?.08:0,qB=qt.mul(qt.ax(0,1,0,yaw),qt.ax(1,0,0,lean)),p=[o.x,o.y,far*o.z];
+ const pitch=over?0:think?.34:.1,hp=v3.add(p,qt.rot(qB,v3.mul(HPIV,o.s)));
+ /* on a wide screen the camera tips down a little less and keeps the head in the picture */
+ if(cm.p0==null){cm.p0=cm.pitch;cm.pp0=cm.pp||0;cm.t0=cm.tgt.slice()}cm.pitch=cm.p0-.12;cm.pp=cm.pp0+.12;const wide=(G3D.asp||1)>=.8;cm.tgt=wide?[cm.t0[0],cm.t0[1]+.9,cm.t0[2]+far*1.7]:cm.t0.slice();if(!sc.onResize)sc.onResize=()=>{try{G3U[sc.host](sc)}catch(e){}};const hz=far*(o.z-.2);cm.extraW=[[o.x-1.5,o.y+5.9,hz],[o.x+1.5,o.y+5.9,hz],[o.x-2.6,o.y+3.2,far*o.z],[o.x+2.6,o.y+3.2,far*o.z]];
+ L.push({k:'pbo',m:'pb:'+key,p,q:qB,s:o.s,refl:false,cast:false,dur:700},{k:'pho',m:'ph:'+key,p:hp,q:qt.mul(qB,qt.e(pitch,0,0)),s:o.s,refl:false,cast:false,dur:650});
+ sc.people=who=>who===-c.side?'o':null}
+/* a look as stored or sent: only known styles and colours pass */
+const LKS=['short','long','bald'],hexOk=v=>typeof v==='string'&&/^#[0-9a-fA-F]{6}$/.test(v);
+function oppLook(L){const o=L&&typeof L==='object'?L:{};return{style:LKS.includes(o.style)?o.style:'short',fem:o.fem?1:0,mus:o.mus?1:0,skin:hexOk(o.skin)?o.skin:'#E2AF8C',hair:hexOk(o.hair)?o.hair:'#2A1A12',brow:hexOk(o.brow)?o.brow:undefined,shirt:hexOk(o.shirt)?o.shirt:(typeof o.shirt==='string'&&/^hsl\(/.test(o.shirt)?o.shirt:'#2F5D8A')}}
+const lkKey=L=>[L.style,L.fem,L.mus,L.skin,L.hair,L.brow||'',L.shirt].join('|');
 G3B.joker=()=>{const sc=g3Scene({cam:{fixed:jkCam,tgt:[0,0,0],fov:1,dy:0,dp:0,dz:1},orbit:false,zoom:false,shR:12,shC:[0,0,-1.6],spot:[0,2.4,11,.62],bg:[.035,.024,.02],
   light:{d:v3.norm([-.22,1,.4]),c:[2.35,2.08,1.72],sky:[.26,.22,.2],gnd:[.12,.08,.06],exp:1.0},
   anchors:[['.seat.left',[...[JSP[1][0]*.97,6.25,JSP[1][1]*.97]]],['.seat.top',[0,6.35,-JR*.97]],['.seat.right',[JSP[3][0]*.97,6.25,JSP[3][1]*.97]]]});
- /* the room: plank floor, papered walls on three sides */
- g3Static(sc,gPlane(60,60,8,8),g3Mat({t:woodTex('table'),sh:16,sp:.12,gl:.08}),[0,-11,0],null,false);
- const wall=g3Mat({t:g3T('wall',()=>g3Tex(wallCv(),{rep:true})),uv:[0,0,4,3],sh:4,sp:.02,gl:0});
- const wq=(w,h)=>{const g=gQuad(w,h);return g};
- g3Static(sc,wq(60,40),wall,[0,9,-20],null,false);g3Static(sc,wq(60,40),wall,[-20,9,0],qt.ax(0,1,0,Math.PI/2),false);g3Static(sc,wq(60,40),wall,[20,9,0],qt.ax(0,1,0,-Math.PI/2),false);
- g3Static(sc,gBox(60,.6,.5,.1),g3Mat({t:woodTex('walnut'),sh:40,sp:.25,gl:.2}),[0,-2,-19.7],null,false);
- /* the table: felt, a turned mahogany rim and a pedestal */
- const felt=g3T('felt',()=>g3Tex(feltCv({a:'#2E7D59',b:'#123B29',ring:1})));
- g3Static(sc,gDisc(5.45,96),g3Mat({t:felt,sh:6,sp:.04,gl:0}),[0,0,0],null,false);
- g3Static(sc,gLathe([[5.4,-1.2],[5.42,-.02],[5.45,.02],[5.6,.1],[5.95,.16],[6.22,.1],[6.3,0],[6.25,-.16],[6.1,-.24],[5.8,-.3],[5.7,-1.2],[0,-1.2]],120,.6),g3Mat({t:woodTex('mahog'),uv:[0,0,8,1],sh:70,sp:.4,gl:.4}),[0,0,0]);
- g3Static(sc,gLathe([[0,-11],[3.2,-11],[3.3,-10.6],[1.1,-9.8],[.9,-6],[1.3,-2.2],[2.4,-1.4],[0,-1.3]],48),g3Mat({t:woodTex('mahog'),uv:[0,0,4,1],sh:60,sp:.35,gl:.3}),[0,0,0]);
+ /* the room and the table: plank floor, papered walls on three sides, felt, a turned mahogany rim and a pedestal */
+ roundRoom(sc,5.45,g3T('felt',()=>g3Tex(feltCv({a:'#2E7D59',b:'#123B29',ring:1}))));
  mkModel(sc);
  const atl=jkAtlas(),back=cardUV(38);sc.c4=jkC4();
  g3Model(sc,'card',[[gQuad(CDW,CDH),g3Mat({t:atl,cut:true,vary:true,sh:30,sp:.18,gl:.1})],[gQuad(CDW,CDH,true),g3Mat({t:atl,uv:back,cut:true,sh:30,sp:.2,gl:.12})]],[CDW/2,CDH/2,.03]).land=()=>snd('card');
@@ -202,7 +210,7 @@ function jkGaze(r,V,rel){const cur=V.cur!=null&&V.cur>=0?rel(V.cur):null,me=JSP[
 function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.act=V.act;jkDeck(sc);
  const deal=V.deal!==sc.deal;if(deal)sc.deal=V.deal;const dealer=V.dealer!=null?rel(V.dealer):2,dp=dealer===0?[0,1.4,6.6]:jkLocal(dealer,0,[0,1.6,2.6]),cur=V.cur!=null&&V.cur>=0?rel(V.cur):null;
  /* the three others */
- for(const r of[1,2,3]){const id=V.ids[(r+V.base)%4],L0=jkLook(id.n,id.h),key=(id.k||id.n||'p'+r);jkPerson(sc,key,L0);
+ for(const r of[1,2,3]){const id=V.ids[(r+V.base)%4],L0=id.lk?oppLook(id.lk):jkLook(id.n,id.h),key=(id.k||id.n||'p'+r)+(id.lk?':'+lkKey(L0):'');jkPerson(sc,key,L0);
   const lean=cur===r&&V.win==null?.07:0,g=jkGaze(r,V,rel);
   L.push({k:'pb'+r,m:'pb:'+key,p:[JSP[r][0],0,JSP[r][1]],q:jkSeatQ(r,lean),dur:650,refl:false});
   L.push({k:'ph'+r,m:'ph:'+key,p:jkLocal(r,lean,HPIV),q:qt.mul(jkSeatQ(r,lean),qt.e(g.pitch,g.yaw,0)),dur:600,refl:false});
@@ -233,20 +241,30 @@ G3U.joker=sc=>{const G=JK,V={base:0,act:'jcard',hand:[],legal:[],counts:[0,0,0,0
   V.counts=[0,1,2,3].map(p=>G.phase==='trump'?(p===0?0:3):G.hands[p].length);V.taken=G.taken||V.taken;V.trick=G.trick;V.win=G.win;V.cur=G.cur;V.dealer=G.dealer;V.deal=G.len+':'+G.h+':'+G.dealer;V.trumpCard=G.trumpCard;V.deckN=36-4*G.n}
  jkScene(sc,V)};
 G3U.jko=sc=>{const s=JO.st,me=JO.seat,V={base:me>=0?me:0,act:'jkocard',hand:[],legal:[],counts:[0,0,0,0],taken:[0,0,0,0],trick:[],win:null,deal:null,dealer:null,cur:null,phase:s?s.phase:'wait',mine:false,trumpCard:null,deckN:0,
-  ids:[0,1,2,3].map(p=>{const u=JO.t&&JO.t.seats[p];if(u){const pr=typeof PC!=='undefined'&&PC.get(u);return{n:u===ME.id?ME.name:(pr&&pr.name)||'მოთამაშე',h:pr&&pr.hue,k:u}}const b=s&&s.bots&&s.bots[p];return{n:b||'ბოტი',h:b?joBotHue(b):30,k:'b'+(b||p)}})};
+  ids:[0,1,2,3].map(p=>{const u=JO.t&&JO.t.seats[p];if(u){const pr=typeof PC!=='undefined'&&PC.get(u);return{n:u===ME.id?ME.name:(pr&&pr.name)||'მოთამაშე',h:pr&&pr.hue,k:u,lk:(JO.looks&&JO.looks[u])||(pr&&pr.look)||null}}const b=s&&s.bots&&s.bots[p];return{n:b||'ბოტი',h:b?joBotHue(b):30,k:'b'+(b||p)}})};
  if(s&&s.counts){V.hand=me>=0?JO.hand:[];const myTurn=me>=0&&s.cur===me&&s.win==null&&!JO.wait&&s.phase==='play';V.legal=myTurn?JK.legal.call({hands:{[me]:JO.hand},trick:s.trick,trump:s.trump},me):[];V.mine=V.legal.length>0;
   V.counts=[0,1,2,3].map(r=>s.counts[(r+V.base)%4]||0);V.taken=s.taken||V.taken;V.trick=s.trick||[];V.win=s.win;V.cur=s.cur;V.dealer=s.dealer;V.deal=s.deal;V.trumpCard=s.trumpCard;V.deckN=36-4*s.n}
  jkScene(sc,V)};
 
-/* ---------- domino ---------- */
-const DL=1.12,DW=.56,DT=.19,DB=4.75;
-G3B.domino=()=>{const sc=g3Scene({cam:{yaw:0,pitch:1.0,pp:.1,fov:.58,tgt:[0,0,.45],box:[[-6.4,0,-6.3],[6.4,.8,6.5]],boxp:[[-5.9,0,-6.1],[5.9,.8,6.4]],dy:0,dp:0,dz:1,my:.96,mxp:1},shR:9,spot:[0,0,8,.6],yawMax:.4,bg:[.03,.022,.02],
-  anchors:[['.seat.top',[0,0,-7.7]],['.seat.left',[-5.1,0,-3.35]],['.seat.right',[5.1,0,-3.35]]]});
- g3Table(sc,{y:-.6});mkModel(sc);
- const felt=g3T('dfelt',()=>g3Tex(feltCv({a:'#245a73',b:'#0f2a38',ring:1})));const tw=g3Mat({t:woodTex('walnut'),sh:40,sp:.2,gl:.14});
- g3Static(sc,gBox(13.4,.6,13.4,.25,4,(f,u,v)=>[u*3,v*.4],[1,2,3,4,5]),tw,[0,-.3,0]);
- g3Static(sc,gBox(13.4,.6,13.4,.25,4,(f,u,v)=>[u*3,v*3],[0]),tw,[0,-.3,0]);
- g3Static(sc,gBox(12.2,.02,12.2,.4,3,null,[0]),g3Mat({t:felt,sh:6,sp:.04,gl:0}),[0,-.002,0],null,false);
+/* ---------- domino ----------
+   a round table with the other three sitting at it: the partner across, the two opponents on either side, toward the far side so a phone held upright sees them.
+   each stands their tiles on the table in front of them; the line of play runs across the middle */
+const DL=1.12,DW=.56,DT=.19,DB=4.2,DRT=6.9,DSR=9.45,DJA=.76;
+const DSP=[[0,DSR],[-DSR*Math.sin(DJA),-DSR*Math.cos(DJA)],[0,-DSR],[DSR*Math.sin(DJA),-DSR*Math.cos(DJA)]],DYAW=DSP.map(([x,z])=>Math.atan2(-x,-z));
+const dSeatQ=(r,lean)=>qt.mul(qt.ax(0,1,0,DYAW[r]),qt.ax(1,0,0,lean||0));
+const dLocal=(r,lean,p)=>{const v=qt.rot(dSeatQ(r,lean),p);return[DSP[r][0]+v[0],v[1],DSP[r][1]+v[2]]};
+/* the room and a round table, shared by the card table and the domino table: plank floor, papered walls, felt, a turned rim and a pedestal */
+function roundRoom(sc,R,felt){g3Static(sc,gPlane(60,60,8,8),g3Mat({t:woodTex('table'),sh:16,sp:.12,gl:.08}),[0,-11,0],null,false);
+ const wall=g3Mat({t:g3T('wall',()=>g3Tex(wallCv(),{rep:true})),uv:[0,0,4,3],sh:4,sp:.02,gl:0});
+ g3Static(sc,gQuad(60,40),wall,[0,9,-20],null,false);g3Static(sc,gQuad(60,40),wall,[-20,9,0],qt.ax(0,1,0,Math.PI/2),false);g3Static(sc,gQuad(60,40),wall,[20,9,0],qt.ax(0,1,0,-Math.PI/2),false);
+ g3Static(sc,gBox(60,.6,.5,.1),g3Mat({t:woodTex('walnut'),sh:40,sp:.25,gl:.2}),[0,-2,-19.7],null,false);
+ const k=R/5.45;g3Static(sc,gDisc(R,96),g3Mat({t:felt,sh:6,sp:.04,gl:0}),[0,0,0],null,false);
+ g3Static(sc,gLathe([[5.4,-1.2],[5.42,-.02],[5.45,.02],[5.6,.1],[5.95,.16],[6.22,.1],[6.3,0],[6.25,-.16],[6.1,-.24],[5.8,-.3],[5.7,-1.2],[0,-1.2]].map(([r,y])=>[r*k,y]),120,.6),g3Mat({t:woodTex('mahog'),uv:[0,0,8,1],sh:70,sp:.4,gl:.4}),[0,0,0]);
+ g3Static(sc,gLathe([[0,-11],[3.2,-11],[3.3,-10.6],[1.1,-9.8],[.9,-6],[1.3,-2.2],[2.4,-1.4],[0,-1.3]],48),g3Mat({t:woodTex('mahog'),uv:[0,0,4,1],sh:60,sp:.35,gl:.3}),[0,0,0])}
+G3B.domino=()=>{const sc=g3Scene({cam:{yaw:0,pitch:.86,pp:.14,fov:.58,tgt:[0,0,-.2],box:[[-7.2,0,-7.4],[7.2,.8,6.8]],boxp:[[-6.9,0,-7.1],[6.9,.8,6.6]],extraW:[[-1.6,6.1,-9.3],[1.6,6.1,-9.3]],dy:0,dp:0,dz:1,my:.96,mxp:1},shR:11,shC:[0,0,-1],spot:[0,0,9.5,.6],yawMax:.4,bg:[.03,.022,.02],
+  light:{d:v3.norm([-.22,1,.4]),c:[2.35,2.08,1.72],sky:[.26,.22,.2],gnd:[.12,.08,.06],exp:1.0},
+  anchors:[['.seat.top',[0,6.35,-DSR*.97]],['.seat.left',[DSP[1][0]*.97,6.25,DSP[1][1]*.97]],['.seat.right',[DSP[3][0]*.97,6.25,DSP[3][1]*.97]]]});
+ mkModel(sc);roundRoom(sc,DRT,g3T('dfelt',()=>g3Tex(feltCv({a:'#245a73',b:'#0f2a38',ring:1}))));sc.people=seatOf;
  const atl=g3T('domino',()=>g3Tex(dominoCv())),iv=g3Mat({c:'#F2EAD8',sh:90,sp:.55,gl:.55});
  const tile=[[gBox(DL,DT,DW,.04,3,null,[0]),g3Mat({t:atl,vary:true,sh:90,sp:.55,gl:.55})],[gBox(DL,DT,DW,.04,3,null,[1]),g3Mat({t:atl,uv:dmUV(28),sh:80,sp:.5,gl:.5})],[gBox(DL,DT,DW,.04,3,null,[2,3,4,5]),iv]];
  g3Model(sc,'tile',tile,[DL/2,DT/2,DW/2]).land=(o,sc)=>{snd('tile');if(o.p[1]<.2)g3Ripple(sc,[o.p[0],.01,o.p[2]],1.3)};
@@ -268,7 +286,9 @@ function dmLayout(G){const out=[],slots={};if(!G.root)return{out,slots};const rt
   list.forEach(x=>out.push(place(x)));slots[key]=place(null,true)};
  arm(G.R,[1,0],[[0,1],[-1,0],[0,1],[1,0]],'R');arm(G.L,[-1,0],[[0,-1],[1,0],[0,-1],[-1,0]],'L');return{out,slots}}
 const DSTAND=(yaw,tilt)=>qt.mul(qt.ax(0,1,0,yaw),qt.mul(qt.ax(1,0,0,Math.PI/2-tilt),qt.ax(0,1,0,Math.PI/2)));
-const DRACK={0:{c:[0,.52,5.25],yaw:0,dir:[1,0,0],sp:.7,tilt:.5},1:{c:[-5.45,.52,.1],yaw:-Math.PI/2,dir:[0,0,1],sp:.62,tilt:.22},2:{c:[0,.52,-5.3],yaw:Math.PI,dir:[-1,0,0],sp:.62,tilt:.22},3:{c:[5.45,.52,.1],yaw:Math.PI/2,dir:[0,0,-1],sp:.62,tilt:.22}};
+/* where each player stands their tiles: mine along the near edge, the others' on the table in front of them, turned to face them */
+const DRACK={0:{c:[0,.52,5.25],yaw:0,dir:[1,0,0],sp:.7,tilt:.5}};
+for(const r of[1,2,3]){const[x,z]=DSP[r],l=Math.hypot(x,z),u=[x/l,z/l],yaw=Math.atan2(u[0],u[1]);DRACK[r]={c:[u[0]*6.05,.52,u[1]*6.05],yaw,dir:[Math.cos(yaw),0,-Math.sin(yaw)],sp:.62,tilt:.22}}
 const dRack=(s,i,n)=>{const r=DRACK[s];return v3.add(r.c,v3.mul(r.dir,(i-(n-1)/2)*r.sp))};
 G3U.domino=sc=>{const G=DM,L=[],M=[],{out,slots}=dmLayout(G),mine=G.phase==='play'&&G.cur===0,ok=new Set(mine?G.moves(0).map(m=>m.i):[]);
  const deal=G.round!==sc.round;if(deal)sc.round=G.round;
@@ -279,5 +299,16 @@ G3U.domino=sc=>{const G=DM,L=[],M=[],{out,slots}=dmLayout(G),mine=G.phase==='pla
  const n=G.hands[0].length;G.hands[0].forEach((t,i)=>{const lift=G.sel===i?.32:ok.has(i)?.12:0,p=v3.add(dRack(0,i,n),[0,lift,0]),d={k:'t'+dmIdx(t[0],t[1]),m:'tile',p,q:DSTAND(0,DRACK[0].tilt),uv:dmUV(dmIdx(t[0],t[1])),dim:mine&&!ok.has(i)?.6:1,glow:G.sel===i?[.12,.09,.02]:null,pick:mine?{i}:null,drag:mine&&ok.has(i)};
   if(deal){d.from={p:[0,1.2,0],q:DSTAND(0,0),a:0};d.delay=i*70;d.dur=520}L.push(d)});
  for(const s of[1,2,3]){const cnt=G.hands[s].length;for(let i=0;i<cnt;i++){const d={k:'h'+s+'-'+i,m:'tile',p:dRack(s,i,cnt),q:DSTAND(DRACK[s].yaw,DRACK[s].tilt),uv:dmUV(28)};if(deal){d.from={p:[0,1.2,0],q:DSTAND(0,0),a:0};d.delay=(n+i*3+s)*45;d.dur=520}L.push(d)}}
+ /* the three at the table: whoever's turn it is leans in and looks at their tiles, the others watch them */
+ for(const r of[1,2,3]){const id=DMN[r],lk=jkLook(id.n,id.h),key='d:'+id.n;jkPerson(sc,key,lk);const think=G.phase==='play'&&G.cur===r,lean=think?.07:0;
+  let yaw=0,pitch=.3;if(think)pitch=.44;else if(G.phase==='play'&&G.cur!=null&&G.cur>=0){const t=G.cur===0?[0,DSR]:DSP[G.cur],me=DSP[r],f=[-me[0],-me[1]],d=[t[0]-me[0],t[1]-me[1]];yaw=clamp(-Math.atan2(f[0]*d[1]-f[1]*d[0],f[0]*d[0]+f[1]*d[1]),-.75,.75);pitch=G.cur===0?.22:.12}
+  L.push({k:'pb'+r,m:'pb:'+key,p:[DSP[r][0],0,DSP[r][1]],q:dSeatQ(r,lean),dur:650,refl:false},{k:'ph'+r,m:'ph:'+key,p:dLocal(r,lean,HPIV),q:qt.mul(dSeatQ(r,lean),qt.e(pitch,yaw,0)),dur:600,refl:false})}
  if(mine&&G.sel!=null){for(const e of G.places(G.hands[0][G.sel]))if(slots[e]){const g=slots[e];L.push({k:'g'+e,m:'ghost',p:[g.x,DT/2,g.z],q:qt.ax(0,1,0,g.yaw),a:.5,cast:false,pick:{e},now:1})}}
  sc.marks=M;g3Set(sc,L,{gone:o=>o.id.startsWith('k:h')?{a:0,dur:180}:o.m==='ghost'?{a:0,dur:120}:{p:[o.p[0]*.3,1,o.p[2]*.3],a:0,dur:500}})};
+
+/* ---------- my character in the editor: sitting at the edge of a small table, turned a little toward you ---------- */
+G3B.look=()=>{const sc=g3Scene({cam:{fixed:asp=>({eye:[0,5.2,2.6],tgt:[0,3.35,-4.3],fov:clamp(2*Math.atan(Math.tan(.34)/Math.min(1,asp*1.35)),.6,1.1),sx:0,sy:0}),tgt:[0,0,0],fov:1,dy:0,dp:0,dz:1},orbit:false,zoom:false,shR:8,shC:[0,0,-3],spot:[0,-2,10,.35],bg:[.05,.036,.028],
+  light:{d:v3.norm([-.3,1,.85]),c:[2.3,2.05,1.75],sky:[.32,.28,.25],gnd:[.12,.09,.07],exp:1.0}});
+ roundRoom(sc,1.7,g3T('felt',()=>g3Tex(feltCv({a:'#2E7D59',b:'#123B29',ring:1}))));return sc};
+G3U.look=sc=>{const lk=oppLook(sc.lk||{}),key='me:'+lkKey(lk);jkPerson(sc,key,lk);const p=[0,0,-4.3],q=qt.ax(0,1,0,.3);
+ g3Set(sc,[{k:'pb0',m:'pb:'+key,p,q,now:1,refl:false},{k:'ph0',m:'ph:'+key,p:v3.add(p,qt.rot(q,HPIV)),q:qt.mul(q,qt.e(-.05,-.2,0)),now:1,refl:false}])};

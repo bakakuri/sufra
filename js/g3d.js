@@ -200,13 +200,13 @@ function g3Sparks(sc,p,c,n=10,delay=0){if(RM())return;for(let k=0;k<n;k++){const
 /* ---------- camera: orbit around the board, fit the board to whatever shape the screen has ---------- */
 function g3Dir(c){const tall=(G3D.asp||1)<.8,yaw=c.yaw+c.dy,pit=clamp(c.pitch+(tall?c.pp||0:0)+c.dp,.32,1.5);return[Math.sin(yaw)*Math.cos(pit),Math.sin(pit),Math.cos(yaw)*Math.cos(pit)]}
 function g3Shift(c){const W=G3D.cw||1,H=G3D.ch||1,i=c.inset||{t:0,b:0,l:0,r:0};return{cx:(i.l-i.r)/W,cy:(i.b-i.t)/H,hx:Math.max(.3,1-(i.l+i.r)/W),hy:Math.max(.3,1-(i.t+i.b)/H)}}
-function g3Fit(c,dir,asp,sh){const B=asp<.8&&c.boxp?c.boxp:c.box,pts=[];for(const x of[B[0][0],B[1][0]])for(const y of[B[0][1],B[1][1]])for(const z of[B[0][2],B[1][2]])pts.push([x,y,z]);
+function g3Fit(c,dir,asp,sh){const B=asp<.8&&c.boxp?c.boxp:c.box,pts=[];for(const x of[B[0][0],B[1][0]])for(const y of[B[0][1],B[1][1]])for(const z of[B[0][2],B[1][2]])pts.push([x,y,z]);if(asp>=.8&&c.extraW)pts.push(...c.extraW);
  const tall=asp<.8,P=m4.persp(c.fov,asp,.05,500),mx=(tall?c.mxp??.985:c.mx??.94)*sh.hx,my=(c.my??.92)*sh.hy,B0=tall&&c.boxp?c.boxp:c.box;P[8]=-sh.cx;P[9]=-sh.cy;let lo=1,hi=400;
  for(let it=0;it<26;it++){const d=(lo+hi)/2,e=v3.add(c.tgt,v3.mul(dir,d)),VP=m4.mul(P,m4.look(e,c.tgt,[0,1,0]));let ok=true;
   for(const p of pts){const r=m4.xf(VP,p);if(r[3]<=0||Math.abs(r[0]-sh.cx)>mx||Math.abs(r[1]-sh.cy)>my){ok=false;break}}if(ok)hi=d;else lo=d}
  return hi}
 function g3Cam(sc){const c=sc.cam,asp=G3D.asp||1;if(c.fixed){const f=c.fixed(asp);c.tgt=f.tgt;c.fov=f.fov;const P=m4.persp(f.fov,asp,.1,160);P[8]=-(f.sx||0);P[9]=-(f.sy||0);return{eye:f.eye,VP:m4.mul(P,m4.look(f.eye,f.tgt,[0,1,0])),dist:v3.len(v3.sub(f.eye,f.tgt)),cx:f.sx||0,cy:f.sy||0}}
- const dir=g3Dir(c),sh=g3Shift(c),key=[asp.toFixed(3),c.yaw,c.dy.toFixed(3),c.dp.toFixed(3),c.pitch,c.fov,JSON.stringify(c.box),JSON.stringify(c.inset||0)].join();
+ const dir=g3Dir(c),sh=g3Shift(c),key=[asp.toFixed(3),c.yaw,c.dy.toFixed(3),c.dp.toFixed(3),c.pitch,c.pp||0,c.fov,JSON.stringify(c.box),JSON.stringify(c.extraW||0),JSON.stringify(c.tgt),JSON.stringify(c.inset||0)].join();
  if(c.fk!==key){c.fd=g3Fit(c,dir,asp,sh);c.fk=key}
  if(c.fdc==null||c.snap){c.fdc=c.fd;c.cxc=sh.cx;c.cyc=sh.cy;c.snap=0}else{const k=.2;c.fdc+=(c.fd-c.fdc)*k;c.cxc+=(sh.cx-c.cxc)*k;c.cyc+=(sh.cy-c.cyc)*k;
   if(Math.abs(c.fd-c.fdc)>c.fd*.002||Math.abs(sh.cx-c.cxc)>.002||Math.abs(sh.cy-c.cyc)>.002)sc.camBusy=true;else{c.fdc=c.fd;c.cxc=sh.cx;c.cyc=sh.cy}}

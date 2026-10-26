@@ -2,7 +2,7 @@
    empty seats are played by bots. a hand is stored so that only its owner and the host can read it.
    a person who left the table (or is silent for a minute) gets an automatic move, so nobody waits forever */
 const JO={};
-function joReset(){Object.assign(JO,{lastT:null,id:null,t:null,st:null,seat:-1,hand:[],deal:-1,ch:null,E:null,q:Promise.resolve(),tm:null,tw:null,tick:null,here:new Set(),hostHere:true,pj:null,res:false,wait:false,wt:null,err:0})}
+function joReset(){Object.assign(JO,{looks:{},lastT:null,id:null,t:null,st:null,seat:-1,hand:[],deal:-1,ch:null,E:null,q:Promise.resolve(),tm:null,tw:null,tick:null,here:new Set(),hostHere:true,pj:null,res:false,wait:false,wt:null,err:0})}
 joReset();
 const JO_TURN=60;
 const joSame=(a,b)=>!!a&&!!b&&(a.j?a.j===b.j:!b.j&&a.s===b.s&&a.r===b.r);
@@ -33,8 +33,8 @@ async function joOpen(id){joStop();JO.id=id;S.chanCleanup=()=>{joStop();fsExit()
   .on('broadcast',{event:'rx'},({payload:d})=>{if(!d||!GRX[+d.i]||!joHere(id))return;const s=+d.seat;if(!(s>=0&&s<4)||s===JO.seat||Date.now()-((JO.rxAt||{})[s]||0)<900)return;(JO.rxAt=JO.rxAt||{})[s]=Date.now();const r=(s-(JO.seat>=0?JO.seat:0)+4)%4;gRxShow(r?'r'+r:'me',+d.i)})
   .on('postgres_changes',{event:'*',schema:'public',table:'jk_hands',filter:'table_id=eq.'+id},pl=>{const r=pl.new;if(!r||joIsHost()||r.seat!==JO.seat||r.user_id!==ME.id)return;JO.hand=sortHand((r.cards||[]).slice());JO.wait=false;joDraw()});
  if(joIsHost())ch.on('postgres_changes',{event:'INSERT',schema:'public',table:'jk_moves',filter:'table_id=eq.'+id},pl=>joMove(pl.new));
- ch.on('presence',{event:'sync'},()=>{const ps=ch.presenceState();JO.here=new Set(Object.keys(ps));JO.hostHere=!!JO.t&&JO.here.has(JO.t.host);if(joIsHost()&&JO.E)joNext();else joDraw()})
-  .subscribe(s=>{if(s==='SUBSCRIBED')ch.track({at:Date.now()}).catch(()=>{})});
+ ch.on('presence',{event:'sync'},()=>{const ps=ch.presenceState();JO.here=new Set(Object.keys(ps));JO.looks={};for(const k in ps){const e=(ps[k]||[]).find(x=>x&&x.lk);if(e)JO.looks[k]=lkClean(e.lk)}JO.hostHere=!!JO.t&&JO.here.has(JO.t.host);if(joIsHost()&&JO.E)joNext();else joDraw()})
+  .subscribe(s=>{if(s==='SUBSCRIBED')ch.track({at:Date.now(),lk:myLook()}).catch(()=>{})});
  JO.ch=ch;JO.tick=setInterval(joCount,1000);
  joDraw();joResult()}
 
