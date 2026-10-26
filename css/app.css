@@ -2083,3 +2083,58 @@ html.zoomed .pmw{max-height:none}html.zoomed .pmmedia{max-height:calc(68dvh / va
 .gmenu button .gmv{flex:none;font-size:13px;font-weight:600;color:var(--muted)}
 .gmenu button[aria-pressed="true"]>svg{color:var(--vine)}
 .gmenu button small.muted{font-weight:500;font-size:12.5px}
+/* joker: four-colour deck, the bid hint, the last trick */
+html.c4 .card[data-s="♣"],html.c4 .suits button[data-s="c"]{color:#1C7A3A}
+html.c4 .card[data-s="♦"],html.c4 .suits button[data-s="d"]{color:#1A55C4}
+.gx .bids button.hint{position:relative;border-color:rgb(242 184 75/.55);box-shadow:inset 0 0 0 1px rgb(242 184 75/.25)}
+.gx .bids button.hint::after{content:"";position:absolute;bottom:6px;left:50%;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--gold)}
+.gx .status .bhint{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:700;color:var(--gold);background:rgb(242 184 75/.12)}
+.gx .ginfo .jlt{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:4px 10px 4px 8px;border-radius:999px;background:rgb(18 12 9/.62);border:1px solid rgb(242 184 75/.35);color:#F3E3C4}
+.gx .ginfo .jlt svg{width:14px;height:14px}
+.gx .ginfo .jlt:active{transform:scale(.95)}
+.jlast{display:grid;grid-template:"x t y" auto "l m r" auto "z b w" auto/1fr 1fr 1fr;gap:4px 6px;justify-items:center;align-items:center;padding:6px 0 10px;max-width:360px;margin:0 auto}
+.jlast .jl{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;font-size:13px;line-height:1.2}
+.jlast .jl.t{grid-area:t}.jlast .jl.l{grid-area:l}.jlast .jl.r{grid-area:r}.jlast .jl.b{grid-area:b}
+.jlast .jlmid{grid-area:m;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--felt,#1d5a40);color:rgb(255 255 255/.7)}
+.jlast .jlmid svg{width:20px;height:20px}
+.jlast .jlc{position:relative;display:block}
+.jlast .card{width:62px;height:88px;border-radius:8px;font-size:20px;position:relative}
+.jlast .card.jk{font-size:12px;align-items:center;justify-content:center}
+.jlast .jlc em{position:absolute;top:-7px;right:-9px;min-width:20px;height:20px;display:grid;place-items:center;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:11px;font-weight:700;font-style:normal;color:var(--muted)}
+.jlast .jl.won .card{box-shadow:0 0 0 3px var(--gold),0 6px 16px rgb(0 0 0/.35)}
+.jlast .jl small{font-size:11.5px;color:var(--muted)}
+.jlast .jl small.jlw{color:var(--gold);font-weight:700}
+/* the online clock: the ring around the avatar empties as the time goes, the chip shows what is left */
+.gx .plav.pclk::before{content:"";position:absolute;inset:-4px;border-radius:50%;pointer-events:none;background:conic-gradient(rgb(243 236 226/.55) calc(var(--ck,1) * 360deg),rgb(255 255 255/.1) 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px))}
+.gx .pl.turn .plav.pclk::after{display:none}
+.gx .pl.turn .plav.pclk::before{background:conic-gradient(var(--gold) calc(var(--ck,1) * 360deg),rgb(255 255 255/.1) 0)}
+.gx .pl .gclk{flex:none;padding:5px 9px;border-radius:9px;font-size:15px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;background:rgb(255 255 255/.07);color:rgb(243 236 226/.62);border:1px solid rgb(255 255 255/.1)}
+.gx .pl .gclk.run{background:#F3ECE2;color:#1F1612;border-color:transparent}
+.gx .pl .gclk.low{color:#FF8A8F}.gx .pl .gclk.run.low{background:#E5484D;color:#fff}
+/* reactions: a speech bubble over the plate, and the sheet to pick one */
+#rxl{position:fixed;inset:0;pointer-events:none;z-index:70;overflow:hidden}
+.rxb{position:absolute;display:flex;align-items:center;gap:7px;padding:6px 14px 6px 9px;border-radius:999px;background:#FFFDF8;color:#1F1612;box-shadow:0 10px 26px rgb(0 0 0/.38);font-size:14px;white-space:nowrap;transform:translate(-50%,-100%);animation:rxup 2.7s var(--ease-out) forwards}
+.rxb.dn{transform:translate(-50%,0);animation-name:rxdn}
+.rxb span{font-size:25px;line-height:1}
+.rxb::after{content:"";position:absolute;left:50%;bottom:-5px;width:11px;height:11px;margin-left:-5.5px;background:inherit;transform:rotate(45deg);border-radius:2px}
+.rxb.dn::after{bottom:auto;top:-5px}
+@keyframes rxup{0%{opacity:0;transform:translate(-50%,-70%) scale(.55)}12%{opacity:1;transform:translate(-50%,-104%) scale(1.06)}22%{transform:translate(-50%,-100%) scale(1)}82%{opacity:1;transform:translate(-50%,-112%)}100%{opacity:0;transform:translate(-50%,-128%)}}
+@keyframes rxdn{0%{opacity:0;transform:translate(-50%,-30%) scale(.55)}12%{opacity:1;transform:translate(-50%,4%) scale(1.06)}22%{transform:translate(-50%,0) scale(1)}82%{opacity:1;transform:translate(-50%,12%)}100%{opacity:0;transform:translate(-50%,28%)}}
+@media (prefers-reduced-motion:reduce){.rxb,.rxb.dn{animation:rxfade 2.7s linear forwards}}
+@keyframes rxfade{0%,85%{opacity:1}100%{opacity:0}}
+.grx{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:4px 16px 18px}
+.grx button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px 12px;border-radius:16px;background:var(--surface);border:1px solid var(--line);transition:transform .12s}
+.grx button:active{transform:scale(.94)}
+.grx button span{font-size:32px;line-height:1}
+.grx button small{font-size:12.5px;color:var(--muted);font-weight:600}
+.gtag.gw{display:inline-flex;align-items:center;gap:3px;background:rgb(255 255 255/.08);color:#E7DCCE}.gtag.gw svg{width:12px;height:12px}
+/* the end of an online game: a rematch offer; and sharing a win */
+.gendr{display:flex;align-items:center;justify-content:center;gap:7px;margin:0 0 12px;font-size:13.5px;color:#E7DCCE}.gendr svg{width:16px;height:16px;color:#F2B84B;flex:none}
+.gendb .btn svg{width:18px;height:18px}
+/* a game invitation in the messenger */
+.gamemsg{display:flex;align-items:stretch;width:min(286px,74vw);border-radius:18px;overflow:hidden;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+.mrow.me .gamemsg{margin-left:auto}
+.gamemsg img{width:92px;object-fit:cover;flex:none;background:var(--ac)}
+.gamemsg .gmb{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px 12px;min-width:0}
+.gamemsg .gmb b{font-size:15px}.gamemsg .gmb small{font-size:12.5px;color:var(--muted)}
+.gamemsg .gmb .btn{margin-top:6px}

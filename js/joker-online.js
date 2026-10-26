@@ -2,7 +2,7 @@
    empty seats are played by bots. a hand is stored so that only its owner and the host can read it.
    a person who left the table (or is silent for a minute) gets an automatic move, so nobody waits forever */
 const JO={};
-function joReset(){Object.assign(JO,{id:null,t:null,st:null,seat:-1,hand:[],deal:-1,ch:null,E:null,q:Promise.resolve(),tm:null,tw:null,tick:null,here:new Set(),hostHere:true,pj:null,res:false,wait:false,wt:null,err:0})}
+function joReset(){Object.assign(JO,{lastT:null,id:null,t:null,st:null,seat:-1,hand:[],deal:-1,ch:null,E:null,q:Promise.resolve(),tm:null,tw:null,tick:null,here:new Set(),hostHere:true,pj:null,res:false,wait:false,wt:null,err:0})}
 joReset();
 const JO_TURN=60;
 const joSame=(a,b)=>!!a&&!!b&&(a.j?a.j===b.j:!b.j&&a.s===b.s&&a.r===b.r);
@@ -30,6 +30,7 @@ async function joOpen(id){joStop();JO.id=id;S.chanCleanup=()=>{joStop();fsExit()
  if(!joHere(id))return;
  const ch=sb.channel('jk-'+id,{config:{presence:{key:ME.id}}});
  ch.on('postgres_changes',{event:'UPDATE',schema:'public',table:'jk_tables',filter:'id=eq.'+id},pl=>joTable(pl.new))
+  .on('broadcast',{event:'rx'},({payload:d})=>{if(!d||!GRX[+d.i]||!joHere(id))return;const s=+d.seat;if(!(s>=0&&s<4)||s===JO.seat||Date.now()-((JO.rxAt||{})[s]||0)<900)return;(JO.rxAt=JO.rxAt||{})[s]=Date.now();const r=(s-(JO.seat>=0?JO.seat:0)+4)%4;gRxShow(r?'r'+r:'me',+d.i)})
   .on('postgres_changes',{event:'*',schema:'public',table:'jk_hands',filter:'table_id=eq.'+id},pl=>{const r=pl.new;if(!r||joIsHost()||r.seat!==JO.seat||r.user_id!==ME.id)return;JO.hand=sortHand((r.cards||[]).slice());JO.wait=false;joDraw()});
  if(joIsHost())ch.on('postgres_changes',{event:'INSERT',schema:'public',table:'jk_moves',filter:'table_id=eq.'+id},pl=>joMove(pl.new));
  ch.on('presence',{event:'sync'},()=>{const ps=ch.presenceState();JO.here=new Set(Object.keys(ps));JO.hostHere=!!JO.t&&JO.here.has(JO.t.host);if(joIsHost()&&JO.E)joNext();else joDraw()})
@@ -159,7 +160,9 @@ function joDraw(){const el=$('#jko');if(!el||!JO.t||!joHere(JO.id))return;const 
  const me=JO.seat,base=me>=0?me:0,P=k=>(base+k)%4,host=joIsHost(),live=['bid','play','trump'].includes(s.phase);
  const seat=(p,pos)=>`<div class="seat ${pos}${s.cur===p&&s.win==null&&live?' turn':''}">${joAv(p,38)}<b>${esc(joName(p))}</b>${jPips(s.bids[p],s.taken[p])}<span>${s.score[p]}</span></div>`;
  const tr=(s.trick||[]).map(e=>{const h=jCardHTML(e.card).replace('class="card','class="card p'+((e.p-base+4)%4));return e.card.j?h.replace('</div>',`<span class="jm">${e.jm==='hi'?'მაღალი':'დაბალი'}${e.js?' '+SY[e.js]:''}</span></div>`):h}).join('');
- const trumpTxt=s.phase==='trump'?'კოზირი ირჩევა':s.trump?`კოზირი: <b style="color:${isRed(s.trump)?'#FF8A9A':'inherit'}">${SY[s.trump]}</b> ${SN[s.trump]}`:'უკოზირო';
+ const trumpTxt=s.phase==='trump'?'კოზირი ირჩევა':s.trump?`კოზირი: <b style="color:${suitInk(s.trump)}">${SY[s.trump]}</b> ${SN[s.trump]}`:'უკოზირო';
+ /* the last full trick of this deal stays viewable after it is swept */
+ if(s.trick&&s.trick.length===4&&s.win!=null)JO.lastT={t:s.trick.map(e=>Object.assign({},e)),w:s.win,deal:s.deal};if(JO.lastT&&JO.lastT.deal!==s.deal)JO.lastT=null;
  const myTurn=me>=0&&s.cur===me&&s.win==null&&!JO.wait;
  const L=myTurn&&s.phase==='play'?JK.legal.call({hands:{[me]:JO.hand},trick:s.trick,trump:s.trump},me):[];
  let hand='';if(me>=0){hand=s.phase==='trump'?JO.hand.map(c=>jCardHTML(c)).join('')+(s.cur===me?'<div class="card" style="opacity:.25" aria-hidden="true"></div>'.repeat(Math.max(0,s.n-JO.hand.length)):'')
@@ -172,12 +175,13 @@ function joDraw(){const el=$('#jko');if(!el||!JO.t||!joHere(JO.id))return;const 
  const mine=me>=0?`<div class="pl me${turn?' turn':''}"><span class="plav">${av('me',34)}</span><span class="pln"><b>${esc(ME.name)}</b><span class="muted jme">${jPips(s.bids[me],s.taken[me])}<span>${s.score[me]} ქულა</span></span></span></div><div class="hand${g3?' g3sr':''}" aria-label="შენი კარტები">${hand}</div>`
   :`<div class="pl"><span class="muted">შენ უყურებ. კარტები მხოლოდ მოთამაშეებს უჩანთ.</span></div>`;
  const stage=`<div class="jt${g3?' g3jt':''}">${seat(P(2),'top')}${seat(P(1),'left')}${seat(P(3),'right')}<div class="trick" aria-label="მაგიდა">${tr}</div>${g3?`<div class="g3 g3-joker${G3W.ready?'':' loading'}">${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div>`:''}</div>`;
- const info=`<div class="ginfo"><span class="trump">${trumpTxt}</span><span>ხელი ${Math.min(s.h+1,JSEQ[s.len].length)}/${JSEQ[s.len].length}, ${s.n} კარტი</span></div>`;
+ const info=`<div class="ginfo"><span class="trump">${trumpTxt}</span><span>ხელი ${Math.min(s.h+1,JSEQ[s.len].length)}/${JSEQ[s.len].length}, ${s.n} კარტი</span>${JO.lastT&&s.phase==='play'&&!(s.trick&&s.trick.length===4)?jLastBtn('jkolast'):''}</div>`;
  let res='';if(s.phase==='over'){const mx=Math.max(...s.score),w=[0,1,2,3].filter(p=>s.score[p]===mx),win=me>=0&&w.includes(me),order=[0,1,2,3].sort((a,b)=>s.score[b]-s.score[a]);
   res=gResBox(JO,{title:win?'მოიგე!':'თამაში დასრულდა',sub:win?'ყველაზე მეტი ქულა შენ დააგროვე':'გაიმარჯვა: '+w.map(p=>esc(joName(p))).join(', '),kind:win?'win':'lose',more:`<div class="gendt">${order.map(p=>`<span><b>${esc(joShort(p))}</b>${s.score[p]}</span>`).join('')}</div>`,
-   again:host?'<button class="btn gold" data-a="jkoagain">ახალი პარტია</button>':'',leave:'<button class="btn ghost" data-a="back">მაგიდიდან გასვლა</button>'})}
+   again:host?'<button class="btn gold" data-a="jkoagain">ახალი პარტია</button>':'',share:win?gShareBtn('joker','მეგობრებთან, '+s.score[me]+' ქულით'):'',leave:'<button class="btn ghost" data-a="back">მაგიდიდან გასვლა</button>'})}
  const Pp=gShellParts({stage,mid:stage,top:gTop('ჯოკერი ონლაინ',null,'back')+info+jMiniHTML(s.hist,s.score||[0,0,0,0],[0,1,2,3].map(joShort),s.phase==='handover','jkosheet'),bot:`${mine}<div class="status${turn?' mine':''}" role="status">${joStatus()}</div>${panel}`,res});
  el.className='view-pad game jko gx'+(Pp.w?' is3d':'');el.innerHTML=Pp.html;g3After('jko')}
+A.jkolast=()=>{jLastOpen(JO.lastT,p=>p===JO.seat?'შენ':joShort(p),JO.seat>=0?JO.seat:0)};
 A.jkosheet=()=>{const s=JO.st;jSheetOpen(s&&s.hist,(s&&s.score)||[0,0,0,0],[0,1,2,3].map(joShort))};
 /* the result counts once per person per table, like a game against the computer */
 function joResult(){const s=JO.st;if(s&&s.phase!=='over')JO.res=false;if(!s||s.phase!=='over'||JO.seat<0||JO.res)return;JO.res=true;const k='jkres-'+JO.id+'-'+s.deal;

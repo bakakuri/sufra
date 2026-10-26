@@ -262,7 +262,7 @@ function mentionable(el){if(!el||el._ment)return;el._ment=1;let box=null,tm,tok=
 /* composer */
 let CMP=null;
 async function myPages(){try{return await q(sb.from('pages').select('id,name,hue,kind,avatar_url').eq('owner',ME.id))}catch(e){return []}}
-async function compose(opt={}){CMP={files:[],poll:null,page:opt.page_id||null,group:opt.group_id||null,clip:!!opt.clip,place:opt.place||null};const pages=opt.group_id?[]:await myPages();
+async function compose(opt={}){CMP={files:(opt.files||[]).filter(Boolean).map(b=>({blob:b,type:'image',url:URL.createObjectURL(b)})),poll:null,page:opt.page_id||null,group:opt.group_id||null,clip:!!opt.clip,place:opt.place||null};const pages=opt.group_id?[]:await myPages();
  const title=opt.clip?'ახალი კლიპი':opt.group_id?'პოსტი ჯგუფში':'ახალი პოსტი';
  sheet(`<div class="ph-head cmphead"><button class="ibtn" data-a="close" aria-label="დახურვა">${ic('x')}</button><h2>${title}</h2><span class="sp"></span><button class="btn" id="c_pub" disabled>გამოქვეყნება</button></div>
   <div class="ph-body cmp"><div class="cmpwho">${av('me',46)}<div class="grow"><b id="c_asn">${esc(ME.name)}</b><span class="sub">${ic(opt.group_id?'users':'globe')}${opt.group_id?'ჯგუფის წევრები ნახავენ':'ყველა ნახავს'}</span></div></div>
@@ -294,7 +294,7 @@ async function compose(opt={}){CMP={files:[],poll:null,page:opt.page_id||null,gr
   $('#pq').oninput=e=>CMP.poll.q=e.target.value;$$('[data-po]').forEach(i=>i.oninput=e=>CMP.poll.opts[+i.dataset.po]=e.target.value);$$('[data-pr]').forEach(b=>b.onclick=()=>{CMP.poll.opts.splice(+b.dataset.pr,1);pollUI()});
   const pa=$('#padd');if(pa)pa.onclick=()=>{CMP.poll.opts.push('');pollUI()};$('#prm').onclick=()=>{CMP.poll=null;pollUI()}};
  function rebind(){$('#c_img').onclick=addImgs;$('#c_vid').onclick=addVid;const pb=$('#c_poll');if(pb)pb.onclick=()=>{CMP.poll=CMP.poll||{q:'',opts:['','']};pollUI()};$('#c_pub').onclick=()=>publish('now')}
- rebind();if(opt.clip)setTimeout(addVid,200);if(opt.text){ta.oninput();setTimeout(()=>{ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length)},250)}
+ rebind();if(CMP.files.length)drawAtt();if(opt.clip)setTimeout(addVid,200);if(opt.text){ta.oninput();setTimeout(()=>{ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length)},250)}
  async function publish(mode='now'){const body=$('#ct').value.trim();let poll=null,when=null;
   if(mode==='plan'){const v=$('#c_when').value;when=v?new Date(v):null;if(!when||isNaN(when)||when.getTime()<Date.now()+3e4){toast('აირჩიე მომავალი დრო');return}}
   if(CMP.poll){const opts=CMP.poll.opts.map(s=>s.trim()).filter(Boolean);if(!CMP.poll.q.trim()||opts.length<2){toast('გამოკითხვას სჭირდება კითხვა და მინიმუმ 2 პასუხი');return}poll={q:CMP.poll.q.trim(),opts}}

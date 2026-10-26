@@ -183,7 +183,14 @@ function g3Tick(sc,now){let busy=false;const c=sc.cam;
   o.q=qt.slerp(t.q0,t.q1,e);if(t.spin)o.q=qt.mul(o.q,qt.ax(t.spin[0],t.spin[1],t.spin[2],t.spin[3]*Math.PI*2*(1-e)));
   o.s=sLerp(t.s0,t.s1,e);o.a=t.a0+(t.a1-t.a0)*e;
   if(k>=1){o.tw=null;o.p=t.p1.slice();o.q=t.q1.slice();if(o.dying)sc.objs.delete(o.id);else if(t.land){const md=sc.models[o.m];if(md&&md.land)try{md.land(o,sc)}catch(e){}}}else busy=true}
+ for(const o of sc.objs.values())if(o.wg&&g3WgStep(o,now))busy=true;
  return busy}
+/* a gesture laid over whatever the object is doing: a nod, a shake, a bounce. it swings and settles back where it was */
+function g3WgStep(o,now){const w=o.wg,k=(now-w.t0)/w.d,bq=o.tw?o.q:(o.q1||o.q),bp=o.tw?o.p:(o.p1||o.p);
+ if(k>=1){o.wg=null;if(!o.tw){o.q=bq.slice();o.p=bp.slice()}return true}if(k<0)return true;const env=Math.sin(Math.PI*k);
+ if(w.ax){const a=Math.sin(k*Math.PI*2*(w.f||1))*env*w.a,v=w.ax==='y'?[0,1,0]:w.ax==='z'?[0,0,1]:[1,0,0];o.q=qt.mul(bq,qt.ax(v[0],v[1],v[2],a))}
+ if(w.b)o.p=v3.add(bp,[0,Math.abs(Math.sin(k*Math.PI*(w.bf||1)))*env*w.b,0]);return true}
+function g3Wig(sc,id,w){const o=sc&&sc.objs.get(id);if(!o||!w||RM())return;o.wg=Object.assign({},w,{t0:performance.now()+(w.delay||0)});g3Need()}
 /* short effects drawn like marks: a ring where a piece lands, sparks when one is taken */
 function g3Fx(sc,f){f.t0=performance.now()+(f.delay||0);f.d=f.d||450;(sc.fx||(sc.fx=[])).push(f);g3Need()}
 function g3Ripple(sc,p,size=1,c,a=.55){if(RM())return;g3Fx(sc,{m:'mk',uv:MK.ring,c:c||[1,.92,.75],p,s0:size*.35,s1:size*1.35,a0:a,a1:0,d:520,add:true})}

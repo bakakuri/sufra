@@ -64,6 +64,7 @@ function msgHTML(m){const me=m.sender===ME.id,u=prof(m.sender);let body;
  else if(m.media?.card)body=cardHTML(m.media.card);
  else if(m.media?.loc)body=locCard(m.media.loc);
  else if(m.media?.post)body=postMsg(m.media.post,me);
+ else if(m.media?.game&&typeof gameMsg==='function'&&gameMsg(m.media.game,me,m))body=gameMsg(m.media.game,me,m);
  else if(m.media?.call&&/^\d{1,18}$/.test(String(m.media.call)))body=`<button class="callmsg${me?' me':''}" data-a="joincall" data-r="${m.media.call}"><span class="cmi">${ic('video')}</span><span class="grow"><b>ჯგუფური ვიდეოზარი</b><small>${esc(String(pname(m.sender)).split(' ')[0])} იწყებს · შემოერთება</small></span></button>`;
  else body=(me?`<div class="bubble me">${linkify(m.body)}</div>`:tx(m.body,'bubble'))+(m.media?.link?linkCard(m.media.link,'inchat'):'');
  const r=m.reply_to&&!m.deleted?CHAT?.msgs.get(m.reply_to):null;
@@ -119,7 +120,7 @@ async function openChat(cid,draft=''){let conv=CONVS.find(c=>c.conv_id===cid);
   const u=(v.match(/https?:\/\/[^\s<]+/)||[])[0];let link=null;if(u)link=await Promise.race([unfurl(u),new Promise(r=>setTimeout(()=>r(null),2500))]);send(link?{body:v,media:{link}}:{body:v})};
  $('#ch_stk').onclick=async()=>{const id=await pickSticker();if(!id)return;const s=STICKERS.find(x=>x[0]===id);send({body:s[1],media:{sticker:id}})};
  $('#ch_mic').onclick=async()=>{const b=await recordVoice();if(!b)return;try{const url=await uploadBlob(b,extOf(b));send({kind:'voice',media:{url,dur:b.dur||0}})}catch(e){toast(errMsg(e))}};
- $('#ch_more').onclick=()=>layer(lhead('დამატება')+`<div class="reasons"><button data-a="chimg">${ic('image')} ფოტო</button><button data-a="chloc">${ic('pin')} ჩემი ლოკაცია</button><button data-a="chcard">${ic('card')} მისალოცი ბარათი</button></div>`)}
+ $('#ch_more').onclick=()=>layer(lhead('დამატება')+`<div class="reasons"><button data-a="chimg">${ic('image')} ფოტო</button><button data-a="chloc">${ic('pin')} ჩემი ლოკაცია</button><button data-a="chcard">${ic('card')} მისალოცი ბარათი</button>${CHAT&&CHAT.other?`<button data-a="chgame">${ic('dice')} თამაშზე გამოწვევა</button>`:''}</div>`)}
 A.chimg=async()=>{closeLayer();const st=CHAT;if(!st)return;const b=await pickImage({max:ECO()?1080:1600});if(!b)return;try{toast('იტვირთება…');const m=await uploadMedia(b,'image');st.send({kind:'image',media:{url:m.url,sm:m.sm||undefined,w:m.w,h:m.h}})}catch(e){toast(errMsg(e))}};
 A.chloc=()=>{closeLayer();const st=CHAT;if(!st)return;if(!navigator.geolocation){toast('ამ მოწყობილობაზე ლოკაცია მიუწვდომელია');return}toast('ლოკაციას ვადგენ…');
  navigator.geolocation.getCurrentPosition(p=>{const{latitude:lat,longitude:lng,accuracy:acc}=p.coords;st.send({body:'📍 ლოკაცია',media:{loc:{lat:+lat.toFixed(6),lng:+lng.toFixed(6),acc:Math.round(acc)}}})},()=>toast('ლოკაციაზე წვდომა არ მოგვეცა. ჩართე ბრაუზერის პარამეტრებში'),{enableHighAccuracy:true,timeout:15000,maximumAge:30000})};

@@ -67,17 +67,17 @@ const CW=256,CH_=360,CATL=2048;
 const cardIdx=c=>c.j?35+c.j:SUITS.indexOf(c.s)*9+c.r-6;
 const cardUV=i=>[(i%8)*CW/CATL,Math.floor(i/8)*CH_/CATL,CW/CATL,CH_/CATL];
 function rrect(x,X,Y,w,h,r){x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+w,Y,X+w,Y+h,r);x.arcTo(X+w,Y+h,X,Y+h,r);x.arcTo(X,Y+h,X,Y,r);x.arcTo(X,Y,X+w,Y,r);x.closePath()}
-function cardsCv(){const c=cvs(CATL,CATL),x=c.getContext('2d'),F='"Noto Serif Georgian",Georgia,"Times New Roman",serif',FS='"Noto Sans Georgian","DejaVu Sans",system-ui,sans-serif';
+function cardsCv(c4){const c=cvs(CATL,CATL),x=c.getContext('2d'),F='"Noto Serif Georgian",Georgia,"Times New Roman",serif',FS='"Noto Sans Georgian","DejaVu Sans",system-ui,sans-serif';
  const face=(i,draw)=>{const X=(i%8)*CW,Y=Math.floor(i/8)*CH_;x.save();x.translate(X,Y);rrect(x,3,3,CW-6,CH_-6,24);x.fillStyle='#FFFDF8';x.fill();x.strokeStyle='rgba(60,40,20,.28)';x.lineWidth=2.5;x.stroke();x.clip();draw();x.restore()};
  /* big corner indices (rank over suit), as on cards made to be read across a table; pips sit in a narrower middle */
  const PIPL={6:[[.25,.22],[.75,.22],[.25,.5],[.75,.5],[.25,.78],[.75,.78]],7:[[.25,.22],[.75,.22],[.5,.36],[.25,.5],[.75,.5],[.25,.78],[.75,.78]],8:[[.25,.22],[.75,.22],[.5,.36],[.25,.5],[.75,.5],[.5,.64],[.25,.78],[.75,.78]],
   9:[[.25,.2],[.75,.2],[.25,.4],[.75,.4],[.5,.5],[.25,.6],[.75,.6],[.25,.8],[.75,.8]],10:[[.25,.2],[.75,.2],[.5,.3],[.25,.4],[.75,.4],[.25,.6],[.75,.6],[.5,.7],[.25,.8],[.75,.8]]};
- for(const s of SUITS)for(let r=6;r<=14;r++){if(r===6&&(s==='s'||s==='c'))continue;const col=isRed(s)?'#CE1430':'#17110E',t=rkTxt(r);
+ for(const s of SUITS)for(let r=6;r<=14;r++){if(r===6&&(s==='s'||s==='c'))continue;const col=c4?SC4[s]:isRed(s)?'#CE1430':'#17110E',t=rkTxt(r);
   face(SUITS.indexOf(s)*9+r-6,()=>{x.fillStyle=col;x.textAlign='center';x.textBaseline='alphabetic';
    const corner=()=>{x.font=`800 ${t==='10'?70:86}px ${FS}`;if(t==='10'){x.save();x.translate(46,88);x.scale(.78,1);x.fillText(t,0,0);x.restore()}else x.fillText(t,46,88);suitPath(x,s,46,134,58)};
    corner();x.save();x.translate(CW,CH_);x.rotate(Math.PI);corner();x.restore();
    if(r<=10){for(const[u,v]of PIPL[r]){const px=80+u*96,py=46+v*268;x.save();x.translate(px,py);if(v>.55)x.rotate(Math.PI);suitPath(x,s,0,0,31);x.restore()}}
-   else if(r===14){suitPath(x,s,CW/2,CH_/2,104);x.strokeStyle=isRed(s)?'rgba(206,20,48,.35)':'rgba(23,17,14,.3)';x.lineWidth=3;x.beginPath();x.arc(CW/2,CH_/2,68,0,Math.PI*2);x.stroke()}
+   else if(r===14){suitPath(x,s,CW/2,CH_/2,104);x.save();x.globalAlpha=.33;x.strokeStyle=col;x.lineWidth=3;x.beginPath();x.arc(CW/2,CH_/2,68,0,Math.PI*2);x.stroke();x.restore()}
    else{const g=x.createLinearGradient(0,60,0,300);g.addColorStop(0,'#FBEFD2');g.addColorStop(1,'#F0D9A6');x.fillStyle=g;rrect(x,86,46,84,268,10);x.fill();x.strokeStyle=col;x.lineWidth=3;x.stroke();x.lineWidth=1.2;rrect(x,92,52,72,256,6);x.stroke();
     x.fillStyle=col;x.font=`700 80px ${F}`;x.fillText(t,128,CH_/2+18);suitPath(x,s,128,CH_/2+74,28);suitPath(x,s,128,CH_/2-78,28)}})}
  for(const j of[1,2])face(35+j,()=>{const col=j===1?'#CE1430':'#1F2F6B',g=x.createRadialGradient(CW/2,CH_/2,10,CW/2,CH_/2,150);g.addColorStop(0,j===1?'#FFE3EA':'#E2E8FF');g.addColorStop(1,'#FFFDF8');x.fillStyle=g;x.fillRect(0,0,CW,CH_);

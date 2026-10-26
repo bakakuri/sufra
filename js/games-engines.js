@@ -5,6 +5,7 @@ const repOk=a=>Array.isArray(a)?a.filter(x=>typeof x==='string'&&x.length<16).sl
 /* why a game ended, in words */
 const WHY={rep:'ფრე: პოზიცია სამჯერ განმეორდა',mat:'ფრე: მატისთვის საკმარისი ფიგურები აღარ დარჩა','50':'ფრე: 50 სვლა აყვანისა და პაიკის სვლის გარეშე',stale:'პატი. ფრე',kings:'ფრე: 15 სვლა მხოლოდ დამებით, აყვანის გარეშე',k31:'ფრე: სამმა დამამ ერთი 15 სვლაში ვერ აიყვანა'};
 function overMsg(c,w,why){if(w===2)return WHY[why]||'ფრე';const pre=why==='mate'?'მატი. ':why==='blocked'?'სვლა აღარ დარჩა. ':'';
+ if(why==='time')return isPlayer(c)?(w===c.side?'მეტოქეს დრო ამოეწურა. მოიგე!':'დრო ამოგეწურა. '+esc(c.names[w])+' მოიგო'):esc(c.names[-w])+'-ს დრო ამოეწურა';
  if(why==='resign')return isPlayer(c)?(w===c.side?'მეტოქე დანებდა. მოიგე!':'დანებდი. '+esc(c.names[w])+' მოიგო'):esc(c.names[-w])+' დანებდა';return pre+endMsg(c,w)}
 const canResign=G=>{const c=G.ctx;return isPlayer(c)&&!c.gone&&!c.finished};
 const resignBtn=G=>canResign(G)?'<button class="btn ghost sm gres" data-a="gresign">'+ic('flag')+'დანებება</button>':'';
@@ -43,7 +44,7 @@ const CK=GAME.shashi={title:'შაში',
  snap(){return{b:this.b,turn:this.turn,last:this.last,lcap:this.lcap,over:this.over,why:this.why,kq:this.kq,k31:this.k31,k31s:this.k31s,rep:this.rep}},
  load(s){if(!Array.isArray(s.b)||s.b.length!==8)throw 0;const sq=a=>Array.isArray(a)?a.filter(x=>Array.isArray(x)&&inB(+x[0],+x[1])).map(x=>[+x[0],+x[1]]).slice(0,20):[];
   this.b=s.b.map(r=>(Array.isArray(r)?r:[]).slice(0,8).map(v=>[-2,-1,0,1,2].includes(v)?v:0));this.turn=s.turn===-1?-1:1;this.last=sq(s.last);this.lcap=sq(s.lcap);this.over=[1,-1,2].includes(s.over)?s.over:0;
-  this.why=['rep','kings','k31','resign','blocked'].includes(s.why)?s.why:'';this.kq=Math.max(0,Math.min(99,+s.kq||0));this.k31=Math.max(0,Math.min(99,+s.k31||0));this.k31s=String(s.k31s||'').slice(0,8);this.rep=repOk(s.rep);this.sel=null;this.moves=this.over?[]:ckAll(this.b,this.turn)},
+  this.why=['rep','kings','k31','resign','blocked','time'].includes(s.why)?s.why:'';this.kq=Math.max(0,Math.min(99,+s.kq||0));this.k31=Math.max(0,Math.min(99,+s.k31||0));this.k31s=String(s.k31s||'').slice(0,8);this.rep=repOk(s.rep);this.sel=null;this.moves=this.over?[]:ckAll(this.b,this.turn)},
  mine(){return isPlayer(this.ctx)&&this.turn===this.ctx.side&&!this.over&&!this.ctx.gone&&!this.ctx.syncing},
  res(){return this.over?{w:this.over,why:this.why}:null},turnSide(){return this.over?null:this.turn},
  status(must){const c=this.ctx;if(this.over)return overMsg(c,this.over,this.why);if(c.gone)return 'მოწინააღმდეგე გავიდა თამაშიდან';if(this.mine())return must?'მოჭრა სავალდებულოა. აირჩიე მოციმციმე ქვა':this.sel?'აირჩიე უჯრა, სადაც გადავა':'შენი სვლაა';return esc(c.names[this.turn])+' ფიქრობს…'},
@@ -65,7 +66,7 @@ const CK=GAME.shashi={title:'შაში',
   if(!this.moves.length){this.over=-this.turn;this.why=this.cnt(this.turn)?'blocked':''}
   else if(this.rep.filter(x=>x===k).length>=3){this.over=2;this.why='rep'}else if(this.kq>=30){this.over=2;this.why='kings'}else if(this.k31>=30){this.over=2;this.why='k31'}
   if(this.ctx.mode==='online')netSend();if(this.over){finish(this,this.over);return}this.render();this.kick()},
- resign(){this.over=-this.ctx.side;this.why='resign';this.sel=null;if(this.ctx.mode==='online')netSend();finish(this,this.over)},
+ resign(s=this.ctx.side,why='resign'){if(this.over)return;this.over=-s;this.why=why;this.sel=null;if(this.ctx.mode==='online')netSend();finish(this,this.over)},
  kick(){const c=this.ctx;if(this.over)return;if(!(c.mode==='watch'||((c.mode==='bot'||c.mode==='tour')&&this.turn!==c.side)))return;const b0=this.b;
   const lv=c.mode==='watch'?2:bLvl('shashi'),t0=Date.now(),side=this.turn,ok=()=>this.ctx===c&&this.b===b0&&!this.over;
   botThink({g:'shashi',b:b0,side,lvl:lv,budget:BUDGET[lv]}).then(m=>{if(!ok())return;const L=ckAll(b0,side),mm=(m&&L.find(x=>JSON.stringify(x.path)===JSON.stringify(m.path)))||ckBot(b0,side);setTimeout(()=>{if(ok()&&mm)this.play(mm)},Math.max(0,(c.mode==='watch'?1000:650)-(Date.now()-t0)))})},
@@ -121,7 +122,7 @@ const NR=GAME.nardi={title:'ნარდი',
  snap(){return{p:this.p,bar:this.bar,off:this.off,dice:this.dice,last:this.last,turn:this.turn,rolled:this.rolled,over:this.over,why:this.why,mult:this.mult,open:this.open}},
  load(s){const n=v=>Math.max(0,Math.min(15,Number(v)||0)),d=a=>Array.isArray(a)?a.map(Number).filter(x=>x>=1&&x<=6).slice(0,4):[];
   if(!Array.isArray(s.p)||s.p.length!==24)throw 0;this.p=s.p.map(v=>Math.max(-15,Math.min(15,Math.trunc(Number(v))||0)));this.bar={1:n(s.bar&&s.bar[1]),'-1':n(s.bar&&s.bar['-1'])};this.off={1:n(s.off&&s.off[1]),'-1':n(s.off&&s.off['-1'])};
-  this.dice=d(s.dice);this.last=d(s.last).slice(0,2);this.turn=s.turn===-1?-1:1;this.rolled=!!s.rolled;this.over=[1,-1].includes(s.over)?s.over:0;this.why=s.why==='resign'?'resign':'';this.mult=[1,2,3].includes(s.mult)?s.mult:1;
+  this.dice=d(s.dice);this.last=d(s.last).slice(0,2);this.turn=s.turn===-1?-1:1;this.rolled=!!s.rolled;this.over=[1,-1].includes(s.over)?s.over:0;this.why=['resign','time'].includes(s.why)?s.why:'';this.mult=[1,2,3].includes(s.mult)?s.mult:1;
   const o=d(s.open);this.open=o.length===2?o:null;this.sel=null;this.lg=null},
  legal(){if(!this.lg)this.lg=this.rolled&&!this.over?nLegal(this,this.turn,this.dice):[];return this.lg},
  opts(s,from){return s===this.turn?this.legal().filter(m=>m.f===from).map(m=>({d:m.d,to:m.to})):[]},
@@ -131,7 +132,7 @@ const NR=GAME.nardi={title:'ნარდი',
  mine(){return isPlayer(this.ctx)&&this.turn===this.ctx.side&&!this.over&&!this.ctx.gone&&!this.ctx.syncing},
  res(){return this.over?{w:this.over,why:this.why,mult:this.mult}:null},turnSide(){return this.over?null:this.turn},
  endTurn(){this.turn*=-1;this.rolled=false;this.dice=[];this.sel=null;this.open=null;this.lg=null;if(this.ctx.mode==='online')netSend();this.render();this.kick()},
- resign(){this.over=-this.ctx.side;this.why='resign';this.mult=1;this.sel=null;if(this.ctx.mode==='online')netSend();finish(this,this.over)},
+ resign(s=this.ctx.side,why='resign'){if(this.over)return;this.over=-s;this.why=why;this.mult=1;this.sel=null;if(this.ctx.mode==='online')netSend();finish(this,this.over)},
  kick(){const c=this.ctx;if(this.over)return;if(!(c.mode==='watch'||((c.mode==='bot'||c.mode==='tour')&&this.turn!==c.side)))return;const s=this.turn,fast=c.mode==='watch',tk=this.tk=(this.tk||0)+1;
   const live=()=>this.ctx===c&&!this.over&&this.turn===s&&this.tk===tk;
   const play=()=>{if(!live())return;const seq=nBest(this,s,this.dice,fast?2:bLvl('nardi'));if(!seq.length){this.render();setTimeout(()=>{if(live())this.endTurn()},1200);return}
@@ -230,7 +231,7 @@ const CH=GAME.chess={title:'ჭადრაკი',
  start(){this.st=chInit();this.sel=null;this.pend=null;this.moves=chLegal(this.st,1);this.mv=[];this.ps=this.st;this.full=true},
  snap(){return this.st},
  load(s){if(!Array.isArray(s.b)||s.b.length!==64)throw 0;const ok=/^[pnbrqkPNBRQK]?$/;
-  this.st={b:s.b.map(x=>typeof x==='string'&&ok.test(x)?x:''),turn:s.turn===-1?-1:1,cs:String(s.cs||'').replace(/[^KQkq]/g,''),ep:Number.isInteger(s.ep)&&s.ep>=0&&s.ep<64?s.ep:-1,last:Array.isArray(s.last)?s.last.slice(0,2).map(Number).filter(x=>x>=0&&x<64):[],over:[1,-1,2].includes(s.over)?s.over:0,hm:Math.max(0,Math.min(200,Number(s.hm)||0)),rep:repOk(s.rep),why:['mate','stale','rep','mat','50','resign'].includes(s.why)?s.why:''};
+  this.st={b:s.b.map(x=>typeof x==='string'&&ok.test(x)?x:''),turn:s.turn===-1?-1:1,cs:String(s.cs||'').replace(/[^KQkq]/g,''),ep:Number.isInteger(s.ep)&&s.ep>=0&&s.ep<64?s.ep:-1,last:Array.isArray(s.last)?s.last.slice(0,2).map(Number).filter(x=>x>=0&&x<64):[],over:[1,-1,2].includes(s.over)?s.over:0,hm:Math.max(0,Math.min(200,Number(s.hm)||0)),rep:repOk(s.rep),why:['mate','stale','rep','mat','50','resign','time'].includes(s.why)?s.why:''};
   this.sel=null;this.pend=null;this.moves=this.st.over?[]:chLegal(this.st,this.st.turn)},
  mine(){return isPlayer(this.ctx)&&this.st.turn===this.ctx.side&&!this.st.over&&!this.ctx.gone&&!this.ctx.syncing},
  res(){return this.st.over?{w:this.st.over,why:this.st.why}:null},turnSide(){return this.st.over?null:this.st.turn},
@@ -256,7 +257,7 @@ const CH=GAME.chess={title:'ჭადრაკი',
   if(!this.moves.length){n.over=this.inCheck()?-n.turn:2;n.why=n.over===2?'stale':'mate'}
   else if(n.rep.filter(x=>x===k).length>=3){n.over=2;n.why='rep'}else if(chInsuf(n.b)){n.over=2;n.why='mat'}else if(n.hm>=100){n.over=2;n.why='50'}
   if(this.ctx.mode==='online')netSend();if(n.over){finish(this,n.over);return}this.render();this.kick()},
- resign(){const st=this.st;st.over=-this.ctx.side;st.why='resign';this.sel=null;this.moves=[];if(this.ctx.mode==='online')netSend();finish(this,st.over)},
+ resign(s=this.ctx.side,why='resign'){const st=this.st;if(st.over)return;st.over=-s;st.why=why;this.sel=null;this.moves=[];if(this.ctx.mode==='online')netSend();finish(this,st.over)},
  kick(){const c=this.ctx;if(this.st.over)return;if(!(c.mode==='watch'||((c.mode==='bot'||c.mode==='tour')&&this.st.turn!==c.side)))return;const s0=this.st;
   const lv=c.mode==='watch'?2:bLvl('chess'),t0=Date.now(),ok=()=>this.ctx===c&&this.st===s0&&!s0.over;
   botThink({g:'chess',st:s0,lvl:lv,budget:BUDGET[lv]}).then(m=>{if(!ok())return;const mm=(m&&chLegal(s0,s0.turn).find(x=>x.f===m.f&&x.t===m.t&&!!x.pr===!!m.pr))||chBot(s0);setTimeout(()=>{if(ok()&&mm)this.play(mm)},Math.max(0,(c.mode==='watch'?1100:400)-(Date.now()-t0)))})},
@@ -272,6 +273,21 @@ A.chpr=t=>{const G=CH,m=G.pend;closeSheet();G.pend=null;if(!m||!G.mine()||!G.mov
 const SUITS=['s','c','h','d'],SY={s:'♠',c:'♣',h:'♥',d:'♦'},SN={s:'ყვავი',c:'ჯვარი',h:'გული',d:'აგური'},RK={11:'J',12:'Q',13:'K',14:'A'};
 const rkTxt=r=>RK[r]||String(r);
 const isRed=s=>s==='h'||s==='d';
+/* the four-colour deck (spades black, clubs green, hearts red, diamonds blue) is easier to tell apart across a table */
+const SC4={s:'#17110E',c:'#1C7A3A',h:'#CE1430',d:'#1A55C4'},SC4D={s:'inherit',c:'#62D18E',h:'#FF8A9A',d:'#8DB0FF'};
+const c4On=()=>!!store.get('c4',false);
+const suitInk=s=>c4On()?SC4D[s]:isRed(s)?'#FF8A9A':'inherit';
+try{document.documentElement.classList.toggle('c4',c4On())}catch(e){}
+/* how many tricks a hand should take, counted the way a careful player does; the bid hint and the stronger bots use it */
+function jEst(hand,tr){let e=0;const len=s=>hand.filter(c=>!c.j&&c.s===s).length,nt=tr?len(tr):0;
+ for(const c of hand){if(c.j)e+=1;else if(tr&&c.s===tr)e+=c.r===14?.95:c.r===13?.8:c.r===12?.55:c.r===11?.4:.25;else{const L=len(c.s);e+=c.r===14?(L<=3?.8:.6):c.r===13?(L>=2&&L<=4?.4:.2):0}}
+ if(tr&&nt>=4)e+=(nt-3)*.3;if(tr&&nt)for(const s of SUITS)if(s!==tr&&!len(s))e+=Math.min(nt,2)*.3;return e}
+function jHint(hand,tr,n,f){const e=jEst(hand,tr);let b=Math.max(0,Math.min(n,Math.round(e)));if(b===f)b=e>=b&&b<n?b+1:b>0?b-1:b+1;return b}
+const jHintOn=()=>store.get('jkhint',true)!==false;
+/* the last trick, laid out as it lay on the table: who played what, in which order, and who took it */
+function jLastOpen(L,nm,base){if(!L||!L.t||L.t.length<4)return;const pos=['b','l','t','r'];
+ sheet(head('ბოლო ხელი')+`<div class="ph-body"><div class="jlast">${L.t.map((e,k)=>{const r=(e.p-base+4)%4,w=e.p===L.w;return `<div class="jl ${pos[r]}${w?' won':''}"><span class="jlc">${jCardHTML(e.card)}<em>${k+1}</em></span><b>${esc(nm(e.p))}</b>${e.card.j?`<small>${e.jm==='hi'?'მაღალი':'დაბალი'}${e.js?' '+SY[e.js]:''}</small>`:''}${w?'<small class="jlw">წაიღო</small>':''}</div>`}).join('')}<span class="jlmid" aria-hidden="true">${ic('cards')}</span></div></div>`,'short')}
+const jLastBtn=a=>`<button class="jlt" data-a="${a}" aria-label="ბოლო ხელის ნახვა">${ic('cards')}<span>ბოლო ხელი</span></button>`;
 function jDeck(){const d=[];for(const s of SUITS)for(let r=6;r<=14;r++)if(!(r===6&&(s==='s'||s==='c')))d.push({s,r});d.push({j:1},{j:2});return d}
 const sortHand=h=>h.sort((a,b)=>(a.j?99:SUITS.indexOf(a.s)*20+a.r)-(b.j?99:SUITS.indexOf(b.s)*20+b.r));
 const jCardHTML=(c,extra='')=>c.j?`<div class="card jk"${extra}><i>★</i>ჯოკერი</div>`:`<div class="card${isRed(c.s)?' red':''}" data-s="${SY[c.s]}"${extra}><span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span></div>`;
@@ -311,13 +327,13 @@ const jBidCols=n=>n+1<=8?n+1:Math.ceil((n+1)/2);
 const JK=GAME.joker={title:'ჯოკერი',
  start(){this.tk=(this.tk||0)+1;this.phase='setup';this.ids=['me',{n:JK_BOTS[0],h:20},{n:JK_BOTS[1],h:200},{n:JK_BOTS[2],h:120}]},
  nm(p){return p===0?ME.name:JK_BOTS[p-1]},
- save(){if(!['trump','bid','play','handover'].includes(this.phase)||!this.hands)return null;return{len:this.len,h:this.h,score:this.score,hist:this.hist,dealer:this.dealer,n:this.n,hands:this.hands,first3:this.first3,bids:this.bids,taken:this.taken,trick:this.trick,trump:this.trump,trumpCard:this.trumpCard,phase:this.phase,cur:this.cur,win:this.win,gone:[...(this.gone||[])]}},
- restore(s){if(!s||!JSEQ[s.len]||!Array.isArray(s.hands))throw 0;Object.assign(this,{len:s.len,h:s.h,score:s.score,hist:s.hist||[],dealer:s.dealer,n:s.n,hands:s.hands,first3:s.first3,bids:s.bids,taken:s.taken,trick:s.trick||[],trump:s.trump,trumpCard:s.trumpCard,phase:s.phase,cur:s.cur,win:s.win,gone:new Set(s.gone||[])});
+ save(){if(!['trump','bid','play','handover'].includes(this.phase)||!this.hands)return null;return{lastT:this.lastT||null,len:this.len,h:this.h,score:this.score,hist:this.hist,dealer:this.dealer,n:this.n,hands:this.hands,first3:this.first3,bids:this.bids,taken:this.taken,trick:this.trick,trump:this.trump,trumpCard:this.trumpCard,phase:this.phase,cur:this.cur,win:this.win,gone:[...(this.gone||[])]}},
+ restore(s){if(!s||!JSEQ[s.len]||!Array.isArray(s.hands))throw 0;Object.assign(this,{len:s.len,h:s.h,score:s.score,hist:s.hist||[],dealer:s.dealer,n:s.n,hands:s.hands,first3:s.first3,bids:s.bids,taken:s.taken,trick:s.trick||[],trump:s.trump,trumpCard:s.trumpCard,phase:s.phase,cur:s.cur,win:s.win,gone:new Set(s.gone||[]),lastT:s.lastT&&Array.isArray(s.lastT.t)?s.lastT:null});
   if(this.phase==='handover')this.later(()=>{if(this.phase==='handover')this.newHand()},1800);
   else if(this.phase==='play'&&(this.win!=null||this.cur<0)){const w=this.win??0;this.trick=[];this.win=null;if(!this.hands[0].length){this.endHand();return}this.cur=w}
   setTimeout(()=>{if(S.game==='joker')this.step()},500)},
  begin(len){this.len=len;this.h=0;this.score=[0,0,0,0];this.hist=[];this.dealer=Math.floor(Math.random()*4);this.newHand()},
- newHand(){const n=JSEQ[this.len][this.h];this.n=n;this.gone=new Set();this.dealer=(this.dealer+1)%4;const d=shuffle(jDeck());
+ newHand(){const n=JSEQ[this.len][this.h];this.n=n;this.gone=new Set();this.lastT=null;this.dealer=(this.dealer+1)%4;const d=shuffle(jDeck());
   this.first3=[0,1,2,3].map(i=>d.slice(i*n,i*n+3));this.hands=[0,1,2,3].map(i=>sortHand(d.slice(i*n,(i+1)*n)));
   this.bids=[null,null,null,null];this.taken=[0,0,0,0];this.trick=[];this.win=null;this.cur=(this.dealer+1)%4;
   if(n<9){const tc=d[4*n];this.trumpCard=tc;this.trump=tc.j?null:tc.s;this.phase='bid'}else{this.trumpCard=null;this.trump=null;this.phase='trump'}
@@ -341,17 +357,18 @@ const JK=GAME.joker={title:'ჯოკერი',
   this.trick.push({p,card:c,jm:c.j?(jm||'hi'):null,js:c.j&&lead?(js||SUITS[Math.floor(Math.random()*4)]):null});
   if(this.trick.length<4){this.cur=(p+1)%4;this.render();this.step();return}
   const w=this.winner();this.taken[w]++;this.cur=-1;this.win=w;this.render();
-  this.later(()=>{this.trick=[];this.win=null;if(!this.hands[0].length){this.endHand();return}this.cur=w;this.render();this.step()},1400)},
+  this.later(()=>{this.lastT={t:this.trick.slice(),w};this.trick=[];this.win=null;if(!this.hands[0].length){this.endHand();return}this.cur=w;this.render();this.step()},1400)},
  /* bid and made: 50 a trick plus 50; all tricks bid and taken: 100 a trick; pass and none: 50; otherwise 10 a trick; bid but took none (ხიშტი): −200, or −500 in the nine-card sections */
  pts(b,t,n,kh=200){if(t===b)return b===n?100*n:b===0?50:50*b+50;if(b>0&&t===0)return -kh;return 10*t},
- endHand(){jScore(this);
+ endHand(){jScore(this);if(this===JK)this.botRx();
   if(this.h>=JSEQ[this.len].length){this.phase='over';const win=this.score[0]===Math.max(...this.score);gameResult('joker',win)}else{this.phase='handover';this.later(()=>{if(this.phase==='handover')this.newHand()},3800)}this.render()},
+ botRx(){const L=jLast(this.hist).hand;if(!L)return;const ev=[];
+  for(let p=1;p<4;p++){if(L.b[p]>0&&L.t[p]===0&&Math.random()<.6)ev.push(['r'+p,4]);else if(L.b[p]===L.t[p]&&L.b[p]>=2&&Math.random()<.35)ev.push(['r'+p,Math.random()<.5?0:1])}
+  if(L.b[0]>0&&L.t[0]===0&&Math.random()<.5)ev.push(['r'+(1+Math.floor(Math.random()*3)),1]);ev.slice(0,2).forEach(([w,i],n)=>this.later(()=>gRxShow(w,i),700+n*800))},
  val(c){return c.j?60:(this.trump&&c.s===this.trump?20+c.r:c.r)},
  botTrump(p){const sc={};for(const c of this.first3[p])if(!c.j)sc[c.s]=(sc[c.s]||0)+c.r;const best=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];return best&&best[1]>=11?best[0]:null},
  botBid(p){const hand=this.hands[p],n=hand.length,lv=this===JK?bLvl('joker'):3;let e=0;
-  if(lv>=3){const len=s=>hand.filter(c=>!c.j&&c.s===s).length,tr=this.trump,nt=tr?len(tr):0;
-   for(const c of hand){if(c.j)e+=1;else if(tr&&c.s===tr)e+=c.r===14?.95:c.r===13?.8:c.r===12?.55:c.r===11?.4:.25;else{const L=len(c.s);e+=c.r===14?(L<=3?.8:.6):c.r===13?(L>=2&&L<=4?.4:.2):0}}
-   if(tr&&nt>=4)e+=(nt-3)*.3;if(tr&&nt)for(const s of SUITS)if(s!==tr&&!len(s))e+=Math.min(nt,2)*.3}
+  if(lv>=3)e=jEst(hand,this.trump);
   else for(const c of hand){if(c.j)e+=1;else if(this.trump&&c.s===this.trump)e+=c.r>=13?.9:c.r>=11?.55:.3;else e+=c.r===14?.7:c.r===13?.3:0}
   if(lv===1)e+=Math.random()*2.4-1.2;
   let b=Math.max(0,Math.min(n,Math.round(e)));if(b===this.forbidden(p))b=b>0?b-1:b+1;return Math.min(n,b)},
@@ -373,21 +390,21 @@ const JK=GAME.joker={title:'ჯოკერი',
   const pips=p=>jPips(this.bids[p],this.taken[p]);
   const seat=(p,pos)=>`<div class="seat ${pos}${this.cur===p&&(this.phase==='bid'||this.phase==='play'||this.phase==='trump')?' turn':''}">${avAny(this.ids[p],38)}<b>${esc(this.nm(p))}</b>${pips(p)}<span>${this.score[p]}</span></div>`;
   const tr=this.trick.map(e=>{const h=jCardHTML(e.card).replace('class="card','class="card p'+e.p);return e.card.j?h.replace('</div>',`<span class="jm">${e.jm==='hi'?'მაღალი':'დაბალი'}${e.js?' '+SY[e.js]:''}</span></div>`):h}).join('');
-  const trumpTxt=this.phase==='trump'?'კოზირი ირჩევა':this.trump?`კოზირი: <b style="color:${isRed(this.trump)?'#FF8A9A':'inherit'}">${SY[this.trump]}</b> ${SN[this.trump]}`:'უკოზირო';
+  const trumpTxt=this.phase==='trump'?'კოზირი ირჩევა':this.trump?`კოზირი: <b style="color:${suitInk(this.trump)}">${SY[this.trump]}</b> ${SN[this.trump]}`:'უკოზირო';
   const L=this.phase==='play'&&this.cur===0?this.legal(0):[];
   const hand=this.phase==='trump'&&this.cur===0?this.first3[0].map(c=>jCardHTML(c)).join('')+'<div class="card" style="opacity:.25" aria-hidden="true"></div>'.repeat(this.n-3)
    :this.hands[0].map((c,i)=>`<button class="card${c.j?' jk':''}${!c.j&&isRed(c.s)?' red':''}" data-a="jcard" data-i="${i}"${c.j?'':` data-s="${SY[c.s]}"`} aria-label="${cardName(c)}"${L.includes(c)?'':' disabled'}>${c.j?'<i>★</i>ჯოკერი':`<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span>`}</button>`).join('');
   let panel='',st='';
   if(this.phase==='trump'){if(this.cur===0){st='ნახე პირველი სამი კარტი და აირჩიე კოზირი';panel=`<div class="suits">${SUITS.map(s=>`<button class="${isRed(s)?'red':''}" data-a="jtrump" data-s="${s}" aria-label="${SN[s]}">${SY[s]}</button>`).join('')}</div><button class="btn ghost" data-a="jtrump" data-s="" style="align-self:center">უკოზირო</button>`}else st=esc(this.nm(this.cur))+' ირჩევს კოზირს…'}
-  else if(this.phase==='bid'){if(this.cur===0){const f=this.forbidden(0);st='რამდენს წაიღებ?'+(f>=0?` დამრიგებელი ხარ, ${f}-ს ვერ იტყვი`:'');panel=`<div class="bids" role="group" aria-label="ნათქვამი" style="--c:${jBidCols(this.n)}">${Array.from({length:this.n+1},(_,v)=>`<button data-a="jbid" data-v="${v}"${v===f?' disabled':''}>${v===0?'პასი':v}</button>`).join('')}</div>`}else st=esc(this.nm(this.cur))+' ამბობს…'}
+  else if(this.phase==='bid'){if(this.cur===0){const f=this.forbidden(0),hn=jHintOn()?jHint(this.hands[0],this.trump,this.n,f):-1;st='რამდენს წაიღებ?'+(f>=0?` დამრიგებელი ხარ, ${f}-ს ვერ იტყვი`:'')+(hn>=0?`<small class="bhint">რჩევა: ${hn===0?'პასი':hn}</small>`:'');panel=`<div class="bids" role="group" aria-label="ნათქვამი" style="--c:${jBidCols(this.n)}">${Array.from({length:this.n+1},(_,v)=>`<button data-a="jbid" data-v="${v}"${v===f?' disabled':''}${v===hn?' class="hint" aria-description="რჩევა"':''}>${v===0?'პასი':v}</button>`).join('')}</div>`}else st=esc(this.nm(this.cur))+' ამბობს…'}
   else if(this.phase==='play'){st=this.win!=null?(this.win===0?'ეს ხელი შენ წაიღე':esc(JK_ERG[this.win-1])+' წაიღო ხელი'):this.cur===0?(g3?'შენი სვლაა. შეეხე კარტს ორჯერ ან აიტანე მაგიდაზე':'შენი სვლაა'):esc(this.nm(this.cur))+' ფიქრობს…'}
   else if(this.phase==='handover'||this.phase==='over'){const{hand:last,prem}=jLast(this.hist);const mn=last.p[0]+(prem?prem.p[0]:0);
    st=this.phase==='over'?(this.score[0]===Math.max(...this.score)?'მოიგე! +12 რეიტინგი, +10 მონეტა':'თამაში დასრულდა'):`ხელი დასრულდა. შენ: ${mn>0?'+':''}${mn}`+(prem?' · სექციის პრემია':'');
    panel=''}
-  const info=`<div class="ginfo"><span class="trump">${trumpTxt}</span><span>ხელი ${Math.min(this.h+1,JSEQ[this.len].length)}/${JSEQ[this.len].length}, ${this.n} კარტი</span></div>`;
+  const info=`<div class="ginfo"><span class="trump">${trumpTxt}</span><span>ხელი ${Math.min(this.h+1,JSEQ[this.len].length)}/${JSEQ[this.len].length}, ${this.n} კარტი</span>${this.lastT&&this.phase==='play'?jLastBtn('jlast'):''}</div>`;
   const stage=`<div class="jt${g3?' g3jt':''}">${seat(2,'top')}${seat(1,'left')}${seat(3,'right')}<div class="trick" aria-label="მაგიდა">${tr}</div>${g3?`<div class="g3 g3-joker${G3W.ready?'':' loading'}">${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div>`:''}</div>`;
   let res='';if(this.phase==='over'){const mx=Math.max(...this.score),win=this.score[0]===mx,pl=[0,1,2,3].sort((a,b)=>this.score[b]-this.score[a]);
-   res=gResBox(this,{title:win?'მოიგე!':'თამაში დასრულდა',sub:win?'ყველაზე მეტი ქულა შენ დააგროვე':'გაიმარჯვა: '+esc(this.nm(pl[0])),kind:win?'win':'lose',more:`<div class="gendt">${pl.map(p=>`<span><b>${esc(this.nm(p))}</b>${this.score[p]}</span>`).join('')}</div>`,again:'<button class="btn gold" data-a="jagain">ახალი თამაში</button>'})}
+   res=gResBox(this,{title:win?'მოიგე!':'თამაში დასრულდა',sub:win?'ყველაზე მეტი ქულა შენ დააგროვე':'გაიმარჯვა: '+esc(this.nm(pl[0])),kind:win?'win':'lose',more:`<div class="gendt">${pl.map(p=>`<span><b>${esc(this.nm(p))}</b>${this.score[p]}</span>`).join('')}</div>`,again:'<button class="btn gold" data-a="jagain">ახალი თამაში</button>',share:win?gShareBtn('joker',this.score[0]+' ქულით'):''})}
   gSaveLater(this);view.innerHTML=gShell('joker',{stage,mid:stage,top:top+info+jMiniHTML(this.hist,this.score,[0,1,2,3].map(p=>this.nm(p)),this.phase==='handover','jsheet'),bot:`<div class="pl me${mine?' turn':''}"><span class="plav">${av('me',34)}</span><span class="pln"><b>${esc(ME.name)}</b><span class="muted jme">${pips(0)}<span>${this.score[0]} ქულა</span></span></span></div>
    <div class="hand${g3?' g3sr':''}" aria-label="შენი კარტები">${hand}</div><div class="status${mine?' mine':''}" role="status">${st}</div>${panel}`,res});
   g3After('joker')}};
@@ -403,6 +420,12 @@ A.jcard=t=>{if(JK.phase!=='play'||JK.cur!==0)return;const c=JK.hands[0][+t.datas
  if(!c.j){JK.playCard(0,c);return}JK.pj=c;jkJokerSheet(!JK.trick.length,'jj')};
 A.jj=t=>{closeSheet();if(JK.pj&&JK.phase==='play'&&JK.cur===0){const c=JK.pj;JK.pj=null;JK.playCard(0,c,t.dataset.m,t.dataset.s||null)}};
 A.jsheet=()=>jSheetOpen(JK.hist,JK.score||[0,0,0,0],[0,1,2,3].map(p=>JK.nm(p)));
+A.jlast=()=>jLastOpen(JK.lastT,p=>p===0?'შენ':JK.nm(p),0);
+/* menu switches for cards: the four-colour deck, and the bid hint against the computer */
+function gSwFlip(t,on){const b=t&&t.closest&&t.closest('button'),s=b&&b.querySelector('.sw');if(b)b.setAttribute('aria-pressed',String(on));if(s)s.classList.toggle('on',on)}
+function gRedraw(){if(S.page&&S.page.id==='jktable'){if(typeof joDraw==='function')joDraw();return}const G=S.tab==='games'&&GAME[S.game];if(G&&G.render)G.render()}
+A.gc4=t=>{const on=!c4On();store.set('c4',on);document.documentElement.classList.toggle('c4',on);gSwFlip(t,on);gRedraw()};
+A.ghint=t=>{const on=!jHintOn();store.set('jkhint',on);gSwFlip(t,on);gRedraw()};
 
 /* flat boards: moving pieces, rolling dice, dealt cards (the 3D boards animate by themselves) */
 {const p=CH.play,r=CH.render,l=CH.load;

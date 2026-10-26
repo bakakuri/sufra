@@ -168,15 +168,23 @@ G3B.joker=()=>{const sc=g3Scene({cam:{fixed:jkCam,tgt:[0,0,0],fov:1,dy:0,dp:0,dz
  g3Static(sc,gLathe([[5.4,-1.2],[5.42,-.02],[5.45,.02],[5.6,.1],[5.95,.16],[6.22,.1],[6.3,0],[6.25,-.16],[6.1,-.24],[5.8,-.3],[5.7,-1.2],[0,-1.2]],120,.6),g3Mat({t:woodTex('mahog'),uv:[0,0,8,1],sh:70,sp:.4,gl:.4}),[0,0,0]);
  g3Static(sc,gLathe([[0,-11],[3.2,-11],[3.3,-10.6],[1.1,-9.8],[.9,-6],[1.3,-2.2],[2.4,-1.4],[0,-1.3]],48),g3Mat({t:woodTex('mahog'),uv:[0,0,4,1],sh:60,sp:.35,gl:.3}),[0,0,0]);
  mkModel(sc);
- const atl=g3T('cards2',()=>g3Tex(cardsCv(),{af:true})),back=cardUV(38);
+ const atl=jkAtlas(),back=cardUV(38);sc.c4=jkC4();
  g3Model(sc,'card',[[gQuad(CDW,CDH),g3Mat({t:atl,cut:true,vary:true,sh:30,sp:.18,gl:.1})],[gQuad(CDW,CDH,true),g3Mat({t:atl,uv:back,cut:true,sh:30,sp:.2,gl:.12})]],[CDW/2,CDH/2,.03]).land=()=>snd('card');
  g3Model(sc,'deck',[[gBox(CDW,1,CDH,0,1,(f,u,v)=>f===0?[back[0]+u*back[2],back[1]+v*back[3]]:[268/2048,170/2048]),g3Mat({t:atl,sh:20,sp:.15,gl:.1})]],null);
  /* the first touch lifts a card, the second plays it; a card dragged up onto the table is played too */
  sc.hoverAll=true;
  sc.tap=ray=>{const o=g3HitObj(sc,ray,o=>o.pick&&o.pick.i!=null);if(!o)return;if(sc.csel===o.pick.k){sc.csel=null;g3Act(sc.act||'jcard',{i:String(o.pick.i)});return}sc.csel=o.pick.k;snd('card',.6);G3U[sc.host](sc);g3Need()};
  sc.drag={y:.4,lift:.5,dz:0,start:o=>{sc.csel=o.pick.k},drop:(o,p)=>{if(p&&Math.hypot(p[0],p[2])<5.2){sc.csel=null;g3Act(sc.act||'jcard',{i:String(o.pick.i)})}}};
- sc.onResize=()=>{try{G3U[sc.host](sc)}catch(e){}};
+ sc.onResize=()=>{try{G3U[sc.host](sc)}catch(e){}};sc.people=seatOf;
  return sc};
+/* the card faces come in two decks; switching in the menu swaps the picture on the cards already on the table */
+const jkC4=()=>typeof c4On==='function'&&c4On();
+const jkAtlas=()=>{const c4=jkC4();return g3T('cards2'+(c4?'q':''),()=>g3Tex(cardsCv(c4),{af:true}))};
+function jkDeck(sc){const c4=jkC4();if(sc.c4===c4)return;sc.c4=c4;const t=jkAtlas();for(const m of['card','deck'])if(sc.models[m])sc.models[m].parts.forEach(p=>{p.mat.t=t})}
+/* what the people at the table do for a reaction: the head nods, shakes or tips back; laughing and a toast move the whole body */
+const GEST={nod:{h:{ax:'x',a:.2,f:2,d:1100}},laugh:{h:{ax:'x',a:.1,f:5,d:1300},bd:{b:.09,bf:10,d:1300}},wow:{h:{ax:'x',a:-.32,f:.5,d:1300}},cheer:{h:{ax:'x',a:.16,f:1.5,d:1500},bd:{b:.24,bf:3,d:1500}},shake:{h:{ax:'y',a:.3,f:3,d:1200}}};
+function g3Gest(who,kind){const sc=G3D.sc;if(!sc||!sc.people||!G3D.cv||!G3D.cv.isConnected)return;const r=sc.people(who);if(r==null)return;const W=GEST[kind]||GEST.nod;g3Wig(sc,'k:ph'+r,W.h);if(W.bd)g3Wig(sc,'k:pb'+r,W.bd)}
+const seatOf=who=>typeof who==='string'&&/^r[123]$/.test(who)?+who[1]:null;
 const lblModel=(sc,t)=>sc.models['l:'+t]||g3Model(sc,'l:'+t,[[gPlane(2.3,.58),g3Mat({t:labelTex(t),unlit:true})]],null);
 const FACEUP=yaw=>qt.mul(qt.ax(0,1,0,yaw),qt.ax(1,0,0,-Math.PI/2)),FACEDN=yaw=>qt.mul(qt.ax(0,1,0,yaw),qt.ax(1,0,0,Math.PI/2));
 /* a seat's frame: where it is, how it faces, and its lean toward the table while thinking */
@@ -191,7 +199,7 @@ function jkGaze(r,V,rel){const cur=V.cur!=null&&V.cur>=0?rel(V.cur):null,me=JSP[
  if(V.win!=null){tx=0;tz=0;pitch=.34}else if(cur===r){return{yaw:0,pitch:.42}}else if(cur!=null){tx=cur===0?0:JSP[cur][0];tz=cur===0?JR:JSP[cur][1];pitch=cur===0?.2:.1}else{tx=0;tz=0;pitch=.28}
  const f=[-me[0],-me[1]],d=[tx-me[0],tz-me[1]],a=Math.atan2(f[0]*d[1]-f[1]*d[0],f[0]*d[0]+f[1]*d[1]);return{yaw:clamp(-a,-.75,.75),pitch}}
 /* one picture of the table for both kinds of game */
-function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.act=V.act;
+function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.act=V.act;jkDeck(sc);
  const deal=V.deal!==sc.deal;if(deal)sc.deal=V.deal;const dealer=V.dealer!=null?rel(V.dealer):2,dp=dealer===0?[0,1.4,6.6]:jkLocal(dealer,0,[0,1.6,2.6]),cur=V.cur!=null&&V.cur>=0?rel(V.cur):null;
  /* the three others */
  for(const r of[1,2,3]){const id=V.ids[(r+V.base)%4],L0=jkLook(id.n,id.h),key=(id.k||id.n||'p'+r);jkPerson(sc,key,L0);
