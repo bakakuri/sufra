@@ -2161,3 +2161,14 @@ html.c4 .card[data-s="♦"],html.c4 .suits button[data-s="d"]{color:#1A55C4}
 .gs-lb .lbn .lbnn{display:flex;flex-direction:column;align-items:flex-start;min-width:0;line-height:1.2}
 .gs-lb .lbn .lbnn small{font-size:11.5px;color:var(--muted);font-weight:500}
 .lkv .seg.lkwrap{flex-wrap:wrap;border-radius:18px}.lkv .seg.lkwrap button{flex:1 1 30%}
+/* the style picker */
+.gstyl{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.gsty{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:16px;background:var(--surface);border:1.5px solid var(--line);text-align:left}
+.gsty.on{border-color:var(--gold);box-shadow:0 0 0 3px rgb(242 184 75/.15)}
+.gsw{flex:none;width:46px;height:46px;border-radius:12px;background:conic-gradient(var(--a) 0 120deg,var(--b) 0 240deg,var(--c) 0);box-shadow:inset 0 0 0 2px rgb(0 0 0/.15)}
+.gstx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.gstx b{font-size:15px}.gstx small{font-size:12.5px;color:var(--muted);line-height:1.3}
+.gpr{flex:none;display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;color:var(--gold)}.gpr svg{width:15px;height:15px}
+.gstynote{text-align:center;margin:4px 0 0}
+/* the style picker leaves the table in plain view above it */
+.sheet:has(>.panel.gclear){background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
+.panel.gclear{max-height:56vh}

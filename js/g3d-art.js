@@ -45,14 +45,20 @@ function feltCv(o){const S=1024,c=cvs(S,S),x=c.getContext('2d'),R=rng(41);const 
  return c}
 /* the nardi board top: frame wood, a light field with inlaid points in two colours, the bar and the tray */
 const NB={x0:-7,x1:8.6,z0:-6.1,z1:6.1};
-function nardiCv(){const S=2048,c=cvs(S,S),x=c.getContext('2d'),sx=S/(NB.x1-NB.x0),sz=S/(NB.z1-NB.z0),X=v=>(v-NB.x0)*sx,Z=v=>(v-NB.z0)*sz;
- x.drawImage(woodCv(S,S,WOOD.frame),0,0);
- const fw=woodCv(1024,1024,Object.assign({},WOOD.walnut,{base:'#b27f52',seed:51,lines:110,fig:.25}));x.drawImage(fw,X(-6.5),Z(-5.6),13*sx,11.2*sz);
+function nardiCv(style){const S=2048,c=cvs(S,S),x=c.getContext('2d'),sx=S/(NB.x1-NB.x0),sz=S/(NB.z1-NB.z0),X=v=>(v-NB.x0)*sx,Z=v=>(v-NB.z0)*sz,orn=style==='orn';
+ x.drawImage(woodCv(S,S,orn?WOOD.ebony:WOOD.frame),0,0);
+ const fw=woodCv(1024,1024,Object.assign({},WOOD.walnut,orn?{base:'#6a4428',seed:52,lines:120,fig:.3}:{base:'#b27f52',seed:51,lines:110,fig:.25}));x.drawImage(fw,X(-6.5),Z(-5.6),13*sx,11.2*sz);
  x.save();x.globalAlpha=.2;const sh=x.createLinearGradient(0,Z(-5.6),0,Z(5.6));sh.addColorStop(0,'#000');sh.addColorStop(.5,'rgba(0,0,0,0)');sh.addColorStop(1,'#000');x.fillStyle=sh;x.fillRect(X(-6.5),Z(-5.6),13*sx,11.2*sz);x.restore();
- const Lw=woodCv(512,512,WOOD.maple),Dw=woodCv(512,512,WOOD.rose);
+ const Lw=orn?pearlCv(512):woodCv(512,512,WOOD.maple),Dw=orn?woodCv(512,512,WOOD.ebony):woodCv(512,512,WOOD.rose);
  for(let col=0;col<13;col++){if(col===6)continue;for(const top of[1,0]){const cx=col-6,di=top?(col<6?12+col:18+col-7):(col<6?11-col:5-(col-7)),src=di%2?Dw:Lw;
    const y0=top?-5.55:5.55,y1=top?-.75:.75;x.save();x.beginPath();x.moveTo(X(cx-.46),Z(y0));x.lineTo(X(cx+.46),Z(y0));x.lineTo(X(cx),Z(y1));x.closePath();x.clip();x.drawImage(src,(col*61)%300,(top*170+col*23)%300,180,420,X(cx-.5),Z(Math.min(y0,y1)),sx,4.8*sz);x.restore();
-   x.strokeStyle='rgba(214,170,88,.85)';x.lineWidth=3;x.beginPath();x.moveTo(X(cx-.46),Z(y0));x.lineTo(X(cx),Z(y1));x.lineTo(X(cx+.46),Z(y0));x.stroke()}}
+   x.strokeStyle='rgba(214,170,88,.85)';x.lineWidth=3;x.beginPath();x.moveTo(X(cx-.46),Z(y0));x.lineTo(X(cx),Z(y1));x.lineTo(X(cx+.46),Z(y0));x.stroke();
+   /* inlaid: small diamonds of mother-of-pearl down the dark points, a gold dot near the tip of the light ones */
+   if(orn){const k=top?1:-1;if(di%2)for(let t=0;t<4;t++){const yy=y0+k*(.55+t*.95),w=.11*(1-t*.18);x.fillStyle='rgba(236,230,214,.9)';x.beginPath();x.moveTo(X(cx),Z(yy-k*.16));x.lineTo(X(cx+w),Z(yy));x.lineTo(X(cx),Z(yy+k*.16));x.lineTo(X(cx-w),Z(yy));x.fill()}
+    else{x.fillStyle='rgba(212,168,80,.95)';x.beginPath();x.arc(X(cx),Z(y1-k*.55),4,0,Math.PI*2);x.fill()}}}}
+ if(orn){/* a gold border of interlace round the playing field, and the sun of Georgia, the borjgali, on the bar */
+  ornBand(x,X(-6.5),Z(-5.62),13*sx,14,'rgba(222,184,96,.95)');ornBand(x,X(-6.5),Z(5.62)-14,13*sx,14,'rgba(222,184,96,.95)');
+  for(const zz of[-2.6,2.6])borjgali(x,X(0),Z(zz),.34*sx,'rgba(236,230,214,.95)')}
  x.fillStyle='#173d2b';x.fillRect(X(6.95),Z(-5.6),1.2*sx,11.2*sz);x.globalCompositeOperation='overlay';x.globalAlpha=.4;x.drawImage(noiseCv(128,512,rng(5),80,180),X(6.95),Z(-5.6),1.2*sx,11.2*sz);
  x.globalCompositeOperation='source-over';x.globalAlpha=1;return c}
 /* suits drawn as shapes, so they look the same on every phone */
@@ -67,7 +73,7 @@ const CW=256,CH_=360,CATL=2048;
 const cardIdx=c=>c.j?35+c.j:SUITS.indexOf(c.s)*9+c.r-6;
 const cardUV=i=>[(i%8)*CW/CATL,Math.floor(i/8)*CH_/CATL,CW/CATL,CH_/CATL];
 function rrect(x,X,Y,w,h,r){x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+w,Y,X+w,Y+h,r);x.arcTo(X+w,Y+h,X,Y+h,r);x.arcTo(X,Y+h,X,Y,r);x.arcTo(X,Y,X+w,Y,r);x.closePath()}
-function cardsCv(c4){const c=cvs(CATL,CATL),x=c.getContext('2d'),F='"Noto Serif Georgian",Georgia,"Times New Roman",serif',FS='"Noto Sans Georgian","DejaVu Sans",system-ui,sans-serif';
+function cardsCv(c4,style){const geoS=style==='geo',c=cvs(CATL,CATL),x=c.getContext('2d'),F='"Noto Serif Georgian",Georgia,"Times New Roman",serif',FS='"Noto Sans Georgian","DejaVu Sans",system-ui,sans-serif';
  const face=(i,draw)=>{const X=(i%8)*CW,Y=Math.floor(i/8)*CH_;x.save();x.translate(X,Y);rrect(x,3,3,CW-6,CH_-6,24);x.fillStyle='#FFFDF8';x.fill();x.strokeStyle='rgba(60,40,20,.28)';x.lineWidth=2.5;x.stroke();x.clip();draw();x.restore()};
  /* big corner indices (rank over suit), as on cards made to be read across a table; pips sit in a narrower middle */
  const PIPL={6:[[.25,.22],[.75,.22],[.25,.5],[.75,.5],[.25,.78],[.75,.78]],7:[[.25,.22],[.75,.22],[.5,.36],[.25,.5],[.75,.5],[.25,.78],[.75,.78]],8:[[.25,.22],[.75,.22],[.5,.36],[.25,.5],[.75,.5],[.5,.64],[.25,.78],[.75,.78]],
@@ -78,14 +84,22 @@ function cardsCv(c4){const c=cvs(CATL,CATL),x=c.getContext('2d'),F='"Noto Serif 
    corner();x.save();x.translate(CW,CH_);x.rotate(Math.PI);corner();x.restore();
    if(r<=10){for(const[u,v]of PIPL[r]){const px=80+u*96,py=46+v*268;x.save();x.translate(px,py);if(v>.55)x.rotate(Math.PI);suitPath(x,s,0,0,31);x.restore()}}
    else if(r===14){suitPath(x,s,CW/2,CH_/2,104);x.save();x.globalAlpha=.33;x.strokeStyle=col;x.lineWidth=3;x.beginPath();x.arc(CW/2,CH_/2,68,0,Math.PI*2);x.stroke();x.restore()}
+   else if(geoS){/* the Georgian deck: a parchment panel with interlace, and a crown, a tiara or a feathered cap over the letter */
+    const g=x.createLinearGradient(0,60,0,300);g.addColorStop(0,'#FFF4DC');g.addColorStop(1,'#F2DDB0');x.fillStyle=g;rrect(x,82,40,92,280,12);x.fill();x.strokeStyle=col;x.lineWidth=3;x.stroke();
+    ornBand(x,90,50,76,16,col);ornBand(x,90,294,76,16,col);courtIcon(x,r,128,CH_/2-44,col);x.fillStyle=col;x.font=`700 70px ${F}`;x.fillText(t,128,CH_/2+42);suitPath(x,s,128,CH_/2+88,26)}
    else{const g=x.createLinearGradient(0,60,0,300);g.addColorStop(0,'#FBEFD2');g.addColorStop(1,'#F0D9A6');x.fillStyle=g;rrect(x,86,46,84,268,10);x.fill();x.strokeStyle=col;x.lineWidth=3;x.stroke();x.lineWidth=1.2;rrect(x,92,52,72,256,6);x.stroke();
     x.fillStyle=col;x.font=`700 80px ${F}`;x.fillText(t,128,CH_/2+18);suitPath(x,s,128,CH_/2+74,28);suitPath(x,s,128,CH_/2-78,28)}})}
  for(const j of[1,2])face(35+j,()=>{const col=j===1?'#CE1430':'#1F2F6B',g=x.createRadialGradient(CW/2,CH_/2,10,CW/2,CH_/2,150);g.addColorStop(0,j===1?'#FFE3EA':'#E2E8FF');g.addColorStop(1,'#FFFDF8');x.fillStyle=g;x.fillRect(0,0,CW,CH_);
-  x.fillStyle=col;x.save();x.translate(CW/2,CH_/2-24);x.beginPath();for(let k=0;k<10;k++){const a=-Math.PI/2+k*Math.PI/5,rr=k%2?28:68;x.lineTo(Math.cos(a)*rr,Math.sin(a)*rr)}x.closePath();x.fill();x.restore();
+  if(geoS)borjgali(x,CW/2,CH_/2-24,72,col);else{x.fillStyle=col;x.save();x.translate(CW/2,CH_/2-24);x.beginPath();for(let k=0;k<10;k++){const a=-Math.PI/2+k*Math.PI/5,rr=k%2?28:68;x.lineTo(Math.cos(a)*rr,Math.sin(a)*rr)}x.closePath();x.fill();x.restore()}x.fillStyle=col;
   x.font=`700 34px ${F}`;x.textAlign='center';x.fillText('ჯოკერი',CW/2,CH_/2+76);
   const corner=()=>{x.save();x.translate(46,64);x.beginPath();for(let k=0;k<10;k++){const a=-Math.PI/2+k*Math.PI/5,rr=k%2?15:36;x.lineTo(Math.cos(a)*rr,Math.sin(a)*rr)}x.closePath();x.fill();x.restore()};
   corner();x.save();x.translate(CW,CH_);x.rotate(Math.PI);corner();x.restore()});
- face(38,()=>{x.fillStyle='#7A1430';x.fillRect(0,0,CW,CH_);x.strokeStyle='rgba(232,190,100,.9)';x.lineWidth=4;rrect(x,16,16,CW-32,CH_-32,14);x.stroke();
+ if(geoS)face(38,()=>{/* the back: deep red, a gold interlace frame, small crosses in a lattice and the borjgali in the middle */
+  x.fillStyle='#5E0F24';x.fillRect(0,0,CW,CH_);x.strokeStyle='rgba(232,190,100,.9)';x.lineWidth=4;rrect(x,14,14,CW-28,CH_-28,14);x.stroke();
+  ornBand(x,24,24,CW-48,18,'rgba(232,190,100,.85)');ornBand(x,24,CH_-42,CW-48,18,'rgba(232,190,100,.85)');
+  x.fillStyle='rgba(232,190,100,.35)';for(let i=0;i<6;i++)for(let k=0;k<9;k++){const X=36+i*37+(k%2)*18,Y=62+k*30;x.fillRect(X-1.5,Y-6,3,12);x.fillRect(X-6,Y-1.5,12,3)}
+  x.fillStyle='#5E0F24';x.beginPath();x.arc(CW/2,CH_/2,58,0,Math.PI*2);x.fill();x.strokeStyle='rgba(232,190,100,.95)';x.lineWidth=3;x.stroke();borjgali(x,CW/2,CH_/2,46,'rgba(232,190,100,.95)')});
+ else face(38,()=>{x.fillStyle='#7A1430';x.fillRect(0,0,CW,CH_);x.strokeStyle='rgba(232,190,100,.9)';x.lineWidth=4;rrect(x,16,16,CW-32,CH_-32,14);x.stroke();
   x.save();rrect(x,24,24,CW-48,CH_-48,10);x.clip();x.strokeStyle='rgba(232,190,100,.28)';x.lineWidth=2;for(let k=-CH_;k<CW+CH_;k+=22){x.beginPath();x.moveTo(k,0);x.lineTo(k+CH_,CH_);x.stroke();x.beginPath();x.moveTo(k+CH_,0);x.lineTo(k,CH_);x.stroke()}x.restore();
   x.fillStyle='#7A1430';x.beginPath();x.arc(CW/2,CH_/2,62,0,Math.PI*2);x.fill();x.strokeStyle='rgba(232,190,100,.95)';x.lineWidth=4;x.stroke();
   x.fillStyle='rgba(232,190,100,.95)';x.save();x.translate(CW/2,CH_/2);for(let k=0;k<8;k++){x.rotate(Math.PI/4);x.beginPath();x.moveTo(0,-46);x.quadraticCurveTo(14,-14,0,0);x.quadraticCurveTo(-14,-14,0,-46);x.fill()}x.restore()});
@@ -301,3 +315,18 @@ function leafCv(){const S=256,c=cvs(S,S),x=c.getContext('2d');x.translate(S/2,S/
 function gSweep(path,rad,sg=14){const g=geo(),n=path.length,rings=[];for(let i=0;i<n;i++){const a=path[Math.max(0,i-1)],b=path[Math.min(n-1,i+1)],t=v3.norm(v3.sub(b,a)),up=Math.abs(t[1])>.9?[1,0,0]:[0,1,0],u=v3.norm(v3.cross(t,up)),w=v3.cross(u,t),r=rad(i/(n-1)),ring=[];
   for(let j=0;j<=sg;j++){const ang=j/sg*Math.PI*2,nv=v3.add(v3.mul(u,Math.cos(ang)),v3.mul(w,Math.sin(ang)));ring.push(gv(g,path[i][0]+nv[0]*r,path[i][1]+nv[1]*r,path[i][2]+nv[2]*r,nv[0],nv[1],nv[2],j/sg,i/(n-1)))}rings.push(ring)}
  for(let i=0;i<n-1;i++)for(let j=0;j<sg;j++){const A=rings[i],B=rings[i+1];g.i.push(A[j],B[j],B[j+1],A[j],B[j+1],A[j+1])}return g}
+/* mother-of-pearl: pale, with a shimmer of pink, green and blue */
+function pearlCv(S){const c=cvs(S,S),x=c.getContext('2d'),R=rng(37),g=x.createLinearGradient(0,0,S,S);g.addColorStop(0,'#F4EEE6');g.addColorStop(.3,'#E9E4F0');g.addColorStop(.55,'#E4F0EA');g.addColorStop(.8,'#F2E6E8');g.addColorStop(1,'#EDEBE4');x.fillStyle=g;x.fillRect(0,0,S,S);
+ for(let k=0;k<70;k++){const X=R()*S,Y=R()*S,r=10+R()*40,h=[330,160,210,40][k%4];x.fillStyle=`hsla(${h},40%,80%,.18)`;x.beginPath();x.ellipse(X,Y,r,r*.4,R()*3,0,Math.PI*2);x.fill()}return c}
+/* Georgian interlace along a band: two ribbons weaving over and under */
+function ornBand(x,X0,Y0,len,h,col){x.save();x.strokeStyle=col;x.lineWidth=Math.max(2,h*.18);const n=Math.max(4,Math.round(len/(h*2.2))),w=len/n;
+ for(let k=0;k<n;k++){const cx=X0+w*(k+.5),cy=Y0+h/2;x.beginPath();x.ellipse(cx,cy,w*.45,h*.42,0,0,Math.PI*2);x.stroke();x.beginPath();x.moveTo(cx-w*.5,Y0+h*.15);x.bezierCurveTo(cx-w*.1,Y0+h*.15,cx+w*.1,Y0+h*.85,cx+w*.5,Y0+h*.85);x.stroke()}x.restore()}
+/* the borjgali: seven curved rays turning round a centre */
+function borjgali(x,cx,cy,r,col){x.save();x.translate(cx,cy);x.fillStyle=col;for(let k=0;k<7;k++){x.save();x.rotate(k*Math.PI*2/7);x.beginPath();x.moveTo(0,0);
+ x.bezierCurveTo(r*.15,-r*.35,r*.55,-r*.55,r*.95,-r*.25);x.bezierCurveTo(r*.7,-r*.25,r*.45,-r*.05,r*.28,r*.12);x.closePath();x.fill();x.restore()}x.beginPath();x.arc(0,0,r*.16,0,Math.PI*2);x.fill();x.restore()}
+/* the court cards of the Georgian deck: a crown for the king, a tiara for the queen, a feathered cap for the jack */
+function courtIcon(x,r,cx,cy,col){x.save();x.translate(cx,cy);x.fillStyle=col;x.strokeStyle=col;x.lineWidth=3;
+ if(r===13){x.beginPath();x.moveTo(-36,22);x.lineTo(-40,-14);x.lineTo(-20,4);x.lineTo(0,-24);x.lineTo(20,4);x.lineTo(40,-14);x.lineTo(36,22);x.closePath();x.fill();x.fillStyle='#FFF4DC';for(const a of[-20,0,20]){x.beginPath();x.arc(a,12,4,0,Math.PI*2);x.fill()}}
+ else if(r===12){x.beginPath();x.moveTo(-38,20);x.quadraticCurveTo(0,-8,38,20);x.lineTo(30,24);x.quadraticCurveTo(0,4,-30,24);x.closePath();x.fill();for(const a of[-22,0,22]){x.beginPath();x.moveTo(a-7,a?10:2);x.lineTo(a,a?-6:-20);x.lineTo(a+7,a?10:2);x.fill()}x.fillStyle='#FFF4DC';x.beginPath();x.arc(0,-6,4,0,Math.PI*2);x.fill()}
+ else{x.beginPath();x.ellipse(0,10,34,14,0,0,Math.PI*2);x.fill();x.beginPath();x.moveTo(-26,8);x.quadraticCurveTo(-4,-26,24,4);x.closePath();x.fill();x.beginPath();x.moveTo(18,0);x.quadraticCurveTo(44,-30,30,-42);x.quadraticCurveTo(34,-18,14,-4);x.fill()}
+ x.restore()}

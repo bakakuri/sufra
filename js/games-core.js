@@ -205,6 +205,7 @@ A.gmenu=()=>{const id=gCur(),G=GAME[id],c=G&&G.ctx,sw=on=>`<i class="sw${on?' on
   <button data-a="gfull" aria-pressed="${!!document.fullscreenElement}">${ic('full')}<span>სრული ეკრანი</span>${sw(!!document.fullscreenElement)}</button>
   <button data-a="gsnd" aria-pressed="${GS.on}">${ic('mic')}<span>ხმა და ვიბრაცია</span>${sw(GS.on)}</button>
   ${g3Want()?`<button data-a="gqual">${ic('gear')}<span>გრაფიკა</span><small class="gmv">${GQN[gqSet()]}${gqSet()==='auto'?', '+GQN[gqLevel()].toLowerCase():''}</small></button>`:''}
+  ${g3Want()&&GSTY[id]?`<button data-a="gsty">${ic('star')}<span>სტილი</span><small class="gmv">${GSTY[id].find(x=>x[0]===gStyle(id))[1]}</small></button>`:''}
   ${g3Want()?`<button data-a="genv">${ic('clock')}<span>დღე თუ საღამო</span><small class="gmv">${GEN[genvSet()]}</small></button>`:''}
   ${c&&c.mode==='bot'&&!S.page?`<button data-a="gbot">${ic('user')}<span>ბოტის დონე</span><small class="gmv">${BLV[bLvl(id)].n}</small></button>`:''}
   ${g3Want()&&['chess','shashi','nardi'].includes(id)?`<button data-a="gppl" aria-pressed="${gPplOn()}">${ic('users')}<span>მეტოქე მაგიდასთან</span>${sw(gPplOn())}</button>`:''}
@@ -342,3 +343,22 @@ const GEN={auto:'საათის მიხედვით',day:'დღე',ev
 const genvSet=()=>{const v=store.get('genv','auto');return GEN[v]?v:'auto'};
 A.genv=()=>{const cur=genvSet();sheet(head('დღე თუ საღამო')+`<div class="gmenu">${Object.keys(GEN).map(k=>`<button data-a="genvset" data-v="${k}"${k===cur?' aria-pressed="true"':''}>${ic(k===cur?'check':'clock')}<span><b>${GEN[k]}</b><br><small class="muted">${{auto:'დილის 7-დან საღამოს 7-მდე დღეა, მერე საღამო',day:'ნათელი, ფანჯრიდან ცა მოჩანს',eve:'თბილი შუქი, ანთებული ნათურები'}[k]}</small></span></button>`).join('')}</div>`,'short')};
 A.genvset=t=>{store.set('genv',t.dataset.v);closeSheet();gRedraw()};
+/* ---------- styles for the 3D tables: another board, deck or set, bought with coins ----------
+   tap a style to see it on the table at once; the table goes back to your own style when the sheet closes */
+const GSTY={nardi:[['classic','კლასიკური','ხის დაფა, ნეკერჩხლისა და ვარდის ხის პუნქტებით',0,'#b27f52,#f2dcb4,#6e3420'],['orn','ორნამენტული','შავი ხე, სადაფის ინკრუსტაცია, ოქროს ჩუქურთმა და ბორჯღალი',300,'#3a2a24,#efe9e4,#d9b060']],
+ joker:[['classic','კლასიკური','ჩვეულებრივი დასტა, ბორდოსფერი ზურგით',0,'#7a1430,#fffdf8,#e8be64'],['geo','ქართული','ზურგზე ბორჯღალი და ჩუქურთმა, ფიგურებზე გვირგვინი, დიადემა და ფრთიანი ქუდი',250,'#5e0f24,#fff4dc,#e8be64']],
+ chess:[['classic','კლასიკური','ბზისა და შავი ხის ფიგურები',0,'#ead3a8,#3a2a24,#8a5a34'],['carved','ხის ნაკვეთი','იგივე ფორმები ზეთისხილისა და ვარდის ხისგან',200,'#d8be8c,#6e3420,#a8743a'],['modern','თანამედროვე','სადა ფორმები, მქრქალი სპილოსძვლისფერი და ნახშირისფერი',300,'#eee9df,#2c2b2e,#9a9690']]};
+const GOWN=new Set((()=>{try{return store.get('gown',[])||[]}catch(e){return[]}})());
+let GPRV=null;
+function gStyle(g){if(GPRV&&GPRV.g===g)return GPRV.s;const L=GSTY[g];if(!L)return 'classic';const s=store.get('gsty:'+g,'classic'),it=L.find(x=>x[0]===s);return it&&(!it[3]||GOWN.has(g+':'+s))?s:'classic'}
+function gOwnLoad(){if(gOwnLoad.at&&Date.now()-gOwnLoad.at<6e4)return;gOwnLoad.at=Date.now();q(sb.from('game_items').select('item').eq('user_id',ME.id)).then(rows=>{GOWN.clear();(rows||[]).forEach(r=>GOWN.add(r.item));store.set('gown',[...GOWN])}).catch(()=>{})}
+const gOwns=(g,it)=>!it[3]||GOWN.has(g+':'+it[0]);
+function gStyHTML(g){const cur=gStyle(g),mine=store.get('gsty:'+g,'classic'),sel=GSTY[g].find(x=>x[0]===cur);
+ return GSTY[g].map(it=>{const own=gOwns(g,it),on=it[0]===cur,c=it[4].split(',');return `<button class="gsty${on?' on':''}" data-a="gstyp" data-s="${it[0]}" aria-pressed="${on}"><span class="gsw" style="--a:${c[0]};--b:${c[1]};--c:${c[2]}"></span><span class="gstx"><b>${it[1]}</b><small>${it[2]}</small></span><span class="gpr">${own?(it[0]===mine?'შენი':'გაქვს'):ic('coin')+it[3]}</span></button>`}).join('')
+ +(sel&&sel[0]!==mine?(gOwns(g,sel)?`<button class="btn" data-a="gstyset" data-s="${sel[0]}" style="width:100%">„${sel[1]}“ არჩევა</button>`:`<button class="btn gold" data-a="gstybuy" data-s="${sel[0]}" style="width:100%">${ic('coin')}ყიდვა ${sel[3]} მონეტით</button><p class="note gstynote">შენ გაქვს ${ME.coins??0} მონეტა.</p>`):'')}
+A.gsty=()=>{const g=gCur();if(!GSTY[g])return;GPRV=null;gOwnLoad();sheet(head('სტილი')+`<div class="ph-body"><p class="note">შეეხე სტილს და მაგიდაზე მაშინვე ნახავ.</p><div class="gstyl" id="gstyl">${gStyHTML(g)}</div></div>`,'short gclear',()=>{if(GPRV){GPRV=null;gRedraw()}})};
+A.gstyp=t=>{const g=gCur();if(!GSTY[g])return;GPRV={g,s:t.dataset.s};gRedraw();const l=$('#gstyl');if(l)l.innerHTML=gStyHTML(g)};
+A.gstyset=t=>{const g=gCur(),it=GSTY[g]&&GSTY[g].find(x=>x[0]===t.dataset.s);if(!it||!gOwns(g,it))return;store.set('gsty:'+g,it[0]);GPRV=null;closeSheet();gRedraw();toast('სტილი: '+it[1])};
+A.gstybuy=async t=>{const g=gCur(),it=GSTY[g]&&GSTY[g].find(x=>x[0]===t.dataset.s);if(!it)return;if((ME.coins??0)<it[3]){toast(`ამას ${it[3]} მონეტა სჭირდება. მონეტებს მოგებით და ყოველდღიური ბონუსით აგროვებ`);return}
+ t.disabled=true;try{const r=await rpc('buy_item',{p_item:g+':'+it[0]});GOWN.add(g+':'+it[0]);store.set('gown',[...GOWN]);if(r&&r.coins!=null)setCoins(r.coins);store.set('gsty:'+g,it[0]);GPRV=null;closeSheet();gRedraw();toast('იყიდე: '+it[1]);if(typeof confetti==='function')confetti()}
+ catch(e){t.disabled=false;const m=String(e&&(e.code||'')+' '+(e.message||''));toast(/PGRST202|Could not find the function|does not exist/i.test(m)?'მაღაზია ბაზის განახლების შემდეგ გაიხსნება. მანამდე სტილების ნახვა შეგიძლია':errMsg(e))}};
