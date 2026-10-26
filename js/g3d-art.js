@@ -159,8 +159,12 @@ function headV(y){const P=HEADP,len=[0];for(let i=1;i<P.length;i++)len.push(len[
  for(let i=1;i<P.length;i++)if(y<=P[i][1]){const k=(y-P[i-1][1])/(P[i][1]-P[i-1][1]);return 1-(len[i-1]+(len[i]-len[i-1])*k)/L}return 0}
 function personGeo(o){const S=v=>v,body={shirt:[],skin:[],chair:[]},head={face:[],skin:[],hair:[]};
  body.shirt.push(gScale3(gLathe(TORSOP,36),1.2,1,.7));
- for(const s of[-1,1]){body.shirt.push(gCap([s*1.82,2.15,0],[s*2.3,.55,1.0],.58,.5),gCap([s*2.3,.55,1.0],[s*.98,1.12,2.38],.48,.38));
-  body.skin.push(gEll(.36,.46,.28,[s*.74,1.3,2.56],qt.mul(qt.ax(0,0,1,s*.55),qt.ax(1,0,0,-.3))))}
+ /* the upper arms belong to the body; each forearm with its cuff and hand turns at the elbow, so hands can clap */
+ const arms={};for(const s of[-1,1]){body.shirt.push(gCap([s*1.82,2.15,0],ELB(s),.58,.5));const E=ELB(s),W=[s*.98,1.12,2.38],fa=v3.norm(v3.sub(W,E));
+  arms[s]={sleeve:gMerge(gCap([0,0,0],v3.sub(W,E),.48,.38),gXf(gTorus(.43,.1,20,8),v3.sub(v3.add(W,v3.mul(fa,-.14)),E),qFromY(fa))),
+   hand:gXf(handGeo(s),v3.sub(v3.add(W,v3.mul(fa,.1)),E),qBasis([-s*.7,-.06,1],[s*.3,1,0]))}}
+ /* the collar round the neck */
+ body.shirt.push(gXf(gTorus(.58,.15,28,8),[0,2.62,.05],qt.ax(1,0,0,.12)));
  body.skin.push(gCap([0,2.45,0],[0,3.42,.1],.47,.45));
  body.chair.push(gBox(4.2,4.3,.36,.15,3,null),gBox(4.9,.62,.56,.24,3,null),gBox(.5,6.4,.5,.2,3,null),gBox(.5,6.4,.5,.2,3,null));
  gXf(body.chair[0],[0,1.75,-1.82],qt.id());gXf(body.chair[1],[0,4.1,-1.82],qt.id());gXf(body.chair[2],[-2.3,1.1,-1.82],qt.id());gXf(body.chair[3],[2.3,1.1,-1.82],qt.id());
@@ -173,27 +177,61 @@ function personGeo(o){const S=v=>v,body={shirt:[],skin:[],chair:[]},head={face:[
    for(let i=0;i<=rows;i++){const y=t0+(b0-t0)*i/rows,r=y>=1.3?0:headR(y)*1.05+.055,x=Math.cos(th)*r,z=Math.sin(th)*r*1.06,n=v3.norm([x/1.04,y/1.5,z/1.12]);col.push(gv(g,x+HC[0],y+HC[1],z+HC[2],n[0],n[1],n[2],j/sg,i/rows))}cols.push(col)}
   for(let j=0;j<sg;j++){const A=cols[j],B=cols[j+1];if(!A||!B)continue;for(let i=0;i<rows;i++)g.i.push(A[i],B[i],B[i+1],A[i],B[i+1],A[i+1])}return g};
  const crown=()=>1.32;
+ const short=()=>hs(crown,f=>f>0?.12+.5*Math.pow(f,1.3):.12-.62*Math.pow(-f,.9));
  if(o.style==='long'){head.hair.push(hs(crown,f=>f>0?.62*Math.pow(f,1.4)-.05:-.05-.95*Math.pow(-f,.8)),gXf(gBox(2.0,2.5,.7,.34,3),[0,.05,-.62],qt.ax(1,0,0,.1)));
   for(const s of[-1,1])head.hair.push(gXf(gBox(.42,2.1,.58,.2,3),[s*1.0,.32,.12],qt.ax(0,0,1,s*.06)))}
  else if(o.style==='bald')head.hair.push(hs(f=>.42-.25*Math.max(f,0),f=>-.15-.4*Math.max(-f,0),f=>f<.3));
- else head.hair.push(hs(crown,f=>f>0?.12+.5*Math.pow(f,1.3):.12-.62*Math.pow(-f,.9)));
+ else if(o.style==='pony'){head.hair.push(hs(crown,f=>f>0?.3+.42*Math.pow(f,1.3):.3-1.0*Math.pow(-f,.85)));
+  /* hair drawn back into a tail with a band */
+  head.hair.push(gCap([0,1.55,-.9],[0,-.35,-1.42],.3,.15,14),gXf(gTorus(.24,.08,16,6),[0,1.42,-.98],qt.ax(1,0,0,-.35)))}
+ else if(o.style==='curly'){head.hair.push(hs(crown,f=>f>0?.22+.48*Math.pow(f,1.3):.2-.55*Math.pow(-f,.9)));
+  /* curls: small round tufts over the crown and the sides */
+  const R=rng(31);for(let k=0;k<64;k++){const th=R()*Math.PI*2,f=Math.sin(th),y=.35+R()*(f>.3?.85:1.0),r=headR(y)*1.07+.1;if(f>.55&&y<.75)continue;
+   head.hair.push(gEll(.2+R()*.06,.18,.2+R()*.06,[Math.cos(th)*r+HC[0],y+HC[1],Math.sin(th)*r*1.06+HC[2]],null,8))}}
+ else head.hair.push(short());
  if(o.mus)head.hair.push(gEll(.44,.11,.15,[0,.6,1.09],qt.ax(1,0,0,.1)));
- const m=a=>a.length?gMerge(...a):null;return{body:{shirt:m(body.shirt),skin:m(body.skin),chair:m(body.chair)},head:{face:m(head.face),skin:m(head.skin),hair:m(head.hair)}}}
+ /* a beard round the jaw and the chin, leaving the mouth */
+ if(o.beard)head.hair.push(hs(f=>.12-.74*Math.pow(Math.max(f,0),2),()=>-1.2,f=>f>-.25));
+ /* glasses: two round frames on the nose */
+ const frame=[];if(o.glasses){for(const s of[-1,1]){frame.push(gXf(gTorus(.2,.03,22,6),[s*.36,1.17,1.1],qt.ax(1,0,0,Math.PI/2)));frame.push(gCap([s*.56,1.2,1.0],[s*.98,1.22,.35],.025,.025,6))}frame.push(gCap([-.16,1.2,1.12],[.16,1.2,1.12],.025,.025,6))}
+ /* a flat cap */
+ const hat=[];if(o.hat){hat.push(gEll(1.12,.36,1.2,[0,HC[1]+.98,HC[2]-.08]),gEll(.86,.07,.52,[0,HC[1]+.86,HC[2]+.98],qt.ax(1,0,0,.12)))}
+ const m=a=>a.length?gMerge(...a):null;return{body:{shirt:m(body.shirt),skin:m(body.skin),chair:m(body.chair)},head:{face:m(head.face),skin:m(head.skin),hair:m(head.hair),frame:m(frame),hat:m(hat)},arms}}
+const ELB=s=>[s*2.3,.55,1.0];
+/* the turn that sends +z along f with +y as near to up as it can */
+function qBasis(f,up){const z=v3.norm(f),x=v3.norm(v3.cross(up,z)),y=v3.cross(z,x),tr=x[0]+y[1]+z[2];let S;
+ if(tr>0){S=Math.sqrt(tr+1)*2;return[(y[2]-z[1])/S,(z[0]-x[2])/S,(x[1]-y[0])/S,.25*S]}
+ if(x[0]>y[1]&&x[0]>z[2]){S=Math.sqrt(1+x[0]-y[1]-z[2])*2;return[.25*S,(y[0]+x[1])/S,(z[0]+x[2])/S,(y[2]-z[1])/S]}
+ if(y[1]>z[2]){S=Math.sqrt(1+y[1]-x[0]-z[2])*2;return[(y[0]+x[1])/S,.25*S,(z[1]+y[2])/S,(z[0]-x[2])/S]}
+ S=Math.sqrt(1+z[2]-x[0]-y[1])*2;return[(z[0]+x[2])/S,(z[1]+y[2])/S,.25*S,(x[1]-y[0])/S]}
+/* a ring: a circle swept round the y axis */
+function gTorus(R,r,sg=24,rs=8){return gLathe(Array.from({length:rs+1},(_,i)=>{const a=-Math.PI/2+i/rs*Math.PI*2;return[R+Math.cos(a)*r,Math.sin(a)*r]}),sg,.2)}
+/* a hand, from the wrist: palm down, fingers forward along +z and a little curled, the thumb on the inside */
+function handGeo(s){const g=[gEll(.27,.12,.3,[0,0,.27],null,14)],th=-s,lens=[.32,.36,.33,.26];
+ [-.165,-.055,.055,.165].forEach((x,i)=>{const L=lens[th>0?3-i:i];g.push(gCap([x,-.01,.47],[x,-.1,.47+L],.066,.056,8))});
+ g.push(gCap([th*.2,-.03,.16],[th*.38,-.08,.42],.075,.064,8));return gMerge(...g)}
+/* knitted wool: ribs and rows of small V stitches, in grey so the shirt colour tints it */
+function knitCv(){const S=256,c=cvs(S,S),x=c.getContext('2d'),R=rng(19);x.fillStyle='#e6e6e6';x.fillRect(0,0,S,S);
+ for(let col=0;col<16;col++)for(let row=0;row<22;row++){const X=col*16,Y=row*11.64;x.strokeStyle=`rgba(0,0,0,${.12+R()*.06})`;x.lineWidth=2.2;x.beginPath();x.moveTo(X+2,Y+1);x.lineTo(X+8,Y+9);x.lineTo(X+14,Y+1);x.stroke();
+  x.strokeStyle='rgba(255,255,255,.35)';x.lineWidth=1.2;x.beginPath();x.moveTo(X+3,Y+3);x.lineTo(X+8,Y+8);x.stroke()}
+ for(let col=0;col<16;col++){x.fillStyle='rgba(0,0,0,.07)';x.fillRect(col*16,0,1.5,S)}return c}
 /* the face painted on the head: brows, eyes with a catch light, a soft smile and warm cheeks */
-function faceCv(o){const c=cvs(512,256),x=c.getContext('2d');x.fillStyle=o.skin;x.fillRect(0,0,512,256);
+function faceCv(o){const c=cvs(1024,256),x=c.getContext('2d');faceAt(x,o,false);x.save();x.translate(512,0);faceAt(x,o,true);x.restore();return c}
+function faceAt(x,o,shut){x.fillStyle=o.skin;x.fillRect(0,0,512,256);
  /* under the hair the scalp is painted in the hair colour, so no skin shows through where the hair is thin */
  if(!o.bald&&o.hair){x.fillStyle=o.hair;x.fillRect(0,0,512,Math.round(headV(.98)*256))}
  const U=128,ey=headV(.12)*256,by=headV(.4)*256,my=headV(-.56)*256,cy=headV(-.24)*256,dx=30;
  for(const s of[-1,1]){const g=x.createRadialGradient(U+s*38,cy,1,U+s*38,cy,17);g.addColorStop(0,'rgba(226,112,100,.32)');g.addColorStop(1,'rgba(226,112,100,0)');x.fillStyle=g;x.fillRect(U+s*38-18,cy-18,36,36)}
  for(const s of[-1,1]){const ex=U+s*dx;
+  if(shut){x.strokeStyle='rgba(40,22,14,.85)';x.lineWidth=o.fem?2.6:2;x.lineCap='round';x.beginPath();x.ellipse(ex,ey-1,9.6,4,0,Math.PI*.05,Math.PI*.95);x.stroke();
+   x.strokeStyle=o.brow||o.hair;x.lineWidth=o.fem?2.6:4;x.beginPath();x.moveTo(ex-11,by+3);x.quadraticCurveTo(ex,by-2.5,ex+11,by+2.5);x.stroke();continue}
   x.fillStyle='#FBF7F2';x.beginPath();x.ellipse(ex,ey,9.5,5,0,0,Math.PI*2);x.fill();
   x.fillStyle=o.eye||'#4A2E1E';x.beginPath();x.ellipse(ex,ey+.4,5.4,4.6,0,0,Math.PI*2);x.fill();x.fillStyle='#120B08';x.beginPath();x.ellipse(ex,ey+.4,2.6,2.3,0,0,Math.PI*2);x.fill();
   x.fillStyle='rgba(255,255,255,.9)';x.beginPath();x.arc(ex-1.6,ey-1.4,1.3,0,Math.PI*2);x.fill();
   x.strokeStyle='rgba(40,22,14,.85)';x.lineWidth=o.fem?2.6:1.8;x.beginPath();x.ellipse(ex,ey,9.8,5.4,0,Math.PI*1.05,Math.PI*1.95);x.stroke();
   x.strokeStyle=o.brow||o.hair;x.lineCap='round';x.lineWidth=o.fem?2.6:4;x.beginPath();x.moveTo(ex-11,by+2);x.quadraticCurveTo(ex,by-3.5,ex+11,by+1.5);x.stroke()}
  x.strokeStyle='#9A4A40';x.lineWidth=2.6;x.lineCap='round';x.beginPath();x.moveTo(U-12,my-1);x.quadraticCurveTo(U,my+5,U+12,my-1);x.stroke();
- if(o.fem){x.fillStyle='rgba(176,64,72,.55)';x.beginPath();x.ellipse(U,my+1,9,3,0,0,Math.PI*2);x.fill()}
- return c}
+ if(o.fem){x.fillStyle='rgba(176,64,72,.55)';x.beginPath();x.ellipse(U,my+1,9,3,0,0,Math.PI*2);x.fill()}}
 /* the room around the table: patterned wallpaper above a wood panel, and a dark plank floor */
 function wallCv(){const S=1024,c=cvs(S,S),x=c.getContext('2d'),R=rng(77);x.fillStyle='#3C2A22';x.fillRect(0,0,S,S);
  x.globalAlpha=.5;x.drawImage(noiseCv(256,256,R,90,160),0,0,S,S);x.globalAlpha=1;

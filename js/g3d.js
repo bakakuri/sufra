@@ -162,7 +162,7 @@ function g3Set(sc,list,opt={}){const now=performance.now(),rm=RM(),old=sc.objs,n
  for(const o of old.values()){if(next.has(o.id))continue;if(o.dying){next.set(o.id,o);continue}if(used.has(o)||took.has(o))continue;g3Leave(o,opt.gone?opt.gone(o):null,now,rm,opt);next.set(o.id,o)}
  for(const d of pend){if(done.has(d))continue;const o={id:d.k!=null?'k:'+d.k:'a'+(++sc.seq),anon:d.k==null,m:d.m,p:d.p.slice(),q:(d.q||qt.id()).slice(),s:d.s??1,a:d.a??1,p1:d.p.slice()};g3Spawn(o,d,now,rm,opt);g3Props(o,d);next.set(o.id,o)}
  sc.objs=next;g3Need()}
-function g3Props(o,d){o.dim=d.dim??1;o.glow=d.glow||null;o.pick=d.pick||null;o.uv=d.uv||null;o.cast=d.cast!==false;o.lift=d.lift||0;o.drag=!!d.drag;o.refl=d.refl!==false}
+function g3Props(o,d){o.life=d.life||0;o.blink=d.blink||0;o.dim=d.dim??1;o.glow=d.glow||null;o.pick=d.pick||null;o.uv=d.uv||null;o.cast=d.cast!==false;o.lift=d.lift||0;o.drag=!!d.drag;o.refl=d.refl!==false}
 function g3Aim(o,d,now,opt,rm){g3Props(o,d);const q1=d.q||qt.id(),s1=d.s??1,a1=d.a??1,dist=v3.len(v3.sub(o.p1,d.p));
  if(dist<1e-4&&qt.same(o.q1||o.q,q1)&&sDiff(o.s1??o.s,s1)<1e-4&&Math.abs((o.a1??o.a)-a1)<1e-3&&!d.path&&!d.spin)return;
  o.p1=d.p.slice();o.q1=q1;o.s1=s1;o.a1=a1;if(rm){o.p=d.p.slice();o.q=q1.slice();o.s=s1;o.a=a1;o.tw=null;return}
@@ -184,11 +184,17 @@ function g3Tick(sc,now){let busy=false;const c=sc.cam;
   o.s=sLerp(t.s0,t.s1,e);o.a=t.a0+(t.a1-t.a0)*e;
   if(k>=1){o.tw=null;o.p=t.p1.slice();o.q=t.q1.slice();if(o.dying)sc.objs.delete(o.id);else if(t.land){const md=sc.models[o.m];if(md&&md.land)try{md.land(o,sc)}catch(e){}}}else busy=true}
  for(const o of sc.objs.values())if(o.wg&&g3WgStep(o,now))busy=true;
- return busy}
+ g3Life(sc,now);return busy}
+/* people at rest are not statues: they breathe (on high quality) and blink now and then; this needs a few frames a second, not sixty */
+const hashS=s=>{let k=0;for(const ch of s)k=(k*31+ch.charCodeAt(0))>>>0;return(k%1000)/1000};
+function g3Life(sc,now){sc.life=false;if(RM())return;const lq=typeof gqLevel==='function'?gqLevel():'high';if(lq==='low')return;const t=now/1000;
+ for(const o of sc.objs.values()){if(!o.life||o.dying)continue;sc.life=true;const g=o.grp||(o.grp=o.id.replace(/^k:p(b|h|kl|kr)/,'')),sd=o.sd??(o.sd=hashS(g));
+  if(o.blink)o.uv=((t+sd*9.7)%4.6)<.15?[.5,0,.5,1]:null;
+  if(lq==='high'&&!o.tw&&!o.wg){const s=(o.s1&&o.s1.length?o.s1[0]:o.s1)||1;o.p=[o.p1[0],o.p1[1]+Math.sin(t*1.75+sd*6.3)*.022*s,o.p1[2]]}}}
 /* a gesture laid over whatever the object is doing: a nod, a shake, a bounce. it swings and settles back where it was */
 function g3WgStep(o,now){const w=o.wg,k=(now-w.t0)/w.d,bq=o.tw?o.q:(o.q1||o.q),bp=o.tw?o.p:(o.p1||o.p);
  if(k>=1){o.wg=null;if(!o.tw){o.q=bq.slice();o.p=bp.slice()}return true}if(k<0)return true;const env=Math.sin(Math.PI*k);
- if(w.ax){const a=Math.sin(k*Math.PI*2*(w.f||1))*env*w.a,v=w.ax==='y'?[0,1,0]:w.ax==='z'?[0,0,1]:[1,0,0];o.q=qt.mul(bq,qt.ax(v[0],v[1],v[2],a))}
+ if(w.ax){const sw=Math.sin(k*Math.PI*2*(w.f||1)),a=(w.abs?Math.abs(sw):sw)*env*w.a,v=w.ax==='y'?[0,1,0]:w.ax==='z'?[0,0,1]:[1,0,0];o.q=qt.mul(bq,qt.ax(v[0],v[1],v[2],a))}
  if(w.b)o.p=v3.add(bp,[0,Math.abs(Math.sin(k*Math.PI*(w.bf||1)))*env*w.b,0]);return true}
 function g3Wig(sc,id,w){const o=sc&&sc.objs.get(id);if(!o||!w||RM())return;o.wg=Object.assign({},w,{t0:performance.now()+(w.delay||0)});g3Need()}
 /* short effects drawn like marks: a ring where a piece lands, sparks when one is taken */
@@ -278,9 +284,10 @@ function g3Labels(sc){g3Hug(sc);const C=sc.camNow,cv=G3D.cv,root=cv&&cv.parentNo
 function g3Need(){if(!G3D.raf&&G3D.ok)G3D.raf=requestAnimationFrame(g3Frame)}
 function g3Pace(now){const L=G3D.lastF;G3D.lastF=now;if(!L||now-L>250)return;(G3D.ft||(G3D.ft=[])).push(now-L);if(G3D.ft.length<50)return;const a=G3D.ft.sort((x,y)=>x-y)[25];G3D.ft=[];
  if(a<36||typeof gqSet!=='function'||gqSet()!=='auto')return;const cur=gqLevel(),nx=cur==='high'?'mid':cur==='mid'?'low':null;if(!nx)return;store.set('gqa',nx);if(typeof toast==='function')toast('გრაფიკა შემსუბუქდა, რომ თამაში შეუფერხებლად იმუშაოს')}
-function g3Frame(now){G3D.raf=0;const sc=G3D.sc,cv=G3D.cv;if(!sc||!cv||!cv.isConnected||!G3D.ok)return;g3Pace(now);const busy=g3Tick(sc,now);g3Size();sc.camBusy=false;
+function g3Frame(now){G3D.raf=0;const sc=G3D.sc,cv=G3D.cv;if(!sc||!cv||!cv.isConnected||!G3D.ok)return;if(G3D.idleReq){G3D.idleReq=0;G3D.lastF=0}else g3Pace(now);const busy=g3Tick(sc,now);g3Size();sc.camBusy=false;
  try{g3Draw(sc,now);g3Labels(sc)}catch(e){try{console.warn('3D draw',e)}catch(x){}return}
- if(busy||sc.camBusy)g3Need();else if(!RM()&&sc.marks.some(m=>m.pulse)){clearTimeout(G3D.slow);G3D.slow=setTimeout(g3Need,80)}}
+ if(busy||sc.camBusy)g3Need();else if(!RM()&&sc.marks.some(m=>m.pulse)){clearTimeout(G3D.slow);G3D.slow=setTimeout(()=>{G3D.idleReq=1;g3Need()},80)}
+ else if(sc.life){clearTimeout(G3D.lifeT);G3D.lifeT=setTimeout(()=>{if(G3D.sc===sc&&!G3D.raf){G3D.idleReq=1;g3Need()}},(typeof gqLevel==='function'?gqLevel():'high')==='high'?70:170)}}
 function g3Size(){const cv=G3D.cv,el=cv.parentNode;if(!el)return;const q=typeof gqLevel==='function'?gqLevel():'high',r=el.getBoundingClientRect(),d=Math.min(window.devicePixelRatio||1,q==='low'?1:q==='mid'?1.5:2),w=Math.max(2,Math.round(r.width*d)),h=Math.max(2,Math.round(r.height*d));
  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}G3D.asp=w/h}
 /* put the canvas into a board on screen and draw at once, so there is no empty frame */

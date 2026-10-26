@@ -46,6 +46,8 @@ const DM=GAME.domino={title:'დომინო',
  endRound(kind,p){const pip=q=>this.hands[q].reduce((a,t)=>a+dmPip(t),0),tp=[pip(0)+pip(2),pip(1)+pip(3)];let win,pts;
   if(kind==='domino'){win=dmTeam(p);pts=tp[1-win]}else{win=tp[0]<tp[1]?0:tp[1]<tp[0]?1:-1;pts=win<0?0:tp[1-win]}
   if(win>=0)this.score[win]+=pts;
+  /* the table reacts: the winning side is pleased, the others shake their heads */
+  if(win>=0&&typeof gEndGest==='function')gEndGest(id=>id===2?(win===0?'cheer':'shake'):(win===1?'cheer':'shake'),[1,2,3]);
   this.lead=kind==='domino'?p:win>=0?[win,win+2].sort((a,b)=>pip(a)-pip(b))[0]:((this.lead??0)+1)%4;
   this.res={kind,win,pts,by:p,pips:[0,1,2,3].map(pip),tp};this.hist.push({win,pts,kind});this.cur=-1;this.sel=null;
   this.phase=this.score.some(x=>x>=DM_TO)?'over':'roundover';if(this.phase==='over')gameResult('domino',this.score[0]>this.score[1]);else this.autoNext();this.render()},

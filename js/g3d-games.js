@@ -143,16 +143,22 @@ function jkScr(asp,nx,ny,d){const C=jkCam(asp),F=v3.norm(v3.sub(C.tgt,C.eye)),R=
  return v3.add(C.eye,v3.add(v3.mul(F,d),v3.add(v3.mul(R,(nx-C.sx)*t*asp*d),v3.mul(U,(ny-C.sy)*t*d))))}
 const jkFace=asp=>{const C=jkCam(asp),F=v3.norm(v3.sub(C.tgt,C.eye));return qt.ax(1,0,0,-Math.atan2(-F[1],-F[2]))};
 /* who sits where: bots get a look of their own; people online get one picked from their name */
-const JLOOK={'სუფრა ბოტი':{style:'short',mus:1,skin:'#E4B08C',hair:'#3A2C24',brow:'#2E241E',shirt:'#2C4A6E'},'ანა':{style:'long',fem:1,skin:'#F1C9AC',hair:'#4A2A18',shirt:'#3F6E8C'},'გიორგი':{style:'short',skin:'#E6B593',hair:'#24170F',shirt:'#7A3B2E'},'ლევანი':{style:'short',mus:1,skin:'#DCA683',hair:'#2B1E16',shirt:'#4E5E3A'},'ნინო':{style:'long',fem:1,skin:'#EFC2A2',hair:'#2A1A12',shirt:'#8E3047'},'ლუკა':{style:'short',skin:'#E2AF8C',hair:'#1E140F',shirt:'#2F5D8A'},'დათო':{style:'bald',mus:1,skin:'#D69C77',hair:'#6F6862',brow:'#4A3F38',shirt:'#3E6B47'}};
+const JLOOK={'სუფრა ბოტი':{style:'short',mus:1,hat:1,skin:'#E4B08C',hair:'#9A948C',brow:'#6E675F',shirt:'#2C4A6E'},'ანა':{style:'pony',fem:1,skin:'#F1C9AC',hair:'#4A2A18',shirt:'#3F6E8C'},'გიორგი':{style:'curly',skin:'#E6B593',hair:'#24170F',shirt:'#7A3B2E'},'ლევანი':{style:'short',beard:1,mus:1,skin:'#DCA683',hair:'#2B1E16',shirt:'#4E5E3A'},'ნინო':{style:'long',fem:1,skin:'#EFC2A2',hair:'#2A1A12',shirt:'#8E3047'},'ლუკა':{style:'short',glasses:1,skin:'#E2AF8C',hair:'#1E140F',shirt:'#2F5D8A'},'დათო':{style:'bald',mus:1,skin:'#D69C77',hair:'#6F6862',brow:'#4A3F38',shirt:'#3E6B47'}};
 function jkLook(nm,h){if(JLOOK[nm])return JLOOK[nm];let k=0;for(const ch of String(nm||''))k=(k*31+ch.charCodeAt(0))>>>0;
  const sk=['#EBC0A0','#DDA984','#F2CDB0','#C99169'],hr=['#24170F','#1A120D','#4E3220','#2E2219'];
  return{style:k%5===0?'bald':'short',mus:k%3===0,skin:sk[k%4],hair:hr[(k>>3)%4],shirt:`hsl(${h??(k%360)} 38% 36%)`}}
 const hex=c=>{if(c[0]==='#')return c;const d=document.createElement('canvas').getContext('2d');d.fillStyle=c;return d.fillStyle};
 function jkPerson(sc,key,L){if(sc.models['pb:'+key])return;const g=personGeo(L),fem=!!L.fem;
- const skin=g3Mat({c:L.skin,sh:14,sp:.12,gl:.03}),shirt=g3Mat({c:hex(L.shirt),sh:6,sp:.05,gl:0}),hair=g3Mat({c:L.hair,sh:12,sp:.09,gl:.02}),chair=g3Mat({t:woodTex('walnut'),uv:[0,0,1,1],sh:50,sp:.3,gl:.25});
- const face=g3Mat({t:g3T('face:'+key,()=>g3Tex(faceCv({skin:L.skin,hair:L.hair,brow:L.brow,fem,bald:L.style==='bald'}))),sh:14,sp:.12,gl:.03});
+ const skin=g3Mat({c:L.skin,sh:14,sp:.12,gl:.03}),shirt=g3Mat({c:hex(L.shirt),t:g3T('knit',()=>g3Tex(knitCv(),{rep:true})),uv:[0,0,7,5],sh:6,sp:.05,gl:0}),hair=g3Mat({c:L.hair,sh:12,sp:.09,gl:.02}),chair=g3Mat({t:woodTex('walnut'),uv:[0,0,1,1],sh:50,sp:.3,gl:.25});
+ /* the face texture holds two pictures, eyes open and shut; a blink shows the second for a moment */
+ const face=g3Mat({t:g3T('face:'+key,()=>g3Tex(faceCv({skin:L.skin,hair:L.hair,brow:L.brow,fem,bald:L.style==='bald'}))),uv:[0,0,.5,1],vary:true,sh:14,sp:.12,gl:.03});
  g3Model(sc,'pb:'+key,[[g.body.shirt,shirt],[g.body.skin,skin],[g.body.chair,chair]],null);
- g3Model(sc,'ph:'+key,[[g.head.face,face],[g.head.skin,skin],...(g.head.hair?[[g.head.hair,hair]]:[])],null)}
+ g3Model(sc,'ph:'+key,[[g.head.face,face],[g.head.skin,skin],...(g.head.hair?[[g.head.hair,hair]]:[]),...(g.head.frame?[[g.head.frame,g3Mat({c:'#1C1A1A',sh:80,sp:.6,gl:.4})]]:[]),...(g.head.hat?[[g.head.hat,g3Mat({c:'#4A443C',sh:8,sp:.04,gl:0})]]:[])],null);
+ for(const s of[-1,1])g3Model(sc,'pk:'+key+':'+s,[[g.arms[s].sleeve,shirt],[g.arms[s].hand,skin]],null)}
+/* a person at the table: body, head (turned by hq), and the two forearms that turn at the elbow; id names the seat */
+function pplPush(L,id,key,p,qB,s,hq,o={}){const S=s||1,at=v=>v3.add(p,qt.rot(qB,v3.mul(v,S))),b={refl:false,life:1,dur:o.dur||650};if(o.cast===false)b.cast=false;if(o.now)b.now=1;
+ L.push(Object.assign({k:'pb'+id,m:'pb:'+key,p,q:qB,s:S},b),Object.assign({k:'ph'+id,m:'ph:'+key,p:at(HPIV),q:qt.mul(qB,hq),s:S,blink:1},b,{dur:o.hdur||600}));
+ for(const sd of[-1,1])L.push(Object.assign({k:(sd<0?'pkl':'pkr')+id,m:'pk:'+key+':'+sd,p:at(ELB(sd)),q:qB,s:S,side:sd},b))}
 /* ---------- the opponent across the board ----------
    chess, checkers and nardi get the other player on the far side: the same people as at the card table, a little bigger.
    they watch the board, lean in while they think, look up at you when the game ends, and act out their reactions */
@@ -161,15 +167,15 @@ const oppOn=()=>typeof store==='undefined'||store.get('gppl',true)!==false;
 function oppLookOf(c){const s=-c.side,a=c.avs&&c.avs[s],nm=String((c.names&&c.names[s])||'მოთამაშე').replace(/ \(ბოტი\)$/,'');if(c.olk&&typeof c.olk==='object')return c.olk;if(a&&a.look&&typeof a.look==='object')return a.look;return jkLook(nm,a&&(a.h??a.hue))}
 function oppAdd(sc,id,G,L,far){const o=OPPS[id],c=G.ctx,cm=sc.cam;if(!o||!c||!oppOn()){if(cm.p0!=null){cm.pitch=cm.p0;cm.pp=cm.pp0;cm.tgt=cm.t0.slice()}cm.extraW=null;sc.people=null;return}const lk=oppLook(oppLookOf(c)),key='o:'+lkKey(lk);jkPerson(sc,key,lk);
  const yaw=far<0?0:Math.PI,ts=G.turnSide?G.turnSide():null,over=G.res&&G.res(),think=!over&&ts===-c.side,lean=think?.08:0,qB=qt.mul(qt.ax(0,1,0,yaw),qt.ax(1,0,0,lean)),p=[o.x,o.y,far*o.z];
- const pitch=over?0:think?.34:.1,hp=v3.add(p,qt.rot(qB,v3.mul(HPIV,o.s)));
+ const pitch=over?0:think?.34:.1;
  /* on a wide screen the camera tips down a little less and keeps the head in the picture */
  if(cm.p0==null){cm.p0=cm.pitch;cm.pp0=cm.pp||0;cm.t0=cm.tgt.slice()}cm.pitch=cm.p0-.12;cm.pp=cm.pp0+.12;const wide=(G3D.asp||1)>=.8;cm.tgt=wide?[cm.t0[0],cm.t0[1]+.9,cm.t0[2]+far*1.7]:cm.t0.slice();if(!sc.onResize)sc.onResize=()=>{try{G3U[sc.host](sc)}catch(e){}};const hz=far*(o.z-.2);cm.extraW=[[o.x-1.5,o.y+5.9,hz],[o.x+1.5,o.y+5.9,hz],[o.x-2.6,o.y+3.2,far*o.z],[o.x+2.6,o.y+3.2,far*o.z]];
- L.push({k:'pbo',m:'pb:'+key,p,q:qB,s:o.s,refl:false,cast:false,dur:700},{k:'pho',m:'ph:'+key,p:hp,q:qt.mul(qB,qt.e(pitch,0,0)),s:o.s,refl:false,cast:false,dur:650});
+ pplPush(L,'o',key,p,qB,o.s,qt.e(pitch,0,0),{cast:false,dur:700});
  sc.people=who=>who===-c.side?'o':null}
 /* a look as stored or sent: only known styles and colours pass */
-const LKS=['short','long','bald'],hexOk=v=>typeof v==='string'&&/^#[0-9a-fA-F]{6}$/.test(v);
-function oppLook(L){const o=L&&typeof L==='object'?L:{};return{style:LKS.includes(o.style)?o.style:'short',fem:o.fem?1:0,mus:o.mus?1:0,skin:hexOk(o.skin)?o.skin:'#E2AF8C',hair:hexOk(o.hair)?o.hair:'#2A1A12',brow:hexOk(o.brow)?o.brow:undefined,shirt:hexOk(o.shirt)?o.shirt:(typeof o.shirt==='string'&&/^hsl\(/.test(o.shirt)?o.shirt:'#2F5D8A')}}
-const lkKey=L=>[L.style,L.fem,L.mus,L.skin,L.hair,L.brow||'',L.shirt].join('|');
+const LKS=['short','curly','long','pony','bald'],hexOk=v=>typeof v==='string'&&/^#[0-9a-fA-F]{6}$/.test(v);
+function oppLook(L){const o=L&&typeof L==='object'?L:{};return{style:LKS.includes(o.style)?o.style:'short',fem:o.fem?1:0,mus:o.mus?1:0,beard:o.beard?1:0,glasses:o.glasses?1:0,hat:o.hat?1:0,skin:hexOk(o.skin)?o.skin:'#E2AF8C',hair:hexOk(o.hair)?o.hair:'#2A1A12',brow:hexOk(o.brow)?o.brow:undefined,shirt:hexOk(o.shirt)?o.shirt:(typeof o.shirt==='string'&&/^hsl\(/.test(o.shirt)?o.shirt:'#2F5D8A')}}
+const lkKey=L=>[L.style,L.fem,L.mus,L.beard,L.glasses,L.hat,L.skin,L.hair,L.brow||'',L.shirt].join('|');
 G3B.joker=()=>{const sc=g3Scene({cam:{fixed:jkCam,tgt:[0,0,0],fov:1,dy:0,dp:0,dz:1},orbit:false,zoom:false,shR:12,shC:[0,0,-1.6],spot:[0,2.4,11,.62],bg:[.035,.024,.02],
   light:{d:v3.norm([-.22,1,.4]),c:[2.35,2.08,1.72],sky:[.26,.22,.2],gnd:[.12,.08,.06],exp:1.0},
   anchors:[['.seat.left',[...[JSP[1][0]*.97,6.25,JSP[1][1]*.97]]],['.seat.top',[0,6.35,-JR*.97]],['.seat.right',[JSP[3][0]*.97,6.25,JSP[3][1]*.97]]]});
@@ -190,8 +196,8 @@ const jkC4=()=>typeof c4On==='function'&&c4On();
 const jkAtlas=()=>{const c4=jkC4();return g3T('cards2'+(c4?'q':''),()=>g3Tex(cardsCv(c4),{af:true}))};
 function jkDeck(sc){const c4=jkC4();if(sc.c4===c4)return;sc.c4=c4;const t=jkAtlas();for(const m of['card','deck'])if(sc.models[m])sc.models[m].parts.forEach(p=>{p.mat.t=t})}
 /* what the people at the table do for a reaction: the head nods, shakes or tips back; laughing and a toast move the whole body */
-const GEST={nod:{h:{ax:'x',a:.2,f:2,d:1100}},laugh:{h:{ax:'x',a:.1,f:5,d:1300},bd:{b:.09,bf:10,d:1300}},wow:{h:{ax:'x',a:-.32,f:.5,d:1300}},cheer:{h:{ax:'x',a:.16,f:1.5,d:1500},bd:{b:.24,bf:3,d:1500}},shake:{h:{ax:'y',a:.3,f:3,d:1200}}};
-function g3Gest(who,kind){const sc=G3D.sc;if(!sc||!sc.people||!G3D.cv||!G3D.cv.isConnected)return;const r=sc.people(who);if(r==null)return;const W=GEST[kind]||GEST.nod;g3Wig(sc,'k:ph'+r,W.h);if(W.bd)g3Wig(sc,'k:pb'+r,W.bd)}
+const GEST={clap:{h:{ax:'x',a:.1,f:2,d:1800},k:{ax:'y',a:.5,f:4,abs:1,b:.12,bf:4,d:1800}},nod:{h:{ax:'x',a:.2,f:2,d:1100}},laugh:{h:{ax:'x',a:.1,f:5,d:1300,b:.09,bf:10},bd:{b:.09,bf:10,d:1300}},wow:{h:{ax:'x',a:-.32,f:.5,d:1300}},cheer:{h:{ax:'x',a:.16,f:1.5,d:1500,b:.24,bf:3},bd:{b:.24,bf:3,d:1500}},shake:{h:{ax:'y',a:.3,f:3,d:1200}}};
+function g3Gest(who,kind){const sc=G3D.sc;if(!sc||!sc.people||!G3D.cv||!G3D.cv.isConnected)return;const r=sc.people(who);if(r==null)return;const W=GEST[kind]||GEST.nod;g3Wig(sc,'k:ph'+r,W.h);if(W.bd)for(const p of['pb','pkl','pkr'])g3Wig(sc,'k:'+p+r,W.bd);if(W.k){g3Wig(sc,'k:pkl'+r,W.k);g3Wig(sc,'k:pkr'+r,Object.assign({},W.k,{a:-W.k.a}))}}
 const seatOf=who=>typeof who==='string'&&/^r[123]$/.test(who)?+who[1]:null;
 const lblModel=(sc,t)=>sc.models['l:'+t]||g3Model(sc,'l:'+t,[[gPlane(2.3,.58),g3Mat({t:labelTex(t),unlit:true})]],null);
 const FACEUP=yaw=>qt.mul(qt.ax(0,1,0,yaw),qt.ax(1,0,0,-Math.PI/2)),FACEDN=yaw=>qt.mul(qt.ax(0,1,0,yaw),qt.ax(1,0,0,Math.PI/2));
@@ -212,8 +218,7 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
  /* the three others */
  for(const r of[1,2,3]){const id=V.ids[(r+V.base)%4],L0=id.lk?oppLook(id.lk):jkLook(id.n,id.h),key=(id.k||id.n||'p'+r)+(id.lk?':'+lkKey(L0):'');jkPerson(sc,key,L0);
   const lean=cur===r&&V.win==null?.07:0,g=jkGaze(r,V,rel);
-  L.push({k:'pb'+r,m:'pb:'+key,p:[JSP[r][0],0,JSP[r][1]],q:jkSeatQ(r,lean),dur:650,refl:false});
-  L.push({k:'ph'+r,m:'ph:'+key,p:jkLocal(r,lean,HPIV),q:qt.mul(jkSeatQ(r,lean),qt.e(g.pitch,g.yaw,0)),dur:600,refl:false});
+  pplPush(L,r,key,[JSP[r][0],0,JSP[r][1]],jkSeatQ(r,lean),1,qt.e(g.pitch,g.yaw,0));
   const cnt=V.counts[r]||0;for(let i=0;i<cnt;i++){const f=jkFanAt(r,lean,i,cnt),d={k:'h'+r+'-'+i,m:'card',p:f.p,q:f.q,s:.95,uv:cardUV(38),refl:false,dur:500};
    if(deal){d.from={p:dp,q:FACEDN(0),s:.9};d.delay=(i*4+r)*40;d.dur=520}L.push(d)}}
  /* my hand, held in front of me at the bottom of the screen */
@@ -302,7 +307,7 @@ G3U.domino=sc=>{const G=DM,L=[],M=[],{out,slots}=dmLayout(G),mine=G.phase==='pla
  /* the three at the table: whoever's turn it is leans in and looks at their tiles, the others watch them */
  for(const r of[1,2,3]){const id=DMN[r],lk=jkLook(id.n,id.h),key='d:'+id.n;jkPerson(sc,key,lk);const think=G.phase==='play'&&G.cur===r,lean=think?.07:0;
   let yaw=0,pitch=.3;if(think)pitch=.44;else if(G.phase==='play'&&G.cur!=null&&G.cur>=0){const t=G.cur===0?[0,DSR]:DSP[G.cur],me=DSP[r],f=[-me[0],-me[1]],d=[t[0]-me[0],t[1]-me[1]];yaw=clamp(-Math.atan2(f[0]*d[1]-f[1]*d[0],f[0]*d[0]+f[1]*d[1]),-.75,.75);pitch=G.cur===0?.22:.12}
-  L.push({k:'pb'+r,m:'pb:'+key,p:[DSP[r][0],0,DSP[r][1]],q:dSeatQ(r,lean),dur:650,refl:false},{k:'ph'+r,m:'ph:'+key,p:dLocal(r,lean,HPIV),q:qt.mul(dSeatQ(r,lean),qt.e(pitch,yaw,0)),dur:600,refl:false})}
+  pplPush(L,r,key,[DSP[r][0],0,DSP[r][1]],dSeatQ(r,lean),1,qt.e(pitch,yaw,0))}
  if(mine&&G.sel!=null){for(const e of G.places(G.hands[0][G.sel]))if(slots[e]){const g=slots[e];L.push({k:'g'+e,m:'ghost',p:[g.x,DT/2,g.z],q:qt.ax(0,1,0,g.yaw),a:.5,cast:false,pick:{e},now:1})}}
  sc.marks=M;g3Set(sc,L,{gone:o=>o.id.startsWith('k:h')?{a:0,dur:180}:o.m==='ghost'?{a:0,dur:120}:{p:[o.p[0]*.3,1,o.p[2]*.3],a:0,dur:500}})};
 
@@ -311,4 +316,4 @@ G3B.look=()=>{const sc=g3Scene({cam:{fixed:asp=>({eye:[0,5.2,2.6],tgt:[0,3.35,-4
   light:{d:v3.norm([-.3,1,.85]),c:[2.3,2.05,1.75],sky:[.32,.28,.25],gnd:[.12,.09,.07],exp:1.0}});
  roundRoom(sc,1.7,g3T('felt',()=>g3Tex(feltCv({a:'#2E7D59',b:'#123B29',ring:1}))));return sc};
 G3U.look=sc=>{const lk=oppLook(sc.lk||{}),key='me:'+lkKey(lk);jkPerson(sc,key,lk);const p=[0,0,-4.3],q=qt.ax(0,1,0,.3);
- g3Set(sc,[{k:'pb0',m:'pb:'+key,p,q,now:1,refl:false},{k:'ph0',m:'ph:'+key,p:v3.add(p,qt.rot(q,HPIV)),q:qt.mul(q,qt.e(-.05,-.2,0)),now:1,refl:false}])};
+ const L=[];pplPush(L,0,key,p,q,1,qt.e(-.05,-.2,0),{now:1});g3Set(sc,L)};

@@ -362,7 +362,7 @@ const JK=GAME.joker={title:'ჯოკერი',
  /* bid and made: 50 a trick plus 50; all tricks bid and taken: 100 a trick; pass and none: 50; otherwise 10 a trick; bid but took none (ხიშტი): −200, or −500 in the nine-card sections */
  pts(b,t,n,kh=200){if(t===b)return b===n?100*n:b===0?50:50*b+50;if(b>0&&t===0)return -kh;return 10*t},
  endHand(){jScore(this);if(this===JK)this.botRx();
-  if(this.h>=JSEQ[this.len].length){this.phase='over';const win=this.score[0]===Math.max(...this.score);gameResult('joker',win)}else{this.phase='handover';this.later(()=>{if(this.phase==='handover')this.newHand()},3800)}this.render()},
+  if(this.h>=JSEQ[this.len].length){this.phase='over';const mx=Math.max(...this.score),win=this.score[0]===mx;gameResult('joker',win);if(typeof gEndGest==='function')gEndGest(r=>this.score[r]===mx?'cheer':'clap',[1,2,3])}else{this.phase='handover';this.later(()=>{if(this.phase==='handover')this.newHand()},3800)}this.render()},
  botRx(){const L=jLast(this.hist).hand;if(!L)return;const ev=[];
   for(let p=1;p<4;p++){if(L.b[p]>0&&L.t[p]===0&&Math.random()<.6)ev.push(['r'+p,4]);else if(L.b[p]===L.t[p]&&L.b[p]>=2&&Math.random()<.35)ev.push(['r'+p,Math.random()<.5?0:1])}
   if(L.b[0]>0&&L.t[0]===0&&Math.random()<.5)ev.push(['r'+(1+Math.floor(Math.random()*3)),1]);ev.slice(0,2).forEach(([w,i],n)=>this.later(()=>gRxShow(w,i),700+n*800))},
