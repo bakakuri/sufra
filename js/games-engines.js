@@ -5,6 +5,7 @@ const repOk=a=>Array.isArray(a)?a.filter(x=>typeof x==='string'&&x.length<16).sl
 /* why a game ended, in words */
 const WHY={rep:'ფრე: პოზიცია სამჯერ განმეორდა',mat:'ფრე: მატისთვის საკმარისი ფიგურები აღარ დარჩა','50':'ფრე: 50 სვლა აყვანისა და პაიკის სვლის გარეშე',stale:'პატი. ფრე',kings:'ფრე: 15 სვლა მხოლოდ დამებით, აყვანის გარეშე',k31:'ფრე: სამმა დამამ ერთი 15 სვლაში ვერ აიყვანა'};
 function overMsg(c,w,why){if(w===2)return WHY[why]||'ფრე';const pre=why==='mate'?'მატი. ':why==='blocked'?'სვლა აღარ დარჩა. ':'';
+ if(why==='gone')return isPlayer(c)?(w===c.side?'მეტოქე გავიდა. მოგება შენ ჩაგეთვალა':'შენ გახვედი'):esc(c.names[-w])+' გავიდა';
  if(why==='time')return isPlayer(c)?(w===c.side?'მეტოქეს დრო ამოეწურა. მოიგე!':'დრო ამოგეწურა. '+esc(c.names[w])+' მოიგო'):esc(c.names[-w])+'-ს დრო ამოეწურა';
  if(why==='resign')return isPlayer(c)?(w===c.side?'მეტოქე დანებდა. მოიგე!':'დანებდი. '+esc(c.names[w])+' მოიგო'):esc(c.names[-w])+' დანებდა';return pre+endMsg(c,w)}
 const canResign=G=>{const c=G.ctx;return isPlayer(c)&&!c.gone&&!c.finished};
@@ -44,7 +45,7 @@ const CK=GAME.shashi={title:'შაში',
  snap(){return{b:this.b,turn:this.turn,last:this.last,lcap:this.lcap,over:this.over,why:this.why,kq:this.kq,k31:this.k31,k31s:this.k31s,rep:this.rep}},
  load(s){if(!Array.isArray(s.b)||s.b.length!==8)throw 0;const sq=a=>Array.isArray(a)?a.filter(x=>Array.isArray(x)&&inB(+x[0],+x[1])).map(x=>[+x[0],+x[1]]).slice(0,20):[];
   this.b=s.b.map(r=>(Array.isArray(r)?r:[]).slice(0,8).map(v=>[-2,-1,0,1,2].includes(v)?v:0));this.turn=s.turn===-1?-1:1;this.last=sq(s.last);this.lcap=sq(s.lcap);this.over=[1,-1,2].includes(s.over)?s.over:0;
-  this.why=['rep','kings','k31','resign','blocked','time'].includes(s.why)?s.why:'';this.kq=Math.max(0,Math.min(99,+s.kq||0));this.k31=Math.max(0,Math.min(99,+s.k31||0));this.k31s=String(s.k31s||'').slice(0,8);this.rep=repOk(s.rep);this.sel=null;this.moves=this.over?[]:ckAll(this.b,this.turn)},
+  this.why=['rep','kings','k31','resign','blocked','time','gone'].includes(s.why)?s.why:'';this.kq=Math.max(0,Math.min(99,+s.kq||0));this.k31=Math.max(0,Math.min(99,+s.k31||0));this.k31s=String(s.k31s||'').slice(0,8);this.rep=repOk(s.rep);this.sel=null;this.moves=this.over?[]:ckAll(this.b,this.turn)},
  mine(){return isPlayer(this.ctx)&&this.turn===this.ctx.side&&!this.over&&!this.ctx.gone&&!this.ctx.syncing},
  res(){return this.over?{w:this.over,why:this.why}:null},turnSide(){return this.over?null:this.turn},
  status(must){const c=this.ctx;if(this.over)return overMsg(c,this.over,this.why);if(c.gone)return 'მოწინააღმდეგე გავიდა თამაშიდან';if(this.mine())return must?'მოჭრა სავალდებულოა. აირჩიე მოციმციმე ქვა':this.sel?'აირჩიე უჯრა, სადაც გადავა':'შენი სვლაა';return esc(c.names[this.turn])+' ფიქრობს…'},
@@ -122,7 +123,7 @@ const NR=GAME.nardi={title:'ნარდი',
  snap(){return{p:this.p,bar:this.bar,off:this.off,dice:this.dice,last:this.last,turn:this.turn,rolled:this.rolled,over:this.over,why:this.why,mult:this.mult,open:this.open}},
  load(s){const n=v=>Math.max(0,Math.min(15,Number(v)||0)),d=a=>Array.isArray(a)?a.map(Number).filter(x=>x>=1&&x<=6).slice(0,4):[];
   if(!Array.isArray(s.p)||s.p.length!==24)throw 0;this.p=s.p.map(v=>Math.max(-15,Math.min(15,Math.trunc(Number(v))||0)));this.bar={1:n(s.bar&&s.bar[1]),'-1':n(s.bar&&s.bar['-1'])};this.off={1:n(s.off&&s.off[1]),'-1':n(s.off&&s.off['-1'])};
-  this.dice=d(s.dice);this.last=d(s.last).slice(0,2);this.turn=s.turn===-1?-1:1;this.rolled=!!s.rolled;this.over=[1,-1].includes(s.over)?s.over:0;this.why=['resign','time'].includes(s.why)?s.why:'';this.mult=[1,2,3].includes(s.mult)?s.mult:1;
+  this.dice=d(s.dice);this.last=d(s.last).slice(0,2);this.turn=s.turn===-1?-1:1;this.rolled=!!s.rolled;this.over=[1,-1].includes(s.over)?s.over:0;this.why=['resign','time','gone'].includes(s.why)?s.why:'';this.mult=[1,2,3].includes(s.mult)?s.mult:1;
   const o=d(s.open);this.open=o.length===2?o:null;this.sel=null;this.lg=null},
  legal(){if(!this.lg)this.lg=this.rolled&&!this.over?nLegal(this,this.turn,this.dice):[];return this.lg},
  opts(s,from){return s===this.turn?this.legal().filter(m=>m.f===from).map(m=>({d:m.d,to:m.to})):[]},
@@ -231,7 +232,7 @@ const CH=GAME.chess={title:'ჭადრაკი',
  start(){this.st=chInit();this.sel=null;this.pend=null;this.moves=chLegal(this.st,1);this.mv=[];this.ps=this.st;this.full=true},
  snap(){return this.st},
  load(s){if(!Array.isArray(s.b)||s.b.length!==64)throw 0;const ok=/^[pnbrqkPNBRQK]?$/;
-  this.st={b:s.b.map(x=>typeof x==='string'&&ok.test(x)?x:''),turn:s.turn===-1?-1:1,cs:String(s.cs||'').replace(/[^KQkq]/g,''),ep:Number.isInteger(s.ep)&&s.ep>=0&&s.ep<64?s.ep:-1,last:Array.isArray(s.last)?s.last.slice(0,2).map(Number).filter(x=>x>=0&&x<64):[],over:[1,-1,2].includes(s.over)?s.over:0,hm:Math.max(0,Math.min(200,Number(s.hm)||0)),rep:repOk(s.rep),why:['mate','stale','rep','mat','50','resign','time'].includes(s.why)?s.why:''};
+  this.st={b:s.b.map(x=>typeof x==='string'&&ok.test(x)?x:''),turn:s.turn===-1?-1:1,cs:String(s.cs||'').replace(/[^KQkq]/g,''),ep:Number.isInteger(s.ep)&&s.ep>=0&&s.ep<64?s.ep:-1,last:Array.isArray(s.last)?s.last.slice(0,2).map(Number).filter(x=>x>=0&&x<64):[],over:[1,-1,2].includes(s.over)?s.over:0,hm:Math.max(0,Math.min(200,Number(s.hm)||0)),rep:repOk(s.rep),why:['mate','stale','rep','mat','50','resign','time','gone'].includes(s.why)?s.why:''};
   this.sel=null;this.pend=null;this.moves=this.st.over?[]:chLegal(this.st,this.st.turn)},
  mine(){return isPlayer(this.ctx)&&this.st.turn===this.ctx.side&&!this.st.over&&!this.ctx.gone&&!this.ctx.syncing},
  res(){return this.st.over?{w:this.st.over,why:this.st.why}:null},turnSide(){return this.st.over?null:this.st.turn},

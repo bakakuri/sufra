@@ -48,24 +48,32 @@ function gview(id,title,board,status,extra='',plx=null,topx=''){if(S.tab!=='game
 /* a chime when the turn comes to you */
 function gTurnSnd(G,mine){if(mine&&!G.wasMine&&typeof gSnd==='function'){gSnd('turn');gBuzz(12)}G.wasMine=mine}
 /* the end of a game: a card over the board with the result and what to do next */
-const RESWHY={time:'დრო ამოიწურა',mate:'მატი',stale:'პატი',rep:'პოზიცია სამჯერ განმეორდა',mat:'მატისთვის საკმარისი ფიგურები აღარ დარჩა','50':'50 სვლა აყვანისა და პაიკის სვლის გარეშე',resign:'დანებება',blocked:'სვლა აღარ დარჩა',kings:'15 სვლა მხოლოდ დამებით',k31:'სამმა დამამ ერთი ვერ აიყვანა'};
+const RESWHY={gone:'მეტოქე გავიდა',time:'დრო ამოიწურა',mate:'მატი',stale:'პატი',rep:'პოზიცია სამჯერ განმეორდა',mat:'მატისთვის საკმარისი ფიგურები აღარ დარჩა','50':'50 სვლა აყვანისა და პაიკის სვლის გარეშე',resign:'დანებება',blocked:'სვლა აღარ დარჩა',kings:'15 სვლა მხოლოდ დამებით',k31:'სამმა დამამ ერთი ვერ აიყვანა'};
 function gResBox(G,{title,sub,kind,more='',again='',share='',leave='<button class="btn ghost" data-a="lobby">ლობი</button>'}){if(G.resHide)return '';if(!G.resSnd&&typeof gSnd==='function'){G.resSnd=1;setTimeout(()=>gSnd(kind==='win'?'win':kind==='draw'?'draw':'lose'),250)}
  return `<div class="gend ${kind}" role="dialog" aria-label="${esc(title)}"><div class="gendc"><span class="gendi">${ic(kind==='win'?'trophy':kind==='draw'?'flag':'chess')}</span><h2>${title}</h2>${sub?`<p>${sub}</p>`:''}${more}
   <div class="gendb">${again}${share}<button class="btn ghost" data-a="gresx">დაფის ნახვა</button>${leave}</div></div></div>`}
 function gResHTML(G){const r=G.res&&G.res();if(!r)return '';const c=G.ctx,me=isPlayer(c),draw=r.w===2,win=me&&!draw&&r.w===c.side;
  const title=draw?'ფრე':!me?esc(c.names[r.w])+' მოიგო':win?'მოიგე!':'წააგე';
  let sub=r.why==='resign'?(me?(win?'მეტოქე დანებდა':'დანებდი'):esc(c.names[-r.w])+' დანებდა'):r.why==='time'&&me?(win?'მეტოქეს დრო ამოეწურა':'დრო ამოგეწურა'):RESWHY[r.why]||'';if(r.mult>1)sub=(sub?sub+' · ':'')+MULT[r.mult];if(c.gone&&!sub)sub='მეტოქე გავიდა';
- const more=(me&&!draw?`<span class="gendd">${win?'+12':'−9'} რეიტინგი</span>`:'')+gRemHTML(c);
+ const more=(me?gEloHTML(c):'')+gRemHTML(c);
  const again=c.mode==='bot'?'<button class="btn gold" data-a="restart">ახალი პარტია</button>':c.mode==='tour'&&c.finished?'<button class="btn gold" data-a="page" data-p="tour">ტურნირზე</button>':c.mode==='online'&&!c.gone&&c.finished?`<button class="btn gold" data-a="grem"${c.remSent&&!c.remIn?' disabled':''}>${ic('turn')}${c.remIn?'რევანში, თანახმა ვარ':'რევანში'}</button>`:'';
  const share=win?gShareBtn(G.ctx.gk||S.game,c.mode==='online'?'მეტოქე: '+c.names[-c.side]:c.mode==='tour'?'ნარდის თასი':'ბოტთან, „'+BLV[bLvl(c.gk||S.game)].n+'“ დონე'):'';
  return gResBox(G,{title,sub,kind:draw?'draw':win||!me?'win':'lose',more,again,share})}
 A.gresx=()=>{if(S.page&&S.page.id==='jktable'){JO.resHide=1;joDraw();return}const G=GAME[S.game];if(G){G.resHide=1;G.render()}};
 function endMsg(c,w){if(w===2)return 'ფრე';if(!isPlayer(c))return esc(c.names[w])+' მოიგო';return w===c.side?'მოიგე!':esc(c.names[w])+' მოიგო. სცადე ისევ'}
 const tourBack=c=>c.mode==='tour'&&c.finished?'<button class="btn" data-a="page" data-p="tour" style="align-self:flex-start">ტურნირზე დაბრუნება</button>':'';
-async function gameResult(game,win){try{const r=await rpc('game_result',{p_game:game,p_win:win});ME.rating=r.rating;setCoins(r.coins);if(win)toast(r.reward?`მოიგე! +12 რეიტინგი, +${r.reward} მონეტა`:'მოიგე! +12 რეიტინგი');if(win)confetti()}catch(e){}}
-function finish(G,w){const c=G.ctx;if(c.finished)return;c.finished=1;if(c.mode==='bot'&&c.gk)gUnsave(c.gk);if((c.mode==='bot'||c.mode==='tour')&&Math.random()<.6){const id=S.game;setTimeout(()=>{if(S.game===id&&G.ctx===c)gRxShow(-c.side,5)},1400)}if(isPlayer(c)&&w!==2){const win=w===c.side;gameResult(G.title,win);if(c.mode==='tour')tourResult(win)}G.render()}
+async function gameResult(game,win){try{const before=ME.rating??1500,r=await rpc('game_result',{p_game:game,p_win:win});r.dr=(r.rating??before)-before;ME.rating=r.rating??ME.rating;setCoins(r.coins);
+ if(win){const t=[r.dr?(r.dr>0?'+':'')+r.dr+' რეიტინგი':'',r.reward?'+'+r.reward+' მონეტა':''].filter(Boolean).join(', ');toast('მოიგე!'+(t?' '+t:''));confetti()}return r}catch(e){return null}}
+/* online games: both phones say the game began and how it ended; the server checks that they agree and moves the ratings (when it can: until then the old result counts) */
+function gMeet(c){if(c.mode!=='online'||!c.opp||!okGid(c.gid)||!['nardi','shashi','chess'].includes(c.gk))return;rpc('match_meet',{p_gid:c.gid,p_game:c.gk,p_opp:c.opp,p_side:c.side}).then(r=>{c.mid=r&&r.id;c.rated=!!(r&&r.rated);if(!c.mid)c.noElo=1;if(c.repW!=null)gReport(GAME[c.gk],c.repW)}).catch(()=>{c.noElo=1;if(c.repW!=null)gReport(GAME[c.gk],c.repW)})}
+function gReport(G,w){const c=G&&G.ctx;if(!c)return;if(!c.mid&&!c.noElo){c.repW=w;return}c.repW=null;
+ if(c.mid){rpc('match_report',{p_gid:c.gid,p_res:w}).then(r=>{c.elo=r||{};if(r&&!r.pending&&r.rating){MYR[c.gk]=r.rating;ME.rating=Math.max(ME.rating||0,r.rating)}if(r&&!r.pending&&r.delta>0)toast(`+${r.delta} რეიტინგი`);if(w===c.side)confetti();if(G.ctx===c)G.render()}).catch(()=>{c.elo={err:1};if(G.ctx===c)G.render()});return}
+ if(w!==2)gameResult(c.gk,w===c.side).then(r=>{c.gres=r;if(G.ctx===c)G.render()})}
+function gEloHTML(c){if(c.mode==='online'&&c.mid){const e=c.elo;const t=!e?'რეიტინგი ითვლება…':e.err?'რეიტინგი ვერ დაითვალა':e.pending?'რეიტინგი მეტოქის დადასტურების შემდეგ':!e.rated?'ეს პარტია რეიტინგში არ ითვლება':`${e.delta>0?'+':''}${e.delta} რეიტინგი · ${e.rating}`;return `<span class="gendd">${t}</span>`}
+ const r=c.gres;if(!r)return '';const t=[r.dr?(r.dr>0?'+':'')+r.dr+' რეიტინგი':'',r.reward?'+'+r.reward+' მონეტა':''].filter(Boolean).join(' · ');return t?`<span class="gendd">${t}</span>`:''}
+function finish(G,w){const c=G.ctx;if(c.finished)return;c.finished=1;if(c.mode==='bot'&&c.gk)gUnsave(c.gk);if((c.mode==='bot'||c.mode==='tour')&&Math.random()<.6){const id=S.game;setTimeout(()=>{if(S.game===id&&G.ctx===c)gRxShow(-c.side,5)},1400)}if(c.mode==='online')gReport(G,w);else if(isPlayer(c)&&w!==2){const win=w===c.side;gameResult(c.gk||G.title,win).then(r=>{c.gres=r;if(G.ctx===c)G.render()});if(c.mode==='tour')tourResult(win)}G.render()}
 A.play=t=>{const g=GAMES.find(x=>x.id===t.dataset.g);if(g.soon||!GAME[g.id]){toast(g.n+' მალე დაემატება');return}const sv=gSaved(g.id);startGame(g.id,null,sv);if(sv)toast('პარტია გაგრძელდა იქიდან, სადაც შეჩერდი')};
-A.lobby=()=>{closeSheet();fsExit();navKill('game');const G=GAME[S.game];if(G){if(G.ctx&&G.ctx.gr)netLeave();G.ctx={mode:'dead',side:1,names:{},avs:{}};G.tk=(G.tk||0)+1}S.game=null;R.games()};
+A.lobby=()=>{closeSheet();fsExit();navKill('game');const G=GAME[S.game];if(G&&G.ctx&&G.ctx.mode==='online'&&!G.ctx.finished&&!G.ctx.gone&&G.ctx.mid&&G.ctx.seq>=3){rpc('match_report',{p_gid:G.ctx.gid,p_res:-G.ctx.side}).catch(()=>{});toast('პარტია დატოვე. მოგება მეტოქეს ჩაეთვალა')}if(G){if(G.ctx&&G.ctx.gr)netLeave();G.ctx={mode:'dead',side:1,names:{},avs:{}};G.tk=(G.tk||0)+1}S.game=null;R.games()};
 A.restart=()=>{const G=GAME[S.game];if(!G)return;closeSheet();gUnsave(S.game);G.resHide=0;G.resSnd=0;if(S.game==='joker'){G.start();G.render();return}startGame(S.game,{mode:'bot',names:G.ctx.names,avs:G.ctx.avs})};
 const LIVEG=[{gt:'nardi',a:0,b:1},{gt:'chess',a:2,b:4},{gt:'shashi',a:3,b:5}];
 A.watch=t=>{const g=LIVEG[+t.dataset.i],a=BOTN[g.a],b=BOTN[g.b];startGame(g.gt,{mode:'watch',names:{1:a[0]+' (ბოტი)','-1':b[0]+' (ბოტი)'},avs:{1:{n:a[0],h:a[1]},'-1':{n:b[0],h:b[1]}}})};
@@ -109,9 +117,10 @@ async function joinGame(gid,gt,side,opp,oppId,watch){netLeave();const G=GAME[gt]
    if(ctx.clk){const k=ctx.clk,o=-ctx.side,ck=d.ck;if(ck&&typeof ck==='object'){if(Number(ck.n)>k.n)k.n=Number(ck.n);if(Number.isFinite(+ck[o]))k.t[o]=Math.max(0,Math.min(k.base*3,+ck[o]))}clkTurn(G);if(ck&&Number.isFinite(+ck[o]))k.t[o]=Math.max(0,Math.min(k.base*3,+ck[o]))}
    G.render();if(G.checkEnd)G.checkEnd()}catch(e){}})
   .on('broadcast',{event:'need'},()=>{if(G.ctx===ctx&&ctx.mode==='online'&&side===1)netSend()})
-  .on('broadcast',{event:'bye'},({payload:d})=>{if(G.ctx===ctx&&d&&d.from===oppId){ctx.gone=1;G.render()}})
-  .on('presence',{event:'leave'},({key})=>{if(G.ctx===ctx&&oppId&&key===oppId){ctx.gone=1;G.render()}})
-  .subscribe(st=>{if(st!=='SUBSCRIBED')return;ch.track(watch?{w:1}:{w:0,lk:myLook()});if(watch||side===-1)ctx.gr.emit('need',{});else netSend()});
+  .on('broadcast',{event:'bye'},({payload:d})=>{if(G.ctx===ctx&&d&&d.from===oppId){ctx.gone=1;ctx.bye=1;gGone(G,ctx,4000);G.render()}})
+  .on('presence',{event:'leave'},({key})=>{if(G.ctx===ctx&&oppId&&key===oppId&&!ctx.finished){ctx.gone=1;gGone(G,ctx,60000);if(ctx.mode==='online')toast('მეტოქე გავიდა. თუ წუთში არ დაბრუნდება, მოგება შენ ჩაგეთვლება');G.render()}})
+  .on('presence',{event:'join'},({key})=>{if(G.ctx===ctx&&oppId&&key===oppId&&ctx.gone&&!ctx.bye&&!ctx.finished){ctx.gone=0;clearTimeout(ctx.goneT);G.render()}})
+  .subscribe(st=>{if(st!=='SUBSCRIBED')return;ch.track(watch?{w:1}:{w:0,lk:myLook()});if(!watch&&!ctx.met){ctx.met=1;gMeet(ctx)}if(watch||side===-1)ctx.gr.emit('need',{});else netSend()});
  NET.state={st:watch?'watch':'play',gt,g:gid,vs:watch?null:String(opp.nm).slice(0,40)};netPresence();view.scrollTop=0;G.render()}
 function netSend(){const G=GAME[S.game];if(!G||!G.ctx||G.ctx.mode!=='online'||!G.ctx.gr)return;const c=G.ctx;clkTurn(G);c.seq++;const k=c.clk;c.gr.emit('st',Object.assign({seq:c.seq,s:G.snap()},k?{ck:{[c.side]:Math.round(k.t[c.side]),n:k.n}}:{}))}
 function netLeave(){if(NET.gr){const g=NET.gr;NET.gr=null;try{g.emit('bye',{from:ME.id})}catch(e){}setTimeout(()=>sb.removeChannel(g.ch),400)}NET.state=null;netPresence()}
@@ -125,7 +134,7 @@ function tourMy(){if(!S.tour)return null;const k=tourRound();if(k>2)return null;
 function tourSim(k){const T=S.tour,parts=tourParts(k);for(let m=0;m<parts.length/2;m++)if(T.r[k][m]===null)T.r[k][m]=Math.random()<.5?parts[2*m]:parts[2*m+1]}
 function tourResult(win){const my=tourMy();if(!my)return;const T=S.tour;T.r[my.k][my.i>>1]=win?'me':my.opp;tourSim(my.k);if(!win)for(let k=my.k+1;k<3;k++)tourSim(k);if(win&&my.k===2){toast('ჩემპიონი ხარ!');confetti()}store.set('tour',T)}
 PG.tour={r(){const T=S.tour;let body;
- if(!T)body=`<section class="tourcard"><span class="tag" style="align-self:flex-start">კვირის ტურნირი</span><h3>ნარდის თასი</h3><p class="note">8 მოთამაშე, გამოთიშვის სისტემა: მეოთხედფინალი, ნახევარფინალი, ფინალი. ყოველი მოგება რეიტინგს და მონეტებს გმატებს.</p><button class="btn" data-a="tourreg" style="align-self:flex-start">რეგისტრაცია</button><p class="note">ამ ეტაპზე მეტოქეების მაგივრად ბოტები თამაშობენ. ცოცხალ მეგობართან თამაში ლობიდანაა შესაძლებელი.</p></section>`;
+ if(!T)body=`<section class="tourcard"><span class="tag" style="align-self:flex-start">კვირის ტურნირი</span><h3>ნარდის თასი</h3><p class="note">8 მოთამაშე, გამოთიშვის სისტემა: მეოთხედფინალი, ნახევარფინალი, ფინალი. ყოველი მოგება მონეტებს გმატებს.</p><button class="btn" data-a="tourreg" style="align-self:flex-start">რეგისტრაცია</button><p class="note">ამ ეტაპზე მეტოქეების მაგივრად ბოტები თამაშობენ. ცოცხალ მეგობართან თამაში ლობიდანაა შესაძლებელი.</p></section>`;
  else{const my=tourMy(),champ=T.r[2][0];const col=(k,title)=>{const parts=k===0?T.pl:T.r[k-1];let h=`<div class="bcol"><h4>${title}</h4>`;for(let m=0;m<4/2**k;m++){const a=parts[2*m],b=parts[2*m+1],w=T.r[k][m];h+=`<div class="bm">${[a,b].map(x=>`<div class="${x!=null&&w!=null?(x===w?'w':'l'):''}${x==='me'?' me':''}"><span>${x!=null?esc(tName(x)):'…'}</span>${x!=null&&w===x?'✓':''}</div>`).join('')}</div>`}return h+'</div>'};
   body=`<section class="tourcard"><h3>ნარდის თასი</h3>${champ!=null?`<p><b>${champ==='me'?'შენ მოიგე ტურნირი!':esc(tName(champ))+' გახდა ჩემპიონი.'}</b></p><button class="btn ghost" data-a="tourreset" style="align-self:flex-start">ახალი ტურნირი</button>`
   :my?`<p>შემდეგი მატჩი: <b>${esc(tName(my.opp))} (ბოტი)</b> · ${['მეოთხედფინალი','ნახევარფინალი','ფინალი'][my.k]}</p><button class="btn gold" data-a="tourplay" style="align-self:flex-start">მატჩის დაწყება</button>`
@@ -145,14 +154,14 @@ function gShelf(){const last=store.get('glast',null),f=GAMES.find(g=>g.id===last
 function gLobbyLive(){const lv=$('#glive');if(lv){const n=gLiveList().length;lv.hidden=!n;if(n)lv.lastChild.innerHTML=gLiveHTML()}const o=$('#gonl');if(o){o.hidden=!S.online.size;o.lastChild.textContent=S.online.size+' ონლაინ'}$$('.gs-post[data-g]').forEach(b=>{const g=GAMES.find(x=>x.id===b.dataset.g),m=g&&b.querySelector('.gs-meta');if(m)m.outerHTML=gMeta(g)})}
 R.games=()=>{if(S.game&&GAME[S.game])return GAME[S.game].render();
  const tour=S.tour?(tourMy()?'შენი შემდეგი მატჩი გელოდება':'ნახე, როგორ დასრულდა'):'კვირის ტურნირი 8 მოთამაშეზე. რეგისტრაცია უფასოა';
- view.innerHTML=`<div class="view-pad gs-page"><header class="gs-head"><h2>სამაგიდო თამაშები</h2><div class="gs-chips"><span class="live" id="gonl"${S.online.size?'':' hidden'}><i></i>${S.online.size} ონლაინ</span><span class="gs-rt">${ic('trophy')}<span>შენი რეიტინგი <b>${ME.rating??1500}</b></span></span><button class="gs-lk" data-a="glook">${ic('user')}პერსონაჟი</button></div></header>
+ view.innerHTML=`<div class="view-pad gs-page"><header class="gs-head"><h2>სამაგიდო თამაშები</h2><div class="gs-chips"><span class="live" id="gonl"${S.online.size?'':' hidden'}><i></i>${S.online.size} ონლაინ</span><span class="gs-rt" id="gmyr">${gMyRtHTML()}</span><button class="gs-lk" data-a="glook">${ic('user')}პერსონაჟი</button></div></header>
  ${gShelf()}
  <button class="gs-tour" data-a="page" data-p="tour"><span class="gs-medal">${ic('trophy')}</span><span class="grow"><b>ნარდის თასი</b><small>${tour}</small></span><span class="gs-chev">${ic('back')}</span></button>
  <section><h3 class="sec">ონლაინ ახლა</h3><div id="onl">${onlineHTML()}</div></section>
  <section id="glive"${gLiveList().length?'':' hidden'}><h3 class="sec">ახლა თამაშობენ</h3><div class="livegames">${gLiveHTML()}</div></section>
  <section><h3 class="sec">ბოტების პარტიები</h3><div class="livegames">${LIVEG.map((g,i)=>{const G=GAMES.find(x=>x.id===g.gt),A1=BOTN[g.a],B1=BOTN[g.b];return `<button class="lgcard" data-a="watch" data-i="${i}" style="--ac:${G.ac}"><span class="gs-mini"><img src="${GART(g.gt,600)}" alt="" loading="lazy" decoding="async"><em>${G.n}</em></span><span class="vsn"><span class="gs-avs">${avAny({n:A1[0],h:A1[1]},24)}${avAny({n:B1[0],h:B1[1]},24)}</span>${A1[0]} და ${B1[0]}</span><small>უყურე, როგორ თამაშობენ</small></button>`}).join('')}</div></section>
- <section><h3 class="sec">რეიტინგი, ტოპ 10</h3><div id="lb" class="gs-lb">${skel(2)}</div></section></div>`;
- q(sb.from('profiles').select('id,name,avatar_url,hue,rating,verified').eq('onboarded',true).order('rating',{ascending:false}).limit(10)).then(rows=>{rows.forEach(p=>PC.set(p.id,Object.assign(PC.get(p.id)||{},p)));const el=$('#lb');if(el)el.innerHTML=`<table class="lb"><tbody>${rows.map((r,i)=>`<tr${r.id===ME.id?' class="mine"':''}><td><span class="gs-rk${i<3?' r'+(i+1):''}">${i+1}</span></td><td><button class="lbn" data-a="user" data-u="${r.id}">${av(r,28)}${esc(r.name)}${vb(r)}</button></td><td>${r.rating}</td></tr>`).join('')}</tbody></table>`}).catch(()=>{})};
+ <section class="gs-lbs"><h3 class="sec">რეიტინგი</h3><div id="lbc">${gLbCtl()}</div><div id="lb" class="gs-lb">${skel(2)}</div></section></div>`;
+ gLbLoad();gMyRtLoad();if(Date.now()-(gMyRtLoad.st||0)>6e4){gMyRtLoad.st=Date.now();rpc('match_settle_mine').then(n=>{if(n)gMyRtLoad()}).catch(()=>{})}};
 
 /* ---------- 3D boards, fullscreen, the game menu ----------
    the 3D code loads only when a game opens. without WebGL, or when the person picks the flat board, everything stays flat.
@@ -299,3 +308,29 @@ A.glooksave=async()=>{if(!LKD)return;const L=lkClean(LKD);store.set('mylook',L);
  try{await sb.from('profiles').update({look:L}).eq('id',ME.id)}catch(e){}};
 const gPplOn=()=>store.get('gppl',true)!==false;
 A.gppl=t=>{const on=!gPplOn();store.set('gppl',on);gSwFlip(t,on);gRedraw()};
+function gGone(G,c,ms){if(c.mode!=='online'||c.finished)return;clearTimeout(c.goneT);c.goneT=setTimeout(()=>{if(G.ctx===c&&c.gone&&!c.finished&&G.resign)G.resign(-c.side,'gone')},ms)}
+/* ---------- ratings: one a game, from games with people; a season every month (Tbilisi time) ----------
+   until the server keeps per-game ratings, the old single rating is shown */
+const GR={ok:null,season:null};
+const gSeason=()=>{try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tbilisi',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7)}catch(e){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}};
+const GMON=['იანვრის','თებერვლის','მარტის','აპრილის','მაისის','ივნისის','ივლისის','აგვისტოს','სექტემბრის','ოქტომბრის','ნოემბრის','დეკემბრის'];
+const LBG=['nardi','shashi','chess'];
+const lbGame=()=>{const g=store.get('lbg',null)||store.get('glast',null);return LBG.includes(g)?g:'nardi'};
+const lbScope=()=>{const s=store.get('lbs','all');return['all','friends','month'].includes(s)?s:'all'};
+function gMyRtHTML(){const g=lbGame(),n=GAMES.find(x=>x.id===g).n;return GR.ok?`${ic('trophy')}<span>${n} <b>${myRating(g)}</b></span>`:`${ic('trophy')}<span>შენი რეიტინგი <b>${ME.rating??1500}</b></span>`}
+function gMyRtLoad(){q(sb.from('game_ratings').select('game,rating,games,season,season_pts,season_games').eq('user_id',ME.id)).then(rows=>{GR.ok=true;GR.mine={};(rows||[]).forEach(r=>{MYR[r.game]=r.rating;GR.mine[r.game]=r});const e=$('#gmyr');if(e)e.innerHTML=gMyRtHTML()}).catch(()=>{GR.ok=false})}
+function gLbCtl(){const g=lbGame(),s=lbScope(),m=+gSeason().slice(5)-1;
+ return `<div class="gs-lbt" role="group" aria-label="თამაში">${LBG.map(id=>`<button data-a="glbg" data-g="${id}" aria-pressed="${id===g}">${GAMES.find(x=>x.id===id).n}</button>`).join('')}</div>
+ <div class="seg flat" role="group" aria-label="ვინ">${[['all','ყველა'],['friends','მეგობრები'],['month',MONTHS[m]]].map(([k,l])=>`<button data-a="glbs" data-s="${k}" aria-pressed="${k===s}">${l}</button>`).join('')}</div>`}
+A.glbg=t=>{store.set('lbg',t.dataset.g);const c=$('#lbc');if(c)c.innerHTML=gLbCtl();const e=$('#gmyr');if(e)e.innerHTML=gMyRtHTML();gLbLoad()};
+A.glbs=t=>{store.set('lbs',t.dataset.s);const c=$('#lbc');if(c)c.innerHTML=gLbCtl();gLbLoad()};
+async function gLbLoad(){const el=$('#lb');if(!el)return;const g=lbGame(),s=lbScope(),m2=+gSeason().slice(5)-1,tk=(gLbLoad.tk=(gLbLoad.tk||0)+1),fr=[ME.id,...FRIENDS].slice(0,300);el.innerHTML=skel(2);
+ const draw=(rows,val,sub,empty)=>{if(gLbLoad.tk!==tk||!$('#lb'))return;rows.forEach(p=>{if(p.p)PC.set(p.p.id,Object.assign(PC.get(p.p.id)||{},p.p))});
+  $('#lb').innerHTML=rows.length?`<table class="lb"><tbody>${rows.map((r,i)=>`<tr${r.p.id===ME.id?' class="mine"':''}><td><span class="gs-rk${i<3?' r'+(i+1):''}">${i+1}</span></td><td><button class="lbn" data-a="user" data-u="${r.p.id}">${av(r.p,28)}<span class="lbnn"><span>${esc(r.p.name)}${vb(r.p)}</span>${sub&&sub(r)?`<small>${sub(r)}</small>`:''}</span></button></td><td>${val(r)}</td></tr>`).join('')}</tbody></table>`:`<p class="note">${empty}</p>`};
+ if(GR.ok!==false){try{let qq=sb.from('game_ratings').select('user_id,rating,games,wins,season,season_pts,season_games,profiles(id,name,avatar_url,hue,verified)').eq('game',g);
+   if(s==='month')qq=qq.eq('season',gSeason()).gt('season_games',0).order('season_pts',{ascending:false}).limit(10);else if(s==='friends')qq=qq.in('user_id',fr).gt('games',0).order('rating',{ascending:false}).limit(50);else qq=qq.gt('games',0).order('rating',{ascending:false}).limit(10);
+   const rows=(await q(qq)).filter(r=>r.profiles).map(r=>Object.assign(r,{p:r.profiles}));GR.ok=true;
+   draw(rows,r=>s==='month'?(r.season_pts>0?'+':'')+r.season_pts:r.rating,r=>s==='month'?r.season_games+' პარტია':r.games+' პარტია'+(r.wins?', '+r.wins+' მოგება':''),s==='month'?`${GMON[m2]} სეზონში ჯერ არავის უთამაშია. პირველი რეიტინგული პარტია სეზონს გახსნის.`:s==='friends'?'მეგობრებს ჯერ რეიტინგული პარტია არ უთამაშიათ. გამოიწვიე რომელიმე.':'ჯერ არავის უთამაშია რეიტინგული პარტია.');return}catch(e){GR.ok=false}}
+ if(s==='month'){draw([],null,null,'თვის სეზონი ჩაირთვება, როცა რეიტინგი თამაშების მიხედვით დაითვლება.');return}
+ try{let qq=sb.from('profiles').select('id,name,avatar_url,hue,rating,verified').eq('onboarded',true);qq=s==='friends'?qq.in('id',fr).order('rating',{ascending:false}).limit(50):qq.order('rating',{ascending:false}).limit(10);
+  const rows=(await q(qq)).map(p=>({p,rating:p.rating}));draw(rows,r=>r.rating,null,'აქ ჯერ არავინაა.')}catch(e){if(gLbLoad.tk===tk&&$('#lb'))$('#lb').innerHTML=`<p class="note">${errMsg(e)}</p>`}}
