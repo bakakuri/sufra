@@ -51,7 +51,7 @@ void main(){float ra=1.0;if(uRf.x>0.0){vec3 d=vW-uRe;vec3 s=uRe+d*((uRf.y-uRe.y)
  vec4 tx=uFx.x>0.5?texture2D(uT,vU):vec4(1.0);if(uFx.z>0.5&&tx.a<0.5)discard;
  vec3 base=uC*pow(tx.rgb,vec3(2.2));
  if(uFx.y>0.5){gl_FragColor=vec4(pow(base+uE,vec3(1.0/2.2)),tx.a*uMat.w);return;}
- vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;vec3 v=normalize(uEye-vW);float nl0=dot(n,uLd);float nl=max(nl0,0.0);float sh=shade(nl);nl=max((nl0+uM2.x)/(1.0+uM2.x),0.0);
+ vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;vec3 v=normalize(uEye-vW);float nl0=dot(n,uLd);float nl=max(nl0,0.0);float sh=shade(nl);float nlh=nl;nl=max((nl0+uM2.x)/(1.0+uM2.x),0.0);
  float sp=uSp.w>0.0?mix(1.0,1.0-smoothstep(uSp.z*0.45,uSp.z*1.3,length(vW.xz-uSp.xy)),uSp.w):1.0;
  vec3 h=normalize(uLd+v);float spec=pow(max(dot(n,h),0.0),uMat.x)*uMat.y*(uMat.x+8.0)*0.03;
  vec3 amb=mix(uGnd,uSky,n.y*0.5+0.5);float fr=pow(1.0-max(dot(n,v),0.0),5.0);vec3 r=reflect(-v,n);
@@ -59,6 +59,8 @@ void main(){float ra=1.0;if(uRf.x>0.0){vec3 d=vW-uRe;vec3 s=uRe+d*((uRf.y-uRe.y)
  float g=uMat.z*(0.04+0.96*fr);
  vec3 col=base*(amb*(0.5+0.5*sp)+uLc*nl*mix(sh,1.0,uM2.x*0.35)*sp)*(1.0-g*0.6)+uLc*spec*sh*sp+env*g*(0.35+0.65*sp)+uE;
  /* the light from behind that outlines people against a bright window: strongest at the silhouette, on the side turned away */
+ /* skin lets light through: a warm red where the light turns into shadow */
+ if(uM2.z>0.0)col+=base*uLc*sp*max(nl-nlh,0.0)*uM2.z*vec3(1.0,0.28,0.16);
  if(uM2.y>0.0){float ed=1.0-max(dot(n,v),0.0);col+=uRim.rgb*uM2.y*pow(ed,2.6)*clamp(dot(n,uRimD)*0.7+0.45,0.0,1.0)*(base*0.7+0.3);}
  gl_FragColor=vec4(pow(aces(col*uExp),vec3(1.0/2.2)),uMat.w*tx.a*ra);}`;
 const VS_SH=`attribute vec3 aP;uniform mat4 uM,uL;varying float vZ;void main(){vec4 p=uL*(uM*vec4(aP,1.0));vZ=p.z*0.5+0.5;gl_Position=p;}`;
@@ -145,7 +147,7 @@ function g3Tex(cv,{rep=false,af=true}={}){const gl=G3D.gl,t=gl.createTexture();g
  const w=rep?(rep==='m'?gl.MIRRORED_REPEAT:gl.REPEAT):gl.CLAMP_TO_EDGE;gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,w);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,w);
  if(af&&G3D.af)gl.texParameterf(gl.TEXTURE_2D,G3D.af.TEXTURE_MAX_ANISOTROPY_EXT,Math.min(8,G3D.afM||1));return t}
 /* a material: colour (sRGB hex), texture, region of the texture, shininess, specular, gloss (how much it mirrors the room) */
-function g3Mat(o={}){return{c:lin(o.c||'#ffffff'),t:o.t||null,uv:o.uv||[0,0,1,1],sh:o.sh??30,sp:o.sp??.25,gl:o.gl??.15,a:o.a??1,unlit:!!o.unlit,cut:!!o.cut,e:o.e?lin(o.e):[0,0,0],add:!!o.add,two:!!o.two,vary:!!o.vary,wrap:o.wrap||0,rim:o.rim||0}}
+function g3Mat(o={}){return{c:lin(o.c||'#ffffff'),t:o.t||null,uv:o.uv||[0,0,1,1],sh:o.sh??30,sp:o.sp??.25,gl:o.gl??.15,a:o.a??1,unlit:!!o.unlit,cut:!!o.cut,e:o.e?lin(o.e):[0,0,0],add:!!o.add,two:!!o.two,vary:!!o.vary,wrap:o.wrap||0,rim:o.rim||0,sss:o.sss||0,nosh:!!o.nosh}}
 
 /* ---------- scenes: static furniture, moving objects matched across states, flat marks ---------- */
 function g3Scene(o){return Object.assign({statics:[],models:{},objs:new Map(),marks:[],seq:0,
@@ -243,7 +245,7 @@ let G3_LID=null;
 function g3Bind(m){const gl=G3D.gl;if(G3D.bound===m)return;G3D.bound=m;gl.bindBuffer(gl.ARRAY_BUFFER,m.vb);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.ib);
  gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,32,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,32,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,2,gl.FLOAT,false,32,24)}
 function g3Part(pt,M,dim,glow,al,sh,uv){const gl=G3D.gl,u=G3D.P.u,m=pt.mat;gl.uniformMatrix4fv(u.uM,false,M);gl.uniform4fv(u.uUV,m.vary&&uv?uv:m.uv);
- gl.uniform3f(u.uC,m.c[0]*dim,m.c[1]*dim,m.c[2]*dim);const e=glow||m.e;gl.uniform3f(u.uE,e[0],e[1],e[2]);gl.uniform4f(u.uMat,m.sh,m.sp,m.gl,m.a*al);gl.uniform4f(u.uM2,m.wrap||0,m.rim||0,0,0);gl.uniform4f(u.uFx,m.t?1:0,m.unlit?1:0,m.cut?1:0,sh?1:0);
+ gl.uniform3f(u.uC,m.c[0]*dim,m.c[1]*dim,m.c[2]*dim);const e=glow||m.e;gl.uniform3f(u.uE,e[0],e[1],e[2]);gl.uniform4f(u.uMat,m.sh,m.sp,m.gl,m.a*al);gl.uniform4f(u.uM2,m.wrap||0,m.rim||0,m.sss||0,0);gl.uniform4f(u.uFx,m.t?1:0,m.unlit?1:0,m.cut?1:0,sh&&!m.nosh?1:0);
  gl.bindTexture(gl.TEXTURE_2D,m.t||G3D.white);if(m.two)gl.disable(gl.CULL_FACE);g3Bind(pt.mesh);gl.drawElements(gl.TRIANGLES,pt.mesh.n,pt.mesh.it,0);if(m.two)gl.enable(gl.CULL_FACE)}
 function g3Draw(sc,now){const gl=G3D.gl,cv=G3D.cv,C=g3Cam(sc),L=sc.light;sc.camNow=C;G3D.bound=null;
  for(const o of sc.objs.values()){o.M=m4.trs(o.lift?v3.add(o.p,[0,o.lift,0]):o.p,o.q,o.s);if(o.hud&&C.lookM&&!o.held)o.M=m4.mul(C.lookM,o.M)}

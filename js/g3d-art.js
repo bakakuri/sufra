@@ -517,3 +517,42 @@ function jesterAt(x,cx,cy,k,pal){x.save();x.translate(cx,cy);x.scale(k,k);
  x.fillStyle=pal[1];x.beginPath();x.ellipse(0,-44,54,14,0,Math.PI,0);x.fill();x.fillStyle='#D9A441';x.fillRect(-52,-46,104,9);
  for(const[bx,by]of[[-92,-58],[10,-150],[92,-58]]){const bg=x.createRadialGradient(bx-3,by-3,1,bx,by,11);bg.addColorStop(0,'#FFF1B8');bg.addColorStop(1,'#C08A2A');x.fillStyle=bg;x.beginPath();x.arc(bx,by,10,0,Math.PI*2);x.fill()}
  x.restore()}
+/* ---------- paint for the sculpted heads ----------
+   the face is projected from the front: u = .5 + x/2.6, v = .5 - (y + .05)/2.9 in the head's own frame (its centre at 0) */
+const FUV=(x,y)=>[(.5+x/2.6)*512,(.5-(y+.05)/2.9)*512];
+function face2Cv(o){const S=512,c=cvs(S,S),x=c.getContext('2d'),R=rng(((o.skin||'').charCodeAt(2)||7)*13+(o.fem?5:0)),E=o.eye3||{x:.37,y:.03,r:.24};
+ x.fillStyle=o.skin;x.fillRect(0,0,S,S);
+ /* light and colour across the face: a warmer middle, rosy cheeks and nose tip, a cooler jaw for the men */
+ const rad=(px,py,r,col)=>{const[X,Y]=FUV(px,py),k=r/2.6*512,g=x.createRadialGradient(X,Y,0,X,Y,k);g.addColorStop(0,col);g.addColorStop(1,col.replace(/[\d.]+\)$/,'0)'));x.fillStyle=g;x.fillRect(X-k,Y-k,k*2,k*2)};
+ for(const s of[-1,1])rad(s*.44,-.24,.32,o.fem?'rgba(236,104,104,.38)':'rgba(226,110,96,.28)');rad(0,-.26,.16,'rgba(230,110,96,.3)');rad(0,.55,.5,'rgba(255,240,225,.12)');
+ for(const s of[-1,1])rad(s*.9,-.03,.18,'rgba(220,110,96,.35)');
+ if(!o.fem&&!o.old){x.save();x.globalAlpha=.07;for(let k=0;k<2600;k++){const a=R()*Math.PI,r=.55+R()*.3,px=Math.cos(a)*r*.85,py=-.55-Math.sin(a)*r*.75;if(py>-.45&&Math.abs(px)<.3)continue;const[X,Y]=FUV(px,py);x.fillStyle='#2A3040';x.fillRect(X,Y,1.6,1.6)}x.restore()}
+ /* soft shadow round each eye socket */
+ for(const s of[-1,1])rad(s*E.x,E.y+.04,E.r+.12,'rgba(130,64,52,.12)');
+ /* eyebrows: thick at the inner end, tapering out, a little arched */
+ x.fillStyle=o.brow||o.hair;for(const s of[-1,1]){const P0=FUV(s*.12,.29),P1=FUV(s*.36,.39),P2=FUV(s*.58,.3),w0=o.fem?9:15,w1=o.fem?4:8;
+  x.beginPath();x.moveTo(P0[0],P0[1]-w0/2);x.quadraticCurveTo(P1[0],P1[1]-w0*.8,P2[0],P2[1]-w1/2);x.quadraticCurveTo(P2[0]+s*2,P2[1],P2[0],P2[1]+w1/2);x.quadraticCurveTo(P1[0],P1[1]+w0*.4,P0[0],P0[1]+w0/2);x.closePath();x.fill()}
+ /* lines of an older face */
+ if(o.old){x.strokeStyle='rgba(120,60,45,.32)';x.lineWidth=2.2;for(const yy of[.62,.72]){const a=FUV(-.32,yy),b=FUV(0,yy+.03),d=FUV(.32,yy);x.beginPath();x.moveTo(a[0],a[1]);x.quadraticCurveTo(b[0],b[1]-6,d[0],d[1]);x.stroke()}
+  for(const s of[-1,1]){const a=FUV(s*.17,-.3),b=FUV(s*.26,-.52);x.beginPath();x.moveTo(a[0],a[1]);x.quadraticCurveTo(a[0]+s*8,(a[1]+b[1])/2,b[0],b[1]);x.stroke();const e=FUV(s*(E.x+E.r+.05),E.y);for(let k=-1;k<=1;k++){x.beginPath();x.moveTo(e[0],e[1]+k*7);x.lineTo(e[0]+s*13,e[1]+k*9);x.stroke()}}}
+ /* lips: a deeper rose, the line between them dark */
+ const lip=o.fem?'rgba(196,96,100,.6)':'rgba(176,100,90,.4)';x.fillStyle=lip;const L0=FUV(-.19,-.55),L1=FUV(0,-.5),L2=FUV(.19,-.55),L3=FUV(0,-.67);
+ x.beginPath();x.moveTo(L0[0],L0[1]);x.quadraticCurveTo(L1[0]-14,L1[1]-6,L1[0],L1[1]+2);x.quadraticCurveTo(L1[0]+14,L1[1]-6,L2[0],L2[1]);x.quadraticCurveTo(L1[0],L1[1]+10,L0[0],L0[1]);x.fill();
+ x.beginPath();x.moveTo(L0[0]+3,L0[1]+2);x.quadraticCurveTo(L3[0],L3[1]+8,L2[0]-3,L2[1]+2);x.quadraticCurveTo(L1[0],L1[1]+12,L0[0]+3,L0[1]+2);x.fill();
+ x.strokeStyle='rgba(70,24,24,.75)';x.lineWidth=2.4;x.lineCap='round';const M0=FUV(-.2,-.565),M1=FUV(0,-.59),M2=FUV(.2,-.565);x.beginPath();x.moveTo(M0[0],M0[1]);x.quadraticCurveTo(M1[0],M1[1]+5,M2[0],M2[1]);x.stroke();
+ x.globalCompositeOperation='multiply';x.globalAlpha=.06;x.drawImage(noiseCv(128,128,R,200,255),0,0,S,S);x.globalAlpha=1;x.globalCompositeOperation='source-over';return c}
+/* the eyeball for a head with lids of its own: open (white, iris, pupil, catch lights, the lid's shadow at the top), and shut for a blink */
+function eye2Cv(o){const W=512,H=256,c=cvs(W,H),x=c.getContext('2d'),skin=o.skin||'#E2AF8C';
+ const sc=x.createRadialGradient(64,132,6,64,132,128);sc.addColorStop(0,'#FFFFFF');sc.addColorStop(.55,'#F4F0EA');sc.addColorStop(1,'#C9B4A8');x.fillStyle=sc;x.fillRect(0,0,256,H);
+ const ic=o.eye||'#6A4222',ig=x.createRadialGradient(64,128,3,64,128,56);ig.addColorStop(0,'#1A0E08');ig.addColorStop(.25,ic);ig.addColorStop(.75,ic);ig.addColorStop(1,'#120A06');
+ x.save();x.translate(64,128);x.scale(1,1.95);x.fillStyle=ig;x.beginPath();x.arc(0,0,28,0,Math.PI*2);x.fill();
+ x.strokeStyle='rgba(255,235,200,.28)';x.lineWidth=1.1;for(let k=0;k<36;k++){const a=k/36*Math.PI*2;x.beginPath();x.moveTo(Math.cos(a)*10,Math.sin(a)*10);x.lineTo(Math.cos(a)*25,Math.sin(a)*25);x.stroke()}
+ x.fillStyle='#050308';x.beginPath();x.arc(0,0,11,0,Math.PI*2);x.fill();x.restore();
+ const lg=x.createLinearGradient(0,30,0,118);lg.addColorStop(0,'rgba(60,28,20,.55)');lg.addColorStop(1,'rgba(60,28,20,0)');x.fillStyle=lg;x.fillRect(0,0,256,118);
+ /* the lash line just under the lid's edge (the lid stands at about this height on the ball) */
+ const lv=Math.round((90-Math.asin(o.fem?.8:.74)*180/Math.PI)/180*256);x.fillStyle='rgba(22,10,8,.95)';x.fillRect(0,lv-2,256,o.fem?9:6);
+ x.fillStyle='rgba(255,255,255,.98)';x.beginPath();x.ellipse(53,112,8,15,0,0,Math.PI*2);x.fill();x.fillStyle='rgba(255,255,255,.7)';x.beginPath();x.ellipse(74,150,3.5,7,0,0,Math.PI*2);x.fill();
+ x.fillStyle=skin;x.fillRect(256,0,256,H);x.strokeStyle='rgba(30,14,10,.8)';x.lineWidth=o.fem?6:4;x.lineCap='round';x.beginPath();x.moveTo(256+14,146);x.quadraticCurveTo(256+64,156,256+114,146);x.stroke();return c}
+/* hair: fine strands and clumps in grey, tinted by the hair colour */
+function hairCv(){const S=256,c=cvs(S,S),x=c.getContext('2d'),R=rng(331);x.fillStyle='#BDBDBD';x.fillRect(0,0,S,S);
+ for(let k=0;k<420;k++){const X=R()*S,w=1+R()*2.5,a=.08+R()*.22;x.strokeStyle=R()<.5?`rgba(0,0,0,${a})`:`rgba(255,255,255,${a*.8})`;x.lineWidth=w;x.beginPath();x.moveTo(X,-10);x.bezierCurveTo(X+(R()-.5)*30,S*.3,X+(R()-.5)*30,S*.7,X+(R()-.5)*20,S+10);x.stroke()}return c}
