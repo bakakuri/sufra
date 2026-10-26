@@ -80,7 +80,8 @@ G3U.shashi=sc=>{const G=CK,c=G.ctx,T=CKT;sc.cam.yaw=c.side===-1?Math.PI:0;const 
 /* ---------- nardi ---------- */
 const NT=.35,NRIM=.13;
 const nCol=di=>di>=12?{col:di<18?di-12:di-11,top:1}:{col:di>=6?11-di:12-di,top:0};
-G3B.nardi=()=>{const sc=g3Scene({hug:1,cam:{yaw:0,pitch:1.08,pp:.14,fov:.56,tgt:[.8,.2,.35],box:[[-7,0,-6.1],[8.6,.9,6.1]],dy:0,dp:0,dz:1,mxp:.995},shR:10.5,shC:[.8,0,0],spot:[.8,0,10,.65],yawMax:.5});
+/* nardi is seen from your own stool: low over the board, the other player big across it, the yard behind him */
+G3B.nardi=()=>{const sc=g3Scene({hug:1,cam:{yaw:0,pitch:.86,pp:0,fov:.78,tgt:[.8,.2,.35],box:[[-7,0,-6.1],[8.6,.9,6.75]],anchorB:1,dy:0,dp:0,dz:1,mxp:.995},shR:10.5,shC:[.8,0,0],spot:[.8,0,10,.65],yawMax:.5});
  envCourt(sc);mkModel(sc);const fr=g3Mat({t:woodTex('frame'),sh:60,sp:.35,gl:.32});
  const top=g3T('bnardi:classic',()=>g3Tex(nardiCv('classic')));sc.boardM=g3Mat({t:top,sh:55,sp:.3,gl:.25});sc.sty='classic';
  sc.statics.push({parts:[{mesh:g3Mesh(gBox(15.6,NT,12.2,.08,3,null,[0])),mat:sc.boardM,cast:true},{mesh:g3Mesh(gBox(15.6,NT,12.2,.08,3,(f,u,v)=>[u*3,v*.3],[1,2,3,4,5])),mat:fr,cast:true}],M:m4.trs([.8,NT/2,0],qt.id(),1),cast:true});
@@ -161,7 +162,7 @@ function pplPush(L,id,key,p,qB,s,hq,o={}){const S=s||1,at=v=>v3.add(p,qt.rot(qB,
 /* ---------- the opponent across the board ----------
    chess, checkers and nardi get the other player on the far side: the same people as at the card table, a little bigger.
    they watch the board, lean in while they think, look up at you when the game ends, and act out their reactions */
-const OPPS={chess:{z:7.95,s:1,y:-.55,x:0,e:5.25},shashi:{z:7.95,s:1,y:-.55,x:0,e:5.25},nardi:{z:9.0,s:1,y:-.6,x:.8,e:6.45}};
+const OPPS={chess:{z:7.95,s:1,y:-.55,x:0,e:5.25},shashi:{z:7.95,s:1,y:-.55,x:0,e:5.25},nardi:{z:10.15,s:1.55,y:-.6,x:.8,e:6.45}};
 const oppOn=()=>typeof store==='undefined'||store.get('gppl',true)!==false;
 function oppLookOf(c){const s=-c.side,a=c.avs&&c.avs[s],nm=String((c.names&&c.names[s])||'მოთამაშე').replace(/ \(ბოტი\)$/,'');if(c.olk&&typeof c.olk==='object')return c.olk;if(a&&a.look&&typeof a.look==='object')return a.look;return jkLook(nm,a&&(a.h??a.hue))}
 function oppAdd(sc,id,G,L,far){const o=OPPS[id],c=G.ctx,cm=sc.cam;if(!o||!c||!oppOn()||c.mode==='puzzle'){if(cm.p0!=null){cm.pitch=cm.p0;cm.pp=cm.pp0;cm.tgt=cm.t0.slice()}cm.extraW=null;sc.people=null;sc.anchors=null;return}
@@ -169,7 +170,7 @@ function oppAdd(sc,id,G,L,far){const o=OPPS[id],c=G.ctx,cm=sc.cam;if(!o||!c||!op
  const yaw=far<0?0:Math.PI,ts=G.turnSide?G.turnSide():null,over=G.res&&G.res(),think=!over&&ts===-c.side,lean=think?.08:0,qB=qt.mul(qt.ax(0,1,0,yaw),qt.ax(1,0,0,lean)),p=[o.x,o.y,far*o.z];
  const pitch=over?0:think?.34:.1;
  /* on a wide screen the camera tips down a little less and keeps the head in the picture */
- if(cm.p0==null){cm.p0=cm.pitch;cm.pp0=cm.pp||0;cm.t0=cm.tgt.slice()}cm.pitch=cm.p0-.12;cm.pp=cm.pp0+.12;const wide=(G3D.asp||1)>=.8;cm.tgt=wide?[cm.t0[0],cm.t0[1]+.9,cm.t0[2]+far*1.7]:cm.t0.slice();if(!sc.onResize)sc.onResize=()=>{try{G3U[sc.host](sc)}catch(e){}};const hz=far*(o.z-.2);cm.extraW=[[o.x-1.5,o.y+5.9,hz],[o.x+1.5,o.y+5.9,hz],[o.x-2.6,o.y+3.2,far*o.z],[o.x+2.6,o.y+3.2,far*o.z]];
+ if(cm.p0==null){cm.p0=cm.pitch;cm.pp0=cm.pp||0;cm.t0=cm.tgt.slice()}cm.pitch=cm.p0-.12;cm.pp=cm.pp0+.12;const wide=(G3D.asp||1)>=.8;cm.tgt=wide?[cm.t0[0],cm.t0[1]+.9,cm.t0[2]+far*1.7]:cm.t0.slice();if(!sc.onResize)sc.onResize=()=>{try{G3U[sc.host](sc)}catch(e){}};const hz=far*(o.z-.2*o.s),S=o.s;cm.extraW=[[o.x-1.5*S,o.y+5.9*S,hz],[o.x+1.5*S,o.y+5.9*S,hz],[o.x-2.6*S,o.y+3.2*S,far*o.z],[o.x+2.6*S,o.y+3.2*S,far*o.z]];
  pplPush(L,'o',key,p,qB,o.s,qt.e(pitch,0,0),{cast:false,dur:700});
  sc.people=who=>who===-c.side?'o':null}
 /* a look as stored or sent: only known styles and colours pass */
@@ -266,7 +267,11 @@ function roundRoom(sc,R,felt,o={}){if(o.room!==false){g3Static(sc,gPlane(60,60,8
  const k=R/5.45;g3Static(sc,gDisc(R,96),g3Mat({t:felt,sh:6,sp:.04,gl:0}),[0,0,0],null,false);
  g3Static(sc,gLathe([[5.4,-1.2],[5.42,-.02],[5.45,.02],[5.6,.1],[5.95,.16],[6.22,.1],[6.3,0],[6.25,-.16],[6.1,-.24],[5.8,-.3],[5.7,-1.2],[0,-1.2]].map(([r,y])=>[r*k,y]),120,.6),g3Mat({t:woodTex('mahog'),uv:[0,0,8,1],sh:70,sp:.4,gl:.4}),[0,0,0]);
  g3Static(sc,gLathe([[0,-11],[3.2,-11],[3.3,-10.6],[1.1,-9.8],[.9,-6],[1.3,-2.2],[2.4,-1.4],[0,-1.3]],48),g3Mat({t:woodTex('mahog'),uv:[0,0,4,1],sh:60,sp:.35,gl:.3}),[0,0,0])}
-G3B.domino=()=>{const sc=g3Scene({cam:{yaw:0,pitch:.86,pp:.14,fov:.58,tgt:[0,0,-.2],box:[[-7.2,0,-7.4],[7.2,.8,6.8]],boxp:[[-6.9,0,-7.1],[6.9,.8,6.6]],extraW:[[-1.6,6.1,-9.3],[1.6,6.1,-9.3]],dy:0,dp:0,dz:1,my:.96,mxp:1},shR:11,shC:[0,0,-1],spot:[0,0,9.5,.6],yawMax:.4,bg:[.03,.022,.02],
+/* domino, like the card table, from your own chair: your tiles big along the near edge, the line in the middle, your partner across and the other two at the sides.
+   the camera has to keep the whole line (it never runs wider than DB, and turns back within a few rows), your tiles and your partner's head */
+G3B.domino=()=>{const sc=g3Scene({cam:{yaw:0,pitch:.56,pp:.1,fov:.92,tgt:[0,0,-.5],box:[[-7.2,0,-7.4],[7.2,.8,6.8]],anchorB:1,
+  fitp:[[-4.7,0,-3.6],[4.7,0,-3.6],[-4.7,0,3.4],[4.7,0,3.4],[-2.7,.9,5.7],[2.7,.9,5.7],[0,5.4,-9.45]],
+  fitw:[[-4.7,0,-3.6],[4.7,0,-3.6],[-4.7,0,3.4],[4.7,0,3.4],[-2.7,.9,5.7],[2.7,.9,5.7],[DSP[1][0]-1.4,5.3,DSP[1][1]],[DSP[3][0]+1.4,5.3,DSP[3][1]]],extraW:[[-1.6,6.1,-9.3],[1.6,6.1,-9.3]],dy:0,dp:0,dz:1,my:.96,mxp:1},shR:11,shC:[0,0,-1],spot:[0,0,9.5,.6],yawMax:.4,bg:[.03,.022,.02],
   light:{d:v3.norm([-.22,1,.4]),c:[2.35,2.08,1.72],sky:[.26,.22,.2],gnd:[.12,.08,.06],exp:1.0},
   anchors:[['.seat.top',[0,6.35,-DSR*.97]],['.seat.left',[DSP[1][0]*.97,6.25,DSP[1][1]*.97]],['.seat.right',[DSP[3][0]*.97,6.25,DSP[3][1]*.97]]]});
  mkModel(sc);roundRoom(sc,DRT,g3T('dfelt',()=>g3Tex(feltCv({a:'#245a73',b:'#0f2a38',ring:1}))),{room:false});envYardS(sc);sc.people=seatOf;
