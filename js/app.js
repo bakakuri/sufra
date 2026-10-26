@@ -130,11 +130,12 @@ let ENTERED=false;
 async function enterApp(){if(ENTERED)return;ENTERED=true;
  try{const{data}=await sb.auth.getUser();S.email=data?.user?.email||''}catch(e){}
  $('#app').hidden=false;$('#boot')?.remove();renderTop();renderTabs();renderSide();
- await Promise.race([loadFriends(),new Promise(r=>setTimeout(r,2500))]);
- if(!route(location.hash))go('home');
+ if(!ME.offline)await Promise.race([loadFriends(),new Promise(r=>setTimeout(r,2500))]);
+ if(ME.offline)go('games');else if(!route(location.hash))go('home');
  navInit();renderBadges();
+ if(ME.offline){toast('ინტერნეტი არ არის. ბოტებთან თამაში მაინც მუშაობს');return}
  if(ME.banned)toast('შენი ანგარიში შეზღუდულია: პოსტები და შეტყობინებები დროებით გამორთულია');
  try{netInit()}catch(e){}try{listenCalls()}catch(e){}try{listenNotes()}catch(e){}
  loadAppSettings();countUnread();touchSeen();setInterval(touchSeen,120000);registerSW();loadTagFollows();setTimeout(()=>checkBadges(),6000);
  if(store.get('fsw',null)===ME.id){store.set('fsw',null);setTimeout(()=>firstSteps(ME.avatar_url?1:0),700)}}
-bootAuth().catch(e=>{toast(errMsg(e));showAuth('in')});
+bootAuth().catch(e=>{if(netDown(e)&&bootOffline())return;toast(errMsg(e));showAuth('in')});

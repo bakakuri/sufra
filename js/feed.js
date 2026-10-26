@@ -262,7 +262,7 @@ function mentionable(el){if(!el||el._ment)return;el._ment=1;let box=null,tm,tok=
 /* composer */
 let CMP=null;
 async function myPages(){try{return await q(sb.from('pages').select('id,name,hue,kind,avatar_url').eq('owner',ME.id))}catch(e){return []}}
-async function compose(opt={}){CMP={files:(opt.files||[]).filter(Boolean).map(b=>({blob:b,type:'image',url:URL.createObjectURL(b)})),poll:null,page:opt.page_id||null,group:opt.group_id||null,clip:!!opt.clip,place:opt.place||null};const pages=opt.group_id?[]:await myPages();
+async function compose(opt={}){CMP={files:(opt.files||[]).filter(Boolean).map(b=>({blob:b,type:String(b.type||'').startsWith('video')?'video':'image',url:URL.createObjectURL(b)})),poll:null,page:opt.page_id||null,group:opt.group_id||null,clip:!!opt.clip,place:opt.place||null};const pages=opt.group_id?[]:await myPages();
  const title=opt.clip?'ახალი კლიპი':opt.group_id?'პოსტი ჯგუფში':'ახალი პოსტი';
  sheet(`<div class="ph-head cmphead"><button class="ibtn" data-a="close" aria-label="დახურვა">${ic('x')}</button><h2>${title}</h2><span class="sp"></span><button class="btn" id="c_pub" disabled>გამოქვეყნება</button></div>
   <div class="ph-body cmp"><div class="cmpwho">${av('me',46)}<div class="grow"><b id="c_asn">${esc(ME.name)}</b><span class="sub">${ic(opt.group_id?'users':'globe')}${opt.group_id?'ჯგუფის წევრები ნახავენ':'ყველა ნახავს'}</span></div></div>

@@ -1361,7 +1361,7 @@ button.gbig>i svg{width:13px;height:13px}
 .stmsg .bubble{max-width:100%}
 
 /* sheets whose content is a grid or a form scroll inside the panel (the create sheet, gifts, matches) */
-.panel>.createg,.panel>.match,.panel>.jchoice,.panel>.gifts,.panel>.form{overflow-y:auto;min-height:0;flex:0 1 auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.panel>.createg,.panel>.match,.panel>.gmenu,.panel>.jchoice,.panel>.gifts,.panel>.form{overflow-y:auto;min-height:0;flex:0 1 auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .panel>.createg{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));align-content:start}
 
 /* home: the services strip, small pictures of the pages */
@@ -2224,3 +2224,75 @@ html.c4 .card[data-s="♦"],html.c4 .suits button[data-s="d"]{color:#1A55C4}
 @keyframes ghtxt{0%,44%{opacity:0;transform:translateY(8px) scale(.92)}54%{opacity:1;transform:none}100%{opacity:1}}
 .ghorn.still,.ghorn.still *{animation-duration:1.9s!important}
 .ghorn.still .hl,.ghorn.still .hr,.ghorn.still .hspark,.ghorn.still .hd{animation:none!important}.ghorn.still .hspark,.ghorn.still .hd{opacity:0}.ghorn.still b{animation:none}
+/* the result card waits while the camera takes its closing turn round the table */
+.gend.late{animation:gendlate .35s var(--late,0ms) both}
+@keyframes gendlate{from{opacity:0;visibility:hidden}to{opacity:1;visibility:visible}}
+/* a word said at the table: a speech bubble over the player */
+.rxb.say{background:#FFF8EC;color:#2A1A12;border-radius:16px;padding:8px 14px;box-shadow:0 8px 22px rgb(0 0 0/.35);max-width:min(70vw,260px);white-space:normal;text-align:center}
+.rxb.say b{font-weight:800;font-size:15px;line-height:1.25;color:#2A1A12}
+/* ---------- the other ways to play: career, hand of the day, one phone, learning ---------- */
+.gmodes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gmode{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:14px;border-radius:18px;background:var(--surface);border:1px solid var(--line);text-align:left;color:var(--ink);min-height:112px}
+.gmode b{font-size:15.5px;line-height:1.25;font-weight:800}.gmode small{font-size:12.5px;color:var(--muted);line-height:1.3}
+.gmode .gmi{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:rgb(242 184 75/.14);color:var(--gold);margin-bottom:4px}.gmode .gmi svg{width:20px;height:20px}
+.gmode:active{transform:scale(.98)}.gmode:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+/* the career path */
+.cbar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin:6px 0 2px}.cbar i{display:block;height:100%;background:linear-gradient(90deg,#F2B84B,#FFD98A);border-radius:inherit}
+.clist{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
+.cstage{display:flex;align-items:center;gap:12px;padding:12px;border-radius:18px;background:var(--surface);border:1px solid var(--line)}
+.cstage.next{border-color:rgb(242 184 75/.6);box-shadow:0 0 0 3px rgb(242 184 75/.12)}.cstage.locked{opacity:.55}
+.cstage .cnum{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--line);font-weight:800;font-size:14px}.cstage.done .cnum{background:#3E8E5A;color:#fff}.cstage .cnum svg{width:16px;height:16px}
+.cstage .cav{flex:none}.cstage .grow{min-width:0}.cstage b{display:block;font-size:15px}.cstage small{display:block;font-size:12.5px;line-height:1.35}
+/* the coach */
+.gcoach{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 108px);transform:translateX(-50%);z-index:70;width:min(92vw,440px);display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center;padding:12px 14px;border-radius:18px;background:#FFF8EC;color:#2A1A12;box-shadow:0 14px 34px rgb(0 0 0/.42);animation:fade .3s}
+.gcoach p{margin:0;font-size:14.5px;line-height:1.4;color:#2A1A12}.gcoach .gco{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#F2B84B;color:#2A1A12}.gcoach .gco svg{width:19px;height:19px}
+.gcoach .btn{grid-column:2;justify-self:end}
+/* hints on the flat boards */
+.gx .pt.hint .tri{filter:drop-shadow(0 0 6px #7CF0B4)}.gx .pt.hint{box-shadow:inset 0 0 0 2px #7CF0B4;border-radius:6px}
+.gx .hand .card.hint{box-shadow:0 0 0 3px #7CF0B4,0 8px 18px rgb(0 0 0/.35);transform:translateY(-6px)}
+/* the game kind sheet */
+.gvar .gvh{margin:12px 4px 4px;font-size:13px;color:var(--muted);font-weight:700;text-transform:none}.gvar .gvh:first-child{margin-top:0}
+/* badges on the game card */
+.gbadges h4{margin:16px 0 8px;font-size:15px}.gbadges h4 small{color:var(--muted);font-weight:500}
+.gbl{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+.gbd{display:flex;flex-direction:column;gap:2px;padding:10px;border-radius:14px;background:var(--surface);border:1px solid var(--line);opacity:.55}.gbd.on{opacity:1;border-color:rgb(242 184 75/.5)}
+.gbd i{font-style:normal;font-size:20px}.gbd b{font-size:13.5px}.gbd small{font-size:11.5px;color:var(--muted);line-height:1.3}
+.gs-rt small{display:block;font-size:11px;color:var(--gold);font-weight:600;line-height:1.1}.gcrs small{display:block}
+.lbsc{flex-wrap:wrap}
+/* big buttons and letters */
+.gbig .gx .pl b{font-size:17px}.gbig .gx .pl .muted{font-size:14px}.gbig .gx .status{font-size:17px;padding:12px 16px}
+.gbig .gx .btn{min-height:52px;font-size:17px;padding-inline:20px}.gbig .gx .ibtn{width:50px;height:50px}.gbig .gmenu button{font-size:17px;min-height:58px}
+.gbig .gx .cb .cs span{font-size:min(10vw,48px)}.gbig .gx .ck .man{width:84%;height:84%}.gbig .gx .ck .man.w{background:#FFFFFF;box-shadow:inset 0 0 0 3px #222}.gbig .gx .ck .man.b{background:#0E0E0E;box-shadow:inset 0 0 0 3px #FFF}
+.gbig .gx .nb .ch.w{background:#FFFFFF;box-shadow:0 0 0 2px #111}.gbig .gx .nb .ch.b{background:#111;box-shadow:0 0 0 2px #FFF}
+.gbig .gx .card{font-size:1.18em}.gbig .gx .dmt{transform:scale(1.08)}.gbig .gcoach p{font-size:17px}
+/* friends' tables: the wide mode tile, domino pairs, talking at the table */
+.gmode.wide{grid-column:1/-1;min-height:0;display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center}
+.gmode.wide .gmi{grid-row:span 2;margin:0}
+.dmteams{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dmteams .gvh{margin:0 0 6px}
+.jkseats.two{grid-template-columns:1fr 1fr}
+.gvb.on{color:#5BD38A;background:rgb(91 211 138/.16)}
+.gvb.mute{color:#F08A7E}
+.gvb.ask{animation:gvask 1.4s ease-in-out infinite}
+@keyframes gvask{50%{box-shadow:0 0 0 6px rgb(91 211 138/.28)}}
+.speaking:is(.pl,.seat){box-shadow:0 0 0 3px #5BD38A,0 0 18px rgb(91 211 138/.45)}
+.gvlist .row{display:flex;align-items:center;gap:12px;padding:8px 0}
+.gvlist .row.speaking .av{box-shadow:0 0 0 3px #5BD38A}
+@media (prefers-reduced-motion:reduce){.gvb.ask{animation:none;box-shadow:0 0 0 3px rgb(91 211 138/.4)}}
+/* the side column on wide screens: the game so far, between the bars */
+.gside{display:flex;flex-direction:column;gap:6px;min-height:0;flex:0 1 auto;margin-bottom:auto;padding:10px 12px;border-radius:16px;background:rgb(20 14 10/.62);border:1px solid rgb(255 255 255/.08);color:#EFE4D4;backdrop-filter:blur(6px)}
+.gside h4{margin:0;font-size:13px;font-weight:700;letter-spacing:.02em;color:#C9B9A4}
+.gside .gsl{overflow:auto;min-height:0;max-height:min(46vh,420px);overscroll-behavior:contain;scrollbar-width:thin}
+.gsmv{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+.gsmv td{padding:3px 6px;border-bottom:1px solid rgb(255 255 255/.06)}
+.gsmv td.n{color:#8E8070;width:2.4em}
+.gsmv td.t{text-align:right;font-weight:700}
+.gsmv tr.now td{color:#F2B84B}
+.gsmv .fg{font-style:normal;font-size:1.15em;font-family:"Noto Sans Symbols 2","Segoe UI Symbol","DejaVu Sans","Apple Symbols",serif}
+.gside .jnote{transform:none;margin:0}
+.gsp{margin:0;font-size:13px;color:#C9B9A4}
+.gsmatch{display:flex;align-items:center;justify-content:center;gap:14px;padding:6px 0}
+.gsmatch span{display:flex;flex-direction:column;align-items:center;font-size:12px;color:#C9B9A4}
+.gsmatch b{font-size:30px;line-height:1.1;color:#F2B84B}
+.gsmatch i{font-style:normal;font-size:22px;color:#8E8070}
+.gx:has(.gside) .ghud.top>.mvs,.gx:has(.gside) .jsm:not(.pop){display:none}

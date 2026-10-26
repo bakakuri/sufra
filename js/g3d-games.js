@@ -2,9 +2,9 @@
    (matched with what is already on the table, so moves animate) and a list of flat marks (selection, targets, last move) */
 const G3S={},G3B={},G3U={};
 const GOLD=lin('#F4BC4C'),GOLDS=lin('#FFD27A'),RED=lin('#FF5A5F'),INK=lin('#20140c'),PALE=lin('#FFF4D6'),MINT=lin('#7CF0B4');
-function g3Show(id){const el=$('.g3',view);if(!el)return;const k=id==='jko'?'joker':id,sc=G3S[k]||(G3S[k]=G3B[k]());sc.host=id;
+function g3Show(id){const el=$('.g3',view);if(!el)return;const k=id==='jko'?'joker':id==='dmo'?'domino':id,pl=gPlaceOf(k),key=pl&&pl!==GPDEF[k]?k+':'+pl:k,sc=G3S[key]||(G3S[key]=G3B[k]());sc.host=id;
  const want=G3D.intro||G3W.intro,intro=want===id;if(intro){G3D.intro=null;G3W.intro=null}
- if(!g3Mount(el,sc))return;if(sc.envK)envApply(sc);if(typeof gAmb==='function')gAmb(sc.envK||null,sc.envT,k);try{G3U[id](sc)}catch(e){try{console.warn('3D sync',e)}catch(x){}}if(intro)g3StartIntro(sc);g3Insets(sc);g3Draw(sc,performance.now());g3Labels(sc);g3Need()}
+ if(!g3Mount(el,sc))return;if(sc.envK)envApply(sc);if(typeof gAmb==='function')gAmb(sc.envK||null,sc.envT,k,sc.wx&&sc.wx.k);try{G3U[id](sc)}catch(e){try{console.warn('3D sync',e)}catch(x){}}if(intro)g3StartIntro(sc);g3Insets(sc);g3Draw(sc,performance.now());g3Labels(sc);g3Need()}
 const snd=(k,v)=>{if(typeof gSnd==='function')gSnd(k,v)};
 /* a piece that lands knocks on the wood and leaves a ring; one put in a tray knocks softly */
 const woodLand=y=>(o,sc)=>{const soft=(o.s.length?o.s[0]:o.s)<.9;snd(soft?'soft':'wood',soft?.7:1);if(!soft)g3Ripple(sc,[o.p[0],y+.006,o.p[2]],1.1)};
@@ -17,8 +17,8 @@ const blob=(x,y,z,s,a=.42)=>({m:'mk',p:[x,y+.002,z],s:[s,1,s],uv:MK.blob,c:[0,0,
 
 /* ---------- chess ---------- */
 const CHT=.42;
-G3B.chess=()=>{const sc=g3Scene({hug:1,cam:{yaw:0,pitch:.9,pp:.16,fov:.56,tgt:[0,.25,.3],box:[[-4.75,0,-5.7],[4.75,1.2,5.7]],dy:0,dp:0,dz:1,my:.97,mxp:.995},shR:8.5,spot:[0,0,7.6,.85]});
- envDesk(sc);mkModel(sc);const W=9.5,T=CHT;
+G3B.chess=()=>{const sc=g3Scene({hug:1,cam:{yaw:0,pitch:.9,pp:0,fov:.76,tgt:[0,.25,.3],box:[[-4.75,0,-5.7],[4.75,1.2,5.9]],anchorB:1,dy:0,dp:0,dz:1,my:.97,mxp:.995},shR:8.5,spot:[0,0,7.6,.85]});
+ gEnvBuild(sc,'chess');mkModel(sc);const W=9.5,T=CHT;
  const bt=g3T('bchess',()=>g3Tex(boardCv({size:W,border:.75,frame:'frame',light:'maple',dark:'wenge',inlay:'rgba(226,184,96,.95)',ink:'rgba(244,214,156,.9)',coords:1})));
  sc.statics.push({parts:[{mesh:g3Mesh(gBox(W,T,W,.07,4,null,[0])),mat:g3Mat({t:bt,sh:70,sp:.35,gl:.3}),cast:true},{mesh:g3Mesh(gBox(W,T,W,.07,4,(f,u,v)=>[u*2.5,v*.35],[1,2,3,4,5])),mat:g3Mat({t:woodTex('frame'),sh:60,sp:.35,gl:.3}),cast:true}],M:m4.trs([0,T/2,0],qt.id(),1),cast:true});
  chessSet(sc,gStyleOf('chess'));
@@ -27,7 +27,7 @@ G3B.chess=()=>{const sc=g3Scene({hug:1,cam:{yaw:0,pitch:.9,pp:.16,fov:.56,tgt:[0
  /* drag a piece to a square; the square under it lights up when the move is legal */
  sc.drag={y:T,lift:.6,start:o=>{if(CH.sel!==o.pick.i)g3Act('chm',{i:String(o.pick.i)})},
   move:(o,p)=>{const i=chAt(p);if(i==null||i===o.pick.i)return null;const ok=CH.moves.some(m=>m.f===o.pick.i&&m.t===i),[x,z]=chXZ(i);return{m:'mk',p:[x,T+.006,z],s:[1.02,1,1.02],uv:MK.sq,c:ok?GOLD:PALE,a:ok?1:.35,add:true}},
-  drop:(o,p)=>{const i=p?chAt(p):null;if(i!=null&&i!==o.pick.i)g3Act('chm',{i:String(i)})}};
+  drop:(o,p)=>{sc.dragAt=performance.now();const i=p?chAt(p):null;if(i!=null&&i!==o.pick.i)g3Act('chm',{i:String(i)})}};
  return sc};
 const chAt=p=>{const c=Math.floor(p[0]+4),r=Math.floor(p[2]+4);return c<0||c>7||r<0||r>7?null:r*8+c};
 const chXZ=i=>[(i&7)-3.5,(i>>3)-3.5];
@@ -40,12 +40,18 @@ G3U.chess=sc=>{const G=CH,st=G.st,c=G.ctx,T=CHT;sc.cam.yaw=c.side===-1?Math.PI:0
  st.last.forEach(i=>mk(i,MK.dot,GOLDS,.38,1.25));
  if(G.inCheck()&&!st.over){const k=chKing(st.b,st.turn);if(k>=0)mk(k,MK.dot,RED,.85,1.5,{add:true,pulse:true})}
  if(G.sel!=null){mk(G.sel,MK.sq,GOLD,1,1.02,{add:true});for(const m of G.moves.filter(m=>m.f===G.sel))(st.b[m.t]||m.ep)?mk(m.t,MK.ring,GOLD,.95,.95,{add:true}):mk(m.t,MK.dot,GOLD,.9,.38,{add:true})}
- if(sc.sty!==gStyleOf('chess'))chessSet(sc,gStyleOf('chess'));oppAdd(sc,'chess',G,L,c.side===-1?1:-1);sc.marks=M;g3Set(sc,L,{delay:(o,d)=>d.s<1&&d.m.length===2?280:0,dur:(o,d,far)=>d.m[1]==='n'&&far>1?560:Math.min(620,280+90*Math.sqrt(far))})};
+ if(sc.sty!==gStyleOf('chess'))chessSet(sc,gStyleOf('chess'));oppAdd(sc,'chess',G,L,c.side===-1?1:-1);mkBig(M);
+ mhPush(sc,L,{on:mhShow(c),yaw:c.side===-1?Math.PI:0,y:-1.3,S:1.35,rest:[[-3.6,8.9],[3.6,8.9]]});
+ const mvk=st.last.join()+'|'+st.turn+'|'+(G.mv?G.mv.length:0);let reach=null;if(sc.mvk!==mvk){if(sc.mvk!=null&&st.last.length===2&&sc.mh&&mhMover(c,st.turn)&&performance.now()-(sc.dragAt||0)>900)reach=st.last.map(chXZ);sc.mvk=mvk}
+ const at=(d,xz)=>!!xz&&Math.abs(d.p[0]-xz[0])<.01&&Math.abs(d.p[2]-xz[1])<.01&&Math.abs(d.p[1]-T)<.01;
+ sc.marks=M;g3Set(sc,L,{delay:(o,d)=>d.s<1&&d.m.length===2?280:reach&&at(d,reach[1])?MH_WAIT:0,dur:(o,d,far)=>d.m[1]==='n'&&far>1?560:Math.min(620,280+90*Math.sqrt(far))});
+ if(reach){const[f,t]=reach,far=Math.hypot(t[0]-f[0],t[1]-f[1]),pc=st.b[st.last[1]]||'';mhCarry(sc,[{p:[f[0],T,f[1]]},{p:[t[0],T,t[1]],d:pc.toLowerCase()==='n'&&far>1?560:mhDur(far),arc:far>.7?Math.min(1.5,.3+far*.13):0}])}
+ if(st.over){const k=st.why==='mate'?chKing(st.b,st.turn):-1,i=k>=0?k:st.last[1];if(i!=null&&i>=0){const[x,z]=chXZ(i);g3CineGo(sc,G,[x,T,z])}}};
 
 /* ---------- checkers ---------- */
 const CKT=.42;
-G3B.shashi=()=>{const sc=g3Scene({hug:1,cam:{yaw:0,pitch:.92,pp:.14,fov:.56,tgt:[0,.2,.3],box:[[-4.75,0,-5.6],[4.75,.8,5.6]],dy:0,dp:0,dz:1,my:.97,mxp:.995},shR:8.5,spot:[0,0,7.6,.85]});
- envBalcony(sc);mkModel(sc);const W=9.5,T=CKT;
+G3B.shashi=()=>{const sc=g3Scene({hug:1,cam:{yaw:0,pitch:.9,pp:0,fov:.76,tgt:[0,.2,.3],box:[[-4.75,0,-5.6],[4.75,.8,5.8]],anchorB:1,dy:0,dp:0,dz:1,my:.97,mxp:.995},shR:8.5,spot:[0,0,7.6,.85]});
+ gEnvBuild(sc,'shashi');mkModel(sc);const W=9.5,T=CKT;
  const bt=g3T('bck',()=>g3Tex(boardCv({size:W,border:.75,frame:'rose',light:'birch',dark:'mahog',inlay:'rgba(226,184,96,.95)',ink:'rgba(244,220,170,.9)',coords:1})));
  sc.statics.push({parts:[{mesh:g3Mesh(gBox(W,T,W,.07,4,null,[0])),mat:g3Mat({t:bt,sh:70,sp:.35,gl:.3}),cast:true},{mesh:g3Mesh(gBox(W,T,W,.07,4,(f,u,v)=>[u*2.5,v*.35],[1,2,3,4,5])),mat:g3Mat({t:woodTex('rose'),sh:60,sp:.35,gl:.3}),cast:true}],M:m4.trs([0,T/2,0],qt.id(),1),cast:true});
  const man=g3Mesh(manGeo()),two=g3Mesh(gMerge(manGeo(),gXf(manGeo(),[0,.13,0],qt.id()))),crown=g3Mesh(gXf(gLathe(arc(.2,0,.035,-Math.PI/2,Math.PI*1.5,14).map(([r,y])=>[r,y]),36),[0,.262,0],qt.id()));
@@ -56,7 +62,7 @@ G3B.shashi=()=>{const sc=g3Scene({hug:1,cam:{yaw:0,pitch:.92,pp:.14,fov:.56,tgt:
  sc.tap=ray=>{const o=g3HitObj(sc,ray,o=>o.pick);let q=o?[o.pick.r,o.pick.c]:null;if(!q){const p=g3HitY(ray,CKT);q=p?at(p):null}if(q)g3Act('ck',{r:String(q[0]),c:String(q[1])})};
  sc.drag={y:T,lift:.5,start:o=>{const s=CK.sel;if(!s||s[0]!==o.pick.r||s[1]!==o.pick.c)g3Act('ck',{r:String(o.pick.r),c:String(o.pick.c)})},
   move:(o,p)=>{const q=at(p);if(!q||(q[0]===o.pick.r&&q[1]===o.pick.c))return null;const ok=CK.targets().includes(q.join());return{m:'mk',p:[q[1]-3.5,T+.006,q[0]-3.5],s:[1.02,1,1.02],uv:MK.sq,c:ok?GOLD:PALE,a:ok?1:.35,add:true}},
-  drop:(o,p)=>{const q=p?at(p):null;if(q&&!(q[0]===o.pick.r&&q[1]===o.pick.c))g3Act('ck',{r:String(q[0]),c:String(q[1])})}};
+  drop:(o,p)=>{sc.dragAt=performance.now();const q=p?at(p):null;if(q&&!(q[0]===o.pick.r&&q[1]===o.pick.c))g3Act('ck',{r:String(q[0]),c:String(q[1])})}};
  return sc};
 G3U.shashi=sc=>{const G=CK,c=G.ctx,T=CKT;sc.cam.yaw=c.side===-1?Math.PI:0;const L=[],M=[],xz=(r,cc)=>[cc-3.5,r-3.5];
  const mv=JSON.stringify(G.last),fresh=mv!==sc.lm&&G.last.length>1;sc.lm=mv;const end=G.last[G.last.length-1];
@@ -73,16 +79,20 @@ G3U.shashi=sc=>{const G=CK,c=G.ctx,T=CKT;sc.cam.yaw=c.side===-1?Math.PI:0;const 
  const mine=G.mine(),must=mine&&G.moves.length&&G.moves[0].caps.length;
  if(must&&!G.sel)for(const k of new Set(G.moves.map(m=>m.path[0].join()))){const[r,cc]=k.split(',').map(Number);mk(r,cc,MK.ring,GOLD,.9,1.05,{add:true,pulse:true})}
  if(G.sel){mk(G.sel[0],G.sel[1],MK.sq,GOLD,1,1.02,{add:true});for(const k of G.targets()){const[r,cc]=k.split(',').map(Number);mk(r,cc,MK.dot,GOLD,.9,.4,{add:true})}}
- oppAdd(sc,'shashi',G,L,c.side===-1?1:-1);sc.marks=M;const caps=(G.lcap||[]).map(([r,cc])=>xz(r,cc));
+ oppAdd(sc,'shashi',G,L,c.side===-1?1:-1);mkBig(M);mhPush(sc,L,{on:mhShow(c),yaw:c.side===-1?Math.PI:0,y:-1.3,S:1.35,rest:[[-3.6,8.9],[3.6,8.9]]});
+ const hand=fresh&&!!sc.mh&&sc.lm0!=null&&mhMover(c,G.turn)&&performance.now()-(sc.dragAt||0)>900,hw=hand?MH_WAIT:0;sc.lm0=mv;
+ sc.marks=M;const caps=(G.lcap||[]).map(([r,cc])=>xz(r,cc)),endXZ=end?xz(end[0],end[1]):null;
  g3Set(sc,L,{gone:o=>fresh&&G.last.length&&Math.abs(o.p[0]-(G.last[0][1]-3.5))<.01&&Math.abs(o.p[2]-(G.last[0][0]-3.5))<.01?{a:0,dur:1}:null,
-  delay:(o,d)=>{if(!fresh)return 0;const k=caps.findIndex(([x,z])=>Math.abs(o.p[0]-x)<.01&&Math.abs(o.p[2]-z)<.01);return k<0?0:180+k*300}})};
+  delay:(o,d)=>{if(!fresh)return 0;if(hw&&endXZ&&Math.abs(d.p[0]-endXZ[0])<.01&&Math.abs(d.p[2]-endXZ[1])<.01&&d.m!=='mk')return hw;const k=caps.findIndex(([x,z])=>Math.abs(o.p[0]-x)<.01&&Math.abs(o.p[2]-z)<.01);return k<0?0:180+k*300+hw}});
+ if(hand){const pts=G.last.map(([r,cc])=>{const[x,z]=xz(r,cc);return[x,T,z]}),hop=G.last.length>2;mhCarry(sc,pts.map((p,i)=>({p,d:i?(hop?300:mhDur(Math.hypot(p[0]-pts[0][0],p[2]-pts[0][2]))):0,arc:hop?.55:.3})))}
+ if(G.over&&endXZ)g3CineGo(sc,G,[endXZ[0],T,endXZ[1]])};
 
 /* ---------- nardi ---------- */
 const NT=.35,NRIM=.13;
 const nCol=di=>di>=12?{col:di<18?di-12:di-11,top:1}:{col:di>=6?11-di:12-di,top:0};
 /* nardi is seen from your own stool: low over the board, the other player big across it, the yard behind him */
 G3B.nardi=()=>{const sc=g3Scene({hug:1,cam:{yaw:0,pitch:.86,pp:0,fov:.78,tgt:[.8,.2,.35],box:[[-7,0,-6.1],[8.6,.9,6.75]],anchorB:1,dy:0,dp:0,dz:1,mxp:.995},shR:10.5,shC:[.8,0,0],spot:[.8,0,10,.65],yawMax:.5});
- envCourt(sc);mkModel(sc);const fr=g3Mat({t:woodTex('frame'),sh:60,sp:.35,gl:.32});
+ gEnvBuild(sc,'nardi');mkModel(sc);const fr=g3Mat({t:woodTex('frame'),sh:60,sp:.35,gl:.32});
  const top=g3T('bnardi:classic',()=>g3Tex(nardiCv('classic')));sc.boardM=g3Mat({t:top,sh:55,sp:.3,gl:.25});sc.sty='classic';
  sc.statics.push({parts:[{mesh:g3Mesh(gBox(15.6,NT,12.2,.08,3,null,[0])),mat:sc.boardM,cast:true},{mesh:g3Mesh(gBox(15.6,NT,12.2,.08,3,(f,u,v)=>[u*3,v*.3],[1,2,3,4,5])),mat:fr,cast:true}],M:m4.trs([.8,NT/2,0],qt.id(),1),cast:true});
  const rim=(x,z,w,d,h=NRIM)=>g3Static(sc,gBox(w,h,d,.05,3,(f,u,v)=>[u*Math.max(1,w/3),v*Math.max(1,d/3)]),fr,[x,NT+h/2,z]);
@@ -94,13 +104,13 @@ G3B.nardi=()=>{const sc=g3Scene({hug:1,cam:{yaw:0,pitch:.86,pp:0,fov:.78,tgt:[.8
  sc.drag={y:NT,lift:.55,start:o=>{if(NR.sel!==o.pick.f)g3Act('npt',{k:String(o.pick.f)})},
   move:(o,p)=>{const k=nKAt(p);if(k==null||k===String(o.pick.f))return null;const id=k==='off'||k==='bar'?k:+k,ok=NR.opts(NR.ctx.side,o.pick.f).some(x=>x.to===id);if(!ok)return null;
    if(id==='off')return{m:'mk',p:[7.55,NT+.006,3],s:[1.2,1,5.4],uv:MK.sq,c:GOLD,a:1,add:true};const flip=NR.ctx.side===-1,{col,top}=nCol(flip?23-id:id);return{m:'mk',p:[col-6,NT+.006,top?-3.15:3.15],s:[1,1,4.9],uv:MK.sq,c:GOLD,a:1,add:true}},
-  drop:(o,p)=>{const k=p?nKAt(p):null;if(k!=null&&k!==String(o.pick.f))g3Act('npt',{k})}};
+  drop:(o,p)=>{sc.dragAt=performance.now();const k=p?nKAt(p):null;if(k!=null&&k!==String(o.pick.f))g3Act('npt',{k})}};
  return sc};
 /* which point (or the bar, or the tray) a spot on the board belongs to */
 function nKAt(p){const flip=NR.ctx.side===-1,[x,z]=[p[0],p[2]];if(z<-5.7||z>5.7)return null;if(x>6.9&&x<8.3)return 'off';if(x<-6.6||x>6.6)return null;
- const col=Math.round(x+6);if(col===6)return 'bar';const top=z<0,di=top?(col<6?12+col:col+11):(col<6?11-col:12-col);return String(flip?23-di:di)}
+ const col=Math.round(x+6);if(col===6)return 'bar';const top=z<0,di=top?(col<6?12+col:col+11):(col<6?11-col:12-col);return String(flip?(NR.v==='long'?(di+12)%24:23-di):di)}
 function nSlot(di,k){const{col,top}=nCol(di),lay=Math.floor(k/5),idx=k%5;return[col-6,NT+lay*.165,top?-5.1+idx*.9+lay*.45:5.1-idx*.9-lay*.45]}
-G3U.nardi=sc=>{const G=NR,c=G.ctx,me=c.side,flip=me===-1,L=[],M=[],dI=i=>flip?23-i:i,sty=gStyleOf('nardi');if(sc.sty!==sty){sc.sty=sty;sc.boardM.t=g3T('bnardi:'+sty,()=>g3Tex(nardiCv(sty)))}
+G3U.nardi=sc=>{const G=NR,c=G.ctx,me=c.side,flip=me===-1,L=[],M=[],dI=i=>flip?(G.v==='long'?(i+12)%24:23-i):i,sty=gStyleOf('nardi');if(sc.sty!==sty){sc.sty=sty;sc.boardM.t=g3T('bnardi:'+sty,()=>g3Tex(nardiCv(sty)))}
  const can=new Set(G.mine()&&G.rolled?G.legal().map(m=>m.f):[]);
  for(let i=0;i<24;i++){const v=G.p[i],n=Math.abs(v);for(let k=0;k<n;k++){const p=nSlot(dI(i),k),top=k===n-1,mv=top&&can.has(i),sel=top&&G.sel===i;L.push({m:v>0?'w':'b',p,pick:mv?{f:i}:null,drag:mv,lift:sel?.18:0,glow:sel?[.12,.09,.03]:null})}}
  for(const s of[me,-me])for(let k=0;k<G.bar[s];k++){const mv=s===me&&k===G.bar[s]-1&&can.has('bar'),sel=mv&&G.sel==='bar';L.push({m:s===1?'w':'b',p:[0,NT+NRIM+.02+Math.floor(k/4)*.165,(s===me?1:-1)*(1.05+(k%4)*.9)],pick:mv?{f:'bar'}:null,drag:mv,lift:sel?.18:0,glow:sel?[.12,.09,.03]:null,refl:false})}
@@ -108,11 +118,11 @@ G3U.nardi=sc=>{const G=NR,c=G.ctx,me=c.side,flip=me===-1,L=[],M=[],dI=i=>flip?23
  /* dice: the mover's dice lie in their half; a fresh roll is thrown from their edge and tumbles */
  const all=G.last.length===2?(G.last[0]===G.last[1]?[G.last[0],G.last[0],G.last[0],G.last[0]]:G.last.slice()):[],left=G.dice.slice();
  const used=all.map(v=>{const k=left.indexOf(v);if(k>=0){left.splice(k,1);return false}return true});
- const sig=G.rolled?G.turn+':'+G.last.join(','):'';G.rollAnim=0;if(sig&&sig!==sc.rsig){sc.rsig=sig;sc.roll=(sc.roll||0)+1;sc.dside=G.turn===me?1:-1}if(sc.dside==null)sc.dside=G.turn===me?1:-1;
+ const sig=G.rolled?G.turn+':'+G.last.join(','):'';G.rollAnim=0;let myThrow=false;if(sig&&sig!==sc.rsig){const was=sc.rsig!=null;sc.rsig=sig;sc.roll=(sc.roll||0)+1;sc.dside=G.turn===me?1:-1;myThrow=was&&!G.open&&mhShow(c)&&(c.mode==='local'||G.turn===me)&&myHandsOn()}if(sc.dside==null)sc.dside=G.turn===me?1:-1;
  const side=sc.dside,R=rng((sc.roll||0)*977+7),thrower=side;
  all.forEach((v,i)=>{const x=side*(all.length>2?1.9+i*.82:2.7+i*1.05),z=all.length>2?(i%2?.12:-.12):(i?.14:-.1),yaw=(R()-.5)*1.2,q=qt.mul(qt.ax(0,1,0,yaw),dieUp(v)),d={k:'d'+(sc.roll||0)+'-'+i,m:'die',p:[x,NT+.31,z],q,dim:used[i]?.42:1};
   if(sc.roll&&sc.rolled!==sc.roll){const from=[x+side*(1.5+R()),NT+2.4,thrower*4.6];d.from={p:from,q:qt.mul(qt.ax(R(),R(),R(),R()*6),q)};
-   d.path=[[x+side*.5*(R()-.2),NT+.31,z*.5+thrower*1.2],[x,NT+.31,z]];d.hops=[.15,.55];d.spin=[R()-.5,R()-.5,R()-.5,2+Math.floor(R()*2)];d.ez='out';d.dur=1000+i*90;d.delay=i*40}
+   d.path=[[x+side*.5*(R()-.2),NT+.31,z*.5+thrower*1.2],[x,NT+.31,z]];d.hops=[.15,.55];d.spin=[R()-.5,R()-.5,R()-.5,2+Math.floor(R()*2)];d.ez='out';d.dur=1000+i*90;d.delay=i*40+(myThrow?200:0)}
   L.push(d)});
  if(sc.roll)sc.rolled=sc.roll;
  /* marks: the chosen point, where it can go, and which checkers can move */
@@ -120,9 +130,17 @@ G3U.nardi=sc=>{const G=NR,c=G.ctx,me=c.side,flip=me===-1,L=[],M=[],dI=i=>flip?23
  const ptMark=(i,col,a)=>{const{col:cc,top}=nCol(dI(i));mk([cc-6,NT+.003,top?-3.15:3.15],MK.sq,col,a,[.98,1,4.9],{add:true})};
  if(mine&&sel!==null){if(sel==='bar')mk([0,NT+NRIM+.04,3],MK.sq,GOLD,1,[1,1,5],{add:true});else ptMark(sel,GOLD,.95);
   for(const o of G.opts(me,sel)){if(o.to==='off'){mk([7.55,NT+.005,3],MK.sq,GOLD,.95,[1.1,1,5.2],{add:true,pulse:true});continue}const n=Math.abs(G.p[o.to]),p=nSlot(dI(o.to),G.p[o.to]*me<0?0:n);mk([p[0],p[1]+.01,p[2]],MK.dot,GOLD,.95,[.62,1,.62],{add:true,pulse:true})}}
- else if(mine&&G.legal().length){const from=new Set(G.legal().map(m=>m.f));for(const f of from){if(f==='bar'){const k=G.bar[me]-1;mk([0,NT+NRIM+.03+Math.floor(k/4)*.165+.17,1.05+(k%4)*.9],MK.ring,GOLD,.9,[1.05,1,1.05],{add:true,pulse:true});continue}
+ if(mine&&G.hint&&G.hint.length){const h=G.hint[0];if(h.f!=='bar')ptMark(h.f,MINT,.75);if(h.to==='off')mk([7.55,NT+.005,3],MK.sq,MINT,.8,[1.1,1,5.2],{add:true});else ptMark(h.to,MINT,.75)}
+ if(mine&&sel!==null){}else if(mine&&G.legal().length){const from=new Set(G.legal().map(m=>m.f));for(const f of from){if(f==='bar'){const k=G.bar[me]-1;mk([0,NT+NRIM+.03+Math.floor(k/4)*.165+.17,1.05+(k%4)*.9],MK.ring,GOLD,.9,[1.05,1,1.05],{add:true,pulse:true});continue}
    const n=Math.abs(G.p[f]),p=nSlot(dI(f),n-1);mk([p[0],p[1]+.17,p[2]],MK.ring,GOLD,.9,[1.05,1,1.05],{add:true,pulse:true})}}
- oppAdd(sc,'nardi',G,L,-1);sc.marks=M;g3Set(sc,L,{gone:o=>o.m==='die'?{a:0,dur:220}:null,delay:(o,d)=>d.m!=='die'&&Math.abs(d.p[0])<.01&&o.p[0]!==0?260:0})};
+ oppAdd(sc,'nardi',G,L,-1);mkBig(M);mhPush(sc,L,{on:mhShow(c),yaw:0,y:-1.5,S:1.7,rest:[[-3.2,10.2],[5.4,10.2]]});
+ /* the checker I just moved: where it came from and where it went */
+ let reach=null;if(sc.mvn!==G.mvN){if(sc.mvn!=null&&sc.mh&&G.lastTo!=null&&G.lastFrom!=null&&(c.mode==='local'||G.lastBy===me)&&performance.now()-(sc.dragAt||0)>900){const s=G.lastBy,f=G.lastFrom,t=G.lastTo,sg=s===me?1:-1;
+   const fp=f==='bar'?(k=>[0,NT+NRIM+.02+Math.floor(k/4)*.165,sg*(1.05+(k%4)*.9)])(G.bar[s]):nSlot(dI(f),Math.abs(G.p[f])),tp=t==='off'?(k=>[7.55,NT+.44,sg*(5.3-k*.172)])(G.off[s]-1):nSlot(dI(t),Math.abs(G.p[t])-1);reach=[fp,tp]}sc.mvn=G.mvN}
+ const near=(a,b)=>!!b&&Math.abs(a[0]-b[0])<.01&&Math.abs(a[1]-b[1])<.01&&Math.abs(a[2]-b[2])<.01;
+ sc.marks=M;g3Set(sc,L,{gone:o=>o.m==='die'?{a:0,dur:220}:null,delay:(o,d)=>reach&&d.m!=='die'&&near(d.p,reach[1])?MH_WAIT:d.m!=='die'&&Math.abs(d.p[0])<.01&&o.p[0]!==0?260:0});
+ if(reach)mhCarry(sc,[{p:reach[0]},{p:reach[1],d:mhDur(v3.len(v3.sub(reach[1],reach[0]))),arc:.6}]);if(myThrow)mhThrow(sc,[4.4,NT+.6,4.4]);
+ if(G.over)g3CineGo(sc,G,[7.55,NT,(G.over===me?1:-1)*3.2])};
 
 /* ---------- cards: the joker table, seen from your own chair ----------
    a round table in a dim room under one lamp. the three others sit at it, hold their cards and look at whoever is playing.
@@ -162,10 +180,10 @@ function pplPush(L,id,key,p,qB,s,hq,o={}){const S=s||1,at=v=>v3.add(p,qt.rot(qB,
 /* ---------- the opponent across the board ----------
    chess, checkers and nardi get the other player on the far side: the same people as at the card table, a little bigger.
    they watch the board, lean in while they think, look up at you when the game ends, and act out their reactions */
-const OPPS={chess:{z:7.95,s:1,y:-.55,x:0,e:5.25},shashi:{z:7.95,s:1,y:-.55,x:0,e:5.25},nardi:{z:10.15,s:1.55,y:-.6,x:.8,e:6.45}};
+const OPPS={chess:{z:8.6,s:1.45,y:-.55,x:0,e:5.25},shashi:{z:8.6,s:1.45,y:-.55,x:0,e:5.25},nardi:{z:10.15,s:1.55,y:-.6,x:.8,e:6.45}};
 const oppOn=()=>typeof store==='undefined'||store.get('gppl',true)!==false;
 function oppLookOf(c){const s=-c.side,a=c.avs&&c.avs[s],nm=String((c.names&&c.names[s])||'მოთამაშე').replace(/ \(ბოტი\)$/,'');if(c.olk&&typeof c.olk==='object')return c.olk;if(a&&a.look&&typeof a.look==='object')return a.look;return jkLook(nm,a&&(a.h??a.hue))}
-function oppAdd(sc,id,G,L,far){const o=OPPS[id],c=G.ctx,cm=sc.cam;if(!o||!c||!oppOn()||c.mode==='puzzle'){if(cm.p0!=null){cm.pitch=cm.p0;cm.pp=cm.pp0;cm.tgt=cm.t0.slice()}cm.extraW=null;sc.people=null;sc.anchors=null;return}
+function oppAdd(sc,id,G,L,far){const o=OPPS[id],c=G.ctx,cm=sc.cam;if(!o||!c||!oppOn()||c.mode==='puzzle'||c.mode==='local'){if(cm.p0!=null){cm.pitch=cm.p0;cm.pp=cm.pp0;cm.tgt=cm.t0.slice()}cm.extraW=null;sc.people=null;sc.anchors=null;return}
  sc.anchors=[['.g3op',[o.x-far*2.9*o.s,o.y+4.7*o.s,far*o.z]]];const lk=oppLook(oppLookOf(c)),key='o:'+lkKey(lk);jkPerson(sc,key,lk);
  const yaw=far<0?0:Math.PI,ts=G.turnSide?G.turnSide():null,over=G.res&&G.res(),think=!over&&ts===-c.side,lean=think?.08:0,qB=qt.mul(qt.ax(0,1,0,yaw),qt.ax(1,0,0,lean)),p=[o.x,o.y,far*o.z];
  const pitch=over?0:think?.34:.1;
@@ -226,7 +244,7 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
  const n=V.hand.length;if(!V.mine||!V.hand.some(cd=>'c'+cardIdx(cd)===sc.csel))sc.csel=null;
  if(n){const tall=asp<.8,hs=tall?.165:.19,dd=2.4,C=jkCam(asp),t=Math.tan(C.fov/2),s=hs*2*t*dd/CDH,cw=CDW*s/(t*asp*dd),room=(2+2*C.sx)*.8,spc=Math.min(cw*.62,(room-cw*1.1)/Math.max(1,n-1)),qf=jkFace(asp);
   V.hand.forEach((cd,i)=>{const ok=V.legal.includes(cd),key='c'+cardIdx(cd),sel=sc.csel===key,nx=C.sx+(i-(n-1)/2)*spc,lift=V.legal.length?(sel?.5:ok?.13:-.03):0,
-    ny=-1+hs*1.06-(nx-C.sx)*(nx-C.sx)*.07+lift*hs*2,p=jkScr(asp,nx,ny,dd-i*.004),d={k:key,m:'card',p,q:qt.mul(qf,qt.ax(0,0,1,-(nx-C.sx)*.2)),s,uv:cardUV(cardIdx(cd)),dim:V.legal.length&&!ok?.5:1,pick:V.mine&&ok?{i,k:key}:null,drag:V.mine&&ok,glow:sel?[.12,.09,.03]:null,refl:false,cast:false,dur:420};
+    ny=-1+hs*1.06-(nx-C.sx)*(nx-C.sx)*.07+lift*hs*2,p=jkScr(asp,nx,ny,dd-i*.004),d={k:key,m:'card',p,q:qt.mul(qf,qt.ax(0,0,1,-(nx-C.sx)*.2)),s,uv:cardUV(cardIdx(cd)),dim:V.legal.length&&!ok?.5:1,pick:V.mine&&ok?{i,k:key}:null,drag:V.mine&&ok,glow:sel?[.12,.09,.03]:V.hint===cd?[.05,.16,.1]:null,refl:false,cast:false,dur:420};
    if(deal){d.from={p:dp,q:FACEDN(0),s:.9};d.delay=i*70;d.dur=560}L.push(d)})}
  /* the trick, each card in front of whoever played it, all turned to read from my chair */
  V.trick.forEach((e,k)=>{const r=rel(e.p),[tx,tz]=JTRK[r],idx=cardIdx(e.card),p=[tx,.012+k*.008,tz],won=V.win!=null&&rel(V.win)===r&&V.trick.length===4,d={k:'c'+idx,m:'card',p,q:FACEUP(JTJ[r]),s:JTS,uv:cardUV(idx),glow:won?[.2,.14,.04]:null,cast:true};
@@ -242,7 +260,7 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
   L.push({k:'tc',m:'card',p:[c[0],.008,c[2]],q:FACEUP(yw+Math.PI/2),s:1.35,uv:cardUV(cardIdx(V.trumpCard)),cast:false});L.push({k:'deck',m:'deck',p:[c[0]+.35*Math.cos(yw),h/2+.02,c[2]-.35*Math.sin(yw)],s:[1.3,h,1.3],q:qt.ax(0,1,0,yw+.06)})}
  sc.jw=V.win!=null?rel(V.win):sc.jw;
  sc.marks=M;g3Set(sc,L,{gone:o=>{if(o.m==='card'&&o.id.startsWith('k:c')){const w=sc.jw??0,p=w===0?[2.7,.2,3.6]:jkLocal(w,0,[-1.7,.2,3.9]);return{p,a:0,dur:560,delay:150,s:1.05,q:FACEDN(w===0?0:JYAW[w])}}if(o.id.startsWith('k:h'))return{a:0,dur:160};return{a:0,dur:250}}})}
-G3U.joker=sc=>{const G=JK,V={base:0,act:'jcard',hand:[],legal:[],counts:[0,0,0,0],taken:[0,0,0,0],trick:[],win:null,deal:null,dealer:null,cur:null,phase:G.phase,mine:false,trumpCard:null,deckN:0,ids:G.ids.map((x,i)=>i===0?{n:ME.name}:{n:x.n,h:x.h,k:x.n})};
+G3U.joker=sc=>{const G=JK,V={hint:typeof jkPlayHint==='function'?(m=>m&&m.c)(jkPlayHint()):null,base:0,act:'jcard',hand:[],legal:[],counts:[0,0,0,0],taken:[0,0,0,0],trick:[],win:null,deal:null,dealer:null,cur:null,phase:G.phase,mine:false,trumpCard:null,deckN:0,ids:G.ids.map((x,i)=>i===0?{n:ME.name}:{n:x.n,h:x.h,k:x.n})};
  if(G.hands){const tr=G.phase==='trump'&&G.cur===0;V.hand=tr?G.first3[0]:G.phase==='trump'?[]:G.hands[0];V.legal=G.phase==='play'&&G.cur===0&&G.win==null?G.legal(0):[];V.mine=V.legal.length>0;
   V.counts=[0,1,2,3].map(p=>G.phase==='trump'?(p===0?0:3):G.hands[p].length);V.taken=G.taken||V.taken;V.trick=G.trick;V.win=G.win;V.cur=G.cur;V.dealer=G.dealer;V.deal=G.len+':'+G.h+':'+G.dealer;V.trumpCard=G.trumpCard;V.deckN=36-4*G.n}
  jkScene(sc,V)};
@@ -280,9 +298,11 @@ G3B.domino=()=>{const sc=g3Scene({cam:{yaw:0,pitch:.56,pp:.1,fov:.92,tgt:[0,0,-.
  g3Model(sc,'tile',tile,[DL/2,DT/2,DW/2]).land=(o,sc)=>{snd('tile');if(o.p[1]<.2)g3Ripple(sc,[o.p[0],.01,o.p[2]],1.3)};
  g3Model(sc,'ghost',[[gBox(DL,DT,DW,.04,3),g3Mat({c:'#F4BC4C',unlit:true,a:1})]],[DL/2,DT,DW/2]);
  sc.hoverAll=true;
- sc.tap=ray=>{const o=g3HitObj(sc,ray,o=>o.pick);if(!o)return;if(o.pick.e)g3Act('dmend',{e:o.pick.e});else if(o.pick.i!=null)g3Act('dmt',{i:String(o.pick.i)})};
- sc.drag={y:.4,lift:.4,drop:(o,p)=>{if(!p||p[2]>4.3)return;const G=DM,i=o.pick.i,pl=G.places(G.hands[0][i]);if(!pl.length)return;if(pl.length===1){g3Act('dmt',{i:String(i)});return}
-  const{slots}=dmLayout(G),e=pl.slice().sort((a,b)=>Math.hypot(slots[a].x-p[0],slots[a].z-p[2])-Math.hypot(slots[b].x-p[0],slots[b].z-p[2]))[0];G.sel=i;g3Act('dmend',{e})}};
+ /* the same table serves the game against the computer (dmt, dmend) and the table with friends (dmot, dmoend) */
+ sc.tap=ray=>{const o=g3HitObj(sc,ray,o=>o.pick);if(!o)return;const a=sc.dA||'dm';if(o.pick.e)g3Act(a+'end',{e:o.pick.e});else if(o.pick.i!=null)g3Act(a==='dm'?'dmt':'dmot',{i:String(o.pick.i)})};
+ sc.drag={y:.4,lift:.4,drop:(o,p)=>{if(!p||p[2]>4.3)return;const G=sc.dG||DM,a=sc.dA||'dm',i=o.pick.i,pl=G.places(G.hands[0][i]);if(!pl.length)return;if(pl.length===1){g3Act(a==='dm'?'dmt':'dmot',{i:String(i)});return}
+  const{slots}=dmLayout(G),e=pl.slice().sort((a,b)=>Math.hypot(slots[a].x-p[0],slots[a].z-p[2])-Math.hypot(slots[b].x-p[0],slots[b].z-p[2]))[0];G.sel=i;if(a!=='dm'&&typeof DMO!=='undefined')DMO.sel=i;g3Act(a+'end',{e})}};
+ sc.drag.start=()=>{sc.dragAt=performance.now()+6e4};const d0=sc.drag.drop;sc.drag.drop=(o,p)=>{sc.dragAt=performance.now();d0(o,p)};
  return sc};
 /* where each tile of the line lies: from the first tile outward, along a row until the edge, then a turn and back */
 function dmLayout(G){const out=[],slots={};if(!G.root)return{out,slots};const rt=G.root.t,rd=rt[0]===rt[1];
@@ -300,7 +320,10 @@ const DSTAND=(yaw,tilt)=>qt.mul(qt.ax(0,1,0,yaw),qt.mul(qt.ax(1,0,0,Math.PI/2-ti
 const DRACK={0:{c:[0,.52,5.25],yaw:0,dir:[1,0,0],sp:.7,tilt:.5}};
 for(const r of[1,2,3]){const[x,z]=DSP[r],l=Math.hypot(x,z),u=[x/l,z/l],yaw=Math.atan2(u[0],u[1]);DRACK[r]={c:[u[0]*6.05,.52,u[1]*6.05],yaw,dir:[Math.cos(yaw),0,-Math.sin(yaw)],sp:.62,tilt:.22}}
 const dRack=(s,i,n)=>{const r=DRACK[s];return v3.add(r.c,v3.mul(r.dir,(i-(n-1)/2)*r.sp))};
-G3U.domino=sc=>{const G=DM,L=[],M=[],{out,slots}=dmLayout(G),mine=G.phase==='play'&&G.cur===0,ok=new Set(mine?G.moves(0).map(m=>m.i):[]);
+G3U.domino=sc=>dmScene(sc,DM,'dm',r=>({n:DMN[r].n,h:DMN[r].h,k:'d:'+DMN[r].n}));
+/* the table with friends: the same scene, turned so that I sit at the near edge */
+G3U.dmo=sc=>{if(typeof DMO==='undefined'||!DMO.st||!DMO.st.phase)return;const base=DMO.seat>=0?DMO.seat:0;dmScene(sc,dmoView(),'dmo',r=>dmoWho((r+base)%4))};
+function dmScene(sc,G,act,who){sc.dG=G;sc.dA=act;const L=[],M=[],{out,slots}=dmLayout(G),mine=G.phase==='play'&&G.cur===0,ok=new Set(mine?G.moves(0).map(m=>m.i):[]);
  const deal=G.round!==sc.round;if(deal)sc.round=G.round;
  const flat=(t,x,z,yaw)=>({p:[x,DT/2,z],q:qt.ax(0,1,0,yaw),uv:dmUV(dmIdx(t[0],t[1]))});
  out.forEach(o=>{const f=flat(o.t,o.x,o.z,o.yaw),key='t'+dmIdx(o.t[0],o.t[1]),d=Object.assign({k:key,m:'tile'},f);
@@ -308,13 +331,21 @@ G3U.domino=sc=>{const G=DM,L=[],M=[],{out,slots}=dmLayout(G),mine=G.phase==='pla
   L.push(d);M.push({m:'mk',p:[o.x,.003,o.z],s:[1.35,1,1.35],uv:MK.blob,c:[0,0,0],a:.22,q:qt.ax(0,1,0,o.yaw)})});
  const n=G.hands[0].length;G.hands[0].forEach((t,i)=>{const lift=G.sel===i?.32:ok.has(i)?.12:0,p=v3.add(dRack(0,i,n),[0,lift,0]),d={k:'t'+dmIdx(t[0],t[1]),m:'tile',p,q:DSTAND(0,DRACK[0].tilt),uv:dmUV(dmIdx(t[0],t[1])),dim:mine&&!ok.has(i)?.6:1,glow:G.sel===i?[.12,.09,.02]:null,pick:mine?{i}:null,drag:mine&&ok.has(i)};
   if(deal){d.from={p:[0,1.2,0],q:DSTAND(0,0),a:0};d.delay=i*70;d.dur=520}L.push(d)});
+ const SE=typeof dmSeats==='function'?dmSeats(G.np||4):[0,1,2,3];
+ if(G.baz&&G.baz.length){const es=[2,3,1].find(s=>!SE.includes(s)),R0=DRACK[es],nb=G.baz.length,q=qt.mul(qt.ax(0,1,0,R0.yaw+Math.PI/2),qt.ax(1,0,0,Math.PI)),inw=v3.norm([-R0.c[0],0,-R0.c[2]]);
+  for(let k=0;k<nb;k++){const row=Math.floor(k/7),i=k%7,n=Math.min(7,nb-row*7),p=v3.add(v3.add([R0.c[0],DT/2,R0.c[2]],v3.mul(R0.dir,(i-(n-1)/2)*.62)),v3.mul(inw,.3+row*1.2));L.push({k:'bz'+k,m:'tile',p,q,uv:dmUV(28)})}}
  for(const s of[1,2,3]){const cnt=G.hands[s].length;for(let i=0;i<cnt;i++){const d={k:'h'+s+'-'+i,m:'tile',p:dRack(s,i,cnt),q:DSTAND(DRACK[s].yaw,DRACK[s].tilt),uv:dmUV(28)};if(deal){d.from={p:[0,1.2,0],q:DSTAND(0,0),a:0};d.delay=(n+i*3+s)*45;d.dur=520}L.push(d)}}
  /* the three at the table: whoever's turn it is leans in and looks at their tiles, the others watch them */
- for(const r of[1,2,3]){const id=DMN[r],lk=jkLook(id.n,id.h),key='d:'+id.n;jkPerson(sc,key,lk);const think=G.phase==='play'&&G.cur===r,lean=think?.07:0;
+ for(const r of[1,2,3]){if(!SE.includes(r))continue;const id=who(r),lk=id.lk?oppLook(id.lk):jkLook(id.n,id.h),key=(id.k||id.n)+(id.lk?':'+lkKey(lk):'');jkPerson(sc,key,lk);const think=G.phase==='play'&&G.cur===r,lean=think?.07:0;
   let yaw=0,pitch=.3;if(think)pitch=.44;else if(G.phase==='play'&&G.cur!=null&&G.cur>=0){const t=G.cur===0?[0,DSR]:DSP[G.cur],me=DSP[r],f=[-me[0],-me[1]],d=[t[0]-me[0],t[1]-me[1]];yaw=clamp(-Math.atan2(f[0]*d[1]-f[1]*d[0],f[0]*d[0]+f[1]*d[1]),-.75,.75);pitch=G.cur===0?.22:.12}
   pplPush(L,r,key,[DSP[r][0],0,DSP[r][1]],dSeatQ(r,lean),1,qt.e(pitch,yaw,0))}
  if(mine&&G.sel!=null){for(const e of G.places(G.hands[0][G.sel]))if(slots[e]){const g=slots[e];L.push({k:'g'+e,m:'ghost',p:[g.x,DT/2,g.z],q:qt.ax(0,1,0,g.yaw),a:.5,cast:false,pick:{e},now:1})}}
- sc.marks=M;g3Set(sc,L,{gone:o=>o.id.startsWith('k:h')?{a:0,dur:180}:o.m==='ghost'?{a:0,dur:120}:{p:[o.p[0]*.3,1,o.p[2]*.3],a:0,dur:500}})};
+ mhPush(sc,L,{on:mhShow(G.ctx),yaw:0,y:-1.6,S:1.4,rest:[[-3.4,8.6],[3.4,8.6]]});
+ /* a tile I just put down: the hand takes it from my row and lays it on the line */
+ let reach=null;const lk=G.last&&G.last.t?G.round+':'+dmIdx(G.last.t[0],G.last.t[1]):null;if(lk!==sc.dml){if(sc.dml!==undefined&&lk&&G.last.p===0&&sc.mh&&performance.now()-(sc.dragAt||0)>900){const key='t'+dmIdx(G.last.t[0],G.last.t[1]),ob=sc.objs.get('k:'+key),to=out.find(o=>dmIdx(o.t[0],o.t[1])===dmIdx(G.last.t[0],G.last.t[1]));if(ob&&to)reach={key,f:ob.p.slice(),t:[to.x,DT/2,to.z]}}sc.dml=lk}
+ sc.marks=M;g3Set(sc,L,{delay:(o,d)=>reach&&d.k===reach.key?MH_WAIT:0,gone:o=>o.id.startsWith('k:h')?{a:0,dur:180}:o.m==='ghost'?{a:0,dur:120}:{p:[o.p[0]*.3,1,o.p[2]*.3],a:0,dur:500}});
+ if(reach)mhCarry(sc,[{p:reach.f},{p:reach.t,d:mhDur(v3.len(v3.sub(reach.t,reach.f))),arc:.9}]);
+ if(G.phase==='over'){const l=G.last&&G.last.t?out.find(o=>dmIdx(o.t[0],o.t[1])===dmIdx(G.last.t[0],G.last.t[1])):null;g3CineGo(sc,G,l?[l.x,0,l.z]:[0,0,0])}}
 
 /* ---------- my character in the editor: sitting at the edge of a small table, turned a little toward you ---------- */
 G3B.look=()=>{const sc=g3Scene({cam:{fixed:asp=>({eye:[0,5.2,2.6],tgt:[0,3.35,-4.3],fov:clamp(2*Math.atan(Math.tan(.34)/Math.min(1,asp*1.35)),.6,1.1),sx:0,sy:0}),tgt:[0,0,0],fov:1,dy:0,dp:0,dz:1},orbit:false,zoom:false,shR:8,shC:[0,0,-3],spot:[0,-2,10,.35],bg:[.05,.036,.028],
@@ -373,34 +404,38 @@ function railAt(sc,p,len,yaw,h=3.2){const q=qt.ax(0,1,0,yaw),wood=g3Mat({t:woodT
  P3(sc,gMerge(...parts),wood,p,q);P3(sc,gBox(len+.4,.24,.46,.05,2),wood,v3.add(p,qt.rot(q,[0,h*.84,0])),q);P3(sc,gBox(len+.4,.2,.36,.05,2),wood,p,q)}
 function stringLightsAt(sc,a,b,n=14){const bulb=g3Mat({c:'#FFE9B8',e:'#FFD98A',sh:10,sp:0,gl:0}),pts=[];for(let k=0;k<=n;k++){const t=k/n,pp=v3.lerp(a,b,t);pp[1]-=Math.sin(t*Math.PI)*1.6;pts.push(pp)}
  P3(sc,gSweep(pts,()=>.03,5),g3Mat({c:'#1A1A1A'}),[0,0,0],null,false);P3(sc,gMerge(...pts.slice(1,-1).map(pp=>gEll(.16,.2,.16,pp,null,8))),bulb,[0,0,0],null,false);sc.envSw.push(t=>{bulb.e=lin(t==='day'?'#7a6a50':'#FFD98A')})}
-function vineAt(sc,p,w,h){const m=g3Mat({t:g3T('leaf',()=>g3Tex(leafCv())),cut:true,two:true,sh:20,sp:.1,gl:.05}),R=rng(61),g=[];
+function vineAt(sc,p,w,h,c){const m=g3Mat({t:g3T('leaf',()=>g3Tex(leafCv())),c:c||'#ffffff',cut:true,two:true,sh:20,sp:.1,gl:.05}),R=rng(61),g=[];
  for(let k=0;k<Math.floor(w*h*1.6);k++){const s=.7+R()*.6;g.push(gXf(gQuad(s,s),[(R()-.5)*w,(R()-.5)*h,R()*.4],qt.mul(qt.ax(0,0,1,R()*6.28),qt.ax(1,0,0,(R()-.5)*.8))))}P3(sc,gMerge(...g),m,p,null,false)}
-function treeAt(sc,p){P3(sc,gLathe([[0,0],[1.1,0],[.8,.6],[.7,9],[.5,13],[0,13]],16),g3Mat({c:'#4A3A2E',sh:10,sp:.05,gl:0}),p,null,false);
- const R=rng(43),g=[];for(let k=0;k<22;k++)g.push(gEll(2+R()*1.6,1.6+R()*1.2,2+R()*1.6,[(R()-.5)*7,12+R()*6,(R()-.5)*7],null,12));P3(sc,gMerge(...g),g3Mat({c:'#3E6A32',sh:12,sp:.05,gl:0}),p,null,false)}
+function treeAt(sc,p){P3(sc,gLathe([[0,0],[1.1,0],[.8,.6],[.7,9],[.5,13],[0,13]],16),g3Mat({c:'#4A3A2E',sh:10,sp:.05,gl:0}),p,null,false);const ss=gSeasonNow();
+ /* bare in winter: a few branches instead of the crown */
+ if(ss==='winter'){const R=rng(47),g=[];for(let k=0;k<9;k++){const a=k*.7,y=8+R()*5;g.push(gCap([0,y,0],[Math.cos(a)*(3+R()*2),y+3+R()*2,Math.sin(a)*(3+R()*2)],.32,.1,6))}P3(sc,gMerge(...g),g3Mat({c:'#4A3A2E',sh:10,sp:.05,gl:0}),p,null,false);return}
+ const R=rng(43),g=[];for(let k=0;k<22;k++)g.push(gEll(2+R()*1.6,1.6+R()*1.2,2+R()*1.6,[(R()-.5)*7,12+R()*6,(R()-.5)*7],null,12));P3(sc,gMerge(...g),g3Mat({c:ss==='autumn'?'#B07A2A':'#3E6A32',sh:12,sp:.05,gl:0}),p,null,false)}
 const wallQ=(sc,m,p,w,h,yaw)=>P3(sc,gQuad(w,h),m,p,qt.ax(0,1,0,yaw||0),false);
 
 /* the five places */
 function envRoom(sc){envSet(sc,'room');const rug=g3Mat({t:g3T('rug',()=>g3Tex(rugCv())),sh:4,sp:.02,gl:0});wallQ(sc,rug,[0,8,-19.6],7,14);
- const sb=g3Mat({t:woodTex('walnut'),sh:40,sp:.25,gl:.2});P3(sc,gBox(9,.45,1.6,.1,2),sb,[11.5,4.2,-19.1],null,false);jugAt(sc,[9.2,4.43,-19.1],1.4);hornAt(sc,[11.4,4.43,-19],-.25);
+ const sb=g3Mat({t:woodTex('walnut'),sh:40,sp:.25,gl:.2});P3(sc,gBox(9,.45,1.6,.1,2),sb,[11.5,4.2,-19.1],null,false);jugAt(sc,[9.2,4.43,-19.1],1.4);hornAt(sc,[11.4,4.43,-19],-.25);if(gNewYear())chichilakiAt(sc,[14.6,4.43,-19.0],1.15);
  wallQ(sc,envMat(sc,'win',windowCv),[-19.9,8,-6],8,14,Math.PI/2);hangLampAt(sc,[0,19,-1.5]);
  jugAt(sc,[4.55,0,1.25],.8);wineGlassAt(sc,[3.75,0,2.15]);wineGlassAt(sc,[4.85,0,.2]);plateAt(sc,[-4.35,0,1.05],1);breadAt(sc,[-4.35,.06,1.05],.9);hornAt(sc,[-4.6,0,2.35],2.2,.62);envDone(sc)}
 function envYardS(sc){envSet(sc,'out');const brick=g3Mat({t:g3T('brick',()=>g3Tex(brickCv(),{rep:true})),uv:[0,0,8,5],sh:8,sp:.04,gl:0}),plaster=g3Mat({t:g3T('pl:ochre',()=>g3Tex(plasterCv('#C9A77A'))),sh:6,sp:.03,gl:0});
  wallQ(sc,brick,[0,8,-21],60,40);for(const x of[-9,9])wallQ(sc,envMat(sc,'win',windowCv),[x,6,-20.9],5,9);wallQ(sc,plaster,[-21,8,0],60,40,Math.PI/2);treeAt(sc,[17,-11,-14]);
- P3(sc,gPlane(90,90,12,12),g3Mat({t:g3T('tiles',()=>g3Tex(tilesCv(),{rep:true})),sh:10,sp:.05,gl:0}),[0,-11,0],null,false);stringLightsAt(sc,[-20,16,-20.5],[20,16,-20.5]);
+ P3(sc,gPlane(90,90,12,12),g3Mat({t:g3T('tiles',()=>g3Tex(tilesCv(),{rep:true})),sh:10,sp:.05,gl:0}),[0,-11,0],null,false);(gNewYear()?colorLightsAt:stringLightsAt)(sc,[-20,16,-20.5],[20,16,-20.5]);
+ const wk=wxSetup(sc,{w:46,h:32,y0:-11,z0:-20,z1:12});if(gSeasonNow()==='autumn'&&wk!=='snow')leavesAt(sc,4,-4,30,24);
  jugAt(sc,[5.45,0,3.25],.7);wineGlassAt(sc,[4.7,0,4.05]);plateAt(sc,[-5.1,0,3.5],.95);grapesAt(sc,[-5.1,.06,3.5]);envDone(sc)}
 function envDesk(sc){envSet(sc,'desk');const top=g3Mat({t:woodTex('walnut'),sh:50,sp:.3,gl:.25});envTable(sc,{w:22,d:16,top,edge:top,floor:g3Mat({t:woodTex('table'),sh:16,sp:.12,gl:.08})});
  P3(sc,gBox(13.2,.03,12.6,.02,2,null,[0]),g3Mat({t:g3T('leather',()=>g3Tex(leatherCv())),sh:20,sp:.1,gl:.05}),[0,.005,0],null,false);
  const books=g3Mat({t:g3T('books',()=>g3Tex(booksCv())),sh:8,sp:.04,gl:0});wallQ(sc,books,[0,4,-20],40,26);wallQ(sc,g3Mat({t:g3T('pl:green',()=>g3Tex(plasterCv('#5E6E5A'))),sh:6,sp:.03,gl:0}),[-20,4,0],40,26,Math.PI/2);
- wallQ(sc,envMat(sc,'win',windowCv),[-19.9,6,-3],7,12,Math.PI/2);bankLampAt(sc,[-8.6,0,-5.8]);cupAt(sc,[7.6,0,4.6]);clockAt(sc,[8.2,0,-.4],-Math.PI/2);envDone(sc)}
+ wallQ(sc,envMat(sc,'win',windowCv),[-19.9,6,-3],7,12,Math.PI/2);bankLampAt(sc,[-8.6,0,-5.8]);cupAt(sc,[7.6,0,4.6]);clockAt(sc,[8.2,0,-.4],-Math.PI/2);if(gNewYear())chichilakiAt(sc,[8.8,0,-5.2],.9);envDone(sc)}
 function envCourt(sc){envSet(sc,'out');const top=g3Mat({t:woodTex('oak'),sh:16,sp:.1,gl:.05}),edge=g3Mat({t:woodTex('table'),sh:16,sp:.1,gl:.05});
  envTable(sc,{w:24,d:18,cx:.8,top,edge,floor:g3Mat({t:g3T('tiles',()=>g3Tex(tilesCv(),{rep:true})),sh:10,sp:.05,gl:0})});
  const pl=g3Mat({t:g3T('pl:teal',()=>g3Tex(plasterCv('#7FA6A0'))),sh:6,sp:.03,gl:0});wallQ(sc,pl,[0,8,-24],70,44);wallQ(sc,g3Mat({t:g3T('pl:ochre',()=>g3Tex(plasterCv('#C9A77A'))),sh:6,sp:.03,gl:0}),[-24,8,0],70,44,Math.PI/2);
  for(const x of[-12,0,12])wallQ(sc,envMat(sc,'win',windowCv),[x,3,-23.9],5,9);railAt(sc,[0,8,-21.5],40,0);P3(sc,gBox(42,.5,5,.1,2),g3Mat({t:woodTex('oak'),sh:30,sp:.2,gl:.1}),[0,7.75,-22],null,false);
- vineAt(sc,[0,13,-21],40,5);vineAt(sc,[-20,4,-21],4,16);stringLightsAt(sc,[-22,17,-22],[22,17,-22]);
+ {const ss=gSeasonNow(),vc=ss==='autumn'?'#F0A050':null;if(ss!=='winter'){vineAt(sc,[0,13,-21],40,5,vc);vineAt(sc,[-20,4,-21],4,16,vc)}(gNewYear()?colorLightsAt:stringLightsAt)(sc,[-22,17,-22],[22,17,-22]);
+  const wk=wxSetup(sc,{w:48,h:32,y0:-11,z0:-21,z1:12});if(ss==='autumn'&&wk!=='snow')leavesAt(sc,.8,-4,34,26)}
  teaGlassAt(sc,[10.4,0,4.6]);teaGlassAt(sc,[11.2,0,3.2]);plateAt(sc,[-8.9,0,5.2],.95);grapesAt(sc,[-8.9,.06,5.2]);envDone(sc)}
 function envBalcony(sc){envSet(sc,'out');const top=g3Mat({t:g3T('oilcloth',()=>g3Tex(oilclothCv(),{rep:true})),uv:[0,0,1,1],sh:40,sp:.25,gl:.15}),edge=g3Mat({t:woodTex('oak'),sh:16,sp:.1,gl:.05});
  envTable(sc,{w:20,d:16,top,edge,floor:g3Mat({t:woodTex('oak'),sh:16,sp:.1,gl:.05})});railAt(sc,[0,-11,-15],36,0,7);railAt(sc,[-18,-11,0],30,Math.PI/2,7);
- wallQ(sc,envMat(sc,'sky',skylineCv,{unlit:true}),[0,4,-40],120,60);wallQ(sc,g3Mat({t:g3T('pl:white',()=>g3Tex(plasterCv('#E4DCCB'))),sh:6,sp:.03,gl:0}),[22,4,0],70,40,-Math.PI/2);
+ wallQ(sc,envMat(sc,'sky',skylineCv,{unlit:true}),[0,4,-40],120,60);wallQ(sc,g3Mat({t:g3T('pl:white',()=>g3Tex(plasterCv('#E4DCCB'))),sh:6,sp:.03,gl:0}),[22,4,0],70,40,-Math.PI/2);wxSetup(sc,{w:48,h:32,y0:-11,z0:-34,z1:12});
  applesAt(sc,[-7.8,0,4.6]);wineGlassAt(sc,[7.6,0,4.8]);envDone(sc)}
 /* chess sets: the classic turned box and ebony; the same shapes carved in olive and rosewood; a modern set of plain forms in matte ivory and charcoal */
 const gStyleOf=g=>typeof gStyle==='function'?gStyle(g):'classic';
@@ -420,3 +455,86 @@ function g3Portrait(look){const lk=oppLook(look),k=lkKey(lk);if(G3PIC.has(k))ret
  const box=document.createElement('div');box.style.cssText='position:fixed;left:-10000px;top:0;width:300px;height:330px';document.body.appendChild(box);
  let url=null;try{const sc=G3S.look||(G3S.look=G3B.look());sc.host='look';sc.lk=lk;if(g3Mount(box,sc)){G3U.look(sc);g3Size();g3Draw(sc,performance.now());url=G3D.cv.toDataURL('image/jpeg',.86)}}catch(e){url=null}
  box.remove();if(url)G3PIC.set(k,url);return url}
+
+/* ---------- my own hands ----------
+   they rest at the near edge of the table and reach in when I move: take the piece, carry it, put it down and come back;
+   for the dice they swing up and throw. a move made by dragging needs no hand, the finger already did it */
+const myHandsOn=()=>typeof store==='undefined'||store.get('ghands',true)!==false;
+function mhModels(sc){const lk=oppLook(typeof myLook==='function'?myLook():{}),key=lk.skin+'|'+lk.shirt;if(sc.mhKey===key)return;sc.mhKey=key;
+ const skin=g3Mat({c:lk.skin,sh:14,sp:.12,gl:.03}),knit=g3Mat({c:hex(lk.shirt),t:g3T('knit',()=>g3Tex(knitCv(),{rep:true})),uv:[0,0,4,3],sh:6,sp:.05,gl:0});
+ for(const s of[-1,1]){const hand=gXf(handGeo(-s),[0,0,0],qt.ax(0,1,0,Math.PI)),arm=gMerge(gCap([0,.04,.1],[s*.34,.66,3.7],.29,.42,12),gXf(gTorus(.34,.1,18,6),[0,.04,.22],qt.ax(1,0,0,Math.PI/2)));
+  g3Model(sc,'mh'+s,[[hand,skin],[arm,knit]],null)}}
+/* the hands are shown when this phone is the one playing: against the computer, online, or two people sharing it */
+const mhShow=c=>!!c&&(c.mode==='local'||isPlayer(c))&&!c.gone;
+const mhMover=(c,turnNow)=>c.mode==='local'||turnNow===-c.side;
+/* rest: [left, right] as [x, z] in my own frame (z toward me); y: the table top; S: how big */
+function mhPush(sc,L,o){sc.mh=null;if(!o.on||!myHandsOn())return;mhModels(sc);const q0=qt.ax(0,1,0,o.yaw||0),H={q0,S:o.S,rest:{},rq:{}};
+ for(const s of[-1,1]){const r=o.rest[s<0?0:1],p=v3.add(qt.rot(q0,[r[0],0,r[1]]),[0,o.y+.12*o.S,0]),q=qt.mul(q0,qt.ax(0,1,0,s*.26));H.rest[s]=p;H.rq[s]=q;L.push({k:'mh'+s,m:'mh'+s,p,q,s:o.S,refl:false,dur:450})}sc.mh=H}
+/* where the wrist goes so that the fingertips are over a point */
+const mhAt=(H,s,P,up)=>v3.add(P,qt.rot(H.q0,[s*.1*H.S,(up??.4)*H.S,.8*H.S]));
+const mhSide=(H,P)=>qt.rot(qt.inv(H.q0),P)[0]<-2.2?-1:1;
+/* reach for a point, carry along the given stops (each with its time), let go and come home */
+function mhCarry(sc,stops,o={}){const H=sc.mh;if(!H||!stops.length)return;const s=o.s||mhSide(H,stops[0].p),h=sc.objs.get('k:mh'+s);if(!h)return;const q=qt.mul(H.q0,qt.ax(0,1,0,s*.1));
+ const K=[{p:mhAt(H,s,stops[0].p,1),q,d:o.d0||230,arc:.25},{p:mhAt(H,s,stops[0].p,.4),q,d:110}];
+ for(let i=1;i<stops.length;i++)K.push({p:mhAt(H,s,stops[i].p,.4),q,d:stops[i].d||380,arc:stops[i].arc??.5});
+ K.push({p:mhAt(H,s,stops[stops.length-1].p,1),q,d:140},{p:H.rest[s],q:H.rq[s],d:430,arc:.18});g3Kf(h,K)}
+/* the dice: the right hand comes up from the edge, throws, and goes back */
+function mhThrow(sc,P){const H=sc.mh;if(!H)return;const h=sc.objs.get('k:mh1');if(!h)return;const q=qt.mul(H.q0,qt.ax(1,0,0,-.35));
+ g3Kf(h,[{p:v3.add(P,qt.rot(H.q0,[.6,.2*H.S,2.2])),q,d:220,arc:.2},{p:v3.add(P,qt.rot(H.q0,[-.2,.55*H.S,-.6])),q:H.q0,d:150},{p:H.rest[1],q:H.rq[1],d:420,arc:.2}])}
+/* the time a carried piece takes, the same rule the board uses */
+const mhDur=far=>Math.min(620,280+90*Math.sqrt(far));
+const MH_WAIT=340;
+
+/* ---------- the closing shot: when a game ends the camera turns slowly round the last move and comes in close ---------- */
+function g3CineGo(sc,G,f){const c=G&&G.ctx;if(!c||!c.finAt||c.cined||RM()||performance.now()-c.finAt>1600)return;c.cined=1;
+ const I={t0:performance.now()+180,d:window.__cineD||2700,f,s:Math.random()<.5?1:-1,tg:sc.cam.tgt.slice()};sc.intro=null;sc.cine=I;if(typeof gClipStart==='function')try{I.end=gClipStart(G,sc,I)}catch(e){}g3Need()}
+
+/* ---------- seasons and weather ----------
+   in winter it may snow and in spring and autumn it may rain, the same for everyone on the same day (or as chosen in the menu).
+   autumn turns the vines; from mid-December to mid-January a ჩიჩილაკი stands in the rooms and the lights in the yards are coloured */
+const gSeasonNow=()=>{const m=new Date().getMonth();return m===11||m<2?'winter':m<5?'spring':m<8?'summer':'autumn'};
+const gNewYear=()=>{const d=new Date(),m=d.getMonth(),dd=d.getDate();return(m===11&&dd>=15)||(m===0&&dd<=14)};
+function wxKind(){const v=typeof store!=='undefined'?store.get('gwx','auto'):'auto';if(v==='clear')return null;if(v==='snow'||v==='rain')return v;
+ const d=new Date(),h=hashS(d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate()),s=gSeasonNow();return s==='winter'?(h<.5?'snow':null):s==='summer'?(h<.07?'rain':null):(h<.28?'rain':null)}
+function wxSetup(sc,o){const k=wxKind();sc.wx=k?Object.assign({k},o):null;if(k==='snow')P3(sc,gPlane(90,90,4,4),g3Mat({c:'#F4F7FA',sh:30,sp:.2,gl:.05,a:.82}),[0,-10.96,0],null,false);return k}
+/* ჩიჩილაკი: shaved hazel curls hanging round a stick, a pomegranate and two sweets on top */
+function chichilakiAt(sc,p,k=1){const m=g3Mat({c:'#F1E6CF',sh:22,sp:.12,gl:.06}),R=rng(17),g=[gCap([0,0,0],[0,3.4*k,0],.07*k,.05*k,6)];
+ for(let t=0;t<4;t++)for(let i=0;i<16;i++){const a=i/16*6.28+t*.2,y=(3.1-t*.62)*k,r=(.18+t*.2)*k,l=(.55+t*.12+R()*.2)*k,dir=[Math.cos(a),0,Math.sin(a)],tip=v3.add([dir[0]*r,y,dir[2]*r],[dir[0]*l*.55,-l,dir[2]*l*.55]);
+  g.push(gCap([dir[0]*r*.3,y,dir[2]*r*.3],tip,.06*k,.035*k,5))}
+ P3(sc,gMerge(...g),m,p);P3(sc,gEll(.2*k,.2*k,.2*k,[0,3.55*k,0],null,12),g3Mat({c:'#A8182A',sh:60,sp:.4,gl:.3}),p);
+ for(const s of[-1,1])P3(sc,gCap([s*.22*k,3.45*k,0],[s*.32*k,2.85*k,0],.07*k,.07*k,6),g3Mat({c:'#7A3A18',sh:30,sp:.2,gl:.1}),p)}
+/* the yard's string of lights in colour for the new year */
+function colorLightsAt(sc,a,b,n=16){const cols=['#FF6B6B','#FFD166','#5BD38A','#64B5FF','#E58CFF'],pts=[];for(let k=0;k<=n;k++){const t=k/n,pp=v3.lerp(a,b,t);pp[1]-=Math.sin(t*Math.PI)*1.6;pts.push(pp)}
+ P3(sc,gSweep(pts,()=>.03,5),g3Mat({c:'#1A1A1A'}),[0,0,0],null,false);
+ cols.forEach((c,ci)=>{const ms=pts.slice(1,-1).filter((_,i)=>i%cols.length===ci);if(!ms.length)return;const m=g3Mat({c,e:c,sh:10,sp:0,gl:0});P3(sc,gMerge(...ms.map(pp=>gEll(.17,.21,.17,pp,null,8))),m,[0,0,0],null,false);sc.envSw.push(t=>{m.e=lin(t==='day'?'#5a5040':c)})})}
+/* leaves fallen on the yard in autumn */
+function leavesAt(sc,cx,cz,w,d,n=70){const R=rng(29),g=[];for(let i=0;i<n;i++){const s=.6+R()*.5;g.push(gXf(gQuad(s,s),[cx+(R()-.5)*w,-10.95+R()*.02,cz+(R()-.5)*d],qt.mul(qt.ax(0,1,0,R()*6.28),qt.ax(1,0,0,-Math.PI/2))))}
+ P3(sc,gMerge(...g),g3Mat({t:g3T('leaf',()=>g3Tex(leafCv())),c:'#E89040',cut:true,two:true,sh:10,sp:.05,gl:0}),[0,0,0],null,false)}
+
+/* ---------- the career places, and a choice of place for the two-player boards ----------
+   each builds its own table (the size the game needs), floor and backdrop; all three are outdoors */
+const GTBL={nardi:{w:24,d:18,cx:.8},chess:{w:22,d:16,cx:0},shashi:{w:20,d:16,cx:0}};
+function palmAt(sc,p,h=13,lean=.3){const R=rng(Math.round(p[0]*13+p[2]*7)),seg=[];for(let i=0;i<=10;i++){const t=i/10;seg.push([Math.sin(t*1.3)*lean*h*.25,t*h,0])}
+ P3(sc,gSweep(seg,t=>.55-.25*t,10),g3Mat({c:'#8A6A48',sh:8,sp:.04,gl:0}),p,qt.ax(0,1,0,R()*6.28),false);const top=v3.add(p,seg[10]),fr=[];
+ for(let k=0;k<9;k++){const a=k/9*6.28+R()*.3,pts=[];for(let i=0;i<=8;i++){const t=i/8;pts.push([Math.cos(a)*t*5,-t*t*2.6+t*.8,Math.sin(a)*t*5])}fr.push(gSweep(pts,t=>.42*(1-t)+.05,4))}
+ P3(sc,gMerge(...fr),g3Mat({c:'#3F7A3A',sh:12,sp:.06,gl:0}),top,null,false)}
+function lampPostAt(sc,p){const iron=g3Mat({c:'#2A2A2E',sh:60,sp:.4,gl:.3}),bulb=g3Mat({c:'#FFF1CC',e:'#FFE0A0',sh:10,sp:0,gl:0});P3(sc,gCap([0,0,0],[0,14,0],.18,.14,8),iron,p,null,false);P3(sc,gEll(.7,.85,.7,[0,14.7,0],null,14),bulb,p,null,false);sc.envSw.push(t=>{bulb.e=lin(t==='day'?'#6a6050':'#FFE0A0')})}
+function envSea(sc,g){envSet(sc,'out');const T=GTBL[g]||GTBL.chess,top=g3Mat({t:woodTex('oak'),sh:16,sp:.1,gl:.05}),edge=g3Mat({t:woodTex('table'),sh:16,sp:.1,gl:.05});
+ envTable(sc,Object.assign({top,edge,floor:g3Mat({t:g3T('tiles',()=>g3Tex(tilesCv(),{rep:true})),sh:10,sp:.05,gl:0})},T));
+ wallQ(sc,envMat(sc,'sea',seaCv,{unlit:true}),[0,15,-46],150,72);railAt(sc,[0,-11,-19],60,0,7);palmAt(sc,[-19,-11,-14],15,.4);palmAt(sc,[21,-11,-17],13,-.3);lampPostAt(sc,[-26,-11,-8]);
+ teaGlassAt(sc,[T.cx+9.6,0,4.6]);applesAt(sc,[T.cx-8.4,0,4.8]);wxSetup(sc,{w:52,h:32,y0:-11,z0:-30,z1:12});envDone(sc)}
+function envValley(sc,g){envSet(sc,'out');const T=GTBL[g]||GTBL.chess,top=g3Mat({t:woodTex('walnut'),sh:30,sp:.2,gl:.15}),edge=g3Mat({t:woodTex('walnut'),sh:30,sp:.2,gl:.15});
+ envTable(sc,Object.assign({top,edge,floor:g3Mat({t:woodTex('oak'),sh:16,sp:.1,gl:.05})},T));
+ wallQ(sc,envMat(sc,'valley',valleyCv,{unlit:true}),[0,9,-46],150,72);railAt(sc,[0,-11,-17],44,0,7);railAt(sc,[-22,-11,0],34,Math.PI/2,7);vineAt(sc,[-21,6,-12],3,12,gSeasonNow()==='autumn'?'#F0A050':null);
+ jugAt(sc,[T.cx+9,0,3.6],.75);wineGlassAt(sc,[T.cx+8,0,5]);wineGlassAt(sc,[T.cx+10.2,0,5.2]);plateAt(sc,[T.cx-8.6,0,4.8],.95);grapesAt(sc,[T.cx-8.6,.06,4.8]);wxSetup(sc,{w:52,h:32,y0:-11,z0:-30,z1:12});envDone(sc)}
+function envCity(sc,g){envSet(sc,'out');const T=GTBL[g]||GTBL.chess,top=g3Mat({t:woodTex('oak'),sh:16,sp:.1,gl:.05}),edge=g3Mat({t:woodTex('table'),sh:16,sp:.1,gl:.05});
+ envTable(sc,Object.assign({top,edge,floor:g3Mat({t:g3T('tiles',()=>g3Tex(tilesCv(),{rep:true})),sh:10,sp:.05,gl:0})},T));
+ wallQ(sc,envMat(sc,'city',cityCv,{unlit:true}),[0,7,-46],150,72);railAt(sc,[0,-11,-18],60,0,7);lampPostAt(sc,[-22,-11,-12]);lampPostAt(sc,[22,-11,-12]);(gNewYear()?colorLightsAt:stringLightsAt)(sc,[-22,11,-17],[22,11,-17]);
+ teaGlassAt(sc,[T.cx+9.6,0,4.6]);teaGlassAt(sc,[T.cx+10.4,0,3.2]);wxSetup(sc,{w:52,h:32,y0:-11,z0:-30,z1:12});envDone(sc)}
+const GPLACE={court:{f:sc=>envCourt(sc),n:'ძველი თბილისის ეზო'},balcony:{f:sc=>envBalcony(sc),n:'ხის აივანი'},desk:{f:sc=>envDesk(sc),n:'მაგიდა წიგნებთან'},sea:{f:envSea,n:'ბათუმის ბულვარი'},valley:{f:envValley,n:'სიღნაღის აივანი'},city:{f:envCity,n:'მთაწმინდა'}};
+const GPDEF={nardi:'court',shashi:'balcony',chess:'desk'};
+/* which place a board stands in: a career game brings its own; otherwise the place picked in the menu (once it is open), or the usual one */
+function gPlaceOf(g){if(!GPDEF[g])return null;const G=GAME[g],c=G&&G.ctx;if(c&&c.place&&GPLACE[c.place])return c.place;const v=typeof store!=='undefined'?store.get('gplace:'+g,null):null;return v&&GPLACE[v]&&(typeof gPlaceOpen!=='function'||gPlaceOpen(v))?v:GPDEF[g]}
+const gEnvBuild=(sc,g)=>{const k=gPlaceOf(g)||GPDEF[g];(GPLACE[k]||GPLACE[GPDEF[g]]).f(sc,g)};
+/* bigger, brighter marks when big buttons are on */
+function mkBig(M){if(typeof gBigOn!=='function'||!gBigOn())return;for(const m of M){if(m.uv!==MK.dot&&m.uv!==MK.ring)continue;m.s=Array.isArray(m.s)?[m.s[0]*1.3,m.s[1],m.s[2]*1.3]:m.s*1.3;m.a=Math.min(1,(m.a??1)*1.3)}}

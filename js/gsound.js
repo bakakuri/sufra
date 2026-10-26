@@ -38,8 +38,8 @@ A.gsnd=t=>{GS.on=!GS.on;store.set('gsnd',GS.on);if(GS.on){gsCtx();gSnd('tap')}co
    a room tone or the air outside; crickets in the evening and birds by day in the yards; now and then glasses touching;
    at the card table and in the yard of an evening, a soft drone in the old three-voice manner (an original tune, low and far off) */
 const GAMB={on:store.get('gamb',true),key:null,g:null,src:null,tm:[],lfo:null};
-function gAmbStop(){for(const t of GAMB.tm)clearTimeout(t);GAMB.tm=[];const x=GS.ctx;if(GAMB.g&&x){const g=GAMB.g,s=GAMB.src,l=GAMB.lfo;try{g.gain.cancelScheduledValues(x.currentTime);g.gain.setTargetAtTime(0,x.currentTime,.4)}catch(e){}setTimeout(()=>{try{s&&s.stop();l&&l.stop();g.disconnect()}catch(e){}},1600)}GAMB.g=null;GAMB.src=null;GAMB.lfo=null;GAMB.key=null}
-function gAmb(kind,time,game){const key=kind?kind+':'+time+':'+game:null;if(key===GAMB.key)return;gAmbStop();if(!kind||!GS.on||!GAMB.on||document.hidden)return;const x=gsCtx();if(!x)return;GAMB.key=key;
+function gAmbStop(){for(const t of GAMB.tm)clearTimeout(t);GAMB.tm=[];const x=GS.ctx;if(GAMB.g&&x){const g=GAMB.g,s=GAMB.src,l=GAMB.lfo,rn=GAMB.rain;try{g.gain.cancelScheduledValues(x.currentTime);g.gain.setTargetAtTime(0,x.currentTime,.4)}catch(e){}setTimeout(()=>{try{s&&s.stop();l&&l.stop();rn&&rn.stop();g.disconnect()}catch(e){}},1600)}GAMB.g=null;GAMB.src=null;GAMB.lfo=null;GAMB.rain=null;GAMB.key=null}
+function gAmb(kind,time,game,wx){const key=kind?kind+':'+time+':'+game+':'+(wx||''):null;if(key===GAMB.key)return;gAmbStop();if(!kind||!GS.on||!GAMB.on||document.hidden)return;const x=gsCtx();if(!x)return;GAMB.key=key;
  const out=x.createGain();out.gain.value=0;out.connect(GS.bus);out.gain.setTargetAtTime(1,x.currentTime,1.2);GAMB.g=out;
  /* the bed: noise through a filter, very low; outside it breathes like wind */
  const s=x.createBufferSource();s.buffer=GS.noise;s.loop=true;const f=x.createBiquadFilter(),bg=x.createGain();f.type=kind==='out'?'bandpass':'lowpass';f.frequency.value=kind==='out'?520:kind==='desk'?420:300;f.Q.value=kind==='out'?.6:.7;bg.gain.value=kind==='out'?.045:kind==='desk'?.03:.035;
@@ -58,6 +58,9 @@ function gAmb(kind,time,game){const key=kind?kind+':'+time+':'+game:null;if(key=
   v(73.4,t,t+L,'sine');v(110,t,t+L,'sine');const mid=[146.8,164.8,174.6,164.8,146.8,164.8,146.8],top=[220,246.9,261.6,246.9,220,220,196];const st=L/mid.length;mid.forEach((fq,k)=>{v(fq,t+k*st,t+(k+1)*st+.3);v(top[k],t+k*st+.15,t+(k+1)*st+.3)});at(60000+Math.random()*40000,drone)};
  /* a watch: when the table leaves the screen (2D, another tab, the page closed) the sound goes with it */
  const watch=()=>{const cv=typeof G3D!=='undefined'&&G3D.cv;if(!cv||!cv.isConnected){gAmbStop();return}at(2000,watch)};at(2000,watch);
- if(kind==='out'){if(time==='eve')at(400,crickets);else at(1500,birds)}if(kind==='room'||(kind==='out'&&game==='domino'&&time==='eve'))at(9000,clink);if(kind==='desk')at(12000,page);
+ /* rain: a steady hiss with drops on the table and the tiles; snow: the yard goes quiet, only a low wind */
+ if(wx==='rain'){const r=x.createBufferSource();r.buffer=GS.noise;r.loop=true;const hp=x.createBiquadFilter(),rg=x.createGain();hp.type='bandpass';hp.frequency.value=2600;hp.Q.value=.35;rg.gain.value=.05;r.connect(hp);hp.connect(rg);rg.connect(out);r.start();GAMB.rain=r;
+  const drip=()=>{const x=GS.ctx,t=x.currentTime;for(let k=0;k<3;k++)tone(x,t+Math.random()*.4,1200+Math.random()*2400,.05,.012,'sine');at(120+Math.random()*260,drip)};at(300,drip)}
+ if(kind==='out'&&!wx){if(time==='eve')at(400,crickets);else at(1500,birds)}if(kind==='room'||(kind==='out'&&game==='domino'&&time==='eve'))at(9000,clink);if(kind==='desk')at(12000,page);
  if((kind==='room'&&time==='eve')||(game==='domino'&&time==='eve'))at(5000,drone)}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)gAmbStop();else if(typeof gAmbSync==='function')gAmbSync()});

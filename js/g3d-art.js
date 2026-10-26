@@ -330,3 +330,43 @@ function courtIcon(x,r,cx,cy,col){x.save();x.translate(cx,cy);x.fillStyle=col;x.
  else if(r===12){x.beginPath();x.moveTo(-38,20);x.quadraticCurveTo(0,-8,38,20);x.lineTo(30,24);x.quadraticCurveTo(0,4,-30,24);x.closePath();x.fill();for(const a of[-22,0,22]){x.beginPath();x.moveTo(a-7,a?10:2);x.lineTo(a,a?-6:-20);x.lineTo(a+7,a?10:2);x.fill()}x.fillStyle='#FFF4DC';x.beginPath();x.arc(0,-6,4,0,Math.PI*2);x.fill()}
  else{x.beginPath();x.ellipse(0,10,34,14,0,0,Math.PI*2);x.fill();x.beginPath();x.moveTo(-26,8);x.quadraticCurveTo(-4,-26,24,4);x.closePath();x.fill();x.beginPath();x.moveTo(18,0);x.quadraticCurveTo(44,-30,30,-42);x.quadraticCurveTo(34,-18,14,-4);x.fill()}
  x.restore()}
+/* ---------- backdrops for the career places ---------- */
+/* the sea at Batumi: sky, the Adjara hills on the left, the water to the horizon, a low sun in the evening */
+function seaCv(day){const W=2048,H=1024,c=cvs(W,H),x=c.getContext('2d'),R=rng(201),hz=H*.56,g=x.createLinearGradient(0,0,0,hz);
+ if(day){g.addColorStop(0,'#6FAEE6');g.addColorStop(1,'#D8ECF8')}else{g.addColorStop(0,'#1A2244');g.addColorStop(.6,'#7A4A6A');g.addColorStop(1,'#F2A060')}x.fillStyle=g;x.fillRect(0,0,W,hz);
+ if(!day){const s=x.createRadialGradient(W*.62,hz-10,10,W*.62,hz-10,260);s.addColorStop(0,'rgba(255,220,150,1)');s.addColorStop(.18,'rgba(255,170,90,.9)');s.addColorStop(1,'rgba(255,140,80,0)');x.fillStyle=s;x.fillRect(0,0,W,hz);x.fillStyle='#FFD7A0';x.beginPath();x.arc(W*.62,hz,58,Math.PI,0);x.fill()}
+ for(let i=0;i<9;i++){x.fillStyle=day?`rgba(255,255,255,${.35+R()*.3})`:`rgba(255,190,170,${.15+R()*.2})`;const cx=R()*W,cy=R()*hz*.6,w=120+R()*260;for(let k=0;k<6;k++){x.beginPath();x.ellipse(cx+(R()-.5)*w,cy+(R()-.5)*30,w*.25,18+R()*14,0,0,6.28);x.fill()}}
+ const hill=(col,base,amp,seed,to)=>{const r=rng(seed);x.fillStyle=col;x.beginPath();x.moveTo(0,hz);for(let X=0;X<=to;X+=12)x.lineTo(X,hz-base-amp*(Math.sin(X/180+r())*.5+.5)*(1-X/to));x.lineTo(to,hz);x.fill()};
+ hill(day?'#7E97B2':'#3A3456',60,170,3,W*.42);hill(day?'#5E7A64':'#2A2440',20,110,5,W*.3);
+ const sea=x.createLinearGradient(0,hz,0,H);if(day){sea.addColorStop(0,'#3F8CC4');sea.addColorStop(1,'#1C5A86')}else{sea.addColorStop(0,'#5A4A70');sea.addColorStop(1,'#1A2240')}x.fillStyle=sea;x.fillRect(0,hz,W,H-hz);
+ for(let i=0;i<900;i++){const y=hz+Math.pow(R(),1.6)*(H-hz),w=6+(y-hz)/(H-hz)*60;x.fillStyle=day?`rgba(255,255,255,${.12+R()*.2})`:`rgba(255,200,150,${.06+R()*.12})`;x.fillRect(R()*W,y,w,1.5+(y-hz)/(H-hz)*3)}
+ if(!day){for(let i=0;i<220;i++){const y=hz+R()*(H-hz),sp=(y-hz)/(H-hz);x.fillStyle=`rgba(255,200,120,${.5-sp*.35})`;x.fillRect(W*.62+(R()-.5)*(40+sp*260),y,10+sp*40,2)}
+  x.fillStyle='rgba(255,255,255,.85)';for(let k=0;k<40;k++)x.fillRect(R()*W,R()*hz*.4,1.6,1.6)}return c}
+/* Sighnaghi: the Alazani valley in fields and vineyards, the snowy Caucasus across it */
+function valleyCv(day){const W=2048,H=1024,c=cvs(W,H),x=c.getContext('2d'),R=rng(203),hz=H*.47,g=x.createLinearGradient(0,0,0,hz);
+ if(day){g.addColorStop(0,'#78B2E4');g.addColorStop(1,'#DDEEF6')}else{g.addColorStop(0,'#141C3C');g.addColorStop(.7,'#5A4466');g.addColorStop(1,'#D08A62')}x.fillStyle=g;x.fillRect(0,0,W,hz);
+ /* the range: blue rock, white tops */
+ const pk=[];for(let X=0;X<=W;X+=10)pk.push([X,hz-60-Math.abs(Math.sin(X/210))*120-Math.abs(Math.sin(X/77+1))*55-R()*8]);
+ x.fillStyle=day?'#8A9EBA':'#3C3A5A';x.beginPath();x.moveTo(0,hz+10);pk.forEach(([X,Y])=>x.lineTo(X,Y));x.lineTo(W,hz+10);x.fill();
+ x.fillStyle=day?'#F6F8FB':'#C9B8C8';x.beginPath();pk.forEach(([X,Y],i)=>{const sn=Y+18+Math.sin(X/33)*8;if(i===0)x.moveTo(X,Y);x.lineTo(X,Y)});for(let i=pk.length-1;i>=0;i--){const[X,Y]=pk[i];x.lineTo(X,Y+22+Math.abs(Math.sin(X/41))*26)}x.fill();
+ /* the valley floor, patches getting bigger toward us */
+ x.fillStyle=day?'#7C9A4E':'#2E3A30';x.fillRect(0,hz,W,H-hz);const greens=day?['#86A65A','#6E8E44','#A8B060','#C2B46A','#5F8240','#94A858']:['#2E3A30','#283428','#3A3E2E','#34382C'];
+ for(let row=0;row<26;row++){const y0=hz+Math.pow(row/26,1.7)*(H-hz),y1=hz+Math.pow((row+1)/26,1.7)*(H-hz);let X=-R()*200;while(X<W){const w=80+R()*240*(1+row/8);x.fillStyle=greens[Math.floor(R()*greens.length)];x.fillRect(X,y0,w,y1-y0+1);
+   if(day&&R()<.35){x.strokeStyle='rgba(60,80,30,.35)';x.lineWidth=1;for(let k=4;k<w;k+=8){x.beginPath();x.moveTo(X+k,y0);x.lineTo(X+k+(k-w/2)*.05,y1);x.stroke()}}X+=w+2}}
+ for(let k=0;k<70;k++){const X=R()*W,y=hz+6+R()*120,s=3+R()*5;x.fillStyle=day?'#B4533A':'rgba(255,200,120,.9)';x.fillRect(X,y,s,s*.7)}
+ x.fillStyle='rgba(255,255,255,.18)';x.fillRect(0,hz,W,6);if(!day){x.fillStyle='rgba(255,255,255,.8)';for(let k=0;k<50;k++)x.fillRect(R()*W,R()*hz*.5,1.6,1.6)}return c}
+/* Tbilisi from the mountain: the old town and the river below, hills around, a tall lattice tower on the ridge */
+function cityCv(day){const W=2048,H=1024,c=cvs(W,H),x=c.getContext('2d'),R=rng(207),hz=H*.42,g=x.createLinearGradient(0,0,0,H);
+ if(day){g.addColorStop(0,'#74AEE2');g.addColorStop(.42,'#D6E8F2');g.addColorStop(1,'#C9BCA4')}else{g.addColorStop(0,'#050A1E');g.addColorStop(.42,'#1E2448');g.addColorStop(1,'#0C0E1C')}x.fillStyle=g;x.fillRect(0,0,W,H);
+ if(!day){x.fillStyle='rgba(255,255,255,.85)';for(let k=0;k<160;k++)x.fillRect(R()*W,R()*hz*.8,1.4,1.4)}
+ x.fillStyle=day?'#8FA27A':'#141830';x.beginPath();x.moveTo(0,hz+40);for(let X=0;X<=W;X+=12)x.lineTo(X,hz+20-Math.sin(X/260)*50-Math.sin(X/90)*14);x.lineTo(W,H);x.lineTo(0,H);x.fill();
+ /* the river */
+ x.fillStyle=day?'#6E8E9A':'#0A0C18';x.beginPath();x.moveTo(0,H*.78);for(let X=0;X<=W;X+=20)x.lineTo(X,H*.74+Math.sin(X/300)*30);x.lineTo(W,H*.8);for(let X=W;X>=0;X-=20)x.lineTo(X,H*.79+Math.sin(X/300)*30);x.fill();
+ /* the town: roofs by day, windows and street lights by night */
+ for(let k=0;k<900;k++){const y=hz+30+Math.pow(R(),.8)*(H-hz-60),X=R()*W,w=10+R()*26*(y/H),h=8+R()*18*(y/H);if(Math.abs(y-(H*.765+Math.sin(X/300)*30))<26)continue;
+  if(day){x.fillStyle=`rgb(${200+R()*40|0},${185+R()*30|0},${160+R()*30|0})`;x.fillRect(X,y,w,h);x.fillStyle=R()<.6?'#A4503A':'#7A6A60';x.fillRect(X-1,y-3,w+2,4)}
+  else{x.fillStyle=`rgba(255,${180+R()*60|0},${90+R()*80|0},${.55+R()*.45})`;x.fillRect(X,y,2+R()*2.5,2+R()*2)}}
+ if(!day)for(let k=0;k<26;k++){const X=k/26*W+R()*30;x.fillStyle='rgba(255,210,140,.8)';for(let j=0;j<16;j++)x.fillRect(X+j*6,H*.735+Math.sin((X+j*6)/300)*30,2,2)}
+ /* the tower on the ridge, a mast of crossed lines with red lights */
+ const tx=W*.8,ty=hz+16;x.strokeStyle=day?'#8A8F96':'#6A6E80';x.lineWidth=2;for(let k=0;k<14;k++){const a=k/14,b=(k+1)/14,w0=26*(1-a)+3,w1=26*(1-b)+3,y0=ty-a*230,y1=ty-b*230;x.beginPath();x.moveTo(tx-w0,y0);x.lineTo(tx+w1,y1);x.moveTo(tx+w0,y0);x.lineTo(tx-w1,y1);x.moveTo(tx-w0,y0);x.lineTo(tx-w1,y1);x.moveTo(tx+w0,y0);x.lineTo(tx+w1,y1);x.stroke()}
+ if(!day){x.fillStyle='#FF4A3A';for(let k=0;k<5;k++)x.fillRect(tx-2,ty-k*55-4,4,4)}return c}

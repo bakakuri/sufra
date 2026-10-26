@@ -45,10 +45,18 @@ function showOnboarding(){
   catch(x){$('#aerr').textContent=/username|unique/i.test(x.message)?'ეს მომხმარებლის სახელი დაკავებულია':errMsg(x);b.disabled=false}}}
 A.signout=async()=>{await sb.auth.signOut();location.hash='';location.reload()};
 let AFTER=false;
+/* without internet the app still opens, on the games tab: games against the computer need nothing from the server.
+   a few plain profile fields are kept on the phone for that; back online, the page reloads by itself */
+const ME_OFF='me_off',ME_KEEP=['id','name','username','hue','avatar_url','coins','rating','home_region','look','lang','verified'];
+function meKeep(){try{if(ME&&ME.id&&!ME.offline){const o={};for(const k of ME_KEEP)if(ME[k]!==undefined)o[k]=ME[k];store.set(ME_OFF,o)}}catch(e){}}
+const netDown=e=>!navigator.onLine||/failed to fetch|networkerror|load failed|network request failed|fetch failed/i.test(String(e&&(e.message||e)));
+function bootOffline(){const c=store.get(ME_OFF,null);if(!c||!c.id||ME)return false;ME=Object.assign({},c,{onboarded:true,offline:true});AFTER=true;$('#auth').hidden=true;$('#boot')?.remove();enterApp();
+ const back=()=>{window.removeEventListener('online',back);setTimeout(()=>location.reload(),600)};window.addEventListener('online',back);return true}
 async function afterLogin(){if(AFTER)return;AFTER=true;
- try{for(let i=0;i<4&&!ME;i++){ME=await rpc('my_profile');if(!ME)await new Promise(r=>setTimeout(r,700))}}catch(e){AFTER=false;toast(errMsg(e));showAuth('in');return}
+ try{for(let i=0;i<4&&!ME;i++){ME=await rpc('my_profile');if(!ME)await new Promise(r=>setTimeout(r,700))}}catch(e){AFTER=false;ME=null;if(netDown(e)&&bootOffline())return;toast(errMsg(e));showAuth('in');return}
+ meKeep();
  if(!ME){AFTER=false;showAuth('in');toast('პროფილი ვერ მოიძებნა. სცადე ხელახლა');return}
  if(!ME.onboarded){showOnboarding();return}
  $('#auth').hidden=true;$('#boot')?.remove();enterApp()}
 sb.auth.onAuthStateChange((ev)=>{if(ev==='PASSWORD_RECOVERY'){AFTER=false;showAuth('newpass')}else if(ev==='SIGNED_OUT'&&ME){ME=null;location.reload()}});
-async function bootAuth(){const{data:{session}}=await sb.auth.getSession();if(location.hash.includes('type=recovery'))return;if(!session){showAuth('in');return}afterLogin()}
+async function bootAuth(){const{data:{session}}=await sb.auth.getSession();if(location.hash.includes('type=recovery'))return;if(!session){if(!navigator.onLine&&bootOffline())return;showAuth('in');return}afterLogin()}
