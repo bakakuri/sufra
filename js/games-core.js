@@ -31,7 +31,7 @@ const gTag0=c=>c.corr?'<span class="gtag">მიმოწერით</span>':c.
 const gTop=(t,c,back='lobby')=>`<div class="gtop"><button class="ibtn gb" data-a="${back}" aria-label="თამაშიდან გასვლა">${ic('back')}</button><h2>${t}</h2>${c?gTag(c):''}<span class="sp"></span>${gTools()}</div>`;
 /* the game screen: the board fills the screen, the players and controls float over it */
 function gShellParts(o){const w=g3Want()&&!o.center;return{w,html:`${w?`<div class="gstage">${o.stage||''}</div>`:''}<div class="ghud top">${o.top||''}</div><div class="gmid">${o.center||(w?'':o.mid||'')}</div><div class="ghud bot">${o.bot||''}</div>${o.res||''}`}}
-function gShell(id,o){const P=gShellParts(o);return `<div class="view-pad game gx${P.w?' is3d':''}" data-g="${id}">${P.html}</div>`}
+function gShell(id,o){const P=gShellParts(o);return `<div class="view-pad game gx${P.w?' is3d':''}${P.w&&['joker','durak','bura'].includes(id)?' lux':''}" data-g="${id}">${P.html}</div>`}
 /* a player's plate. while it is their move a gold ring turns around the avatar; an opponent who is thinking shows three dots */
 const plThink='<span class="think" aria-label="ფიქრობს"><i></i><i></i><i></i></span>';
 const plCard=(c,s,turn,plx)=>{const k=c.clk,v=k?clkLeft(c,s):0;return `<div class="pl${s===c.side?' me':''}${turn?' turn':''}" data-side="${s}"><span class="plav${k?' pclk':''}"${k?` style="--ck:${clkFrac(c,v)}"`:''}>${avAny(c.avs[s],34)}</span><span class="pln"><b>${esc(c.names[s])}${turn&&!(s===c.side&&isPlayer(c))?plThink:''}</b><span class="muted">${plSub(c,s)}</span></span>${k?`<span class="gclk${turn&&k.n>=1&&!c.finished?' run':''}${v<3e4?' low':''}" data-clk="${s}" role="timer" aria-label="დარჩენილი დრო">${clkFmt(v)}</span>`:''}${plx?plx(s):''}</div>`};
@@ -248,6 +248,7 @@ A.genvm=()=>{const id=gCur(),sw=on=>`<i class="sw${on?' on':''}" aria-hidden="tr
   ${g3Want()?`<button data-a="gqual">${ic('gear')}<span>გრაფიკა</span><small class="gmv">${GQN[gqSet()]}${gqSet()==='auto'?', '+GQN[gqLevel()].toLowerCase():''}</small></button>`:''}
   ${g3Want()&&GSTY[id]?`<button data-a="gsty">${ic('star')}<span>სტილი</span><small class="gmv">${GSTY[id].find(x=>x[0]===gStyle(id))[1]}</small></button>`:''}
   ${g3Want()?`<button data-a="genv">${ic('clock')}<span>დღე თუ საღამო</span><small class="gmv">${GEN[genvSet()]}</small></button>`:''}
+  ${g3Want()&&['joker','durak','bura'].includes(id)?`<button data-a="jkroom">${ic('home')}<span>ოთახი</span><small class="gmv">${JKROOMN[jkRoomSet()]}</small></button><button data-a="gcam">${ic('eye')}<span>კამერა</span><small class="gmv">${GLOOKN[gLookSet2()]}</small></button>`:''}
   ${g3Want()&&['chess','shashi','nardi'].includes(id)?`<button data-a="gppl" aria-pressed="${gPplOn()}">${ic('users')}<span>მეტოქე მაგიდასთან</span>${sw(gPplOn())}</button>`:''}
   ${g3Want()&&['chess','shashi','nardi','domino'].includes(id)?`<button data-a="ghands" aria-pressed="${gHandsOn()}">${ic('user')}<span>ჩემი ხელები</span>${sw(gHandsOn())}</button>`:''}
   ${g3Want()&&['shashi','nardi','domino'].includes(id)?`<button data-a="gwx">${ic('drop')}<span>ამინდი</span><small class="gmv">${GWX[gwxSet()]}</small></button>`:''}
@@ -485,4 +486,14 @@ A.ghands=t=>{const on=!gHandsOn();store.set('ghands',on);gSwFlip(t,on);gRedraw()
 const GWX={auto:'სეზონის მიხედვით',clear:'მოწმენდილი',snow:'თოვლი',rain:'წვიმა'};
 const gwxSet=()=>{const v=store.get('gwx','auto');return GWX[v]?v:'auto'};
 A.gwx=()=>{const cur=gwxSet();sheet(head('ამინდი')+`<div class="gmenu">${Object.keys(GWX).map(k=>`<button data-a="gwxset" data-v="${k}"${k===cur?' aria-pressed="true"':''}>${ic(k===cur?'check':'drop')}<span><b>${GWX[k]}</b><br><small class="muted">${{auto:'ზამთარში ზოგჯერ თოვს, გაზაფხულსა და შემოდგომაზე წვიმს',clear:'ყოველთვის მშრალი ამინდი',snow:'ეზოში და აივანზე თოვს',rain:'ეზოში და აივანზე წვიმს'}[k]}</small></span></button>`).join('')}</div>`,'short')};
+/* the card table's room, and a camera that looks round the table like a pair of eyes */
+const JKROOMN={lounge:'ღამის ლაუნჯი',room:'ძველი ოთახი ხალიჩით'},GLOOKN={auto:'თვალებით',tilt:'თვალებით და დახრით',off:'გაჩერებული'};
+const jkRoomSet=()=>store.get('jkroom','lounge')==='room'?'room':'lounge';
+const gLookSet2=()=>{const v=store.get('glook','auto');return GLOOKN[v]?v:'auto'};
+A.jkroom=()=>{const cur=jkRoomSet();sheet(head('ოთახი')+`<div class="gmenu">${Object.keys(JKROOMN).map(k=>`<button data-a="jkroomset" data-v="${k}"${k===cur?' aria-pressed="true"':''}>${ic(k===cur?'check':'home')}<span><b>${JKROOMN[k]}</b><br><small class="muted">${{lounge:'მუქი ლურჯი მაგიდა ოქროსფრით, მინის კედლის მიღმა ღამის ქალაქი',room:'მწვანე მაუდი, კედელზე ქართული ხალიჩა'}[k]}</small></span></button>`).join('')}</div>`,'short')};
+A.jkroomset=t=>{store.set('jkroom',t.dataset.v==='room'?'room':'lounge');closeSheet();gRedraw()};
+A.gcam=()=>{const cur=gLookSet2();sheet(head('კამერა')+`<div class="gmenu">${Object.keys(GLOOKN).map(k=>`<button data-a="glookset" data-v="${k}"${k===cur?' aria-pressed="true"':''}>${ic(k===cur?'check':'eye')}<span><b>${GLOOKN[k]}</b><br><small class="muted">${{auto:'ვისი სვლაცაა, იქით გაიხედავ. თითის გასმით მაგიდის გარშემო მიმოიხედავ',tilt:'იგივე, და ტელეფონის დახრითაც იყურები',off:'კადრი არ მოძრაობს'}[k]}</small></span></button>`).join('')}</div>`,'short')};
+A.glookset=async t=>{const v=t.dataset.v;if(!GLOOKN[v])return;
+ if(v==='tilt'){const D=window.DeviceOrientationEvent;if(!D){toast('ამ მოწყობილობას დახრის სენსორი არ აქვს');return}if(typeof D.requestPermission==='function'){try{if(await D.requestPermission()!=='granted'){toast('დახრაზე წვდომა არ მოგვცა');return}}catch(e){toast('დახრაზე წვდომა ვერ მივიღეთ');return}}}
+ store.set('glook',v);closeSheet();if(typeof g3GyroOn==='function')g3GyroOn(v==='tilt');if(typeof G3D!=='undefined'&&G3D.sc&&G3D.sc.look){G3D.sc.look.on=v!=='off';g3Need()}gRedraw()};
 A.gwxset=t=>{store.set('gwx',t.dataset.v);closeSheet();if(typeof G3S!=='undefined')for(const k of['nardi','shashi','domino'])delete G3S[k];gRedraw()};

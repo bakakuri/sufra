@@ -428,7 +428,7 @@ const JK=GAME.joker={title:'ჯოკერი',
    <div class="jkonline"><div><b>მეგობრებთან ონლაინ</b><p class="note">გაშალე მაგიდა და მოიწვიე მეგობრები. ცარიელ ადგილებზე ბოტები ჩაჯდებიან.</p></div><button class="btn ghost" data-a="jkonew">${ic('users')}მაგიდის გაშლა</button></div></section>`,bot:''});return}
   const g3=g3Want(),mine=this.cur===0&&['bid','play','trump'].includes(this.phase)&&this.win==null;gTurnSnd(this,mine);
   const pips=p=>jPips(this.bids[p],this.taken[p]);
-  const seat=(p,pos)=>`<div class="seat ${pos}${this.cur===p&&(this.phase==='bid'||this.phase==='play'||this.phase==='trump')?' turn':''}">${avAny(this.ids[p],38)}<b>${esc(this.nm(p))}</b>${pips(p)}<span>${this.score[p]}</span></div>`;
+  const seat=(p,pos)=>`<div class="seat ${pos}${this.cur===p&&(this.phase==='bid'||this.phase==='play'||this.phase==='trump')?' turn':''}">${avAny(this.ids[p],38)}<b>${esc(this.nm(p))}</b>${pips(p)}<span class="jsc${this.score[p]<0?' neg':''}">${this.score[p]}</span></div>`;
   const tr=this.trick.map(e=>{const h=jCardHTML(e.card).replace('class="card','class="card p'+e.p);return e.card.j?h.replace('</div>',`<span class="jm">${e.jm==='hi'?'მაღალი':'დაბალი'}${e.js?' '+SY[e.js]:''}</span></div>`):h}).join('');
   const trumpTxt=this.phase==='trump'?'კოზირი ირჩევა':this.trump?`კოზირი: <b style="color:${suitInk(this.trump)}">${SY[this.trump]}</b> ${SN[this.trump]}`:'უკოზირო';
   const L=this.phase==='play'&&this.cur===0?this.legal(0):[];

@@ -38,7 +38,7 @@ const lin=h=>{const n=parseInt(h.slice(1),16);return[(n>>16&255)/255,(n>>8&255)/
 /* ---------- shaders ---------- */
 const VS_MAIN=`attribute vec3 aP;attribute vec3 aN;attribute vec2 aU;uniform mat4 uM,uVP,uL;uniform vec4 uUV;varying vec3 vW;varying vec3 vN;varying vec2 vU;varying vec4 vS;
 void main(){vec4 w=uM*vec4(aP,1.0);vW=w.xyz;vN=(uM*vec4(aN,0.0)).xyz;vU=uUV.xy+aU*uUV.zw;vS=uL*w;gl_Position=uVP*w;}`;
-const FS_MAIN=`uniform sampler2D uT,uSh;uniform vec3 uC,uE,uEye,uLd,uLc,uSky,uGnd,uRe;uniform vec4 uMat,uFx,uSp,uRf,uRc;uniform float uSS,uExp;
+const FS_MAIN=`uniform sampler2D uT,uSh;uniform vec3 uC,uE,uEye,uLd,uLc,uSky,uGnd,uRe,uRimD;uniform vec4 uMat,uFx,uSp,uRf,uRc,uM2,uRim;uniform float uSS,uExp;
 varying vec3 vW;varying vec3 vN;varying vec2 vU;varying vec4 vS;
 float unp(vec4 c){return dot(c,vec4(1.0,1.0/255.0,1.0/65025.0,1.0/16581375.0));}
 float cmp(vec2 uv,float z){return step(z,unp(texture2D(uSh,uv)));}
@@ -51,13 +51,15 @@ void main(){float ra=1.0;if(uRf.x>0.0){vec3 d=vW-uRe;vec3 s=uRe+d*((uRf.y-uRe.y)
  vec4 tx=uFx.x>0.5?texture2D(uT,vU):vec4(1.0);if(uFx.z>0.5&&tx.a<0.5)discard;
  vec3 base=uC*pow(tx.rgb,vec3(2.2));
  if(uFx.y>0.5){gl_FragColor=vec4(pow(base+uE,vec3(1.0/2.2)),tx.a*uMat.w);return;}
- vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;vec3 v=normalize(uEye-vW);float nl=max(dot(n,uLd),0.0);float sh=shade(nl);
+ vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;vec3 v=normalize(uEye-vW);float nl0=dot(n,uLd);float nl=max(nl0,0.0);float sh=shade(nl);nl=max((nl0+uM2.x)/(1.0+uM2.x),0.0);
  float sp=uSp.w>0.0?mix(1.0,1.0-smoothstep(uSp.z*0.45,uSp.z*1.3,length(vW.xz-uSp.xy)),uSp.w):1.0;
  vec3 h=normalize(uLd+v);float spec=pow(max(dot(n,h),0.0),uMat.x)*uMat.y*(uMat.x+8.0)*0.03;
  vec3 amb=mix(uGnd,uSky,n.y*0.5+0.5);float fr=pow(1.0-max(dot(n,v),0.0),5.0);vec3 r=reflect(-v,n);
  vec3 env=mix(uGnd*0.6,uSky*1.5,smoothstep(-0.25,0.85,r.y))+vec3(2.6)*pow(max(dot(r,normalize(vec3(-0.35,0.8,0.5))),0.0),40.0);
  float g=uMat.z*(0.04+0.96*fr);
- vec3 col=base*(amb*(0.5+0.5*sp)+uLc*nl*sh*sp)*(1.0-g*0.6)+uLc*spec*sh*sp+env*g*(0.35+0.65*sp)+uE;
+ vec3 col=base*(amb*(0.5+0.5*sp)+uLc*nl*mix(sh,1.0,uM2.x*0.35)*sp)*(1.0-g*0.6)+uLc*spec*sh*sp+env*g*(0.35+0.65*sp)+uE;
+ /* the light from behind that outlines people against a bright window: strongest at the silhouette, on the side turned away */
+ if(uM2.y>0.0){float ed=1.0-max(dot(n,v),0.0);col+=uRim.rgb*uM2.y*pow(ed,2.6)*clamp(dot(n,uRimD)*0.7+0.45,0.0,1.0)*(base*0.7+0.3);}
  gl_FragColor=vec4(pow(aces(col*uExp),vec3(1.0/2.2)),uMat.w*tx.a*ra);}`;
 const VS_SH=`attribute vec3 aP;uniform mat4 uM,uL;varying float vZ;void main(){vec4 p=uL*(uM*vec4(aP,1.0));vZ=p.z*0.5+0.5;gl_Position=p;}`;
 const FS_SH=`varying float vZ;void main(){vec4 e=fract(vZ*vec4(1.0,255.0,65025.0,16581375.0));e-=e.yzww*vec4(1.0/255.0,1.0/255.0,1.0/255.0,0.0);gl_FragColor=e;}`;
@@ -78,7 +80,7 @@ function g3Init(){if(G3D.ok!==null)return G3D.ok;G3D.ok=false;
   G3D.cv=cv;G3D.gl=gl;const hp=gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER,gl.HIGH_FLOAT);G3D.hp=!!hp&&hp.precision>0;
   G3D.af=gl.getExtension('EXT_texture_filter_anisotropic')||gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic');if(G3D.af)G3D.afM=gl.getParameter(G3D.af.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
   G3D.u32=!!gl.getExtension('OES_element_index_uint');
-  G3D.P=g3Prog(VS_MAIN,(G3D.hp?'precision highp float;':'precision mediump float;')+FS_MAIN,['uM','uVP','uL','uUV','uT','uSh','uC','uE','uEye','uLd','uLc','uSky','uGnd','uMat','uFx','uSp','uSS','uExp','uRf','uRc','uRe']);
+  G3D.P=g3Prog(VS_MAIN,(G3D.hp?'precision highp float;':'precision mediump float;')+FS_MAIN,['uM','uVP','uL','uUV','uT','uSh','uC','uE','uEye','uLd','uLc','uSky','uGnd','uMat','uFx','uSp','uSS','uExp','uRf','uRc','uRe','uM2','uRim','uRimD']);
   if(G3D.hp){G3D.Q=g3Prog(VS_SH,'precision highp float;'+FS_SH,['uM','uL']);g3ShadowFB()}
   const w=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,w);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,255,255,255]));G3D.white=w;
   g3Input(cv);
@@ -143,7 +145,7 @@ function g3Tex(cv,{rep=false,af=true}={}){const gl=G3D.gl,t=gl.createTexture();g
  const w=rep?(rep==='m'?gl.MIRRORED_REPEAT:gl.REPEAT):gl.CLAMP_TO_EDGE;gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,w);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,w);
  if(af&&G3D.af)gl.texParameterf(gl.TEXTURE_2D,G3D.af.TEXTURE_MAX_ANISOTROPY_EXT,Math.min(8,G3D.afM||1));return t}
 /* a material: colour (sRGB hex), texture, region of the texture, shininess, specular, gloss (how much it mirrors the room) */
-function g3Mat(o={}){return{c:lin(o.c||'#ffffff'),t:o.t||null,uv:o.uv||[0,0,1,1],sh:o.sh??30,sp:o.sp??.25,gl:o.gl??.15,a:o.a??1,unlit:!!o.unlit,cut:!!o.cut,e:o.e?lin(o.e):[0,0,0],add:!!o.add,two:!!o.two,vary:!!o.vary}}
+function g3Mat(o={}){return{c:lin(o.c||'#ffffff'),t:o.t||null,uv:o.uv||[0,0,1,1],sh:o.sh??30,sp:o.sp??.25,gl:o.gl??.15,a:o.a??1,unlit:!!o.unlit,cut:!!o.cut,e:o.e?lin(o.e):[0,0,0],add:!!o.add,two:!!o.two,vary:!!o.vary,wrap:o.wrap||0,rim:o.rim||0}}
 
 /* ---------- scenes: static furniture, moving objects matched across states, flat marks ---------- */
 function g3Scene(o){return Object.assign({statics:[],models:{},objs:new Map(),marks:[],seq:0,
@@ -162,8 +164,10 @@ function g3Set(sc,list,opt={}){const now=performance.now(),rm=RM(),old=sc.objs,n
  for(const o of old.values()){if(next.has(o.id))continue;if(o.dying){next.set(o.id,o);continue}if(used.has(o)||took.has(o))continue;g3Leave(o,opt.gone?opt.gone(o):null,now,rm,opt);next.set(o.id,o)}
  for(const d of pend){if(done.has(d))continue;const o={id:d.k!=null?'k:'+d.k:'a'+(++sc.seq),anon:d.k==null,m:d.m,p:d.p.slice(),q:(d.q||qt.id()).slice(),s:d.s??1,a:d.a??1,p1:d.p.slice()};g3Spawn(o,d,now,rm,opt);g3Props(o,d);next.set(o.id,o)}
  sc.objs=next;g3Need()}
-function g3Props(o,d){o.life=d.life||0;o.blink=d.blink||0;o.dim=d.dim??1;o.glow=d.glow||null;o.pick=d.pick||null;o.uv=d.uv||null;o.cast=d.cast!==false;o.lift=d.lift||0;o.drag=!!d.drag;o.refl=d.refl!==false}
-function g3Aim(o,d,now,opt,rm){g3Props(o,d);const q1=d.q||qt.id(),s1=d.s??1,a1=d.a??1,dist=v3.len(v3.sub(o.p1,d.p));
+function g3Props(o,d){o.hud=!!d.hud;o.life=d.life||0;o.blink=d.blink||0;o.dim=d.dim??1;o.glow=d.glow||null;o.pick=d.pick||null;o.uv=d.uv||null;o.cast=d.cast!==false;o.lift=d.lift||0;o.drag=!!d.drag;o.refl=d.refl!==false}
+/* something leaving the hand for the table: from where it was seen, so a turned view does not make it jump */
+function g3Unhud(o){const sc=G3D.sc,lq=sc&&sc.cam&&sc.cam.lookQ,C=sc&&sc.camNow;if(!lq||!C)return;const e=C.eye;o.p=v3.add(e,qt.rot(lq,v3.sub(o.p,e)));o.q=qt.mul(lq,o.q)}
+function g3Aim(o,d,now,opt,rm){if(o.hud&&!d.hud&&!o.held)g3Unhud(o);g3Props(o,d);const q1=d.q||qt.id(),s1=d.s??1,a1=d.a??1,dist=v3.len(v3.sub(o.p1,d.p));
  if(dist<1e-4&&qt.same(o.q1||o.q,q1)&&sDiff(o.s1??o.s,s1)<1e-4&&Math.abs((o.a1??o.a)-a1)<1e-3&&!d.path&&!d.spin)return;
  o.kf=null;o.p1=d.p.slice();o.q1=q1;o.s1=s1;o.a1=a1;if(rm){o.p=d.p.slice();o.q=q1.slice();o.s=s1;o.a=a1;o.tw=null;return}
  const far=v3.len(v3.sub(o.p,d.p)),dur=d.dur??(opt.dur?opt.dur(o,d,far):Math.min(700,260+90*Math.sqrt(far))),arc=d.arc??(far>.7?Math.min(1.5,.3+far*.13):0);
@@ -185,6 +189,7 @@ function g3Tick(sc,now){let busy=false;const c=sc.cam;
   o.s=sLerp(t.s0,t.s1,e);o.a=t.a0+(t.a1-t.a0)*e;
   if(k>=1){o.tw=null;o.p=t.p1.slice();o.q=t.q1.slice();if(o.dying)sc.objs.delete(o.id);else if(o.kf&&o.kf.length){g3KfGo(o,o.kf.shift(),now);busy=true}else if(t.land){const md=sc.models[o.m];if(md&&md.land)try{md.land(o,sc)}catch(e){}}}else busy=true}
  for(const o of sc.objs.values())if(o.wg&&g3WgStep(o,now))busy=true;
+ if(sc.look&&g3LookStep(sc,now))busy=true;
  g3Life(sc,now);return busy}
 /* people at rest are not statues: they breathe (on high quality) and blink now and then; this needs a few frames a second, not sixty */
 const hashS=s=>{let k=0;for(const ch of s)k=(k*31+ch.charCodeAt(0))>>>0;return(k%1000)/1000};
@@ -215,7 +220,10 @@ function g3Fit(c,dir,asp,sh){const B=asp<.8&&c.boxp?c.boxp:c.box,pts=[],fp=asp<.
   for(const p of pts){const r=m4.xf(VP,p);if(r[3]<=0||Math.abs(r[0]-sh.cx)>mx||Math.abs(r[1]-sh.cy)>my){ok=false;break}}if(ok)hi=d;else lo=d}
  c.fay=0;if(c.anchorB&&tall){const e=v3.add(c.tgt,v3.mul(dir,hi)),VP=m4.mul(P,m4.look(e,c.tgt,[0,1,0]));let y0=1e9;for(const p of pts){const r=m4.xf(VP,p);if(r[3]>0&&r[1]<y0)y0=r[1]}if(y0<1e9)c.fay=Math.min(0,(sh.cy-my)-y0)}
  return hi}
-function g3Cam(sc){const c=sc.cam,asp=G3D.asp||1;if(c.fixed){const f=c.fixed(asp);c.tgt=f.tgt;c.fov=f.fov;const P=m4.persp(f.fov,asp,.1,160);P[8]=-(f.sx||0);P[9]=-(f.sy||0);return{eye:f.eye,VP:m4.mul(P,m4.look(f.eye,f.tgt,[0,1,0])),dist:v3.len(v3.sub(f.eye,f.tgt)),cx:f.sx||0,cy:f.sy||0}}
+function g3Cam(sc){const c=sc.cam,asp=G3D.asp||1;if(c.fixed){const f=c.fixed(asp);let tgt=f.tgt,lq=null,lookM=null;const L=sc.look;
+  /* a seated player can turn their eyes: the view turns about the eye, and what they hold in their hands (hud) turns with it */
+  if(L&&(Math.abs(L.y)>1e-4||Math.abs(L.p)>1e-4)){const F=v3.sub(f.tgt,f.eye),R0=v3.norm(v3.cross(F,[0,1,0]));lq=qt.mul(qt.ax(0,1,0,L.y),qt.ax(R0[0],R0[1],R0[2],L.p));tgt=v3.add(f.eye,qt.rot(lq,F));lookM=m4.trs(v3.sub(f.eye,qt.rot(lq,f.eye)),lq,1)}
+  c.tgt=tgt;c.fov=f.fov;c.lookQ=lq;const P=m4.persp(f.fov,asp,.1,160);P[8]=-(f.sx||0);P[9]=-(f.sy||0);return{eye:f.eye,VP:m4.mul(P,m4.look(f.eye,tgt,[0,1,0])),dist:v3.len(v3.sub(f.eye,tgt)),cx:f.sx||0,cy:f.sy||0,lookM}}
  const dir=g3Dir(c),sh=g3Shift(c),key=[asp.toFixed(3),c.yaw,c.dy.toFixed(3),c.dp.toFixed(3),c.pitch,c.pp||0,c.fov,JSON.stringify(c.box),JSON.stringify(c.extraW||0),JSON.stringify(c.tgt),JSON.stringify(c.inset||0),JSON.stringify(c.fitp||0),JSON.stringify(c.fitw||0),c.anchorB||0].join();
  if(c.fk!==key){c.fd=g3Fit(c,dir,asp,sh);c.fk=key}
  const cyT=sh.cy+(c.fay||0);if(c.fdc==null||c.snap){c.fdc=c.fd;c.cxc=sh.cx;c.cyc=cyT;c.snap=0}else{const k=.2;c.fdc+=(c.fd-c.fdc)*k;c.cxc+=(sh.cx-c.cxc)*k;c.cyc+=(cyT-c.cyc)*k;
@@ -235,10 +243,10 @@ let G3_LID=null;
 function g3Bind(m){const gl=G3D.gl;if(G3D.bound===m)return;G3D.bound=m;gl.bindBuffer(gl.ARRAY_BUFFER,m.vb);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.ib);
  gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,32,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,32,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,2,gl.FLOAT,false,32,24)}
 function g3Part(pt,M,dim,glow,al,sh,uv){const gl=G3D.gl,u=G3D.P.u,m=pt.mat;gl.uniformMatrix4fv(u.uM,false,M);gl.uniform4fv(u.uUV,m.vary&&uv?uv:m.uv);
- gl.uniform3f(u.uC,m.c[0]*dim,m.c[1]*dim,m.c[2]*dim);const e=glow||m.e;gl.uniform3f(u.uE,e[0],e[1],e[2]);gl.uniform4f(u.uMat,m.sh,m.sp,m.gl,m.a*al);gl.uniform4f(u.uFx,m.t?1:0,m.unlit?1:0,m.cut?1:0,sh?1:0);
+ gl.uniform3f(u.uC,m.c[0]*dim,m.c[1]*dim,m.c[2]*dim);const e=glow||m.e;gl.uniform3f(u.uE,e[0],e[1],e[2]);gl.uniform4f(u.uMat,m.sh,m.sp,m.gl,m.a*al);gl.uniform4f(u.uM2,m.wrap||0,m.rim||0,0,0);gl.uniform4f(u.uFx,m.t?1:0,m.unlit?1:0,m.cut?1:0,sh?1:0);
  gl.bindTexture(gl.TEXTURE_2D,m.t||G3D.white);if(m.two)gl.disable(gl.CULL_FACE);g3Bind(pt.mesh);gl.drawElements(gl.TRIANGLES,pt.mesh.n,pt.mesh.it,0);if(m.two)gl.enable(gl.CULL_FACE)}
 function g3Draw(sc,now){const gl=G3D.gl,cv=G3D.cv,C=g3Cam(sc),L=sc.light;sc.camNow=C;G3D.bound=null;
- for(const o of sc.objs.values())o.M=m4.trs(o.lift?v3.add(o.p,[0,o.lift,0]):o.p,o.q,o.s);
+ for(const o of sc.objs.values()){o.M=m4.trs(o.lift?v3.add(o.p,[0,o.lift,0]):o.p,o.q,o.s);if(o.hud&&C.lookM&&!o.held)o.M=m4.mul(C.lookM,o.M)}
  const q=typeof gqLevel==='function'?gqLevel():'high',sm=G3D.sm&&sc.shadow!==false&&q!=='low'?G3D.sm:null;let LVP=G3_LID||(G3_LID=m4.id());
  if(sm){const c=sc.shC,R=sc.shR,e=v3.add(c,v3.mul(L.d,R*3));LVP=m4.mul(m4.ortho(-R,R,-R,R,R*.5,R*6),m4.look(e,c,Math.abs(L.d[1])>.99?[0,0,-1]:[0,1,0]));
   gl.bindFramebuffer(gl.FRAMEBUFFER,sm.fb);gl.viewport(0,0,sm.S,sm.S);gl.clearColor(1,1,1,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
@@ -249,7 +257,7 @@ function g3Draw(sc,now){const gl=G3D.gl,cv=G3D.cv,C=g3Cam(sc),L=sc.light;sc.camN
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.cullFace(gl.BACK)}
  gl.viewport(0,0,cv.width,cv.height);gl.clearColor(sc.bg[0],sc.bg[1],sc.bg[2],1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
  const P=G3D.P,u=P.u;gl.useProgram(P.p);gl.uniformMatrix4fv(u.uVP,false,C.VP);gl.uniformMatrix4fv(u.uL,false,LVP);gl.uniform3fv(u.uEye,C.eye);gl.uniform3fv(u.uLd,L.d);gl.uniform3fv(u.uLc,L.c);
- gl.uniform3fv(u.uSky,L.sky);gl.uniform3fv(u.uGnd,L.gnd);gl.uniform1f(u.uExp,L.exp);gl.uniform4fv(u.uSp,sc.spot);
+ gl.uniform3fv(u.uSky,L.sky);gl.uniform3fv(u.uGnd,L.gnd);gl.uniform1f(u.uExp,L.exp);gl.uniform4fv(u.uSp,sc.spot);const RL=sc.rimL||{c:[0,0,0],d:[0,0,-1]};gl.uniform4f(u.uRim,RL.c[0],RL.c[1],RL.c[2],0);gl.uniform3fv(u.uRimD,RL.d);
  gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,sm?sm.t:G3D.white);gl.uniform1i(u.uSh,1);gl.uniform1f(u.uSS,sm?1/sm.S:0);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(u.uT,0);
  gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.disable(gl.BLEND);gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);
  for(const s of sc.statics){if(s.late)continue;for(const pt of s.parts)g3Part(pt,s.M,1,null,1,!!sm&&s.recv!==false)}
@@ -313,8 +321,8 @@ function g3Ray(cx,cy){const sc=G3D.sc,r=G3D.cv.getBoundingClientRect(),C=sc.camN
  const f=v3.norm(v3.sub(sc.cam.tgt,C.eye)),rt=v3.norm(v3.cross(f,[0,1,0])),up=v3.cross(rt,f),t=Math.tan(sc.cam.fov/2);
  return{o:C.eye,d:v3.norm(v3.add(f,v3.add(v3.mul(rt,nx*t*G3D.asp),v3.mul(up,ny*t))))}}
 /* the nearest object with tap data under the ray, tested against its box */
-function g3HitObj(sc,ray,filter){let best=null,bt=1e9;for(const o of sc.objs.values()){if(!o.pick||o.dying||(filter&&!filter(o)))continue;const md=sc.models[o.m];if(!md||!md.ext)continue;
-  const iq=qt.inv(o.q),s=o.s||1,ro=v3.mul(qt.rot(iq,v3.sub(o.lift?v3.add(o.p,[0,o.lift,0]):o.p,ray.o)),-1/s),rd=v3.mul(qt.rot(iq,ray.d),1/s);
+function g3HitObj(sc,ray,filter){let best=null,bt=1e9;const lq=sc.cam&&sc.cam.lookQ,hd=lq?qt.rot(qt.inv(lq),ray.d):null;for(const o of sc.objs.values()){if(!o.pick||o.dying||(filter&&!filter(o)))continue;const md=sc.models[o.m];if(!md||!md.ext)continue;
+  const iq=qt.inv(o.q),s=o.s||1,rdw=o.hud&&hd&&!o.held?hd:ray.d,ro=v3.mul(qt.rot(iq,v3.sub(o.lift?v3.add(o.p,[0,o.lift,0]):o.p,ray.o)),-1/s),rd=v3.mul(qt.rot(iq,rdw),1/s);
   let t0=-1e9,t1=1e9;for(let k=0;k<3;k++){const lo=md.off[k]-md.ext[k],hi=md.off[k]+md.ext[k];if(Math.abs(rd[k])<1e-9){if(ro[k]<lo||ro[k]>hi){t0=1e9;break}continue}
    let a=(lo-ro[k])/rd[k],b=(hi-ro[k])/rd[k];if(a>b)[a,b]=[b,a];t0=Math.max(t0,a);t1=Math.min(t1,b)}
   if(t0<=t1&&t1>0&&t0<bt){bt=t0;best=o}}return best}
@@ -323,7 +331,7 @@ const g3HitY=(ray,y)=>{if(Math.abs(ray.d[1])<1e-6)return null;const t=(y-ray.o[1
 function g3Input(cv){const P=new Map();let st=null,pin=null,hovT=0;
  const back=o=>{if(!o||o.tw||o.dying)return;if(v3.len(v3.sub(o.p,o.p1))>.01){o.tw={t0:performance.now(),d:230,p0:o.p.slice(),q0:o.q.slice(),s0:o.s,a0:o.a,p1:o.p1.slice(),q1:(o.q1||o.q).slice(),s1:o.s1??o.s,a1:o.a1??o.a,arc:0,land:true};g3Need()}};
  cv.addEventListener('pointerdown',e=>{const sc=G3D.sc;if(!sc)return;P.set(e.pointerId,[e.clientX,e.clientY]);if(sc.intro){sc.intro=null;g3Moved()}if(sc.cine){const I=sc.cine;sc.cine=null;sc.cam.dy=sc.cam.dp=0;sc.cam.dz=1;sc.cam.tgt=I.tg.slice();if(I.end)try{I.end()}catch(x){}g3Moved()}if(sc.zoom===false&&P.size>1)return;
-  if(P.size===1){let obj=null;if(sc.drag){try{obj=g3HitObj(sc,g3Ray(e.clientX,e.clientY),o=>o.drag)}catch(x){}}st={x:e.clientX,y:e.clientY,dy:sc.cam.dy,dp:sc.cam.dp,drag:false,obj,t:performance.now()}}
+  if(P.size===1){let obj=null;if(sc.drag){try{obj=g3HitObj(sc,g3Ray(e.clientX,e.clientY),o=>o.drag)}catch(x){}}st={x:e.clientX,y:e.clientY,dy:sc.cam.dy,dp:sc.cam.dp,drag:false,obj,t:performance.now(),ly:sc.look?sc.look.uy:0,lp:sc.look?sc.look.up:0}}
   else if(P.size===2&&sc.zoom!==false){if(st&&st.obj&&st.drag){st.obj.held=0;back(st.obj);sc.hm=null}st=null;const[a,b]=[...P.values()];pin={d:Math.hypot(a[0]-b[0],a[1]-b[1])||1,z:sc.cam.dz}}});
  cv.addEventListener('pointermove',e=>{const sc=G3D.sc;if(!sc)return;
   if(!P.has(e.pointerId)){if(e.pointerType==='mouse'&&!e.buttons&&performance.now()-hovT>45){hovT=performance.now();let h=null;try{h=g3HitObj(sc,g3Ray(e.clientX,e.clientY),o=>o.drag||(o.pick&&sc.hoverAll))}catch(x){}const id=h?h.id:null;if(id!==sc.hov){sc.hov=id;cv.style.cursor=h?'pointer':'';g3Need()}}return}
@@ -333,8 +341,9 @@ function g3Input(cv){const P=new Map();let st=null,pin=null,hovT=0;
   if(!st.drag&&Math.hypot(dx,dy)>(st.obj?7:9)){st.drag=true;try{cv.setPointerCapture(e.pointerId)}catch(x){}if(st.obj){st.obj.held=1;try{sc.drag.start&&sc.drag.start(st.obj)}catch(x){}if(typeof gBuzz==='function')gBuzz(6)}}
   if(!st.drag)return;
   if(st.obj){const D=sc.drag,p=g3HitY(g3Ray(e.clientX,e.clientY),D.y);if(p){const o=st.obj;o.tw=null;o.p=[p[0],D.y+(D.lift??.55),p[2]+(D.dz||0)];try{sc.hm=D.move?D.move(o,p):null}catch(x){}g3Need()}return}
-  if(sc.orbit!==false){sc.cam.dy=clamp(st.dy-dx*.0065,-(sc.yawMax??.75),sc.yawMax??.75);sc.cam.dp=clamp(st.dp+dy*.005,-(sc.pitchDown??.42),sc.pitchUp??.45);g3Moved()}});
- const up=e=>{const had=P.delete(e.pointerId);if(P.size<2)pin=null;if(!had||!st)return;const s=st;st=null;const sc=G3D.sc;
+  if(sc.orbit!==false){sc.cam.dy=clamp(st.dy-dx*.0065,-(sc.yawMax??.75),sc.yawMax??.75);sc.cam.dp=clamp(st.dp+dy*.005,-(sc.pitchDown??.42),sc.pitchUp??.45);g3Moved()}
+  else if(sc.look&&sc.look.on){const L=sc.look;L.uy=clamp(st.ly+dx*.0042,-L.my,L.my);L.up=clamp(st.lp+dy*.0032,-L.mp,L.mp);L.drag=1;L.t=performance.now();g3Need()}});
+ const up=e=>{const had=P.delete(e.pointerId);if(P.size<2)pin=null;if(!had||!st)return;const s=st;st=null;const sc=G3D.sc;if(sc&&sc.look&&sc.look.drag){sc.look.drag=0;sc.look.t=performance.now();g3Need()}
   if(s.obj&&s.drag){const o=s.obj;o.held=0;if(sc)sc.hm=null;if(e.type==='pointerup'&&sc&&sc.drag){let p=null;try{p=g3HitY(g3Ray(e.clientX,e.clientY),sc.drag.y)}catch(x){}try{sc.drag.drop(o,p)}catch(x){}}back(o);g3Need();return}
   if(e.type==='pointerup'&&s.drag&&!s.obj&&sc&&sc.flick&&performance.now()-s.t<330&&s.y-e.clientY>60&&Math.abs(e.clientX-s.x)<s.y-e.clientY){sc.cam.dy=s.dy;sc.cam.dp=s.dp;g3Moved();try{sc.flick()}catch(x){}return}
   if(e.type==='pointerup'&&!s.drag)g3Tap(e.clientX,e.clientY)};
@@ -355,3 +364,20 @@ function g3Wx(sc,now){const W=sc.wx;if(!W.mesh){const g=[],R=rng(W.k==='snow'?71
   W.mesh={mesh:g3Mesh(gMerge(...g)),mat:g3Mat({c:W.k==='snow'?'#FFFFFF':'#C8D6E6',unlit:true,two:true})}}
  const gl=G3D.gl,t=now/1000,sp=W.k==='snow'?1.15:16,off=(t*sp)%W.h,sw=W.k==='snow'?Math.sin(t*.6)*.8:Math.sin(t*.3)*.3;gl.enable(gl.BLEND);gl.depthMask(false);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
  for(const k of[0,1])g3Part(W.mesh,m4.trs([sw,W.y0+k*W.h-off,0],qt.id(),1),1,null,W.k==='snow'?.85:.32,false);gl.depthMask(true)}
+/* ---------- the eyes of a seated player ----------
+   a scene with sc.look can be looked around in: a drag on the empty table turns the view (it drifts back to the table after a while),
+   the phone's tilt does the same when that is switched on, and the scene itself may glance toward whoever is to move (gy, gp) */
+function g3LookStep(sc,now){const L=sc.look,dt=Math.min(.1,Math.max(0,(now-(L.tt||now))/1000));L.tt=now;let busy=false;
+ if(!L.on){L.uy=L.up=L.gy=L.gp=0}
+ else if(!L.drag&&!L.gyro&&now-L.t>2600&&(L.uy||L.up)){const k=Math.pow(.08,dt);L.uy*=k;L.up*=k;if(Math.abs(L.uy)<.002&&Math.abs(L.up)<.002)L.uy=L.up=0;busy=true}
+ else if(!L.drag&&!L.gyro&&(L.uy||L.up))busy=true;
+ const ty=clamp(L.gy+L.uy,-L.my,L.my),tp=clamp(L.gp+L.up,-L.mp,L.mp),tau=L.drag||L.gyro||now<(L.fast||0)?.07:.6,k=1-Math.exp(-dt/tau);
+ L.y+=(ty-L.y)*k;L.p+=(tp-L.p)*k;if(Math.abs(ty-L.y)>.0005||Math.abs(tp-L.p)>.0005)busy=true;else{L.y=ty;L.p=tp}
+ return busy}
+/* the phone's tilt, measured from how it was held a moment ago (that slowly follows, so the view settles back) */
+const G3GY={on:false,b0:null,g0:null};
+function g3GyroOn(on){G3GY.on=on;G3GY.b0=G3GY.g0=null;const sc=G3D.sc;if(sc&&sc.look){sc.look.gyro=on&&sc.look.on;if(!on){sc.look.uy=sc.look.up=0;g3Need()}}}
+window.addEventListener('deviceorientation',e=>{if(!G3GY.on||e.beta==null||e.gamma==null)return;const sc=G3D.sc,L=sc&&sc.look;if(!L||!L.on||!G3D.cv||!G3D.cv.isConnected)return;L.gyro=true;
+ const a=((screen.orientation&&screen.orientation.angle)??window.orientation??0)%360,b=e.beta,g=e.gamma;let yw,pt;if(a===90){yw=b;pt=-g}else if(a===270||a===-90){yw=-b;pt=g}else{yw=g;pt=b}
+ if(G3GY.b0==null){G3GY.b0=pt;G3GY.g0=yw}G3GY.b0+=(pt-G3GY.b0)*.004;G3GY.g0+=(yw-G3GY.g0)*.004;
+ const ty=clamp(-(yw-G3GY.g0)*.014,-L.my,L.my),tp=clamp((pt-G3GY.b0)*.011,-L.mp,L.mp);if(Math.abs(ty-L.uy)+Math.abs(tp-L.up)<.002)return;L.uy+=(ty-L.uy)*.3;L.up+=(tp-L.up)*.3;L.t=performance.now();g3Need()});

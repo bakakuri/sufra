@@ -2,7 +2,7 @@
    (matched with what is already on the table, so moves animate) and a list of flat marks (selection, targets, last move) */
 const G3S={},G3B={},G3U={};
 const GOLD=lin('#F4BC4C'),GOLDS=lin('#FFD27A'),RED=lin('#FF5A5F'),INK=lin('#20140c'),PALE=lin('#FFF4D6'),MINT=lin('#7CF0B4');
-function g3Show(id){const el=$('.g3',view);if(!el)return;const k=id==='jko'||id==='durak'||id==='bura'?'joker':id==='dmo'?'domino':id,pl=gPlaceOf(k),key=pl&&pl!==GPDEF[k]?k+':'+pl:k,sc=G3S[key]||(G3S[key]=G3B[k]());sc.host=id;
+function g3Show(id){const el=$('.g3',view);if(!el)return;const k=id==='jko'||id==='durak'||id==='bura'?'joker':id==='dmo'?'domino':id,pl=gPlaceOf(k),key=k==='joker'&&jkRoom()==='room'?'joker:room':pl&&pl!==GPDEF[k]?k+':'+pl:k,sc=G3S[key]||(G3S[key]=G3B[k]());sc.host=id;
  const want=G3D.intro||G3W.intro,intro=want===id;if(intro){G3D.intro=null;G3W.intro=null}
  if(!g3Mount(el,sc))return;if(sc.envK)envApply(sc);if(typeof gAmb==='function')gAmb(sc.envK||null,sc.envT,k,sc.wx&&sc.wx.k);try{G3U[id](sc)}catch(e){try{console.warn('3D sync',e)}catch(x){}}if(intro)g3StartIntro(sc);g3Insets(sc);g3Draw(sc,performance.now());g3Labels(sc);g3Need()}
 const snd=(k,v)=>{if(typeof gSnd==='function')gSnd(k,v)};
@@ -161,17 +161,20 @@ function jkScr(asp,nx,ny,d){const C=jkCam(asp),F=v3.norm(v3.sub(C.tgt,C.eye)),R=
  return v3.add(C.eye,v3.add(v3.mul(F,d),v3.add(v3.mul(R,(nx-C.sx)*t*asp*d),v3.mul(U,(ny-C.sy)*t*d))))}
 const jkFace=asp=>{const C=jkCam(asp),F=v3.norm(v3.sub(C.tgt,C.eye));return qt.ax(1,0,0,-Math.atan2(-F[1],-F[2]))};
 /* who sits where: bots get a look of their own; people online get one picked from their name */
-const JLOOK={'სუფრა ბოტი':{style:'short',mus:1,hat:1,skin:'#E4B08C',hair:'#9A948C',brow:'#6E675F',shirt:'#2C4A6E'},'ანა':{style:'pony',fem:1,skin:'#F1C9AC',hair:'#4A2A18',shirt:'#3F6E8C'},'გიორგი':{style:'curly',skin:'#E6B593',hair:'#24170F',shirt:'#7A3B2E'},'ლევანი':{style:'short',beard:1,mus:1,skin:'#DCA683',hair:'#2B1E16',shirt:'#4E5E3A'},'ნინო':{style:'long',fem:1,skin:'#EFC2A2',hair:'#2A1A12',shirt:'#8E3047'},'ლუკა':{style:'short',glasses:1,skin:'#E2AF8C',hair:'#1E140F',shirt:'#2F5D8A'},'დათო':{style:'bald',mus:1,skin:'#D69C77',hair:'#6F6862',brow:'#4A3F38',shirt:'#3E6B47'}};
+const JLOOK={'სუფრა ბოტი':{style:'short',mus:1,hat:1,skin:'#E4B08C',hair:'#9A948C',brow:'#6E675F',shirt:'#2C4A6E',eye:'#4E6A8A'},'ანა':{style:'pony',fem:1,skin:'#F1C9AC',hair:'#4A2A18',shirt:'#3F6E8C',eye:'#4C6A3A'},'გიორგი':{style:'curly',skin:'#E6B593',hair:'#24170F',shirt:'#7A3B2E'},'ლევანი':{style:'short',beard:1,mus:1,skin:'#DCA683',hair:'#2B1E16',shirt:'#4E5E3A'},'ნინო':{style:'long',fem:1,skin:'#F2C6A6',hair:'#24150E',shirt:'#A8283E',eye:'#7A4A26'},'ლუკა':{style:'short',glasses:1,skin:'#E8B892',hair:'#1A110C',shirt:'#2B57A6',eye:'#6A4222'},'დათო':{style:'bald',mus:1,skin:'#DDA27C',hair:'#B3ACA4',brow:'#7E7871',shirt:'#3C7A4C',eye:'#5C88B4'}};
 function jkLook(nm,h){if(JLOOK[nm])return JLOOK[nm];let k=0;for(const ch of String(nm||''))k=(k*31+ch.charCodeAt(0))>>>0;
  const sk=['#EBC0A0','#DDA984','#F2CDB0','#C99169'],hr=['#24170F','#1A120D','#4E3220','#2E2219'];
  return{style:k%5===0?'bald':'short',mus:k%3===0,skin:sk[k%4],hair:hr[(k>>3)%4],shirt:`hsl(${h??(k%360)} 38% 36%)`}}
 const hex=c=>{if(c[0]==='#')return c;const d=document.createElement('canvas').getContext('2d');d.fillStyle=c;return d.fillStyle};
-function jkPerson(sc,key,L){if(sc.models['pb:'+key])return;const g=personGeo(L),fem=!!L.fem;
- const skin=g3Mat({c:L.skin,sh:14,sp:.12,gl:.03}),shirt=g3Mat({c:hex(L.shirt),t:g3T('knit',()=>g3Tex(knitCv(),{rep:true})),uv:[0,0,7,5],sh:6,sp:.05,gl:0}),hair=g3Mat({c:L.hair,sh:12,sp:.09,gl:.02}),chair=g3Mat({t:woodTex('walnut'),uv:[0,0,1,1],sh:50,sp:.3,gl:.25});
- /* the face texture holds two pictures, eyes open and shut; a blink shows the second for a moment */
- const face=g3Mat({t:g3T('face:'+key,()=>g3Tex(faceCv({skin:L.skin,hair:L.hair,brow:L.brow,fem,bald:L.style==='bald'}))),uv:[0,0,.5,1],vary:true,sh:14,sp:.12,gl:.03});
+function jkPerson(sc,key,L){if(sc.models['pb:'+key])return;const g=personGeo(Object.assign({},L,{e3:1})),fem=!!L.fem;
+ /* soft light on skin, a sheen on hair, and a cool edge of light from behind on everything: the look of an animated film */
+ const skin=g3Mat({c:L.skin,sh:18,sp:.14,gl:.03,wrap:.42,rim:.4}),shirt=g3Mat({c:hex(L.shirt),t:g3T('knit',()=>g3Tex(knitCv(),{rep:true})),uv:[0,0,7,5],sh:6,sp:.05,gl:0,wrap:.3,rim:.6}),hair=g3Mat({c:L.hair,sh:14,sp:.1,gl:.02,wrap:.25,rim:.8}),
+  chair=sc.lux?g3Mat({c:'#1C2335',sh:80,sp:.5,gl:.35,rim:.35}):g3Mat({t:woodTex('walnut'),uv:[0,0,1,1],sh:50,sp:.3,gl:.25});
+ /* the face texture holds two pictures, eyes open and shut; a blink shows the second for a moment, on the face and on the eyeballs alike */
+ const face=g3Mat({t:g3T('face3:'+key,()=>g3Tex(faceCv({skin:L.skin,hair:L.hair,brow:L.brow,fem,bald:L.style==='bald',e3:1}))),uv:[0,0,.5,1],vary:true,sh:18,sp:.14,gl:.03,wrap:.42,rim:.4});
+ const eyes=g3Mat({t:g3T('eye:'+L.skin+':'+(L.eye||'')+':'+(fem?1:0),()=>g3Tex(eyeCv({skin:L.skin,eye:L.eye,fem}))),uv:[0,0,.5,1],vary:true,sh:220,sp:1.4,gl:.5,wrap:.6,e:'#141414'});
  g3Model(sc,'pb:'+key,[[g.body.shirt,shirt],[g.body.skin,skin],[g.body.chair,chair]],null);
- g3Model(sc,'ph:'+key,[[g.head.face,face],[g.head.skin,skin],...(g.head.hair?[[g.head.hair,hair]]:[]),...(g.head.frame?[[g.head.frame,g3Mat({c:'#1C1A1A',sh:80,sp:.6,gl:.4})]]:[]),...(g.head.hat?[[g.head.hat,g3Mat({c:'#4A443C',sh:8,sp:.04,gl:0})]]:[])],null);
+ g3Model(sc,'ph:'+key,[[g.head.face,face],[g.head.skin,skin],...(g.head.eyes?[[g.head.eyes,eyes]]:[]),...(g.head.hair?[[g.head.hair,hair]]:[]),...(g.head.frame?[[g.head.frame,g3Mat({c:'#1C1A1A',sh:80,sp:.6,gl:.4})]]:[]),...(g.head.gold?[[g.head.gold,g3Mat({c:'#E8B64E',sh:160,sp:1.1,gl:.9})]]:[]),...(g.head.hat?[[g.head.hat,g3Mat({c:'#4A443C',sh:8,sp:.04,gl:0,rim:.5})]]:[])],null);
  for(const s of[-1,1])g3Model(sc,'pk:'+key+':'+s,[[g.arms[s].sleeve,shirt],[g.arms[s].hand,skin]],null)}
 /* a person at the table: body, head (turned by hq), and the two forearms that turn at the elbow; id names the seat */
 function pplPush(L,id,key,p,qB,s,hq,o={}){const S=s||1,at=v=>v3.add(p,qt.rot(qB,v3.mul(v,S))),b={refl:false,life:1,dur:o.dur||650};if(o.cast===false)b.cast=false;if(o.now)b.now=1;
@@ -193,13 +196,14 @@ function oppAdd(sc,id,G,L,far){const o=OPPS[id],c=G.ctx,cm=sc.cam;if(!o||!c||!op
  sc.people=who=>who===-c.side?'o':null}
 /* a look as stored or sent: only known styles and colours pass */
 const LKS=['short','curly','long','pony','bald'],hexOk=v=>typeof v==='string'&&/^#[0-9a-fA-F]{6}$/.test(v);
-function oppLook(L){const o=L&&typeof L==='object'?L:{};return{style:LKS.includes(o.style)?o.style:'short',fem:o.fem?1:0,mus:o.mus?1:0,beard:o.beard?1:0,glasses:o.glasses?1:0,hat:o.hat?1:0,skin:hexOk(o.skin)?o.skin:'#E2AF8C',hair:hexOk(o.hair)?o.hair:'#2A1A12',brow:hexOk(o.brow)?o.brow:undefined,shirt:hexOk(o.shirt)?o.shirt:(typeof o.shirt==='string'&&/^hsl\(/.test(o.shirt)?o.shirt:'#2F5D8A')}}
-const lkKey=L=>[L.style,L.fem,L.mus,L.beard,L.glasses,L.hat,L.skin,L.hair,L.brow||'',L.shirt].join('|');
+function oppLook(L){const o=L&&typeof L==='object'?L:{};return{style:LKS.includes(o.style)?o.style:'short',fem:o.fem?1:0,mus:o.mus?1:0,beard:o.beard?1:0,glasses:o.glasses?1:0,hat:o.hat?1:0,skin:hexOk(o.skin)?o.skin:'#E2AF8C',hair:hexOk(o.hair)?o.hair:'#2A1A12',brow:hexOk(o.brow)?o.brow:undefined,eye:hexOk(o.eye)?o.eye:undefined,shirt:hexOk(o.shirt)?o.shirt:(typeof o.shirt==='string'&&/^hsl\(/.test(o.shirt)?o.shirt:'#2F5D8A')}}
+const lkKey=L=>[L.style,L.fem,L.mus,L.beard,L.glasses,L.hat,L.skin,L.hair,L.brow||'',L.shirt,L.eye||''].join('|');
 G3B.joker=()=>{const sc=g3Scene({cam:{fixed:jkCam,tgt:[0,0,0],fov:1,dy:0,dp:0,dz:1},orbit:false,zoom:false,shR:12,shC:[0,0,-1.6],spot:[0,2.4,11,.62],bg:[.035,.024,.02],
   light:{d:v3.norm([-.22,1,.4]),c:[2.35,2.08,1.72],sky:[.26,.22,.2],gnd:[.12,.08,.06],exp:1.0},
   anchors:[['.seat.left',[...[JSP[1][0]*.97,6.25,JSP[1][1]*.97]]],['.seat.top',[0,6.35,-JR*.97]],['.seat.right',[JSP[3][0]*.97,6.25,JSP[3][1]*.97]]]});
- /* the room and the table: plank floor, papered walls on three sides, felt, a turned mahogany rim and a pedestal */
- roundRoom(sc,5.45,g3T('felt',()=>g3Tex(feltCv({a:'#2E7D59',b:'#123B29',ring:1}))));envRoom(sc);if(typeof gEvActive==='function'&&gEvActive('easter'))eggPlateAt(sc,[-3.3,0,-2.7],.8);
+ /* the room and the table: the night lounge (navy felt, gold, a city behind the glass), or the old room with the rug and the green felt */
+ sc.lux=jkRoom()==='lounge';if(sc.lux){luxTable(sc);envLounge(sc)}else{roundRoom(sc,5.45,g3T('felt',()=>g3Tex(feltCv({a:'#2E7D59',b:'#123B29',ring:1}))));envRoom(sc)}if(typeof gEvActive==='function'&&gEvActive('easter'))eggPlateAt(sc,[-3.3,0,-2.7],.8);
+ sc.look={on:gLookSet()!=='off',y:0,p:0,uy:0,up:0,gy:0,gp:0,my:.55,mp:.3,t:0};
  mkModel(sc);
  const atl=jkAtlas(),back=cardUV(38);sc.c4=jkC4()+':'+gStyleOf('joker');
  g3Model(sc,'card',[[gQuad(CDW,CDH),g3Mat({t:atl,cut:true,vary:true,sh:30,sp:.18,gl:.1})],[gQuad(CDW,CDH,true),g3Mat({t:atl,uv:back,cut:true,sh:30,sp:.2,gl:.12})]],[CDW/2,CDH/2,.03]).land=()=>snd('card');
@@ -207,7 +211,7 @@ G3B.joker=()=>{const sc=g3Scene({cam:{fixed:jkCam,tgt:[0,0,0],fov:1,dy:0,dp:0,dz
  /* the first touch lifts a card, the second plays it; a card dragged up onto the table is played too */
  sc.hoverAll=true;
  sc.tap=ray=>{const o=g3HitObj(sc,ray,o=>o.pick&&o.pick.i!=null);if(!o)return;if(sc.tap1){g3Act(sc.act,{i:String(o.pick.i)});return}if(sc.csel===o.pick.k){sc.csel=null;g3Act(sc.act||'jcard',{i:String(o.pick.i)});return}sc.csel=o.pick.k;snd('card',.6);G3U[sc.host](sc);g3Need()};
- sc.drag={y:.4,lift:.5,dz:0,start:o=>{sc.csel=o.pick.k},drop:(o,p)=>{if(p&&Math.hypot(p[0],p[2])<5.2){sc.csel=null;g3Act(sc.act||'jcard',{i:String(o.pick.i)})}}};
+ sc.drag={y:.4,lift:.5,dz:0,start:o=>{sc.csel=o.pick.k;if(sc.look){sc.look.uy=sc.look.up=0;sc.look.fast=performance.now()+700}},drop:(o,p)=>{if(p&&Math.hypot(p[0],p[2])<5.2){sc.csel=null;g3Act(sc.act||'jcard',{i:String(o.pick.i)})}}};
  sc.onResize=()=>{try{G3U[sc.host](sc)}catch(e){}};sc.people=seatOf;
  return sc};
 /* the card faces come in two decks; switching in the menu swaps the picture on the cards already on the table */
@@ -234,6 +238,8 @@ function jkGaze(r,V,rel){const cur=V.cur!=null&&V.cur>=0?rel(V.cur):null,me=JSP[
 /* one picture of the table for both kinds of game */
 function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.act=V.act;sc.tap1=!!V.tap1;jkDeck(sc);
  const deal=V.deal!==sc.deal;if(deal)sc.deal=V.deal;const dealer=V.dealer!=null?rel(V.dealer):2,dp=dealer===0?[0,1.4,6.6]:jkLocal(dealer,0,[0,1.6,2.6]),cur=V.cur!=null&&V.cur>=0?rel(V.cur):null;
+ /* my eyes go a little toward whoever is to move, and back to my hand when it is me */
+ if(sc.look){const Lk=sc.look;Lk.on=gLookSet()!=='off';const on=Lk.on&&cur!=null&&cur!==0&&V.win==null,gy=on?(cur===1?.075:cur===3?-.075:0):0,gp=on?(cur===2?.035:.012):0;if(gy!==Lk.gy||gp!==Lk.gp){Lk.gy=gy;Lk.gp=gp;g3Need()}}
  /* the three others */
  for(const r of[1,2,3]){if(V.on&&!V.on.includes(r))continue;const id=V.ids[(r+V.base)%4],L0=id.lk?oppLook(id.lk):jkLook(id.n,id.h),key=(id.k||id.n||'p'+r)+(id.lk?':'+lkKey(L0):'');jkPerson(sc,key,L0);
   const lean=cur===r&&V.win==null?.07:0,g=jkGaze(r,V,rel);
@@ -244,7 +250,7 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
  const n=V.hand.length;if(!V.mine||!V.hand.some(cd=>'c'+cardIdx(cd)===sc.csel))sc.csel=null;
  if(n){const tall=asp<.8,hs=tall?.165:.19,dd=2.4,C=jkCam(asp),t=Math.tan(C.fov/2),s=hs*2*t*dd/CDH,cw=CDW*s/(t*asp*dd),room=(2+2*C.sx)*.8,spc=Math.min(cw*.62,(room-cw*1.1)/Math.max(1,n-1)),qf=jkFace(asp);
   V.hand.forEach((cd,i)=>{const ok=V.legal.includes(cd),key='c'+cardIdx(cd),sel=sc.csel===key||!!V.sel&&V.sel.includes(i),nx=C.sx+(i-(n-1)/2)*spc,lift=V.legal.length?(sel?.5:ok?.13:-.03):0,
-    ny=-1+hs*1.06-(nx-C.sx)*(nx-C.sx)*.07+lift*hs*2,p=jkScr(asp,nx,ny,dd-i*.004),d={k:key,m:'card',p,q:qt.mul(qf,qt.ax(0,0,1,-(nx-C.sx)*.2)),s,uv:cardUV(cardIdx(cd)),dim:V.legal.length&&!ok?.5:1,pick:V.mine&&ok?{i,k:key}:null,drag:V.mine&&ok&&!V.tap1,glow:sel?[.12,.09,.03]:V.hint===cd?[.05,.16,.1]:null,refl:false,cast:false,dur:420};
+    ny=-1+hs*1.06-(nx-C.sx)*(nx-C.sx)*.07+lift*hs*2,p=jkScr(asp,nx,ny,dd-i*.004),d={k:key,m:'card',p,q:qt.mul(qf,qt.ax(0,0,1,-(nx-C.sx)*.2)),s,uv:cardUV(cardIdx(cd)),dim:V.legal.length&&!ok?.5:1,pick:V.mine&&ok?{i,k:key}:null,drag:V.mine&&ok&&!V.tap1,glow:sel?[.12,.09,.03]:V.hint===cd?[.05,.16,.1]:null,refl:false,cast:false,dur:420,hud:1};
    if(deal){d.from={p:dp,q:FACEDN(0),s:.9};d.delay=i*70;d.dur=560}L.push(d)})}
  /* the trick, each card in front of whoever played it, all turned to read from my chair */
  V.trick.forEach((e,k)=>{const r=rel(e.p),[tx,tz]=JTRK[r],idx=cardIdx(e.card),p=[tx,.012+k*.008,tz],won=V.win!=null&&rel(V.win)===r&&V.trick.length===4,d={k:'c'+idx,m:'card',p,q:FACEUP(JTJ[r]),s:JTS,uv:cardUV(idx),glow:won?[.2,.14,.04]:null,cast:true};
@@ -425,13 +431,15 @@ G3U.look=sc=>{const lk=oppLook(sc.lk||{}),key='me:'+lkKey(lk);jkPerson(sc,key,lk
    nardi in an old Tbilisi courtyard, checkers on a wooden balcony over the city. day or evening, as chosen (or by the clock) */
 const envTime=()=>{const v=typeof store!=='undefined'?store.get('genv','auto'):'auto';if(v==='day'||v==='eve')return v;const h=new Date().getHours();return h>=7&&h<19?'day':'eve'};
 const LT={
+ /* the lounge: a warm lamp over the table, the night city cool behind, its blue on the edges of people */
+ lounge:{eve:{d:[-.16,1,.46],c:[1.9,1.68,1.42],sky:[.19,.22,.34],gnd:[.085,.07,.065],exp:1.1,bg:[.012,.016,.035],sp:1,rim:{c:[.62,.8,1.25],d:v3.norm([.3,.4,-1])}},day:{d:[-.3,1,.42],c:[2.2,2.1,1.95],sky:[.42,.48,.6],gnd:[.15,.13,.12],exp:1.12,bg:[.2,.24,.3],sp:.45,rim:{c:[.8,.9,1.1],d:v3.norm([.3,.4,-1])}}},
  room:{eve:{d:[-.22,1,.4],c:[2.35,2.08,1.72],sky:[.26,.22,.2],gnd:[.12,.08,.06],exp:1,bg:[.035,.024,.02],sp:1},day:{d:[-.55,1,.35],c:[2.3,2.25,2.15],sky:[.6,.6,.62],gnd:[.22,.18,.14],exp:1.18,bg:[.1,.09,.08],sp:.3}},
  desk:{eve:{d:[-.45,1.25,.55],c:[2.4,2.12,1.75],sky:[.27,.25,.26],gnd:[.12,.09,.06],exp:1,bg:[.04,.03,.025],sp:1},day:{d:[-.6,1.2,.35],c:[2.2,2.15,2.05],sky:[.45,.47,.52],gnd:[.16,.13,.1],exp:1.05,bg:[.12,.11,.1],sp:.5}},
  out:{eve:{d:[.5,.9,.45],c:[2.2,1.7,1.25],sky:[.22,.22,.32],gnd:[.12,.08,.06],exp:1.02,bg:[.05,.05,.09],sp:.9},day:{d:[-.4,1.3,.45],c:[2.6,2.45,2.15],sky:[.5,.58,.7],gnd:[.2,.17,.13],exp:1.02,bg:[.55,.7,.85],sp:.35}}};
 function envSet(sc,kind){sc.envK=kind;sc.envSw=[];sc.spot0=sc.spot.slice()}
 function envDone(sc){sc.envT=null;envApply(sc)}
 function envApply(sc){if(!sc.envK)return;const t=envTime();if(sc.envT===t)return;sc.envT=t;const P=LT[sc.envK][t];
- sc.light={d:v3.norm(P.d),c:P.c,sky:P.sky,gnd:P.gnd,exp:P.exp};sc.bg=P.bg;sc.spot=[sc.spot0[0],sc.spot0[1],sc.spot0[2],sc.spot0[3]*P.sp];for(const f of sc.envSw)try{f(t)}catch(e){}}
+ sc.light={d:v3.norm(P.d),c:P.c,sky:P.sky,gnd:P.gnd,exp:P.exp};sc.bg=P.bg;sc.rimL=P.rim||null;sc.spot=[sc.spot0[0],sc.spot0[1],sc.spot0[2],sc.spot0[3]*P.sp];for(const f of sc.envSw)try{f(t)}catch(e){}}
 /* a material whose picture changes with the time of day */
 function envMat(sc,key,cv,o={}){const m=g3Mat(Object.assign({t:g3T(key+':eve',()=>g3Tex(cv(false))),sh:6,sp:.05,gl:0},o));sc.envSw.push(t=>{m.t=g3T(key+':'+t,()=>g3Tex(cv(t==='day')))});return m}
 const P3=(sc,g,m,p,q,cast=true)=>g3Static(sc,g,m,p,q||qt.id(),cast);
@@ -483,6 +491,51 @@ function envRoom(sc){envSet(sc,'room');const rug=g3Mat({t:g3T('rug',()=>g3Tex(ru
  const sb=g3Mat({t:woodTex('walnut'),sh:40,sp:.25,gl:.2});P3(sc,gBox(9,.45,1.6,.1,2),sb,[11.5,4.2,-19.1],null,false);jugAt(sc,[9.2,4.43,-19.1],1.4);hornAt(sc,[11.4,4.43,-19],-.25);if(gNewYear())chichilakiAt(sc,[14.6,4.43,-19.0],1.15);
  wallQ(sc,envMat(sc,'win',windowCv),[-19.9,8,-6],8,14,Math.PI/2);hangLampAt(sc,[0,19,-1.5]);
  jugAt(sc,[4.55,0,1.25],.8);wineGlassAt(sc,[3.75,0,2.15]);wineGlassAt(sc,[4.85,0,.2]);plateAt(sc,[-4.35,0,1.05],1);breadAt(sc,[-4.35,.06,1.05],.9);hornAt(sc,[-4.6,0,2.35],2.2,.62);envDone(sc)}
+/* ---------- the night lounge ---------- */
+const jkRoom=()=>{const v=typeof store!=='undefined'?store.get('jkroom','lounge'):'lounge';return v==='room'?'room':'lounge'};
+const gLookSet=()=>{const v=typeof store!=='undefined'?store.get('glook','auto'):'auto';return['auto','tilt','off'].includes(v)?v:'auto'};
+const goldM=()=>g3Mat({c:'#E0AE48',sh:150,sp:1.05,gl:.9}),blackM=()=>g3Mat({c:'#121318',sh:120,sp:.7,gl:.5});
+/* the table: navy felt, a rim of black lacquer with two fine gold lines, a black pedestal */
+function luxTable(sc){P3(sc,gDisc(5.45,96),g3Mat({t:g3T('luxfelt',()=>g3Tex(luxFeltCv())),sh:8,sp:.06,gl:0}),[0,0,0],null,false);
+ P3(sc,gLathe([[5.4,-1.2],[5.42,-.02],[5.45,.02],[5.6,.1],[5.95,.16],[6.22,.1],[6.3,0],[6.25,-.16],[6.1,-.24],[5.8,-.3],[5.7,-1.2],[0,-1.2]],120,.6),g3Mat({c:'#15161D',sh:120,sp:.65,gl:.55}),[0,0,0]);
+ P3(sc,gTorus(5.47,.04,120,6),goldM(),[0,.04,0],null,false);P3(sc,gTorus(6.28,.045,120,6),goldM(),[0,-.02,0],null,false);
+ P3(sc,gLathe([[0,-11],[3.2,-11],[3.3,-10.6],[1.1,-9.8],[.9,-6],[1.3,-2.2],[2.4,-1.4],[0,-1.3]],48),blackM(),[0,0,0])}
+/* a soft glow round a light, drawn after the room so it can fade at its edges */
+const glowTex=()=>g3T('glow',()=>g3Tex((()=>{const c=cvs(128,128),x=c.getContext('2d'),g=x.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,'rgba(255,255,255,.9)');g.addColorStop(.25,'rgba(255,255,255,.35)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,128,128);return c})()));
+function haloAt(sc,p,s,col){P3(sc,gQuad(s,s),g3Mat({t:glowTex(),unlit:true,c:col}),p,null,false);sc.statics[sc.statics.length-1].late=true}
+function ringLampAt(sc,p){const glow=g3Mat({c:'#FFF0D0',e:'#FFD9A0',unlit:true});P3(sc,gTorus(1.9,.17,48,8),goldM(),p,null,false);P3(sc,gTorus(1.8,.08,48,6),glow,[p[0],p[1]-.14,p[2]],null,false);
+ P3(sc,gMerge(...[0,2.1,4.2].map(a=>gCap([p[0]+Math.cos(a)*1.9,p[1],p[2]+Math.sin(a)*1.9],[p[0],p[1]+16,p[2]],.025,.025,4))),blackM(),[0,0,0],null,false);haloAt(sc,[p[0],p[1]-.3,p[2]+.5],6.5,'#FFD49A')}
+function globeLampAt(sc,p){P3(sc,gEll(.85,.85,.85,[0,0,0],null,20),g3Mat({c:'#FFE6C0',e:'#FFC880',unlit:true}),p,null,false);P3(sc,gLathe([[0,0],[.42,0],[.3,.4],[0,.42]],16),goldM(),[p[0],p[1]+.7,p[2]],null,false);
+ P3(sc,gCap([p[0],p[1]+1,p[2]],[p[0],p[1]+16,p[2]],.025,.025,4),blackM(),[0,0,0],null,false);haloAt(sc,[p[0],p[1],p[2]+.6],4.8,'#FFC888')}
+/* a monstera in a black pot with a gold rim */
+function monsteraAt(sc,p,k=1){P3(sc,gLathe([[0,0],[1.5,0],[1.9,3.6],[2.0,3.8],[0,3.8]].map(([r,y])=>[r*k,y*k]),28),g3Mat({c:'#16171C',sh:90,sp:.5,gl:.4}),p);P3(sc,gTorus(1.98*k,.07*k,28,6),goldM(),[p[0],p[1]+3.8*k,p[2]],null,false);
+ const leaf=g3Mat({t:g3T('monstera',()=>g3Tex(monsteraCv())),cut:true,two:true,sh:30,sp:.22,gl:.06,wrap:.35,rim:.4}),stem=g3Mat({c:'#2E5A2A',sh:20,sp:.1,gl:0}),R=rng(Math.round(Math.abs(p[0]*7+p[2]*3))+5);
+ /* one mesh for the stems and one for the leaves, so a plant costs two draws */
+ const SG=[],LG=[];for(let i=0;i<9;i++){const a=i/9*Math.PI*2+R()*.5,h=(5+R()*7)*k,r=(1.2+R()*3.2)*k,top=[p[0]+Math.cos(a)*r,p[1]+3.6*k+h,p[2]+Math.sin(a)*r];SG.push(gCap([p[0],p[1]+3.4*k,p[2]],top,.09*k,.06*k,5));
+  const s=(3.4+R()*1.8)*k,q=qt.mul(qt.ax(0,1,0,-a+Math.PI/2+(R()-.5)*.8),qt.ax(1,0,0,-1.0+R()*.7));LG.push(gXf(gQuad(s,s),v3.add(top,qt.rot(q,[0,s*.4,0])),q))}
+ P3(sc,gMerge(...SG),stem,[0,0,0],null,false);P3(sc,gMerge(...LG),leaf,[0,0,0],null,false)}
+/* a little potted plant on the table */
+function potPlantAt(sc,p){P3(sc,gLathe([[0,0],[.42,0],[.55,.75],[.58,.8],[0,.8]],22),g3Mat({c:'#16171C',sh:90,sp:.5,gl:.4}),p);P3(sc,gTorus(.57,.03,22,5),goldM(),[p[0],p[1]+.8,p[2]],null,false);
+ const leaf=g3Mat({t:g3T('monstera',()=>g3Tex(monsteraCv())),cut:true,two:true,sh:30,sp:.22,gl:.06,wrap:.35,rim:.4}),R=rng(71),LG=[];for(let i=0;i<6;i++){const a=i/6*Math.PI*2+R(),s=1.1+R()*.5,q=qt.mul(qt.ax(0,1,0,-a+Math.PI/2),qt.ax(1,0,0,-1.1+R()*.5)),b=[p[0]+Math.cos(a)*.2,p[1]+.8,p[2]+Math.sin(a)*.2];LG.push(gXf(gQuad(s,s),v3.add(b,qt.rot(q,[0,s*.42,0])),q))}P3(sc,gMerge(...LG),leaf,[0,0,0],null,false)}
+function envLounge(sc){envSet(sc,'lounge');const panel=g3Mat({t:g3T('luxpanel',()=>g3Tex(luxPanelCv(),{rep:true})),uv:[0,0,6,4],sh:40,sp:.15,gl:.1});
+ P3(sc,gPlane(90,90,10,10),g3Mat({t:woodTex('walnut'),c:'#5A5560',sh:40,sp:.2,gl:.12}),[0,-11,0],null,false);
+ wallQ(sc,panel,[0,9,-20],60,40,0);wallQ(sc,panel,[-20,9,0],60,40,Math.PI/2);wallQ(sc,panel,[20,9,0],60,40,-Math.PI/2);
+ /* the city behind the glass, at the back on the right and down the right wall */
+ wallQ(sc,envMat(sc,'luxcity',d=>luxCityCv(d),{unlit:true}),[9.8,7.5,-19.8],20.4,22,0);wallQ(sc,envMat(sc,'luxcity2',d=>luxCityCv(d,317),{unlit:true}),[19.8,7.5,-5.5],27,22,-Math.PI/2);
+ /* shelves lit from below on the left */
+ const shelf=g3Mat({t:g3T('luxshelf',()=>g3Tex(luxShelfCv())),unlit:true,c:'#D9D0C6'});wallQ(sc,shelf,[-13,6.5,-19.8],11,13,0);wallQ(sc,shelf,[-19.8,6.5,-8.5],13,13,Math.PI/2);
+ /* the Georgian rug in a dark frame, behind the far chair */
+ P3(sc,gBox(7.3,12.9,.3,.08,2),g3Mat({c:'#1B1511',sh:60,sp:.35,gl:.25}),[-2.6,8.2,-19.75],null,false);wallQ(sc,g3Mat({t:g3T('rug',()=>g3Tex(rugCv())),sh:4,sp:.02,gl:0}),[-2.6,8.2,-19.55],6.5,12.1,0);
+ ringLampAt(sc,[8.8,11.8,-12]);globeLampAt(sc,[-9.8,11.4,-14]);monsteraAt(sc,[13.2,-11,-13.5],1.2);monsteraAt(sc,[-14.5,-11,-12.5],1.05);
+ /* on the table: the card box, a gold dish, a mug with the crown, a lantern and a little plant */
+ const box=g3Mat({c:'#14161C',sh:90,sp:.5,gl:.35});P3(sc,gBox(1.25,.42,1.7,.07,2),box,[-4.35,.21,-.5],qt.ax(0,1,0,.55));P3(sc,gPlane(1.12,1.56),g3Mat({t:g3T('cardbox',()=>g3Tex(cardBoxCv())),sh:60,sp:.4,gl:.3}),[-4.35,.425,-.5],qt.ax(0,1,0,.55),false);
+ P3(sc,gLathe([[0,0],[.5,0],[.64,.1],[.6,.13],[.46,.05],[0,.05]],32),g3Mat({c:'#16203A',sh:120,sp:.6,gl:.35}),[-4.2,0,2.55]);P3(sc,gTorus(.62,.025,32,5),goldM(),[-4.2,.115,2.55],null,false);
+ P3(sc,gLathe([[0,0],[.44,0],[.47,.05],[.47,1.05],[.42,1.05],[.42,.12],[0,.12]],28),g3Mat({t:g3T('mug',()=>g3Tex(mugCv())),sh:110,sp:.7,gl:.45}),[4.5,0,1.4],qt.ax(0,1,0,-.35));P3(sc,gTorus(.25,.06,14,6),g3Mat({c:'#12203E',sh:110,sp:.7,gl:.45}),[4.5+.48*Math.cos(.35),.55,1.4+.48*Math.sin(.35)],qt.mul(qt.ax(0,1,0,-.35),qt.ax(1,0,0,Math.PI/2)));
+ P3(sc,gBox(.66,.96,.66,.05,2),g3Mat({c:'#1E140C',e:'#6A3410',sh:120,sp:.9,gl:.6}),[4.85,.53,-.15]);P3(sc,gEll(.12,.2,.12,[0,0,0],null,10),g3Mat({c:'#FFE7B0',e:'#FFC060',unlit:true}),[4.85,.5,-.15],null,false);const brass=g3Mat({c:'#8A6428',sh:90,sp:.6,gl:.35});P3(sc,gBox(.78,.08,.78,.03,1),brass,[4.85,1.06,-.15]);P3(sc,gLathe([[0,0],[.3,0],[0,.32]],12),brass,[4.85,1.1,-.15]);P3(sc,gBox(.78,.08,.78,.03,1),brass,[4.85,.04,-.15]);
+ P3(sc,gMerge(...[[-.36,-.36],[.36,-.36],[-.36,.36],[.36,.36]].map(([dx,dz])=>gXf(gBox(.045,1.0,.045,.015,1),[dx,0,dz],qt.id()))),brass,[4.85,.53,-.15]);haloAt(sc,[4.85,.6,.4],2.4,'#FFB870');
+ potPlantAt(sc,[-4.85,0,1.25]);envDone(sc)}
+/* the phone's tilt needs a yes on some phones: asked at the next tap, once */
+document.addEventListener('click',()=>{if(gLookSet()!=='tilt'||G3GY.on)return;const D=window.DeviceOrientationEvent;if(D&&typeof D.requestPermission==='function')D.requestPermission().then(r=>{if(r==='granted')g3GyroOn(true)}).catch(()=>{});else g3GyroOn(true)},true);
 function envYardS(sc){envSet(sc,'out');const brick=g3Mat({t:g3T('brick',()=>g3Tex(brickCv(),{rep:true})),uv:[0,0,8,5],sh:8,sp:.04,gl:0}),plaster=g3Mat({t:g3T('pl:ochre',()=>g3Tex(plasterCv('#C9A77A'))),sh:6,sp:.03,gl:0});
  wallQ(sc,brick,[0,8,-21],60,40);for(const x of[-9,9])wallQ(sc,envMat(sc,'win',windowCv),[x,6,-20.9],5,9);wallQ(sc,plaster,[-21,8,0],60,40,Math.PI/2);treeAt(sc,[17,-11,-14]);
  P3(sc,gPlane(90,90,12,12),g3Mat({t:g3T('tiles',()=>g3Tex(tilesCv(),{rep:true})),sh:10,sp:.05,gl:0}),[0,-11,0],null,false);(gNewYear()?colorLightsAt:stringLightsAt)(sc,[-20,16,-20.5],[20,16,-20.5]);
