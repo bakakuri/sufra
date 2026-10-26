@@ -205,6 +205,7 @@ A.gmenu=()=>{const id=gCur(),G=GAME[id],c=G&&G.ctx,sw=on=>`<i class="sw${on?' on
   <button data-a="gfull" aria-pressed="${!!document.fullscreenElement}">${ic('full')}<span>სრული ეკრანი</span>${sw(!!document.fullscreenElement)}</button>
   <button data-a="gsnd" aria-pressed="${GS.on}">${ic('mic')}<span>ხმა და ვიბრაცია</span>${sw(GS.on)}</button>
   ${g3Want()?`<button data-a="gqual">${ic('gear')}<span>გრაფიკა</span><small class="gmv">${GQN[gqSet()]}${gqSet()==='auto'?', '+GQN[gqLevel()].toLowerCase():''}</small></button>`:''}
+  ${g3Want()?`<button data-a="genv">${ic('clock')}<span>დღე თუ საღამო</span><small class="gmv">${GEN[genvSet()]}</small></button>`:''}
   ${c&&c.mode==='bot'&&!S.page?`<button data-a="gbot">${ic('user')}<span>ბოტის დონე</span><small class="gmv">${BLV[bLvl(id)].n}</small></button>`:''}
   ${g3Want()&&['chess','shashi','nardi'].includes(id)?`<button data-a="gppl" aria-pressed="${gPplOn()}">${ic('users')}<span>მეტოქე მაგიდასთან</span>${sw(gPplOn())}</button>`:''}
   ${id==='joker'?`<button data-a="gc4" aria-pressed="${c4On()}">${ic('cards')}<span>ოთხფერიანი დასტა</span>${sw(c4On())}</button>`:''}
@@ -336,3 +337,8 @@ async function gLbLoad(){const el=$('#lb');if(!el)return;const g=lbGame(),s=lbSc
   const rows=(await q(qq)).map(p=>({p,rating:p.rating}));draw(rows,r=>r.rating,null,'აქ ჯერ არავინაა.')}catch(e){if(gLbLoad.tk===tk&&$('#lb'))$('#lb').innerHTML=`<p class="note">${errMsg(e)}</p>`}}
 /* when a game or a round ends, the people at the 3D table act it out: who: seat ids ('r1'..) or a side; what(who) names the gesture */
 function gEndGest(what,whos){if(typeof g3Gest!=='function')return;setTimeout(()=>{for(const w of whos){const k=what(w);try{g3Gest(typeof w==='number'&&Math.abs(w)===1&&S.game!=='joker'&&S.game!=='domino'?w:'r'+w,k)}catch(e){}}},700)}
+/* the time of day at the 3D tables: by the clock (day from 7 to 19), or always day, or always evening */
+const GEN={auto:'საათის მიხედვით',day:'დღე',eve:'საღამო'};
+const genvSet=()=>{const v=store.get('genv','auto');return GEN[v]?v:'auto'};
+A.genv=()=>{const cur=genvSet();sheet(head('დღე თუ საღამო')+`<div class="gmenu">${Object.keys(GEN).map(k=>`<button data-a="genvset" data-v="${k}"${k===cur?' aria-pressed="true"':''}>${ic(k===cur?'check':'clock')}<span><b>${GEN[k]}</b><br><small class="muted">${{auto:'დილის 7-დან საღამოს 7-მდე დღეა, მერე საღამო',day:'ნათელი, ფანჯრიდან ცა მოჩანს',eve:'თბილი შუქი, ანთებული ნათურები'}[k]}</small></span></button>`).join('')}</div>`,'short')};
+A.genvset=t=>{store.set('genv',t.dataset.v);closeSheet();gRedraw()};

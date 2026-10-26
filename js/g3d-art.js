@@ -238,3 +238,66 @@ function wallCv(){const S=1024,c=cvs(S,S),x=c.getContext('2d'),R=rng(77);x.fillS
  for(let i=0;i<8;i++){const X=i*128;x.fillStyle=i%2?'rgba(120,78,44,.16)':'rgba(0,0,0,.08)';x.fillRect(X,0,64,S)}
  x.fillStyle='rgba(214,170,100,.16)';for(let i=0;i<8;i++)for(let j=0;j<8;j++){const X=i*128+64,Y=j*128+(i%2)*64+32;x.save();x.translate(X,Y);x.beginPath();x.moveTo(0,-26);x.quadraticCurveTo(18,0,0,26);x.quadraticCurveTo(-18,0,0,-26);x.fill();x.restore()}
  return c}
+
+/* ---------- surroundings: the rooms and yards the games are played in ---------- */
+/* a hand-knotted Caucasian rug: red field, three hooked medallions, borders of small motifs, fringe at both ends */
+function rugCv(){const W=512,H=1024,c=cvs(W,H),x=c.getContext('2d'),R=rng(83);x.fillStyle='#E9DCC0';x.fillRect(0,0,W,H);
+ const fr=(y0,y1)=>{for(let X=10;X<W-10;X+=5){x.strokeStyle='rgba(225,212,184,.95)';x.lineWidth=2.4;x.beginPath();x.moveTo(X,y0);x.lineTo(X+(R()-.5)*3,y1);x.stroke()}};fr(0,40);fr(H-40,H);
+ x.fillStyle='#22305E';x.fillRect(16,40,W-32,H-80);x.fillStyle='#E9DCC0';x.fillRect(46,70,W-92,H-140);x.fillStyle='#8C1C1E';x.fillRect(60,84,W-120,H-168);
+ /* border motifs: small eight-pointed stars and diamonds */
+ const star=(cx,cy,r,col)=>{x.fillStyle=col;x.beginPath();for(let k=0;k<16;k++){const a=k*Math.PI/8,rr=k%2?r*.45:r;x.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr)}x.closePath();x.fill()};
+ for(let y=58;y<H-50;y+=34){star(31,y,9,y%68<34?'#B8322C':'#D9A441');star(W-31,y,9,y%68<34?'#D9A441':'#B8322C')}
+ for(let X=58;X<W-50;X+=34){star(X,55,9,'#B8322C');star(X,H-55,9,'#D9A441')}
+ /* the medallions: a stepped diamond with hooks, each in two colours */
+ const med=(cy,a,b)=>{x.save();x.translate(W/2,cy);for(const[s,col]of[[150,a],[118,'#E9DCC0'],[96,b],[60,'#E9DCC0'],[38,a]]){x.fillStyle=col;x.beginPath();for(let k=0;k<4;k++){const ang=k*Math.PI/2;x.lineTo(Math.cos(ang)*s*.78,Math.sin(ang)*s)}x.closePath();x.fill()}
+  x.strokeStyle='#E9DCC0';x.lineWidth=7;for(const s of[-1,1])for(const t of[-1,1]){x.beginPath();x.moveTo(s*70,t*70);x.lineTo(s*96,t*96);x.lineTo(s*112,t*80);x.stroke()}x.restore()};
+ med(250,'#22305E','#D9A441');med(H/2,'#2E6B4A','#22305E');med(H-250,'#22305E','#D9A441');
+ for(let k=0;k<40;k++)star(75+R()*(W-150),100+R()*(H-200),6+R()*4,['#D9A441','#22305E','#E9DCC0'][k%3]);
+ x.globalCompositeOperation='multiply';x.globalAlpha=.25;x.drawImage(noiseCv(128,256,R,160,255),0,0,W,H);x.globalAlpha=1;x.globalCompositeOperation='source-over';return c}
+/* a wall of books: five shelves of spines in old cloth colours, some with gilt bands */
+function booksCv(){const S=1024,c=cvs(S,S),x=c.getContext('2d'),R=rng(57);x.fillStyle='#2A1A12';x.fillRect(0,0,S,S);const cols=['#5C1E22','#23402E','#1E2C4A','#6B4A28','#7C6A3A','#3E2A40','#8A3A28','#2E3A3A','#B59A6A'];
+ for(let r=0;r<5;r++){const y0=r*204+14,y1=y0+184;x.fillStyle='#4A3022';x.fillRect(0,y1,S,20);x.fillStyle='rgba(0,0,0,.35)';x.fillRect(0,y0,S,8);let X=6;
+  while(X<S-20){const w=14+R()*26,h=120+R()*60,col=cols[Math.floor(R()*cols.length)],lean=R()<.06;x.save();x.translate(X,y1);if(lean)x.rotate(-.08);x.fillStyle=col;x.fillRect(0,-h,w,h);
+   x.fillStyle='rgba(255,255,255,.06)';x.fillRect(1,-h,w*.3,h);x.fillStyle='rgba(0,0,0,.25)';x.fillRect(w-3,-h,3,h);if(R()<.6){x.fillStyle='rgba(222,186,104,.75)';x.fillRect(0,-h+14,w,3);x.fillRect(0,-h+22,w,2);x.fillRect(0,-24,w,3)}
+   x.restore();X+=w+(R()<.1?18:1.5)}}
+ x.globalCompositeOperation='multiply';x.globalAlpha=.25;x.drawImage(noiseCv(256,256,R,150,255),0,0,S,S);x.globalAlpha=1;x.globalCompositeOperation='source-over';return c}
+/* old red brick with pale mortar */
+function brickCv(){const S=512,c=cvs(S,S),x=c.getContext('2d'),R=rng(23);x.fillStyle='#C9B79E';x.fillRect(0,0,S,S);
+ for(let r=0;r<16;r++)for(let k=-1;k<9;k++){const w=64,h=32,X=k*w+(r%2)*32,Y=r*h,v=R();x.fillStyle=`rgb(${150+v*40|0},${70+v*25|0},${52+v*18|0})`;x.fillRect(X+2,Y+2,w-4,h-4);x.fillStyle='rgba(0,0,0,.12)';x.fillRect(X+2,Y+h-7,w-4,5)}
+ x.globalCompositeOperation='multiply';x.globalAlpha=.4;x.drawImage(noiseCv(128,128,R,120,255),0,0,S,S);x.globalAlpha=1;x.globalCompositeOperation='source-over';return c}
+/* lime plaster in a colour, weathered */
+function plasterCv(col){const S=512,c=cvs(S,S),x=c.getContext('2d'),R=rng(71);x.fillStyle=col;x.fillRect(0,0,S,S);
+ x.globalCompositeOperation='multiply';x.globalAlpha=.35;x.drawImage(noiseCv(64,64,R,150,255),0,0,S,S);x.globalAlpha=.25;x.drawImage(noiseCv(256,256,R,170,255),0,0,S,S);
+ x.globalAlpha=1;x.globalCompositeOperation='source-over';for(let k=0;k<14;k++){const X=R()*S,Y=R()*S,g=x.createRadialGradient(X,Y,2,X,Y,30+R()*60);g.addColorStop(0,'rgba(90,70,50,.18)');g.addColorStop(1,'rgba(90,70,50,0)');x.fillStyle=g;x.fillRect(0,0,S,S)}return c}
+/* square stone flags with dark joints */
+function tilesCv(){const S=512,c=cvs(S,S),x=c.getContext('2d'),R=rng(13);x.fillStyle='#4A4440';x.fillRect(0,0,S,S);
+ for(let i=0;i<4;i++)for(let j=0;j<4;j++){const v=R();x.fillStyle=`rgb(${118+v*30|0},${108+v*26|0},${96+v*22|0})`;x.fillRect(i*128+4,j*128+4,120,120)}
+ x.globalCompositeOperation='multiply';x.globalAlpha=.45;x.drawImage(noiseCv(128,128,R,110,255),0,0,S,S);x.globalAlpha=1;x.globalCompositeOperation='source-over';return c}
+/* a kitchen oilcloth: red check with small white flowers */
+function oilclothCv(){const S=512,c=cvs(S,S),x=c.getContext('2d');x.fillStyle='#F4EEE4';x.fillRect(0,0,S,S);
+ x.fillStyle='rgba(196,46,52,.55)';for(let k=0;k<8;k++){x.fillRect(k*64,0,32,S);x.fillRect(0,k*64,S,32)}
+ for(let i=0;i<8;i++)for(let j=0;j<8;j++){const X=i*64+48,Y=j*64+48;x.fillStyle='#FFFFFF';for(let p=0;p<5;p++){const a=p*Math.PI*2/5;x.beginPath();x.arc(X+Math.cos(a)*5,Y+Math.sin(a)*5,4,0,Math.PI*2);x.fill()}x.fillStyle='#E7B53C';x.beginPath();x.arc(X,Y,3,0,Math.PI*2);x.fill()}return c}
+/* green leather with a gilt line, for the writing desk under the chess board */
+function leatherCv(){const S=512,c=cvs(S,S),x=c.getContext('2d'),R=rng(5);x.fillStyle='#1F4A36';x.fillRect(0,0,S,S);x.globalCompositeOperation='multiply';x.globalAlpha=.4;x.drawImage(noiseCv(256,256,R,150,255),0,0,S,S);
+ x.globalAlpha=1;x.globalCompositeOperation='source-over';x.strokeStyle='rgba(214,176,96,.85)';x.lineWidth=5;x.strokeRect(18,18,S-36,S-36);x.lineWidth=2;x.strokeRect(30,30,S-60,S-60);return c}
+/* a window: painted frame, six panes; the day shows sky and a cloud, the evening a deep blue with a lamp's reflection */
+function windowCv(day){const W=256,H=512,c=cvs(W,H),x=c.getContext('2d');const g=x.createLinearGradient(0,0,0,H);if(day){g.addColorStop(0,'#8EC2EA');g.addColorStop(1,'#D8ECF6')}else{g.addColorStop(0,'#0E1A33');g.addColorStop(1,'#2A3550')}
+ x.fillStyle=g;x.fillRect(0,0,W,H);if(day){x.fillStyle='rgba(255,255,255,.85)';for(const[a,b,r]of[[80,140,34],[120,128,40],[160,146,30]]){x.beginPath();x.arc(a,b,r,0,Math.PI*2);x.fill()}}
+ else{x.fillStyle='rgba(255,214,140,.9)';for(let k=0;k<14;k++){x.fillRect(20+((k*53)%210),330+((k*37)%120),4,6)}const r=x.createRadialGradient(170,120,4,170,120,70);r.addColorStop(0,'rgba(255,200,120,.35)');r.addColorStop(1,'rgba(255,200,120,0)');x.fillStyle=r;x.fillRect(0,0,W,H)}
+ x.fillStyle='#EDE6DA';x.fillRect(0,0,W,18);x.fillRect(0,H-18,W,18);x.fillRect(0,0,18,H);x.fillRect(W-18,0,18,H);x.fillRect(W/2-7,0,14,H);x.fillRect(0,H/3-6,W,12);x.fillRect(0,H*2/3-6,W,12);
+ x.fillStyle='rgba(0,0,0,.15)';x.fillRect(18,18,4,H-36);return c}
+/* sky over Tbilisi: hills on the far side, roofs, and in the evening windows lit */
+function skylineCv(day){const W=1024,H=512,c=cvs(W,H),x=c.getContext('2d'),R=rng(97),g=x.createLinearGradient(0,0,0,H);
+ if(day){g.addColorStop(0,'#7FB4E0');g.addColorStop(.7,'#CFE4F0');g.addColorStop(1,'#E8E0D0')}else{g.addColorStop(0,'#0B1430');g.addColorStop(.6,'#2B2A4A');g.addColorStop(1,'#6A4A4A')}x.fillStyle=g;x.fillRect(0,0,W,H);
+ x.fillStyle=day?'#6E8A6A':'#1E2030';x.beginPath();x.moveTo(0,H);for(let X=0;X<=W;X+=16)x.lineTo(X,280+Math.sin(X/130)*40+Math.sin(X/47)*12);x.lineTo(W,H);x.fill();
+ for(let k=0;k<60;k++){const X=R()*W,w=20+R()*40,h=30+R()*70,Y=H-h-R()*60;x.fillStyle=day?`rgb(${200+R()*40|0},${180+R()*30|0},${150+R()*30|0})`:'#262236';x.fillRect(X,Y,w,h+80);x.fillStyle=day?'#9A4A36':'#1A1626';x.beginPath();x.moveTo(X-4,Y);x.lineTo(X+w/2,Y-14);x.lineTo(X+w+4,Y);x.fill();
+  if(!day)for(let m=0;m<3;m++)if(R()<.6){x.fillStyle='rgba(255,206,120,.9)';x.fillRect(X+4+R()*(w-10),Y+8+R()*(h-10),4,5)}}
+ if(!day){x.fillStyle='rgba(255,255,255,.8)';for(let k=0;k<50;k++)x.fillRect(R()*W,R()*200,1.5,1.5)}return c}
+/* a grape leaf, cut out by its alpha */
+function leafCv(){const S=256,c=cvs(S,S),x=c.getContext('2d');x.translate(S/2,S/2);x.fillStyle='#4E7A2E';x.beginPath();
+ for(let k=0;k<=60;k++){const a=k/60*Math.PI*2,lobe=1+.22*Math.cos(a*5),r=100*lobe*(a>Math.PI*1.38&&a<Math.PI*1.62?.55:1);x.lineTo(Math.cos(a)*r,Math.sin(a)*r)}x.closePath();x.fill();
+ x.strokeStyle='rgba(200,230,140,.45)';x.lineWidth=3;for(let k=0;k<5;k++){const a=-Math.PI/2+k*Math.PI*2/5;x.beginPath();x.moveTo(0,0);x.lineTo(Math.cos(a)*90,Math.sin(a)*90);x.stroke()}return c}
+/* a tube along a path, with a radius at every point: the drinking horn and the jug's handle */
+function gSweep(path,rad,sg=14){const g=geo(),n=path.length,rings=[];for(let i=0;i<n;i++){const a=path[Math.max(0,i-1)],b=path[Math.min(n-1,i+1)],t=v3.norm(v3.sub(b,a)),up=Math.abs(t[1])>.9?[1,0,0]:[0,1,0],u=v3.norm(v3.cross(t,up)),w=v3.cross(u,t),r=rad(i/(n-1)),ring=[];
+  for(let j=0;j<=sg;j++){const ang=j/sg*Math.PI*2,nv=v3.add(v3.mul(u,Math.cos(ang)),v3.mul(w,Math.sin(ang)));ring.push(gv(g,path[i][0]+nv[0]*r,path[i][1]+nv[1]*r,path[i][2]+nv[2]*r,nv[0],nv[1],nv[2],j/sg,i/(n-1)))}rings.push(ring)}
+ for(let i=0;i<n-1;i++)for(let j=0;j<sg;j++){const A=rings[i],B=rings[i+1];g.i.push(A[j],B[j],B[j+1],A[j],B[j+1],A[j+1])}return g}
