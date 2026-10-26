@@ -222,7 +222,7 @@ function g3Part(pt,M,dim,glow,al,sh,uv){const gl=G3D.gl,u=G3D.P.u,m=pt.mat;gl.un
  gl.bindTexture(gl.TEXTURE_2D,m.t||G3D.white);if(m.two)gl.disable(gl.CULL_FACE);g3Bind(pt.mesh);gl.drawElements(gl.TRIANGLES,pt.mesh.n,pt.mesh.it,0);if(m.two)gl.enable(gl.CULL_FACE)}
 function g3Draw(sc,now){const gl=G3D.gl,cv=G3D.cv,C=g3Cam(sc),L=sc.light;sc.camNow=C;G3D.bound=null;
  for(const o of sc.objs.values())o.M=m4.trs(o.lift?v3.add(o.p,[0,o.lift,0]):o.p,o.q,o.s);
- const sm=G3D.sm&&sc.shadow!==false?G3D.sm:null;let LVP=G3_LID||(G3_LID=m4.id());
+ const q=typeof gqLevel==='function'?gqLevel():'high',sm=G3D.sm&&sc.shadow!==false&&q!=='low'?G3D.sm:null;let LVP=G3_LID||(G3_LID=m4.id());
  if(sm){const c=sc.shC,R=sc.shR,e=v3.add(c,v3.mul(L.d,R*3));LVP=m4.mul(m4.ortho(-R,R,-R,R,R*.5,R*6),m4.look(e,c,Math.abs(L.d[1])>.99?[0,0,-1]:[0,1,0]));
   gl.bindFramebuffer(gl.FRAMEBUFFER,sm.fb);gl.viewport(0,0,sm.S,sm.S);gl.clearColor(1,1,1,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.disable(gl.BLEND);gl.enable(gl.CULL_FACE);gl.cullFace(gl.FRONT);const Q=G3D.Q;gl.useProgram(Q.p);gl.uniformMatrix4fv(Q.u.uL,false,LVP);
@@ -236,7 +236,7 @@ function g3Draw(sc,now){const gl=G3D.gl,cv=G3D.cv,C=g3Cam(sc),L=sc.light;sc.camN
  gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,sm?sm.t:G3D.white);gl.uniform1i(u.uSh,1);gl.uniform1f(u.uSS,sm?1/sm.S:0);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(u.uT,0);
  gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.disable(gl.BLEND);gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);
  for(const s of sc.statics){if(s.late)continue;for(const pt of s.parts)g3Part(pt,s.M,1,null,1,!!sm&&s.recv!==false)}
- if(sc.refl){const R=sc.refl,Mi=m4.id(),me=[C.eye[0],2*R.y-C.eye[1],C.eye[2]];Mi[5]=-1;Mi[13]=2*R.y;
+ if(sc.refl&&q==='high'){const R=sc.refl,Mi=m4.id(),me=[C.eye[0],2*R.y-C.eye[1],C.eye[2]];Mi[5]=-1;Mi[13]=2*R.y;
   gl.uniform3fv(u.uEye,me);gl.uniform3f(u.uLd,L.d[0],-L.d[1],L.d[2]);gl.uniform4f(u.uRf,R.k,R.y,R.fade||1.2,0);gl.uniform4fv(u.uRc,R.rect);gl.uniform3fv(u.uRe,C.eye);
   gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.cullFace(gl.FRONT);
   const rl=[...sc.objs.values()].filter(o=>o.a>.5&&o.refl&&o.p[1]>=R.y-.02&&o.p[0]>R.rect[0]-.6&&o.p[0]<R.rect[2]+.6&&o.p[2]>R.rect[1]-.6&&o.p[2]<R.rect[3]+.6).sort((a,b)=>v3.len(v3.sub(b.p,me))-v3.len(v3.sub(a.p,me)));
@@ -269,10 +269,12 @@ function g3Labels(sc){g3Hug(sc);const C=sc.camNow,cv=G3D.cv,root=cv&&cv.parentNo
  for(const[sel,p]of sc.anchors){const el=root.querySelector(sel);if(!el)continue;const r=m4.xf(C.VP,p);if(r[3]<=0)continue;const w=el.offsetWidth/2+6,h=el.offsetHeight/2+6;
   el.style.left=clamp((r[0]*.5+.5)*W,w,W-w).toFixed(1)+'px';el.style.top=clamp((.5-r[1]*.5)*H,h,H-h).toFixed(1)+'px'}}
 function g3Need(){if(!G3D.raf&&G3D.ok)G3D.raf=requestAnimationFrame(g3Frame)}
-function g3Frame(now){G3D.raf=0;const sc=G3D.sc,cv=G3D.cv;if(!sc||!cv||!cv.isConnected||!G3D.ok)return;const busy=g3Tick(sc,now);g3Size();sc.camBusy=false;
+function g3Pace(now){const L=G3D.lastF;G3D.lastF=now;if(!L||now-L>250)return;(G3D.ft||(G3D.ft=[])).push(now-L);if(G3D.ft.length<50)return;const a=G3D.ft.sort((x,y)=>x-y)[25];G3D.ft=[];
+ if(a<36||typeof gqSet!=='function'||gqSet()!=='auto')return;const cur=gqLevel(),nx=cur==='high'?'mid':cur==='mid'?'low':null;if(!nx)return;store.set('gqa',nx);if(typeof toast==='function')toast('გრაფიკა შემსუბუქდა, რომ თამაში შეუფერხებლად იმუშაოს')}
+function g3Frame(now){G3D.raf=0;const sc=G3D.sc,cv=G3D.cv;if(!sc||!cv||!cv.isConnected||!G3D.ok)return;g3Pace(now);const busy=g3Tick(sc,now);g3Size();sc.camBusy=false;
  try{g3Draw(sc,now);g3Labels(sc)}catch(e){try{console.warn('3D draw',e)}catch(x){}return}
  if(busy||sc.camBusy)g3Need();else if(!RM()&&sc.marks.some(m=>m.pulse)){clearTimeout(G3D.slow);G3D.slow=setTimeout(g3Need,80)}}
-function g3Size(){const cv=G3D.cv,el=cv.parentNode;if(!el)return;const r=el.getBoundingClientRect(),d=Math.min(window.devicePixelRatio||1,2),w=Math.max(2,Math.round(r.width*d)),h=Math.max(2,Math.round(r.height*d));
+function g3Size(){const cv=G3D.cv,el=cv.parentNode;if(!el)return;const q=typeof gqLevel==='function'?gqLevel():'high',r=el.getBoundingClientRect(),d=Math.min(window.devicePixelRatio||1,q==='low'?1:q==='mid'?1.5:2),w=Math.max(2,Math.round(r.width*d)),h=Math.max(2,Math.round(r.height*d));
  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}G3D.asp=w/h}
 /* put the canvas into a board on screen and draw at once, so there is no empty frame */
 function g3Mount(el,sc){if(!g3Init())return false;const cv=G3D.cv;if(cv.parentNode!==el)el.prepend(cv);G3D.sc=sc;

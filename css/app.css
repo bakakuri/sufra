@@ -2080,3 +2080,6 @@ html.zoomed .pmw{max-height:none}html.zoomed .pmmedia{max-height:calc(68dvh / va
 .gx .jt .card:not(.jk)::after,.gx .hand .card:not(.jk)::after{content:attr(data-s);position:absolute;right:6px;bottom:4px;font-size:30px;opacity:.9}
 .gx .hand .card{margin-left:-20px}.gx .hand .card:first-child{margin-left:0}
 .gx .jt .card.jk,.gx .hand .card.jk{align-items:center;justify-content:center;font-size:11px}
+.gmenu button .gmv{flex:none;font-size:13px;font-weight:600;color:var(--muted)}
+.gmenu button[aria-pressed="true"]>svg{color:var(--vine)}
+.gmenu button small.muted{font-weight:500;font-size:12.5px}

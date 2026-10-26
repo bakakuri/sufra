@@ -144,7 +144,7 @@ header.top{display:flex;align-items:center;gap:4px;padding:8px 8px 8px 16px;back
 .pimg{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:16px;max-width:100%}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chips span{padding:4px 10px;border-radius:999px;background:var(--sunk);font-size:12px}
-#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:80;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;box-shadow:var(--shadow);max-width:calc(100% - 32px);animation:up .2s ease}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:80;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;box-shadow:var(--shadow);max-width:calc(100% - 32px);animation:up .2s ease;pointer-events:none}
 .sv{position:fixed;inset:0;z-index:60;background:var(--clip-bg);color:var(--clip-ink);display:flex;justify-content:center}
 .sv-in{position:relative;width:100%;max-width:560px;height:100%;overflow:hidden}
 .sv-in>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}

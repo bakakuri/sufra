@@ -67,7 +67,8 @@ const CK=GAME.shashi={title:'შაში',
   if(this.ctx.mode==='online')netSend();if(this.over){finish(this,this.over);return}this.render();this.kick()},
  resign(){this.over=-this.ctx.side;this.why='resign';this.sel=null;if(this.ctx.mode==='online')netSend();finish(this,this.over)},
  kick(){const c=this.ctx;if(this.over)return;if(!(c.mode==='watch'||((c.mode==='bot'||c.mode==='tour')&&this.turn!==c.side)))return;const b0=this.b;
-  setTimeout(()=>{if(this.ctx!==c||this.b!==b0||this.over)return;const m=ckBot(this.b,this.turn);if(m)this.play(m)},c.mode==='watch'?1000:650)},
+  const lv=c.mode==='watch'?2:bLvl('shashi'),t0=Date.now(),side=this.turn,ok=()=>this.ctx===c&&this.b===b0&&!this.over;
+  botThink({g:'shashi',b:b0,side,lvl:lv,budget:BUDGET[lv]}).then(m=>{if(!ok())return;const L=ckAll(b0,side),mm=(m&&L.find(x=>JSON.stringify(x.path)===JSON.stringify(m.path)))||ckBot(b0,side);setTimeout(()=>{if(ok()&&mm)this.play(mm)},Math.max(0,(c.mode==='watch'?1000:650)-(Date.now()-t0)))})},
  checkEnd(){if(this.over)finish(this,this.over)}};
 A.ck=t=>{const G=CK;if(!G.mine())return;const r=+t.dataset.r,c=+t.dataset.c,me=G.ctx.side;
  if(G.sel){const ms=G.moves.filter(m=>m.path[0][0]===G.sel[0]&&m.path[0][1]===G.sel[1]&&m.path[m.path.length-1][0]===r&&m.path[m.path.length-1][1]===c).sort((a,b)=>b.caps.length-a.caps.length);if(ms.length){G.play(ms[0]);return}}
@@ -106,7 +107,8 @@ function nEval(T,s){const o=-s,pip=x=>{let n=T.bar[x]*25;for(let i=0;i<24;i++)if
   if(v===1){let shots=0;for(let j=0;j<24;j++){if(T.p[j]*o<=0)continue;const dd=o===1?j-i:i-j;if(dd>0&&dd<=12)shots+=dd<=6?2:1}
    if(T.bar[o]){const dd=o===1?24-i:i+1;if(dd>0&&dd<=12)shots+=dd<=6?2:1}const risk=Math.min(1,shots/8);sc-=risk*(2+(25-nDist(s,i))*.35)}}
  return sc}
-function nBest(T,s,dice){let best=null,bv=-1e9;for(const x of nSeqs(T,s,dice)){const v=nEval(x.t,s)+Math.random()*.6;if(v>bv){bv=v;best=x.seq}}return best||[]}
+function nBest(T,s,dice,lvl=2){const xs=nSeqs(T,s,dice);if(!xs.length)return[];if(lvl===1&&Math.random()<.5)return xs[Math.floor(Math.random()*xs.length)].seq;
+ const nz=[0,6,.6,.15,0][lvl];let best=null,bv=-1e9;for(const x of xs){const v=(lvl>=4?nEval4(x.t,s):nEval(x.t,s))+Math.random()*nz;if(v>bv){bv=v;best=x.seq}}return best||[]}
 /* a win counts double (მარსი) if the loser bore off nothing, triple (კოქსი) if a loser's checker is still on the bar or in the winner's home */
 function nMult(T,w){const l=-w;if(T.off[l])return 1;if(T.bar[l])return 3;for(let i=0;i<24;i++)if(T.p[i]*l>0&&(w===1?i<=5:i>=18))return 3;return 2}
 const MULT={2:'მარსი, ორმაგი მოგება',3:'კოქსი, სამმაგი მოგება'};
@@ -132,7 +134,7 @@ const NR=GAME.nardi={title:'ნარდი',
  resign(){this.over=-this.ctx.side;this.why='resign';this.mult=1;this.sel=null;if(this.ctx.mode==='online')netSend();finish(this,this.over)},
  kick(){const c=this.ctx;if(this.over)return;if(!(c.mode==='watch'||((c.mode==='bot'||c.mode==='tour')&&this.turn!==c.side)))return;const s=this.turn,fast=c.mode==='watch',tk=this.tk=(this.tk||0)+1;
   const live=()=>this.ctx===c&&!this.over&&this.turn===s&&this.tk===tk;
-  const play=()=>{if(!live())return;const seq=nBest(this,s,this.dice);if(!seq.length){this.render();setTimeout(()=>{if(live())this.endTurn()},1200);return}
+  const play=()=>{if(!live())return;const seq=nBest(this,s,this.dice,fast?2:bLvl('nardi'));if(!seq.length){this.render();setTimeout(()=>{if(live())this.endTurn()},1200);return}
    let i=0;const step=()=>{if(!live())return;if(i>=seq.length){this.endTurn();return}const m=seq[i++];this.move(s,m.f,m.to,m.d);if(this.over){finish(this,this.over);return}this.render();setTimeout(step,fast?650:600)};setTimeout(step,750)};
   if(this.rolled)setTimeout(play,fast?1000:900);else setTimeout(()=>{if(!live()||this.rolled)return;this.roll();this.render();play()},fast?900:700)},
  checkEnd(){if(this.over)finish(this,this.over)},
@@ -212,8 +214,14 @@ function chSan(ps,st){const[f,t]=st.last,p=ps.b[f];if(!p)return '';const k=p.toL
  return s+(chAttacked(st.b,chKing(st.b,st.turn),-st.turn)?(chLegal(st,st.turn).length?'+':'#'):'')}
 function chTaken(b,col){const n={p:0,n:0,b:0,r:0,q:0};for(const p of b)if(p&&colOf(p)===col&&n[p.toLowerCase()]!=null)n[p.toLowerCase()]++;const out=[];for(const t of'qrbnp')for(let k=n[t];k<CH_ALL[t];k++)out.push(t);return out}
 const PST=[0,1,2,3,3,2,1,0];
-function chEval(b){let s=0;for(let i=0;i<64;i++){const p=b[i];if(!p)continue;const t=p.toLowerCase(),w=isW(p)?1:-1,r=i>>3,c=i&7;let v=CPV[t];
- if(t==='n'||t==='b')v+=(PST[r]+PST[c])*4;else if(t==='p')v+=(w===1?6-r:r-1)*8+(c>1&&c<6?4:0);else if(t==='k')v+=(w===1?r===7:r===0)?12:0;s+=w*v}return s}
+/* where each piece likes to stand (white's view, rank 8 first): centre pawns forward, knights and bishops out and central, the king tucked away */
+const PSTS={p:[0,0,0,0,0,0,0,0,50,50,50,50,50,50,50,50,10,10,20,30,30,20,10,10,5,5,10,25,25,10,5,5,0,0,0,20,20,0,0,0,5,-5,-10,0,0,-10,-5,5,5,10,10,-20,-20,10,10,5,0,0,0,0,0,0,0,0],
+ n:[-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,0,0,0,-20,-40,-30,0,10,15,15,10,0,-30,-30,5,15,20,20,15,5,-30,-30,0,15,20,20,15,0,-30,-30,5,10,15,15,10,5,-30,-40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50],
+ b:[-20,-10,-10,-10,-10,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,10,10,5,0,-10,-10,5,5,10,10,5,5,-10,-10,0,10,10,10,10,0,-10,-10,10,10,10,10,10,10,-10,-10,5,0,0,0,0,5,-10,-20,-10,-10,-10,-10,-10,-10,-20],
+ r:[0,0,0,0,0,0,0,0,5,10,10,10,10,10,10,5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,0,0,0,5,5,0,0,0],
+ q:[-20,-10,-10,-5,-5,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,5,5,5,0,-10,-5,0,5,5,5,5,0,-5,0,0,5,5,5,5,0,-5,-10,5,5,5,5,5,0,-10,-10,0,5,0,0,0,0,-10,-20,-10,-10,-5,-5,-10,-10,-20],
+ k:[-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-20,-30,-30,-40,-40,-30,-30,-20,-10,-20,-20,-20,-20,-20,-20,-10,20,20,0,0,0,0,20,20,20,30,10,0,0,10,30,20]};
+function chEval(b){let s=0;for(let i=0;i<64;i++){const p=b[i];if(!p)continue;const t=p.toLowerCase(),w=isW(p)?1:-1;s+=w*(CPV[t]+PSTS[t][w===1?i:(7-(i>>3))*8+(i&7)])}return s}
 function chSearch(st,depth,al,be){if(chKing(st.b,1)<0)return -1e5;if(chKing(st.b,-1)<0)return 1e5;if(!depth)return chEval(st.b);
  const side=st.turn,ms=chPseudo(st,side);if(!ms.length)return chEval(st.b);const val=m=>st.b[m.t]?CPV[st.b[m.t].toLowerCase()]||1e4:0;ms.sort((a,b)=>val(b)-val(a));
  let best=side===1?-1e9:1e9;for(const m of ms){const v=chSearch(chApply(st,m),depth-1,al,be);if(side===1){if(v>best)best=v;if(v>al)al=v}else{if(v<best)best=v;if(v<be)be=v}if(be<=al)break}return best}
@@ -250,7 +258,8 @@ const CH=GAME.chess={title:'ჭადრაკი',
   if(this.ctx.mode==='online')netSend();if(n.over){finish(this,n.over);return}this.render();this.kick()},
  resign(){const st=this.st;st.over=-this.ctx.side;st.why='resign';this.sel=null;this.moves=[];if(this.ctx.mode==='online')netSend();finish(this,st.over)},
  kick(){const c=this.ctx;if(this.st.over)return;if(!(c.mode==='watch'||((c.mode==='bot'||c.mode==='tour')&&this.st.turn!==c.side)))return;const s0=this.st;
-  setTimeout(()=>{if(this.ctx!==c||this.st!==s0||s0.over)return;const m=chBot(s0);if(m)this.play(m)},c.mode==='watch'?1100:400)},
+  const lv=c.mode==='watch'?2:bLvl('chess'),t0=Date.now(),ok=()=>this.ctx===c&&this.st===s0&&!s0.over;
+  botThink({g:'chess',st:s0,lvl:lv,budget:BUDGET[lv]}).then(m=>{if(!ok())return;const mm=(m&&chLegal(s0,s0.turn).find(x=>x.f===m.f&&x.t===m.t&&!!x.pr===!!m.pr))||chBot(s0);setTimeout(()=>{if(ok()&&mm)this.play(mm)},Math.max(0,(c.mode==='watch'?1100:400)-(Date.now()-t0)))})},
  checkEnd(){if(this.st.over)finish(this,this.st.over)}};
 A.chm=t=>{const G=CH;if(!G.mine())return;const i=+t.dataset.i;
  if(G.sel!==null){const m=G.moves.find(m=>m.f===G.sel&&m.t===i);if(m){if(m.pr){G.pend=m;const cl=G.ctx.side===1?'pw':'pb';
@@ -302,8 +311,13 @@ const jBidCols=n=>n+1<=8?n+1:Math.ceil((n+1)/2);
 const JK=GAME.joker={title:'ჯოკერი',
  start(){this.tk=(this.tk||0)+1;this.phase='setup';this.ids=['me',{n:JK_BOTS[0],h:20},{n:JK_BOTS[1],h:200},{n:JK_BOTS[2],h:120}]},
  nm(p){return p===0?ME.name:JK_BOTS[p-1]},
+ save(){if(!['trump','bid','play','handover'].includes(this.phase)||!this.hands)return null;return{len:this.len,h:this.h,score:this.score,hist:this.hist,dealer:this.dealer,n:this.n,hands:this.hands,first3:this.first3,bids:this.bids,taken:this.taken,trick:this.trick,trump:this.trump,trumpCard:this.trumpCard,phase:this.phase,cur:this.cur,win:this.win,gone:[...(this.gone||[])]}},
+ restore(s){if(!s||!JSEQ[s.len]||!Array.isArray(s.hands))throw 0;Object.assign(this,{len:s.len,h:s.h,score:s.score,hist:s.hist||[],dealer:s.dealer,n:s.n,hands:s.hands,first3:s.first3,bids:s.bids,taken:s.taken,trick:s.trick||[],trump:s.trump,trumpCard:s.trumpCard,phase:s.phase,cur:s.cur,win:s.win,gone:new Set(s.gone||[])});
+  if(this.phase==='handover')this.later(()=>{if(this.phase==='handover')this.newHand()},1800);
+  else if(this.phase==='play'&&(this.win!=null||this.cur<0)){const w=this.win??0;this.trick=[];this.win=null;if(!this.hands[0].length){this.endHand();return}this.cur=w}
+  setTimeout(()=>{if(S.game==='joker')this.step()},500)},
  begin(len){this.len=len;this.h=0;this.score=[0,0,0,0];this.hist=[];this.dealer=Math.floor(Math.random()*4);this.newHand()},
- newHand(){const n=JSEQ[this.len][this.h];this.n=n;this.dealer=(this.dealer+1)%4;const d=shuffle(jDeck());
+ newHand(){const n=JSEQ[this.len][this.h];this.n=n;this.gone=new Set();this.dealer=(this.dealer+1)%4;const d=shuffle(jDeck());
   this.first3=[0,1,2,3].map(i=>d.slice(i*n,i*n+3));this.hands=[0,1,2,3].map(i=>sortHand(d.slice(i*n,(i+1)*n)));
   this.bids=[null,null,null,null];this.taken=[0,0,0,0];this.trick=[];this.win=null;this.cur=(this.dealer+1)%4;
   if(n<9){const tc=d[4*n];this.trumpCard=tc;this.trump=tc.j?null:tc.s;this.phase='bid'}else{this.trumpCard=null;this.trump=null;this.phase='trump'}
@@ -323,7 +337,7 @@ const JK=GAME.joker={title:'ჯოკერი',
  winner(t){t=t||this.trick;const lead=t[0],suit=lead.card.j?lead.js:lead.card.s,trumped=!!this.trump&&t.some(e=>!e.card.j&&e.card.s===this.trump);let best=0,bv=-Infinity;
   t.forEach((e,i)=>{let v;if(e.card.j)v=e.jm==='hi'?(i===0&&trumped&&lead.js!==this.trump?99:1000+i):-1;else if(this.trump&&e.card.s===this.trump)v=100+e.card.r;else if(e.card.s===suit)v=e.card.r;else v=0;if(v>bv){bv=v;best=i}});
   return bv<=0?t[0].p:t[best].p},
- playCard(p,c,jm,js){const h=this.hands[p];h.splice(h.indexOf(c),1);const lead=!this.trick.length;
+ playCard(p,c,jm,js){const h=this.hands[p];h.splice(h.indexOf(c),1);const lead=!this.trick.length;if(this.gone&&!c.j)this.gone.add(c.s+c.r);
   this.trick.push({p,card:c,jm:c.j?(jm||'hi'):null,js:c.j&&lead?(js||SUITS[Math.floor(Math.random()*4)]):null});
   if(this.trick.length<4){this.cur=(p+1)%4;this.render();this.step();return}
   const w=this.winner();this.taken[w]++;this.cur=-1;this.win=w;this.render();
@@ -334,9 +348,18 @@ const JK=GAME.joker={title:'ჯოკერი',
   if(this.h>=JSEQ[this.len].length){this.phase='over';const win=this.score[0]===Math.max(...this.score);gameResult('joker',win)}else{this.phase='handover';this.later(()=>{if(this.phase==='handover')this.newHand()},3800)}this.render()},
  val(c){return c.j?60:(this.trump&&c.s===this.trump?20+c.r:c.r)},
  botTrump(p){const sc={};for(const c of this.first3[p])if(!c.j)sc[c.s]=(sc[c.s]||0)+c.r;const best=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];return best&&best[1]>=11?best[0]:null},
- botBid(p){const hand=this.hands[p],n=hand.length;let e=0;for(const c of hand){if(c.j)e+=1;else if(this.trump&&c.s===this.trump)e+=c.r>=13?.9:c.r>=11?.55:.3;else e+=c.r===14?.7:c.r===13?.3:0}
+ botBid(p){const hand=this.hands[p],n=hand.length,lv=this===JK?bLvl('joker'):3;let e=0;
+  if(lv>=3){const len=s=>hand.filter(c=>!c.j&&c.s===s).length,tr=this.trump,nt=tr?len(tr):0;
+   for(const c of hand){if(c.j)e+=1;else if(tr&&c.s===tr)e+=c.r===14?.95:c.r===13?.8:c.r===12?.55:c.r===11?.4:.25;else{const L=len(c.s);e+=c.r===14?(L<=3?.8:.6):c.r===13?(L>=2&&L<=4?.4:.2):0}}
+   if(tr&&nt>=4)e+=(nt-3)*.3;if(tr&&nt)for(const s of SUITS)if(s!==tr&&!len(s))e+=Math.min(nt,2)*.3}
+  else for(const c of hand){if(c.j)e+=1;else if(this.trump&&c.s===this.trump)e+=c.r>=13?.9:c.r>=11?.55:.3;else e+=c.r===14?.7:c.r===13?.3:0}
+  if(lv===1)e+=Math.random()*2.4-1.2;
   let b=Math.max(0,Math.min(n,Math.round(e)));if(b===this.forbidden(p))b=b>0?b-1:b+1;return Math.min(n,b)},
- botPlay(p){const L=this.legal(p),need=this.bids[p]-this.taken[p],t=this.trick,nj=L.filter(c=>!c.j),jk=L.find(c=>c.j);
+ botPlay(p){const L=this.legal(p),need=this.bids[p]-this.taken[p],t=this.trick,nj=L.filter(c=>!c.j),jk=L.find(c=>c.j),lv=this===JK?bLvl('joker'):3;
+  if(lv===1&&Math.random()<.45){const c=L[Math.floor(Math.random()*L.length)];return c.j?{c,jm:Math.random()<.5?'hi':'lo',js:this.trump||SUITS[Math.floor(Math.random()*4)]}:{c}}
+  /* the top level leads a card nobody can beat any more: every higher card of its suit is already played or in its own hand */
+  if(lv>=4&&!t.length&&this.gone){const hand=this.hands[p],sure=c=>!c.j&&(!this.trump||c.s===this.trump||this.gone.size>=20)&&[...Array(14-c.r)].every((_,k)=>{const r=c.r+1+k;return this.gone.has(c.s+r)||hand.some(h=>!h.j&&h.s===c.s&&h.r===r)});
+   const ss=nj.filter(sure);if(need>0&&ss.length)return{c:ss.sort((a,b)=>this.val(b)-this.val(a))[0]};if(need<=0){const safe=nj.filter(c=>!sure(c));if(safe.length)return{c:safe.sort((a,b)=>this.val(a)-this.val(b))[0]}}}
   const wins=c=>this.winner([...t,{p,card:c,jm:null,js:null}])===p,byV=(a,b)=>this.val(a)-this.val(b);
   if(!t.length){if(need>0){const top=nj.slice().sort(byV).pop();if(top&&(top.r===14||(this.trump&&top.s===this.trump&&top.r>=13)))return{c:top};if(jk)return{c:jk,jm:'hi',js:this.trump||SUITS[Math.floor(Math.random()*4)]};return{c:top||L[0]}}
    const low=nj.slice().sort(byV)[0];return low?{c:low}:{c:L[0],jm:'lo',js:this.trump||'h'}}
@@ -365,7 +388,7 @@ const JK=GAME.joker={title:'ჯოკერი',
   const stage=`<div class="jt${g3?' g3jt':''}">${seat(2,'top')}${seat(1,'left')}${seat(3,'right')}<div class="trick" aria-label="მაგიდა">${tr}</div>${g3?`<div class="g3 g3-joker${G3W.ready?'':' loading'}">${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div>`:''}</div>`;
   let res='';if(this.phase==='over'){const mx=Math.max(...this.score),win=this.score[0]===mx,pl=[0,1,2,3].sort((a,b)=>this.score[b]-this.score[a]);
    res=gResBox(this,{title:win?'მოიგე!':'თამაში დასრულდა',sub:win?'ყველაზე მეტი ქულა შენ დააგროვე':'გაიმარჯვა: '+esc(this.nm(pl[0])),kind:win?'win':'lose',more:`<div class="gendt">${pl.map(p=>`<span><b>${esc(this.nm(p))}</b>${this.score[p]}</span>`).join('')}</div>`,again:'<button class="btn gold" data-a="jagain">ახალი თამაში</button>'})}
-  view.innerHTML=gShell('joker',{stage,mid:stage,top:top+info+jMiniHTML(this.hist,this.score,[0,1,2,3].map(p=>this.nm(p)),this.phase==='handover','jsheet'),bot:`<div class="pl me${mine?' turn':''}"><span class="plav">${av('me',34)}</span><span class="pln"><b>${esc(ME.name)}</b><span class="muted jme">${pips(0)}<span>${this.score[0]} ქულა</span></span></span></div>
+  gSaveLater(this);view.innerHTML=gShell('joker',{stage,mid:stage,top:top+info+jMiniHTML(this.hist,this.score,[0,1,2,3].map(p=>this.nm(p)),this.phase==='handover','jsheet'),bot:`<div class="pl me${mine?' turn':''}"><span class="plav">${av('me',34)}</span><span class="pln"><b>${esc(ME.name)}</b><span class="muted jme">${pips(0)}<span>${this.score[0]} ქულა</span></span></span></div>
    <div class="hand${g3?' g3sr':''}" aria-label="შენი კარტები">${hand}</div><div class="status${mine?' mine':''}" role="status">${st}</div>${panel}`,res});
   g3After('joker')}};
 const JK_RULES='ფერი უნდა აჰყვე. თუ ფერი არ გაქვს, კოზირი უნდა დადო. ჯოკერი ნებისმიერ დროს შეგიძლია დადო: „მაღალი“ წაიღებს ხელს, „დაბალი“ არ წაიღებს. მოგვიანებით დადებული მაღალი ჯოკერი უფრო ძლიერია. ჯოკერით დაწყებისას ითხოვ ფერს: „მაღალი“ ნიშნავს, რომ ყველამ ამ ფრის უმაღლესი კარტი უნდა დადოს და ხელი შენია, თუმცა თუ ფერი კოზირი არ არის და ვინმემ კოზირი დადო, უმაღლესი კოზირი წაიღებს. „დაბალი“ ნიშნავს, რომ ამ ფრის უმაღლესი კარტი წაიღებს. ქულები: ზუსტად ნათქვამი 50 თითო ხელზე და 50 ბონუსი, ყველა ხელის წაღება 100 თითოზე, პასი და ნული 50. მეტის ან ნაკლების წაღებისას 10 თითოზე. თუ თქვი და ვერცერთი ვერ წაიღე, ხიშტი: −200, ცხრიან სექციებში −500. ვინც სექციის ყველა ხელში ზუსტად ნათქვამს წაიღებს, პრემიას იღებს: მისი საუკეთესო ხელი ორმაგდება, დანარჩენებს კი საუკეთესო ხელი ეშლებათ.';
@@ -404,3 +427,44 @@ A.jsheet=()=>jSheetOpen(JK.hist,JK.score||[0,0,0,0],[0,1,2,3].map(p=>JK.nm(p)));
  JK.render=function(){r.call(this);if(S.tab!=='games'||S.game!=='joker'||g3On()){this.dealAnim=0;this.newCard=null;return}if(this.dealAnim)gSnd('deal');if(this.newCard!=null)gSnd('card');
   if(this.dealAnim){this.dealAnim=0;$$('.hand .card',view).forEach((el,i)=>anim(el,[{translate:'0 -70px',opacity:0},{translate:'0 0',opacity:1}],{duration:420,delay:i*55,easing:SPRING,fill:'backwards'}))}
   if(this.newCard!=null){const p=this.newCard;this.newCard=null;const el=$(`.trick .card.p${p}`,view);anim(el,[{translate:V[p],opacity:0},{translate:'0 0',opacity:1}],{duration:380,easing:EASE})}}}
+
+/* ---------- how well the computer plays: four levels per game, chosen in the game menu ----------
+   chess and checkers think in a background worker, so the board keeps moving while the bot searches */
+const BLV=[null,{n:'ახალბედა',d:'ხშირად ცდება, კარგია სწავლისთვის'},{n:'მოყვარული',d:'საშუალო სირთულე, მშვიდი პარტიისთვის'},{n:'გამოცდილი',d:'უფრო შორს ითვლის და იშვიათად ცდება'},{n:'ოსტატი',d:'ყველაზე ძლიერი, დრო სჭირდება საფიქრად'}];
+const bLvl=g=>{const v=(store.get('blv',{})||{})[g];return v>=1&&v<=4?v:2};
+/* chess: negamax with alpha-beta, captures searched to quiet positions, moves ordered by what they take, deeper each round until time runs out */
+function chOrder(ms,st,first){const val=m=>(st.b[m.t]?10*(CPV[st.b[m.t].toLowerCase()]||1e4)-(CPV[st.b[m.f].toLowerCase()]||0):0)+(m.pr?800:0)+(first&&m.f===first.f&&m.t===first.t?1e7:0);ms.sort((a,b)=>val(b)-val(a));return ms}
+function chQS(st,al,be,d,T){const side=st.turn;if(chKing(st.b,side)<0)return -1e5;const sp=side*chEval(st.b);if(d<=0||sp>=be)return sp;if(sp>al)al=sp;
+ for(const m of chOrder(chPseudo(st,side).filter(m=>st.b[m.t]||m.ep||m.pr),st)){const v=-chQS(chApply(st,m),-be,-al,d-1,T);if(v>=be)return v;if(v>al)al=v}return al}
+function chNega(st,depth,al,be,ply,T){if((T.n++&1023)===0&&Date.now()>T.end)T.stop=true;const side=st.turn;if(chKing(st.b,side)<0)return -1e5+ply;if(depth<=0)return T.qs?chQS(st,al,be,4,T):side*chEval(st.b);
+ const ms=chOrder(chPseudo(st,side),st);if(!ms.length)return 0;let best=-1e9;
+ for(const m of ms){const v=-chNega(chApply(st,m),depth-1,-be,-al,ply+1,T);if(T.stop)return best>-1e9?best:v;if(v>best)best=v;if(v>al)al=v;if(al>=be)break}return best}
+function chThinkSync(st,lvl,budget){const L=chLegal(st,st.turn);if(!L.length)return null;if(lvl===1&&Math.random()<.25)return L[Math.floor(Math.random()*L.length)];
+ const T={n:0,end:Date.now()+budget,stop:false,qs:lvl>=3},maxD=[0,1,3,4,6][lvl],noise=[0,150,14,8,5][lvl];let bestM=L[0];
+ for(let d=1;d<=maxD;d++){let bv=-1e9,bm=null,al=-1e9;for(const m of chOrder(L.slice(),st,bestM)){const raw=-chNega(chApply(st,m),d-1,-1e9,-(al-noise),1,T),v=raw+Math.random()*noise;if(T.stop)break;if(v>bv){bv=v;bm=m}if(raw>al)al=raw}
+  if(T.stop&&d>1)break;if(bm)bestM=bm}return bestM}
+/* checkers: the same search; a forced capture is played at once */
+function ckNega(b,side,depth,al,be,T){if((T.n++&1023)===0&&Date.now()>T.end)T.stop=true;const ms=ckAll(b,side);if(!ms.length)return -100;if(depth<=0)return side*ckEval(b);
+ let best=-1e9;for(const m of ms){const v=-ckNega(ckApply(b,m),-side,depth-1,-be,-al,T);if(T.stop)return best>-1e9?best:v;if(v>best)best=v;if(v>al)al=v;if(al>=be)break}return best}
+function ckThinkSync(b,side,lvl,budget){const L=ckAll(b,side);if(!L.length)return null;if(L.length===1)return L[0];if(lvl===1&&Math.random()<.25)return L[Math.floor(Math.random()*L.length)];
+ const T={n:0,end:Date.now()+budget,stop:false},maxD=[0,1,4,6,9][lvl],noise=[0,.6,.08,.03,0][lvl];let bestM=L[0];
+ for(let d=1;d<=maxD;d++){let bv=-1e9,bm=null,al=-1e9;for(const m of L){const raw=-ckNega(ckApply(b,m),-side,d-1,-1e9,-(al-noise),T),v=raw+Math.random()*noise;if(T.stop)break;if(v>bv){bv=v;bm=m}if(raw>al)al=raw}
+  if(T.stop&&d>1)break;if(bm)bestM=bm}return bestM}
+const BOTW={w:undefined,id:0,cb:new Map()};
+function botWorker(){if(BOTW.w!==undefined)return BOTW.w;BOTW.w=null;
+ try{if(typeof Worker!=='function')return null;const J=v=>JSON.stringify(v);
+  const src=[`const CPV=${J(CPV)},KN=${J(KN)},KG=${J(KG)},BD=${J(BD)},RD=${J(RD)},PST=${J(PST)},PSTS=${J(PSTS)},DIRS=${J(DIRS)};`,`const isW=${isW};const colOf=${colOf};const chKing=${chKing};const chLegal=${chLegal};const inB=${inB};`,
+   chAttacked,chPseudo,chApply,chEval,chOrder,chQS,chNega,chThinkSync,ckJumps,ckAll,ckApply,ckEval,ckNega,ckThinkSync].map(String).join('\n')
+   +`\nonmessage=e=>{const d=e.data;let m=null;try{m=d.g==='chess'?chThinkSync(d.st,d.lvl,d.budget):ckThinkSync(d.b,d.side,d.lvl,d.budget)}catch(x){}postMessage({id:d.id,m})}`;
+  const w=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));w.onmessage=e=>{const f=BOTW.cb.get(e.data.id);if(f){BOTW.cb.delete(e.data.id);f(e.data.m)}};w.onerror=()=>{BOTW.w=null};BOTW.w=w}catch(e){BOTW.w=null}return BOTW.w}
+function botThink(job){return new Promise(res=>{const w=botWorker(),sync=()=>{try{res(job.g==='chess'?chThinkSync(job.st,job.lvl,job.budget):ckThinkSync(job.b,job.side,job.lvl,job.budget))}catch(e){res(null)}};
+ if(!w){sync();return}const id=++BOTW.id;BOTW.cb.set(id,res);try{w.postMessage(Object.assign({id},job))}catch(e){BOTW.cb.delete(id);sync();return}setTimeout(()=>{if(BOTW.cb.has(id)){BOTW.cb.delete(id);sync()}},job.budget+5000)})}
+const BUDGET=[0,200,400,700,1600];
+/* nardi: the strongest level knows when the armies have passed each other and it is only a race home */
+function nEval4(T,s){const o=-s,pip=x=>{let n=T.bar[x]*25;for(let i=0;i<24;i++)if(T.p[i]*x>0)n+=Math.abs(T.p[i])*nDist(x,i);return n};
+ let mx=-1,mn=24;for(let i=0;i<24;i++){if(T.p[i]>0){mx=Math.max(mx,i);mn=Math.min(mn,i)}}let mxo=-1,mno=24;for(let i=0;i<24;i++)if(T.p[i]<0){mxo=Math.max(mxo,i);mno=Math.min(mno,i)}
+ const contact=T.bar[1]||T.bar[-1]||(mx>mno);if(!contact)return(pip(o)-pip(s))*1.6+(T.off[s]-T.off[o])*5;
+ let sc=nEval(T,s),home=0;for(let k=0;k<6;k++){const i=s===1?k:23-k;if(T.p[i]*s>=2)home++}return sc+home*home*.35}
+/* the menu row and its sheet */
+A.gbot=()=>{const id=gCur();if(!id)return;const lv=bLvl(id);sheet(head('ბოტის დონე')+`<div class="gmenu">${[1,2,3,4].map(v=>`<button data-a="gbotset" data-v="${v}"${v===lv?' aria-pressed="true"':''}>${ic(v===lv?'check':'user')}<span><b>${BLV[v].n}</b><br><small class="muted">${BLV[v].d}</small></span></button>`).join('')}</div>`,'short')};
+A.gbotset=t=>{const id=gCur();if(!id)return;const m=Object.assign({},store.get('blv',{})||{});m[id]=+t.dataset.v;store.set('blv',m);closeSheet();toast('ბოტის დონე: '+BLV[+t.dataset.v].n);const G=GAME[id];if(G&&G.render)G.render()};
