@@ -95,9 +95,10 @@ A.gplaceset=t=>{const g=gCur(),v=t.dataset.v;if(!GPDEF[g]||!gPlaceOpen(v))return
 
 /* ---------- two people, one phone ----------
    nardi, chess and checkers passed across the table: the board turns to whoever moves, and nothing counts toward ratings or coins */
-const gLocalPick=()=>sheet(head('ორნი ერთ ტელეფონზე')+`<div class="jchoice">${G2P.map(g=>`<button data-a="glocal" data-g="${g}">${GAMES.find(z=>z.id===g).n}</button>`).join('')}</div><p class="note">ტელეფონი მაგიდაზე დადეთ ან ერთმანეთს გადააწოდეთ: დაფა იმისკენ ბრუნდება, ვისი სვლაცაა.</p>`,'short');
+const G2L=[...G2P,'egg'];
+const gLocalPick=()=>sheet(head('ორნი ერთ ტელეფონზე')+`<div class="jchoice">${G2L.map(g=>`<button data-a="glocal" data-g="${g}">${GAMES.find(z=>z.id===g).n}</button>`).join('')}</div><p class="note">ტელეფონი მაგიდაზე დადეთ ან ერთმანეთს გადააწოდეთ: დაფა იმისკენ ბრუნდება, ვისი სვლაცაა.</p>`,'short');
 A.glocalpick=()=>gLocalPick();
-A.glocal=t=>{const g=t.dataset.g;if(!G2P.includes(g))return;closeSheet();gToTab();startGame(g,{mode:'local',side:1,names:{1:ME.name,'-1':'მეგობარი'},avs:{1:'me','-1':{n:'მ',h:160}},gk:g,tc:gTcOf(g)})};
+A.glocal=t=>{const g=t.dataset.g;if(!G2L.includes(g))return;closeSheet();gToTab();startGame(g,{mode:'local',side:1,names:{1:ME.name,'-1':'მეგობარი'},avs:{1:'me','-1':{n:'მ',h:160}},gk:g,tc:gTcOf(g)})};
 A.glocalagain=()=>{const G=GAME[S.game],c=G&&G.ctx;if(!c)return;closeSheet();G.resHide=0;G.resSnd=0;startGame(S.game,{mode:'local',side:1,names:{1:c.names[1],'-1':c.names[-1]},avs:{1:c.avs[1],'-1':c.avs[-1]},gk:c.gk,tc:gTcOf(S.game)})};
 /* whoever is to move sits at the bottom */
 for(const G of[CH,CK,NR]){const r=G.render;G.render=function(){const c=this.ctx;if(c&&c.mode==='local'){const t=this.turnSide&&this.turnSide();if(t)c.side=t}if(c&&c.clk&&!c.finished)clkTurn(this);r.call(this);if(typeof gCoach==='function')gCoach(this)}}
@@ -144,10 +145,13 @@ function gModesHTML(){const n=Object.keys(cState().done).length,nx=cNext(),dd=ty
  return `<section class="gs-modes"><h3 class="sec">სხვა რეჟიმები</h3><div class="gmodes">
   <button class="gmode" data-a="page" data-p="career"><span class="gmi">${ic('trophy')}</span><b>ეზოდან ჩემპიონატამდე</b><small>${nx?`${n}/${CAREER.length} · შემდეგი: ${esc(nx.who.n)}`:'ჩემპიონი ხარ 🏆'}</small></button>
   <button class="gmode" data-a="gdaily"><span class="gmi">${ic('cards')}</span><b>დღის ხელი</b><small>${dd&&dd.done?`დღეს: ${dd.score} ქულა`:'ჯოკერი · დღეს ყველას ერთი კარტი'}</small></button>
-  <button class="gmode" data-a="glocalpick"><span class="gmi">${ic('users')}</span><b>ორნი ერთ ტელეფონზე</b><small>ნარდი, ჭადრაკი, შაში</small></button>
+  <button class="gmode" data-a="glocalpick"><span class="gmi">${ic('users')}</span><b>ორნი ერთ ტელეფონზე</b><small>ნარდი, ჭადრაკი, შაში, კვერცხის ჭახუნი</small></button>
   <button class="gmode" data-a="glearnpick"><span class="gmi">${ic('school')}</span><b>სწავლა</b><small>პირველი პარტია მწვრთნელთან ერთად</small></button>
-  <button class="gmode wide" data-a="gtablepick"><span class="gmi">${ic('wine')}</span><b>მეგობრების მაგიდა</b><small>ჯოკერი ან დომინო ოთხ კაცზე, ხმოვანი საუბრით</small></button></div></section>`}
-A.gtablepick=()=>sheet(head('მეგობრების მაგიდა')+`<div class="jchoice"><button data-a="jkonew">${ic('cards')} ჯოკერი</button><button data-a="dmonew">${ic('domino')} დომინო</button></div><p class="note">მაგიდას შენ გაშლი და მეგობრებს მოიწვევ. ცარიელ ადგილებზე ბოტები ჩაჯდებიან, მაგიდასთან კი მიკროფონით შეგიძლიათ ისაუბროთ.</p>`,'short');
+  <button class="gmode" data-a="sprint"><span class="gmi">${ic('timer')}</span><b>ამოცანების სპრინტი</b><small>სამი წუთი${typeof SPR!=='undefined'&&SPR.best?` · რეკორდი ${SPR.best}`:', რამდენ მატს იპოვი'}</small></button>
+  <button class="gmode" data-a="page" data-p="corrs"><span class="gmi">${ic('msg')}</span><b>მიმოწერით</b><small>სვლა, როცა გცალია</small></button>
+  <button class="gmode" data-a="page" data-p="cups"><span class="gmi">${ic('crown')}</span><b>თასები და დუელები</b><small>თასი მეგობრებთან, ჯგუფი ჯგუფის წინააღმდეგ</small></button>
+  <button class="gmode" data-a="gtablepick"><span class="gmi">${ic('wine')}</span><b>მეგობრების მაგიდა</b><small>ჯოკერი, დომინო ან ლოტო, ხმოვანი საუბრით</small></button></div></section>`}
+A.gtablepick=()=>sheet(head('მეგობრების მაგიდა')+`<div class="jchoice"><button data-a="jkonew">${ic('cards')} ჯოკერი</button><button data-a="dmonew">${ic('domino')} დომინო</button><button data-a="lotnew">${ic('grid')} ლოტო</button></div><p class="note">მაგიდას შენ გაშლი და მეგობრებს მოიწვევ. ცარიელ ადგილებზე ბოტები ჩაჯდებიან, მაგიდასთან კი მიკროფონით შეგიძლიათ ისაუბროთ.</p>`,'short');
 
 /* ---------- time on the clock ----------
    chess: blitz or rapid; checkers and nardi: a few minutes each with seconds back after every move.
@@ -229,10 +233,12 @@ A.gvar=()=>{const id=gCur(),G=GAME[id],c=G&&G.ctx;if(!id)return;const row=(lab,a
  if(id==='shashi'){const v=store.get('cv','std');h+=`<h4 class="gvh">შაშის სახე</h4>${row('','gvset','cv:std',v==='give'?'':'cv:std','ჩვეულებრივი')}${row('','gvset','cv:give',v==='give'?'cv:give':'','წაგებანა: იგებს, ვინც ყველა ქვას დაკარგავს')}`}
  if(id==='domino'){const n=dmNp(null);h+=`<h4 class="gvh">მოთამაშეები</h4>${[4,3,2].map(k=>row('','gvset','dmn:'+k,'dmn:'+n,k===4?'ოთხი, წყვილებში':k+' მოთამაშე, ბაზრით')).join('')}<button data-a="dmonew">${ic('users')}<span>მეგობრებთან ონლაინ: ახალი მაგიდა</span></button>`}
  if(id==='joker'){const o=jkOptGet();h+=`<h4 class="gvh">ხიშტი</h4>${JKO.kh.map(([k,t])=>row('','gvset','kh:'+k,'kh:'+o.kh,t)).join('')}<h4 class="gvh">სექციის პრემია</h4>${row('','gvset','prem:1',o.prem?'prem:1':'prem:0','კი')}${row('','gvset','prem:0',o.prem?'prem:1':'prem:0','არა')}`}
+ if(id==='durak'){const n=dkNp();h+=`<h4 class="gvh">მოთამაშეები</h4>${[2,3,4].map(k=>row('','gvset','dkn:'+k,'dkn:'+n,k+' მოთამაშე')).join('')}`}
+ if(id==='bura'){const v=buTo();h+=`<h4 class="gvh">მატჩი</h4>${[3,5,7].map(k=>row('','gvset','buto:'+k,'buto:'+v,k+' ქულამდე')).join('')}`}
  if(GTC[id]){const v=gTcSet(id);h+=`<h4 class="gvh">დრო</h4>${GTC[id].map(([k,t])=>row('','gvset','tc:'+k,'tc:'+v,t)).join('')}`}
  sheet(head('თამაშის სახე')+`<div class="gmenu gvar">${h}<p class="note">ცვლილება ახალი პარტიიდან მოქმედებს.${c&&['bot','local','learn'].includes(c.mode)&&!S.page?' <button class="btn sm" data-a="gvnew">ახალი პარტია ახლავე</button>':''}</p></div>`,'short')};
 A.gvset=t=>{const[k,v]=String(t.dataset.v).split(':'),id=gCur();
- if(k==='nv')store.set('nv',v==='long'?'long':'short');else if(k==='nmatch')store.set('nmatch',+v);else if(k==='cv')store.set('cv',v==='give'?'give':'std');else if(k==='dmn')store.set('dmn',+v);
+ if(k==='nv')store.set('nv',v==='long'?'long':'short');else if(k==='nmatch')store.set('nmatch',+v);else if(k==='cv')store.set('cv',v==='give'?'give':'std');else if(k==='dmn')store.set('dmn',+v);else if(k==='dkn')store.set('dkn',+v);else if(k==='buto')store.set('buto',+v);
  else if(k==='kh'){const o=jkOptGet();o.kh=v;store.set('jkopt',o)}else if(k==='prem'){const o=jkOptGet();o.prem=v==='1';store.set('jkopt',o)}else if(k==='tc'&&id)store.set('gtc:'+id,v);
  A.gvar()};
 A.gvnew=()=>{const G=GAME[S.game],c=G&&G.ctx;closeSheet();if(!c)return;if(c.mode==='local'){A.glocalagain();return}if(S.game==='joker'){G.resHide=0;G.start();G.render();return}if(S.game==='domino'){G.resHide=0;G.resSnd=0;startGame('domino',{mode:c.mode});return}A.restart()};

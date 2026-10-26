@@ -27,7 +27,7 @@ function dmoSwap(pg,id){NAV.busy++;try{openPage(pg,id,null,true)}finally{NAV.bus
 async function dmoOpen(id){dmoStop();DMO.id=id;S.chanCleanup=()=>{dmoStop();fsExit()};fsEnter();g3Intro('dmo');let t=null;
  try{t=await q(sb.from('jk_tables').select('*').eq('id',id).maybeSingle())}catch(e){}
  if(!dmoHere(id))return;const el=$('#dmo');
- if(t&&t.status!=='closed'&&!(t.state&&t.state.g==='domino')){dmoSwap('jktable',id);return}
+ if(t&&t.status!=='closed'&&!(t.state&&t.state.g==='domino')){dmoSwap(t.state&&t.state.g==='loto'?'lotable':'jktable',id);return}
  if(!t||t.status==='closed'){el.innerHTML=empty('ეს მაგიდა აღარ არსებობს','ახალი მაგიდის გასაშლელად თამაშებში აირჩიე „მეგობრების მაგიდა“','<button class="btn" data-a="dmonew">ახალი მაგიდა</button>');return}
  DMO.t=t;DMO.st=t.state;DMO.seat=t.seats.indexOf(ME.id);
  await loadProfiles(t.seats.filter(Boolean));

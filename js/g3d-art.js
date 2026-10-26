@@ -370,3 +370,29 @@ function cityCv(day){const W=2048,H=1024,c=cvs(W,H),x=c.getContext('2d'),R=rng(2
  /* the tower on the ridge, a mast of crossed lines with red lights */
  const tx=W*.8,ty=hz+16;x.strokeStyle=day?'#8A8F96':'#6A6E80';x.lineWidth=2;for(let k=0;k<14;k++){const a=k/14,b=(k+1)/14,w0=26*(1-a)+3,w1=26*(1-b)+3,y0=ty-a*230,y1=ty-b*230;x.beginPath();x.moveTo(tx-w0,y0);x.lineTo(tx+w1,y1);x.moveTo(tx+w0,y0);x.lineTo(tx-w1,y1);x.moveTo(tx-w0,y0);x.lineTo(tx-w1,y1);x.moveTo(tx+w0,y0);x.lineTo(tx+w1,y1);x.stroke()}
  if(!day){x.fillStyle='#FF4A3A';for(let k=0;k<5;k++)x.fillRect(tx-2,ty-k*55-4,4,4)}return c}
+/* ---------- Easter table art ----------
+   a red-dyed egg (onion skins and madder give the deep red; leaves pressed on before dyeing leave pale prints), cracked at
+   the pointed end, the round end or both; white linen with a red cross-stitch border; green sprouts (ჯეჯილი) on a plate */
+function eggCv(col,pat,ct,cb){const W=256,H=256,c=cvs(W,H),x=c.getContext('2d'),R=rng(col.charCodeAt(2)*31+pat*7);
+ const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#5A0A0E');g.addColorStop(.12,col);g.addColorStop(.88,col);g.addColorStop(1,'#4A080C');x.fillStyle=g;x.fillRect(0,0,W,H);
+ for(let k=0;k<900;k++){x.fillStyle=`rgba(${R()<.5?'40,0,0':'255,190,170'},${.03+R()*.05})`;x.fillRect(R()*W,R()*H,1+R()*2,1+R()*2)}
+ x.fillStyle='rgba(250,232,218,.52)';
+ if(pat===1)for(let k=0;k<5;k++){const cx=20+k*52+R()*14,cy=70+R()*110,s=14+R()*10,a=R()*Math.PI;x.save();x.translate(cx,cy);x.rotate(a);for(const sd of[-1,1]){x.beginPath();x.moveTo(0,0);x.quadraticCurveTo(sd*s*.6,-s*.6,0,-s*1.6);x.quadraticCurveTo(sd*s*.15,-s*.6,0,0);x.fill()}x.fillRect(-.8,0,1.6,s*.6);x.restore()}
+ if(pat===2)for(let k=0;k<26;k++){x.beginPath();x.arc(R()*W,30+R()*(H-60),2.5+R()*2.5,0,Math.PI*2);x.fill()}
+ const crack=(y0,dir)=>{x.strokeStyle='rgba(30,8,6,.92)';x.lineWidth=3;x.lineJoin='round';for(let n=0;n<3;n++){x.beginPath();let px=n*85+R()*30,py=y0;x.moveTo(px,py);for(let k=0;k<9;k++){px+=8+R()*10;py+=dir*(R()*14-3);x.lineTo(px,py)}x.stroke()}
+  x.fillStyle='rgba(245,230,214,.85)';for(let k=0;k<10;k++){x.beginPath();const px=R()*W,py=y0+dir*R()*14;x.moveTo(px,py);x.lineTo(px+6+R()*6,py+dir*(2+R()*6));x.lineTo(px+R()*4,py+dir*(8+R()*6));x.fill()}};
+ /* the texture runs from the pointed end (top) to the round end (bottom) */
+ if(ct)crack(18,1);if(cb)crack(H-18,-1);return c}
+function clothCv(){const S=1024,c=cvs(S,S),x=c.getContext('2d'),R=rng(311);x.fillStyle='#F3EEE4';x.fillRect(0,0,S,S);
+ for(let k=0;k<5000;k++){x.fillStyle=`rgba(${R()<.5?'255,255,255':'180,170,150'},${.05+R()*.06})`;x.fillRect(R()*S,R()*S,1+R()*3,1)}
+ const ring=(r,col,w)=>{x.strokeStyle=col;x.lineWidth=w;x.beginPath();x.arc(S/2,S/2,r,0,Math.PI*2);x.stroke()};
+ ring(S*.455,'#B0182A',10);ring(S*.415,'#B0182A',4);
+ /* cross-stitched diamonds between the two red lines */
+ x.strokeStyle='#B0182A';x.lineWidth=2.4;for(let k=0;k<72;k++){const a=k/72*Math.PI*2,r=S*.435,cx=S/2+Math.cos(a)*r,cy=S/2+Math.sin(a)*r,s=7;x.save();x.translate(cx,cy);x.rotate(a);
+  x.beginPath();x.moveTo(-s,0);x.lineTo(0,-s);x.lineTo(s,0);x.lineTo(0,s);x.closePath();x.stroke();x.beginPath();x.moveTo(-3,-3);x.lineTo(3,3);x.moveTo(3,-3);x.lineTo(-3,3);x.stroke();x.restore()}
+ return c}
+function sproutsCv(){const S=512,c=cvs(S,S),x=c.getContext('2d'),R=rng(77);x.fillStyle='#3B5E1E';x.beginPath();x.arc(S/2,S/2,S/2,0,Math.PI*2);x.fill();
+ for(let k=0;k<4200;k++){const a=R()*Math.PI*2,r=Math.sqrt(R())*S*.49,px=S/2+Math.cos(a)*r,py=S/2+Math.sin(a)*r,l=6+R()*12,t=R()*Math.PI*2,gC=110+R()*90|0;
+  x.strokeStyle=`rgb(${60+R()*50|0},${gC},${30+R()*30|0})`;x.lineWidth=1.4+R();x.beginPath();x.moveTo(px,py);x.lineTo(px+Math.cos(t)*l,py+Math.sin(t)*l);x.stroke()}return c}
+function pascaCv(){const S=256,c=cvs(S,S),x=c.getContext('2d'),R=rng(12);x.fillStyle='#FBF6EC';x.fillRect(0,0,S,S);
+ const col=['#E2463F','#F2B84B','#4FA3E0','#62C27A','#E06AA8'];for(let k=0;k<420;k++){x.fillStyle=col[k%5];x.save();x.translate(R()*S,R()*S);x.rotate(R()*Math.PI);x.fillRect(-3,-1,6,2);x.restore()}return c}

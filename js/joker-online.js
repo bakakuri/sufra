@@ -23,7 +23,7 @@ function joStop(){clearTimeout(JO.tm);clearTimeout(JO.tw);clearTimeout(JO.wt);cl
 async function joOpen(id){joStop();JO.id=id;S.chanCleanup=()=>{joStop();fsExit()};fsEnter();g3Intro('jko');let t=null;
  try{t=await q(sb.from('jk_tables').select('*').eq('id',id).maybeSingle())}catch(e){}
  if(!joHere(id))return;const el=$('#jko');
- if(t&&t.state&&t.state.g==='domino'&&t.status!=='closed'&&typeof dmoSwap==='function'){dmoSwap('dmtable',id);return}
+ if(t&&t.state&&['domino','loto'].includes(t.state.g)&&t.status!=='closed'&&typeof dmoSwap==='function'){dmoSwap(t.state.g==='loto'?'lotable':'dmtable',id);return}
  if(!t||t.status==='closed'){el.innerHTML=empty('ეს მაგიდა აღარ არსებობს','ახალი მაგიდის გასაშლელად თამაშებში აირჩიე ჯოკერი და „მეგობრებთან ონლაინ“','<button class="btn" data-a="jkonew">ახალი მაგიდა</button>');return}
  JO.t=t;JO.st=t.state;JO.seat=t.seats.indexOf(ME.id);
  await loadProfiles(t.seats.filter(Boolean));

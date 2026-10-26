@@ -1,9 +1,9 @@
 /* სუფრა service worker: app shell offline, fonts cache, web push */
-const V='202610261254';
+const V='202610261745';
 const SHELL='sufra-shell-'+V,RUNTIME='sufra-rt-1';
 const ASSETS=['/','/manifest.webmanifest','/icons/icon-192.png','/icons/icon-512.png','/icons/badge-96.png',
  '/css/base.css?v='+V,'/css/app.css?v='+V,
- ...['lib-icons','lib-lang','lib-motion','core','stickers','namedays','auth','feed','home','people','chat','community','rooms','sport','rides','jobs','places','toasts','help','family','dating','gsound','games-core','games-engines','domino','games-modes','settings','firststeps','albums','extras','kitchen','joker-online','domino-online','gvoice','games-side','promo','admin','app','g3d','g3d-art','g3d-games'].map(f=>`/js/${f}.js?v=${V}`)];
+ ...['lib-icons','lib-lang','lib-motion','core','stickers','namedays','auth','feed','home','people','chat','community','rooms','sport','rides','jobs','places','toasts','help','family','dating','gsound','games-core','games-engines','domino','cards2','games-modes','loto','egg','settings','firststeps','albums','extras','kitchen','joker-online','domino-online','gvoice','games-side','corr','gstudy','glive','gquest','gaccess','cups','promo','admin','app','g3d','g3d-art','g3d-games'].map(f=>`/js/${f}.js?v=${V}`)];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(SHELL).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('sufra-shell-')&&k!==SHELL).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{const r=e.request;if(r.method!=='GET')return;const u=new URL(r.url);

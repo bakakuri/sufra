@@ -6,7 +6,7 @@ const gWide=()=>!!GWIDE&&GWIDE.matches&&innerWidth>=700&&innerHeight>=520;
 function gSideChess(G){const mv=G.mv||[];if(!mv.length)return '';const fig=s=>esc(s).replace(/[♔♕♖♗♘]/g,'<i class="fg">$&</i>');let rows='';
  if(G.full){for(let j=0;j<mv.length;j+=2)rows+=`<tr${j>=mv.length-2?' class="now"':''}><td class="n">${j/2+1}.</td><td>${fig(mv[j])}</td><td>${mv[j+1]?fig(mv[j+1]):''}</td></tr>`}
  else rows=mv.map((m,j)=>`<tr${j===mv.length-1?' class="now"':''}><td class="n">…</td><td colspan="2">${fig(m)}</td></tr>`).join('');
- return `<h4>სვლები</h4><div class="gsl"><table class="gsmv">${rows}</table></div>`}
+ return `<h4>სვლები</h4>${G.opn?`<p class="gsp">${ic('book')} ${esc(G.opn.n)}</p>`:''}<div class="gsl"><table class="gsmv">${rows}</table></div>`}
 /* names: who took a hand (a pair in the game of four, a seat otherwise); tot: the running score after each hand, if any */
 function gSideDomino(hist,names,tot){if(!hist||!hist.length)return '';let a=0,b=0;
  const rows=hist.map((h,i)=>{if(h.win===0)a+=h.pts;else if(h.win===1)b+=h.pts;return `<tr><td class="n">${i+1}.</td><td>${h.kind==='block'?'ჩაიკეტა':'დომინო'}</td><td>${h.win<0||h.win==null?'ფრე':esc(names[h.win])+' +'+h.pts}</td><td class="t">${tot?tot(a,b):''}</td></tr>`}).join('');

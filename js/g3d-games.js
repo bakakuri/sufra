@@ -2,7 +2,7 @@
    (matched with what is already on the table, so moves animate) and a list of flat marks (selection, targets, last move) */
 const G3S={},G3B={},G3U={};
 const GOLD=lin('#F4BC4C'),GOLDS=lin('#FFD27A'),RED=lin('#FF5A5F'),INK=lin('#20140c'),PALE=lin('#FFF4D6'),MINT=lin('#7CF0B4');
-function g3Show(id){const el=$('.g3',view);if(!el)return;const k=id==='jko'?'joker':id==='dmo'?'domino':id,pl=gPlaceOf(k),key=pl&&pl!==GPDEF[k]?k+':'+pl:k,sc=G3S[key]||(G3S[key]=G3B[k]());sc.host=id;
+function g3Show(id){const el=$('.g3',view);if(!el)return;const k=id==='jko'||id==='durak'||id==='bura'?'joker':id==='dmo'?'domino':id,pl=gPlaceOf(k),key=pl&&pl!==GPDEF[k]?k+':'+pl:k,sc=G3S[key]||(G3S[key]=G3B[k]());sc.host=id;
  const want=G3D.intro||G3W.intro,intro=want===id;if(intro){G3D.intro=null;G3W.intro=null}
  if(!g3Mount(el,sc))return;if(sc.envK)envApply(sc);if(typeof gAmb==='function')gAmb(sc.envK||null,sc.envT,k,sc.wx&&sc.wx.k);try{G3U[id](sc)}catch(e){try{console.warn('3D sync',e)}catch(x){}}if(intro)g3StartIntro(sc);g3Insets(sc);g3Draw(sc,performance.now());g3Labels(sc);g3Need()}
 const snd=(k,v)=>{if(typeof gSnd==='function')gSnd(k,v)};
@@ -199,14 +199,14 @@ G3B.joker=()=>{const sc=g3Scene({cam:{fixed:jkCam,tgt:[0,0,0],fov:1,dy:0,dp:0,dz
   light:{d:v3.norm([-.22,1,.4]),c:[2.35,2.08,1.72],sky:[.26,.22,.2],gnd:[.12,.08,.06],exp:1.0},
   anchors:[['.seat.left',[...[JSP[1][0]*.97,6.25,JSP[1][1]*.97]]],['.seat.top',[0,6.35,-JR*.97]],['.seat.right',[JSP[3][0]*.97,6.25,JSP[3][1]*.97]]]});
  /* the room and the table: plank floor, papered walls on three sides, felt, a turned mahogany rim and a pedestal */
- roundRoom(sc,5.45,g3T('felt',()=>g3Tex(feltCv({a:'#2E7D59',b:'#123B29',ring:1}))));envRoom(sc);
+ roundRoom(sc,5.45,g3T('felt',()=>g3Tex(feltCv({a:'#2E7D59',b:'#123B29',ring:1}))));envRoom(sc);if(typeof gEvActive==='function'&&gEvActive('easter'))eggPlateAt(sc,[-3.3,0,-2.7],.8);
  mkModel(sc);
  const atl=jkAtlas(),back=cardUV(38);sc.c4=jkC4()+':'+gStyleOf('joker');
  g3Model(sc,'card',[[gQuad(CDW,CDH),g3Mat({t:atl,cut:true,vary:true,sh:30,sp:.18,gl:.1})],[gQuad(CDW,CDH,true),g3Mat({t:atl,uv:back,cut:true,sh:30,sp:.2,gl:.12})]],[CDW/2,CDH/2,.03]).land=()=>snd('card');
  g3Model(sc,'deck',[[gBox(CDW,1,CDH,0,1,(f,u,v)=>f===0?[back[0]+u*back[2],back[1]+v*back[3]]:[268/2048,170/2048]),g3Mat({t:atl,sh:20,sp:.15,gl:.1})]],null);
  /* the first touch lifts a card, the second plays it; a card dragged up onto the table is played too */
  sc.hoverAll=true;
- sc.tap=ray=>{const o=g3HitObj(sc,ray,o=>o.pick&&o.pick.i!=null);if(!o)return;if(sc.csel===o.pick.k){sc.csel=null;g3Act(sc.act||'jcard',{i:String(o.pick.i)});return}sc.csel=o.pick.k;snd('card',.6);G3U[sc.host](sc);g3Need()};
+ sc.tap=ray=>{const o=g3HitObj(sc,ray,o=>o.pick&&o.pick.i!=null);if(!o)return;if(sc.tap1){g3Act(sc.act,{i:String(o.pick.i)});return}if(sc.csel===o.pick.k){sc.csel=null;g3Act(sc.act||'jcard',{i:String(o.pick.i)});return}sc.csel=o.pick.k;snd('card',.6);G3U[sc.host](sc);g3Need()};
  sc.drag={y:.4,lift:.5,dz:0,start:o=>{sc.csel=o.pick.k},drop:(o,p)=>{if(p&&Math.hypot(p[0],p[2])<5.2){sc.csel=null;g3Act(sc.act||'jcard',{i:String(o.pick.i)})}}};
  sc.onResize=()=>{try{G3U[sc.host](sc)}catch(e){}};sc.people=seatOf;
  return sc};
@@ -232,10 +232,10 @@ function jkGaze(r,V,rel){const cur=V.cur!=null&&V.cur>=0?rel(V.cur):null,me=JSP[
  if(V.win!=null){tx=0;tz=0;pitch=.34}else if(cur===r){return{yaw:0,pitch:.42}}else if(cur!=null){tx=cur===0?0:JSP[cur][0];tz=cur===0?JR:JSP[cur][1];pitch=cur===0?.2:.1}else{tx=0;tz=0;pitch=.28}
  const f=[-me[0],-me[1]],d=[tx-me[0],tz-me[1]],a=Math.atan2(f[0]*d[1]-f[1]*d[0],f[0]*d[0]+f[1]*d[1]);return{yaw:clamp(-a,-.75,.75),pitch}}
 /* one picture of the table for both kinds of game */
-function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.act=V.act;jkDeck(sc);
+function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.act=V.act;sc.tap1=!!V.tap1;jkDeck(sc);
  const deal=V.deal!==sc.deal;if(deal)sc.deal=V.deal;const dealer=V.dealer!=null?rel(V.dealer):2,dp=dealer===0?[0,1.4,6.6]:jkLocal(dealer,0,[0,1.6,2.6]),cur=V.cur!=null&&V.cur>=0?rel(V.cur):null;
  /* the three others */
- for(const r of[1,2,3]){const id=V.ids[(r+V.base)%4],L0=id.lk?oppLook(id.lk):jkLook(id.n,id.h),key=(id.k||id.n||'p'+r)+(id.lk?':'+lkKey(L0):'');jkPerson(sc,key,L0);
+ for(const r of[1,2,3]){if(V.on&&!V.on.includes(r))continue;const id=V.ids[(r+V.base)%4],L0=id.lk?oppLook(id.lk):jkLook(id.n,id.h),key=(id.k||id.n||'p'+r)+(id.lk?':'+lkKey(L0):'');jkPerson(sc,key,L0);
   const lean=cur===r&&V.win==null?.07:0,g=jkGaze(r,V,rel);
   pplPush(L,r,key,[JSP[r][0],0,JSP[r][1]],jkSeatQ(r,lean),1,qt.e(g.pitch,g.yaw,0));
   const cnt=V.counts[r]||0;for(let i=0;i<cnt;i++){const f=jkFanAt(r,lean,i,cnt),d={k:'h'+r+'-'+i,m:'card',p:f.p,q:f.q,s:.95,uv:cardUV(38),refl:false,dur:500};
@@ -243,8 +243,8 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
  /* my hand, held in front of me at the bottom of the screen */
  const n=V.hand.length;if(!V.mine||!V.hand.some(cd=>'c'+cardIdx(cd)===sc.csel))sc.csel=null;
  if(n){const tall=asp<.8,hs=tall?.165:.19,dd=2.4,C=jkCam(asp),t=Math.tan(C.fov/2),s=hs*2*t*dd/CDH,cw=CDW*s/(t*asp*dd),room=(2+2*C.sx)*.8,spc=Math.min(cw*.62,(room-cw*1.1)/Math.max(1,n-1)),qf=jkFace(asp);
-  V.hand.forEach((cd,i)=>{const ok=V.legal.includes(cd),key='c'+cardIdx(cd),sel=sc.csel===key,nx=C.sx+(i-(n-1)/2)*spc,lift=V.legal.length?(sel?.5:ok?.13:-.03):0,
-    ny=-1+hs*1.06-(nx-C.sx)*(nx-C.sx)*.07+lift*hs*2,p=jkScr(asp,nx,ny,dd-i*.004),d={k:key,m:'card',p,q:qt.mul(qf,qt.ax(0,0,1,-(nx-C.sx)*.2)),s,uv:cardUV(cardIdx(cd)),dim:V.legal.length&&!ok?.5:1,pick:V.mine&&ok?{i,k:key}:null,drag:V.mine&&ok,glow:sel?[.12,.09,.03]:V.hint===cd?[.05,.16,.1]:null,refl:false,cast:false,dur:420};
+  V.hand.forEach((cd,i)=>{const ok=V.legal.includes(cd),key='c'+cardIdx(cd),sel=sc.csel===key||!!V.sel&&V.sel.includes(i),nx=C.sx+(i-(n-1)/2)*spc,lift=V.legal.length?(sel?.5:ok?.13:-.03):0,
+    ny=-1+hs*1.06-(nx-C.sx)*(nx-C.sx)*.07+lift*hs*2,p=jkScr(asp,nx,ny,dd-i*.004),d={k:key,m:'card',p,q:qt.mul(qf,qt.ax(0,0,1,-(nx-C.sx)*.2)),s,uv:cardUV(cardIdx(cd)),dim:V.legal.length&&!ok?.5:1,pick:V.mine&&ok?{i,k:key}:null,drag:V.mine&&ok&&!V.tap1,glow:sel?[.12,.09,.03]:V.hint===cd?[.05,.16,.1]:null,refl:false,cast:false,dur:420};
    if(deal){d.from={p:dp,q:FACEDN(0),s:.9};d.delay=i*70;d.dur=560}L.push(d)})}
  /* the trick, each card in front of whoever played it, all turned to read from my chair */
  V.trick.forEach((e,k)=>{const r=rel(e.p),[tx,tz]=JTRK[r],idx=cardIdx(e.card),p=[tx,.012+k*.008,tz],won=V.win!=null&&rel(V.win)===r&&V.trick.length===4,d={k:'c'+idx,m:'card',p,q:FACEUP(JTJ[r]),s:JTS,uv:cardUV(idx),glow:won?[.2,.14,.04]:null,cast:true};
@@ -252,14 +252,19 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
   L.push(d);if(won)M.push({m:'mk',p:[tx,.01,tz],s:[JTS*1.25,1,JTS*1.6],uv:MK.blob,c:[1,.78,.3],a:.55,add:true});
   else if(V.win==null&&k===V.trick.length-1)M.push({m:'mk',p:[tx,.009,tz],s:[JTS*1.1,1,JTS*1.45],uv:MK.blob,c:[1,.9,.6],a:.28,add:true});
   if(e.card.j){const t=(e.jm==='hi'?'მაღალი':'დაბალი')+(e.js?' '+SY[e.js]:'');lblModel(sc,t);L.push({k:'lb'+idx,m:'l:'+t,p:[tx,.05+k*.008,tz+1.45],q:qt.id(),s:1.15,cast:false,now:1})}});
+ /* cards laid on the table by place: durak's pairs, bura's two rows; each flies in from whoever played it */
+ (V.tbl||[]).forEach(e=>{const idx=cardIdx(e.card),r=e.r,key='c'+idx,d={k:key,m:'card',p:[e.x,.012+(e.y||0),e.z],q:FACEUP(e.yaw||0),s:e.s||JTS,uv:cardUV(idx),glow:e.glow?[.2,.14,.04]:null,cast:true};
+  if(r!=null&&(r!==0||!sc.objs.has('k:'+key))){d.from=r===0?{p:jkScr(asp,0,-.55,2.4),q:jkFace(asp),s:.6}:{p:jkLocal(r,0,[0,1.95,2.5]),q:qt.mul(jkSeatQ(r,0),qt.mul(qt.ax(0,1,0,Math.PI),qt.ax(1,0,0,-.5))),s:.95};d.dur=560;d.arc=1.2}
+  L.push(d)});
+ if(V.disc){const h=Math.max(.02,V.disc*.006);L.push({k:'disc',m:'deck',p:[3.35,h/2+.01,.85],s:[1.15,h,1.15],q:qt.ax(0,1,0,.55),dur:400})}
  /* tricks already taken lie in a little pile in front of each player */
  for(let r=0;r<4;r++){const tk=V.taken[(r+V.base)%4]||0;if(!tk)continue;const h=.035*tk,pp=r===0?[2.7,h/2+.01,3.6]:(()=>{const v=jkLocal(r,0,[-1.7,0,3.9]);return[v[0],h/2+.01,v[2]]})();
   L.push({k:'pile'+r,m:'deck',p:pp,s:[1.05,h,1.05],q:qt.ax(0,1,0,(r===0?0:JYAW[r])+.2),dur:400})}
  /* the deck and the trump card under it, by the dealer */
  if(V.trumpCard&&V.deckN>0&&['bid','play'].includes(V.phase)){const h=Math.max(.02,V.deckN*.008),c=dealer===0?[-2.6,0,3.1]:jkLocal(dealer,0,[1.9,0,4.1]),yw=dealer===0?0:JYAW[dealer];
   L.push({k:'tc',m:'card',p:[c[0],.008,c[2]],q:FACEUP(yw+Math.PI/2),s:1.35,uv:cardUV(cardIdx(V.trumpCard)),cast:false});L.push({k:'deck',m:'deck',p:[c[0]+.35*Math.cos(yw),h/2+.02,c[2]-.35*Math.sin(yw)],s:[1.3,h,1.3],q:qt.ax(0,1,0,yw+.06)})}
- sc.jw=V.win!=null?rel(V.win):sc.jw;
- sc.marks=M;g3Set(sc,L,{gone:o=>{if(o.m==='card'&&o.id.startsWith('k:c')){const w=sc.jw??0,p=w===0?[2.7,.2,3.6]:jkLocal(w,0,[-1.7,.2,3.9]);return{p,a:0,dur:560,delay:150,s:1.05,q:FACEDN(w===0?0:JYAW[w])}}if(o.id.startsWith('k:h'))return{a:0,dur:160};return{a:0,dur:250}}})}
+ sc.jw=V.gto!=null?V.gto:V.win!=null?rel(V.win):sc.jw;
+ sc.marks=M;g3Set(sc,L,{gone:o=>{if(o.m==='card'&&o.id.startsWith('k:c')){const w=sc.jw??0,p=w==='disc'?[3.35,.25,.85]:w===0?[2.7,.2,3.6]:jkLocal(w,0,[-1.7,.2,3.9]);return{p,a:0,dur:560,delay:150,s:1.05,q:FACEDN(w==='disc'||w===0?0:JYAW[w])}}if(o.id.startsWith('k:h'))return{a:0,dur:160};return{a:0,dur:250}}})}
 G3U.joker=sc=>{const G=JK,V={hint:typeof jkPlayHint==='function'?(m=>m&&m.c)(jkPlayHint()):null,base:0,act:'jcard',hand:[],legal:[],counts:[0,0,0,0],taken:[0,0,0,0],trick:[],win:null,deal:null,dealer:null,cur:null,phase:G.phase,mine:false,trumpCard:null,deckN:0,ids:G.ids.map((x,i)=>i===0?{n:ME.name}:{n:x.n,h:x.h,k:x.n})};
  if(G.hands){const tr=G.phase==='trump'&&G.cur===0;V.hand=tr?G.first3[0]:G.phase==='trump'?[]:G.hands[0];V.legal=G.phase==='play'&&G.cur===0&&G.win==null?G.legal(0):[];V.mine=V.legal.length>0;
   V.counts=[0,1,2,3].map(p=>G.phase==='trump'?(p===0?0:3):G.hands[p].length);V.taken=G.taken||V.taken;V.trick=G.trick;V.win=G.win;V.cur=G.cur;V.dealer=G.dealer;V.deal=G.len+':'+G.h+':'+G.dealer;V.trumpCard=G.trumpCard;V.deckN=36-4*G.n}
@@ -269,6 +274,67 @@ G3U.jko=sc=>{const s=JO.st,me=JO.seat,V={base:me>=0?me:0,act:'jkocard',hand:[],l
  if(s&&s.counts){V.hand=me>=0?JO.hand:[];const myTurn=me>=0&&s.cur===me&&s.win==null&&!JO.wait&&s.phase==='play';V.legal=myTurn?JK.legal.call({hands:{[me]:JO.hand},trick:s.trick,trump:s.trump},me):[];V.mine=V.legal.length>0;
   V.counts=[0,1,2,3].map(r=>s.counts[(r+V.base)%4]||0);V.taken=s.taken||V.taken;V.trick=s.trick||[];V.win=s.win;V.cur=s.cur;V.dealer=s.dealer;V.deal=s.deal;V.trumpCard=s.trumpCard;V.deckN=36-4*s.n}
  jkScene(sc,V)};
+
+/* durak: the pairs on the table in two rows of three, the deck with its trump by the table's left side, the discard on the right */
+G3U.durak=sc=>{const G=DK,V={base:0,act:'dkc',hand:G.hands[0],legal:G.cur===0?G.legal(0):[],counts:[0,1,2,3].map(p=>G.hands[p].length),taken:[0,0,0,0],trick:[],win:null,deal:'dk'+G.dealN,dealer:G.np===2?2:1,cur:G.cur,phase:'play',mine:false,
+  trumpCard:G.trumpCard,deckN:G.deck.length,disc:G.disc,on:G.SE.filter(p=>p),ids:[0,1,2,3].map(p=>p===0?{n:ME.name}:{n:cPlayers[p].n,h:cPlayers[p].h,k:'dk:'+cPlayers[p].n})};
+ V.mine=V.legal.length>0;const n=G.tbl.length;V.tbl=[];G.tbl.forEach((x,i)=>{const row=n>3?(i<3?0:1):0,inRow=n>3?(row?n-3:3):n,col=row?i-3:i,cx=(col-(inRow-1)/2)*1.8,cz=(n>3?row*2.4-1.2:0)-.15;
+  V.tbl.push({card:x.a,r:x.ap,x:cx,z:cz,yaw:.02*(col-1),s:1.45});if(x.d)V.tbl.push({card:x.d,r:x.dp,x:cx+.32,z:cz+.42,y:.01,yaw:-.22,s:1.45})});
+ if(!n&&G.lastBout)V.gto=G.lastBout.taken?G.lastBout.def:'disc';jkScene(sc,V)};
+/* bura: one across the table; the led cards and the answer in two rows, the taken tricks in a pile beside each */
+G3U.bura=sc=>{const G=BU,V={base:0,act:'buc',tap1:true,sel:G.sel,hand:G.hands[0],legal:G.cur===0&&['lead','resp'].includes(G.phase)?G.hands[0].filter(c=>{const s=G.sel.map(i=>G.hands[0][i]);return G.phase!=='lead'||!s.length||s.some(x=>cSame(x,c))||c.s===s[0].s&&s.length<3}):[],
+  counts:[0,0,G.hands[2].length,0],taken:[G.tricks[0],0,G.tricks[2],0],trick:[],win:G.phase==='show'?G.win:null,deal:'bu'+G.dealN,dealer:G.dealer,cur:G.cur,phase:'play',mine:false,trumpCard:G.trumpCard,deckN:G.deck.length,on:[2],
+  ids:[{n:ME.name},{n:'—'},{n:cPlayers[2].n,h:cPlayers[2].h,k:'dk:'+cPlayers[2].n},{n:'—'}]};
+ V.mine=V.legal.length>0;V.tbl=[];const lay=(o,z)=>{if(!o)return;o.cs.forEach((c,i)=>V.tbl.push({card:c,r:o.p,x:(i-(o.cs.length-1)/2)*1.75,z,yaw:0,s:1.6,glow:G.phase==='show'&&G.win===o.p}))};
+ if(G.led){const mine=G.led.p===0;lay(G.led,mine?1.25:-1.35);lay(G.resp,mine?-1.35:1.25)}
+ jkScene(sc,V)};
+
+/* ---------- egg tapping ----------
+   an Easter table under white linen with a red cross-stitch border: a plate of green sprouts holding the red eggs, an Easter
+   bread with coloured sprinkles, wine. the other player sits across; in the duel the two eggs meet over the middle of the table */
+/* the duel happens in the air over the front of the plate: my egg comes from the right, the other from the left, slightly across */
+const EGR=.37,EGH=1.02,EGP=[0,.13,.75],EGC=[0,2.25,2.15],EGU=v3.norm([.9,-.12,.62]),EGS=1.25;
+/* at Easter every table gets a plate of red eggs */
+function eggPlateAt(sc,p,s=1){plateAt(sc,p,1.25*s,'#F4EFE6');const g=gScale3(eggGeo(),.6*s,.6*s,.6*s);
+ [[-.42,.18,'#B3121C',1],[.38,.24,'#C21A22',0],[0,-.38,'#9D1B2B',2],[.05,.1,'#A5161E',1]].forEach(([dx,dz,col,pat],k)=>P3(sc,g,g3Mat({t:g3T('tx:egg:'+col+':'+pat+':00',()=>g3Tex(eggCv(col,pat,false,false))),sh:70,sp:.45,gl:.32}),[p[0]+dx*s,.12+EGR*.6*s*.95+(k===3?.18*s:0),p[2]+dz*s],qt.mul(qt.ax(0,1,0,k*1.7),qt.ax(0,0,1,Math.PI/2))))}
+const egAt=(s,gap)=>v3.add(EGC,v3.mul(EGU,s*(EGH*EGS/2+gap)));
+/* turn an egg so that its pointed end (or its round end) faces the point where the two meet */
+const egAim=(s,end)=>{const d=v3.mul(EGU,end==='t'?-s:s),ax=v3.cross([0,1,0],d),a=Math.acos(clamp(d[1],-1,1));return v3.len(ax)<1e-6?(d[1]>0?qt.id():qt.ax(1,0,0,Math.PI)):qt.ax(ax[0],ax[1],ax[2],a)};
+function eggCam(asp){const t=clamp((asp-.55)/1.0,0,1),W=(G3D.cv&&G3D.cv.clientWidth)||800,side=asp>=1.25?Math.min(380,W*.4)/W:0;
+ const eye=[0,lerpN(4.4,5.8,t),lerpN(7.4,10.6,t)],tgt=[0,lerpN(1.05,1.5,t),lerpN(-1,-1.8,t)],hh=lerpN(.56,.74,t)*(1-side*.45);
+ return{eye,tgt,fov:clamp(2*Math.atan(Math.tan(hh)/asp),.7,1.7),sy:lerpN(.04,0,t),sx:-side}}
+const eggGeo=()=>{const P=[];for(let k=0;k<=26;k++){const t=k/26*Math.PI,y=-Math.cos(t)*EGH/2,r=Math.sin(t)*EGR*(1+.13*Math.cos(t));P.push([r,y])}return gLathe(P,36,.2)};
+/* one model for each look of an egg: its dye, its pattern and where it is cracked */
+function eggModel(sc,e){const ct=!!e.cr.t,cb=!!e.cr.b,key='egg:'+e.col+':'+e.pat+':'+(ct?1:0)+(cb?1:0);
+ if(!sc.models[key]){if(!sc.eggG)sc.eggG=g3Mesh(eggGeo());sc.models[key]={parts:[{mesh:sc.eggG,mat:g3Mat({t:g3T('tx:'+key,()=>g3Tex(eggCv(e.col,e.pat,ct,cb))),sh:70,sp:.45,gl:.32}),cast:true}],ext:[EGR,EGH/2,EGR],off:[0,0,0]}}return key}
+G3B.egg=()=>{const sc=g3Scene({cam:{fixed:eggCam,tgt:[0,1,0],fov:1,dy:0,dp:0,dz:1},orbit:false,zoom:false,shR:9,shC:[0,0,-.6],spot:[0,2.6,9,.65],bg:[.035,.024,.02],
+  light:{d:v3.norm([-.22,1,.4]),c:[2.35,2.08,1.72],sky:[.26,.22,.2],gnd:[.12,.08,.06],exp:1.0}});
+ roundRoom(sc,4.2,g3T('cloth',()=>g3Tex(clothCv())));
+ envSet(sc,'room');wallQ(sc,g3Mat({t:g3T('rug',()=>g3Tex(rugCv())),sh:4,sp:.02,gl:0}),[0,8,-19.6],7,14);wallQ(sc,envMat(sc,'win',windowCv),[-19.9,8,-6],8,14,Math.PI/2);hangLampAt(sc,[0,19,-1.5]);
+ plateAt(sc,[EGP[0],0,EGP[2]],1.75,'#F4EFE6');P3(sc,gDisc(1.42,48),g3Mat({t:g3T('sprouts',()=>g3Tex(sproutsCv())),sh:4,sp:.02,gl:0}),[EGP[0],.125,EGP[2]]);
+ const pk=[-2.75,0,-.5];P3(sc,gLathe([[0,0],[.9,0],[.95,.1],[.97,1.25],[.92,1.33],[0,1.33]],32),g3Mat({c:'#B8732F',sh:30,sp:.2,gl:.1}),pk);
+ P3(sc,gLathe([[0,1.31],[.95,1.31],[1.01,1.37],[.86,1.68],[.48,1.84],[0,1.87]],32),g3Mat({t:g3T('pasca',()=>g3Tex(pascaCv(),{rep:true})),uv:[0,0,3,1],sh:40,sp:.2,gl:.1}),pk);
+ jugAt(sc,[2.95,0,-.8],.68);wineGlassAt(sc,[2.3,0,.35]);wineGlassAt(sc,[3.1,0,.75]);
+ envDone(sc);mkModel(sc);sc.hoverAll=true;
+ sc.tap=ray=>{const o=g3HitObj(sc,ray,o=>o.pick);if(o)g3Act('eggk',{i:String(o.pick.i)})};
+ sc.onResize=()=>{try{G3U.egg(sc)}catch(e){}};sc.people=who=>who==='r2'||who===-1?'o':null;
+ return sc};
+G3U.egg=sc=>{const G=EG,L=[],M=[],c=G.ctx,duel=G.phase!=='pick',k=duel&&G.phase==='duel'?G.clash():null;
+ const ends={1:k?k.ea:'t','-1':k?k.eb:'t'};
+ G.basket.forEach((e,i)=>{const key=eggModel(sc,e),held=duel&&(G.pick[1]===i||G.pick[-1]===i);let p,q,d={k:'e'+i,m:key,dur:520};
+  if(held){const s=G.pick[1]===i?1:-1;p=egAt(s,.38);q=egAim(s,ends[s]);d.s=EGS;
+   /* the striker meets the other egg where it is held; the computer winds up before its blow */
+   if(G.stage==='hit'&&G.anim&&G.anim.s===s){p=egAt(s,0);d.dur=190}
+   else if(G.stage==='brace'&&s===-1)p=egAt(s,1.0);
+   if(G.phase==='over'){const win=G.win===s,B=egAt(s,.6);p=win?[B[0],B[1]+.35,B[2]]:[B[0]*.7,EGR+.02,1.9];q=win?qt.id():qt.mul(qt.ax(0,1,0,s*.6),qt.ax(0,0,1,Math.PI/2));d.s=win?EGS:1;d.glow=win?[.2,.14,.04]:null;d.dur=700}}
+  else{const n=G.basket.length,a=i/n*Math.PI*2+.3,r=.92;p=[EGP[0]+Math.cos(a)*r,EGP[1]+EGR*.94,EGP[2]+Math.sin(a)*r*.8];q=qt.mul(qt.ax(0,1,0,-a),qt.ax(0,0,1,Math.PI/2));
+   if(!duel&&!e.taken){d.pick={i};if(G.sel===i){p=[p[0]*.5,1.55,p[2]+.8];q=qt.ax(1,0,0,-.25);d.s=1.15;d.glow=[.06,.04,.01]}}
+   if(!duel&&e.taken){p=egAt(1,.6);q=qt.id();d.s=EGS}}
+  d.p=p;d.q=q;L.push(d);M.push({m:'mk',p:[p[0],.135,p[2]],s:[.9,1,.9],uv:MK.blob,c:[0,0,0],a:.2})});
+ /* the other player across, leaning in during the duel */
+ if(!G.local){const lk=oppLook(c.olk||jkLook(G.nm(-1),c.avs&&c.avs[-1]&&c.avs[-1].h)),key='o:'+lkKey(lk);jkPerson(sc,key,lk);const lean=duel&&G.phase==='duel'?.1:0;
+  pplPush(L,'o',key,[0,0,-6.6],qt.ax(1,0,0,lean),1,qt.e(duel?.32:.22,0,0),{cast:false})}
+ sc.marks=M;g3Set(sc,L,{gone:()=>({a:0,dur:200})})};
 
 /* ---------- domino ----------
    a round table with the other three sitting at it: the partner across, the two opponents on either side, toward the far side so a phone held upright sees them.
@@ -535,6 +601,6 @@ const GPLACE={court:{f:sc=>envCourt(sc),n:'ძველი თბილისი
 const GPDEF={nardi:'court',shashi:'balcony',chess:'desk'};
 /* which place a board stands in: a career game brings its own; otherwise the place picked in the menu (once it is open), or the usual one */
 function gPlaceOf(g){if(!GPDEF[g])return null;const G=GAME[g],c=G&&G.ctx;if(c&&c.place&&GPLACE[c.place])return c.place;const v=typeof store!=='undefined'?store.get('gplace:'+g,null):null;return v&&GPLACE[v]&&(typeof gPlaceOpen!=='function'||gPlaceOpen(v))?v:GPDEF[g]}
-const gEnvBuild=(sc,g)=>{const k=gPlaceOf(g)||GPDEF[g];(GPLACE[k]||GPLACE[GPDEF[g]]).f(sc,g)};
+const gEnvBuild=(sc,g)=>{const k=gPlaceOf(g)||GPDEF[g];(GPLACE[k]||GPLACE[GPDEF[g]]).f(sc,g);if(typeof gEvActive==='function'&&gEvActive('easter'))eggPlateAt(sc,{nardi:[-8.9,0,2.4]}[g]||[-7.4,0,4.4])};
 /* bigger, brighter marks when big buttons are on */
 function mkBig(M){if(typeof gBigOn!=='function'||!gBigOn())return;for(const m of M){if(m.uv!==MK.dot&&m.uv!==MK.ring)continue;m.s=Array.isArray(m.s)?[m.s[0]*1.3,m.s[1],m.s[2]*1.3]:m.s*1.3;m.a=Math.min(1,(m.a??1)*1.3)}}

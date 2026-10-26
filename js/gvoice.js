@@ -7,6 +7,7 @@ const GV={key:'',ch:null,peers:new Map(),local:null,mute:false,allow:[],here:new
 function gvWhere(){if(!ME)return null;
  if(S.page&&S.page.id==='jktable'&&typeof JO!=='undefined'&&JO.id&&JO.t&&JO.seat>=0&&JO.t.status!=='closed')return{key:'jk'+JO.id,allow:JO.t.seats.filter(u=>u&&u!==ME.id),ch:JO.ch};
  if(S.page&&S.page.id==='dmtable'&&typeof DMO!=='undefined'&&DMO.id&&DMO.t&&DMO.seat>=0&&DMO.t.status!=='closed')return{key:'dm'+DMO.id,allow:DMO.t.seats.filter(u=>u&&u!==ME.id),ch:DMO.ch};
+ if(S.page&&S.page.id==='lotable'&&typeof LOT!=='undefined'&&LOT.id&&LOT.t&&LOT.seat>=0&&LOT.t.status!=='closed')return{key:'lo'+LOT.id,allow:LOT.t.seats.filter(u=>u&&u!==ME.id),ch:LOT.ch};
  if(!S.page&&S.tab==='games'&&S.game){const c=GAME[S.game]&&GAME[S.game].ctx;if(c&&c.mode==='online'&&c.gid&&c.opp&&!c.gone)return{key:'g'+c.gid,allow:[c.opp],ch:c.gr&&c.gr.ch}}
  return null}
 const gvOk=u=>!!u&&!!ME&&u!==ME.id&&GV.allow.includes(u);
@@ -79,4 +80,5 @@ function gvSpeak(u,on){const els=$$(`[data-vu="${u}"]`);const c=S.game&&GAME[S.g
 {const gv=gview;gview=function(...a){const r=gv.apply(this,a);try{gvDraw()}catch(e){}return r}}
 {const jd=joDraw;joDraw=function(...a){const r=jd.apply(this,a);try{gvDraw()}catch(e){}return r}}
 {const dd=dmoDraw;dmoDraw=function(...a){const r=dd.apply(this,a);try{gvDraw()}catch(e){}return r}}
+{const ld=lotDraw;lotDraw=function(...a){const r=ld.apply(this,a);try{gvDraw()}catch(e){}return r}}
 {const lb=A.lobby;A.lobby=function(...a){const r=lb.apply(this,a);if(GV.ch)try{gvDraw()}catch(e){}return r}}

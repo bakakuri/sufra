@@ -267,7 +267,7 @@ function chSearch(st,depth,al,be){if(chKing(st.b,1)<0)return -1e5;if(chKing(st.b
  let best=side===1?-1e9:1e9;for(const m of ms){const v=chSearch(chApply(st,m),depth-1,al,be);if(side===1){if(v>best)best=v;if(v>al)al=v}else{if(v<best)best=v;if(v<be)be=v}if(be<=al)break}return best}
 function chBot(st){const side=st.turn;let best=null,bv=-1e9;for(const m of chLegal(st,side)){const v=side*chSearch(chApply(st,m),2,-1e9,1e9)+Math.random()*8;if(v>bv){bv=v;best=m}}return best}
 const CH=GAME.chess={title:'ჭადრაკი',
- start(){this.st=chInit();this.sel=null;this.pend=null;this.moves=chLegal(this.st,1);this.mv=[];this.ps=this.st;this.full=true;this.hist=[this.st];this.an=null},
+ start(){this.st=chInit();this.pz=null;this.sel=null;this.pend=null;this.moves=chLegal(this.st,1);this.mv=[];this.ps=this.st;this.full=true;this.hist=[this.st];this.an=null},
  snap(){return this.st},
  load(s){if(!Array.isArray(s.b)||s.b.length!==64)throw 0;const ok=/^[pnbrqkPNBRQK]?$/;
   this.st={b:s.b.map(x=>typeof x==='string'&&ok.test(x)?x:''),turn:s.turn===-1?-1:1,cs:String(s.cs||'').replace(/[^KQkq]/g,''),ep:Number.isInteger(s.ep)&&s.ep>=0&&s.ep<64?s.ep:-1,last:Array.isArray(s.last)?s.last.slice(0,2).map(Number).filter(x=>x>=0&&x<64):[],over:[1,-1,2].includes(s.over)?s.over:0,hm:Math.max(0,Math.min(200,Number(s.hm)||0)),rep:repOk(s.rep),why:['mate','stale','rep','mat','50','resign','time','gone'].includes(s.why)?s.why:''};
@@ -284,7 +284,7 @@ const CH=GAME.chess={title:'ჭადრაკი',
  movesHTML(){const mv=this.mv||[],from=Math.max(0,mv.length-12);let h='';
   for(let j=from;j<mv.length;j++){if(this.full&&j%2===0)h+=`<span class="n">${j/2+1}.</span>`;h+=`<span${j===mv.length-1?' class="now"':''}>${mv[j].replace(/[♔♕♖♗♘]/g,'<i class="fg">$&</i>')}</span>`}
   return `<div class="mvs" aria-label="სვლები">${h}</div>`},
- status(){const c=this.ctx,st=this.st;if(st.over)return c.mode==='puzzle'?'მატი! ამოცანა ამოხსნილია':overMsg(c,st.over,st.why);if(c.mode==='puzzle'&&this.pz)return this.pz.msg||(this.pz.step?'კარგია! ახლა მატი ერთ სვლაში':'მატი ორ სვლაში. იპოვე პირველი სვლა');if(c.gone)return 'მოწინააღმდეგე გავიდა თამაშიდან';const chk=this.inCheck()?'ქიში! ':'';
+ status(){const c=this.ctx,st=this.st;if(st.over)return c.mode==='puzzle'?'მატი! ამოცანა ამოხსნილია':overMsg(c,st.over,st.why);if(c.mode==='puzzle'&&this.pz)return this.pz.msg||(this.pz.sprint&&!this.pz.two?'მატი ერთ სვლაში. იპოვე ის სვლა':this.pz.step?'კარგია! ახლა მატი ერთ სვლაში':'მატი ორ სვლაში. იპოვე პირველი სვლა');if(c.gone)return 'მოწინააღმდეგე გავიდა თამაშიდან';const chk=this.inCheck()?'ქიში! ':'';
   return this.mine()?chk+(this.sel!==null?'აირჩიე უჯრა':'შენი სვლაა'):chk+esc(c.names[st.turn])+' ფიქრობს…'},
  render(){this.note();const c=this.ctx,flip=c.side===-1,st=this.st,sel=this.sel,tg=sel!==null?this.moves.filter(m=>m.f===sel):[],chkK=this.inCheck()?chKing(st.b,st.turn):-1;
   let cells='';for(let di=0;di<64;di++){const i=flip?63-di:di,r=i>>3,cc=i&7,p=st.b[i],t=tg.find(m=>m.t===i);
@@ -463,7 +463,7 @@ A.jsheet=()=>jSheetOpen(JK.hist,JK.score||[0,0,0,0],[0,1,2,3].map(p=>JK.nm(p)));
 A.jlast=()=>jLastOpen(JK.lastT,p=>p===0?'შენ':JK.nm(p),0);
 /* menu switches for cards: the four-colour deck, and the bid hint against the computer */
 function gSwFlip(t,on){const b=t&&t.closest&&t.closest('button'),s=b&&b.querySelector('.sw');if(b)b.setAttribute('aria-pressed',String(on));if(s)s.classList.toggle('on',on)}
-function gRedraw(){if(S.page&&S.page.id==='jktable'){if(typeof joDraw==='function')joDraw();return}if(S.page&&S.page.id==='dmtable'){if(typeof dmoDraw==='function')dmoDraw();return}const G=S.tab==='games'&&GAME[S.game];if(G&&G.render)G.render()}
+function gRedraw(){if(S.page&&S.page.id==='jktable'){if(typeof joDraw==='function')joDraw();return}if(S.page&&S.page.id==='dmtable'){if(typeof dmoDraw==='function')dmoDraw();return}if(S.page&&S.page.id==='lotable'){if(typeof lotDraw==='function')lotDraw();return}const G=S.tab==='games'&&GAME[S.game];if(G&&G.render)G.render()}
 A.gc4=t=>{const on=!c4On();store.set('c4',on);document.documentElement.classList.toggle('c4',on);gSwFlip(t,on);gRedraw()};
 A.ghint=t=>{const on=!jHintOn();store.set('jkhint',on);gSwFlip(t,on);gRedraw()};
 
