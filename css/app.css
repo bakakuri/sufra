@@ -2172,3 +2172,55 @@ html.c4 .card[data-s="♦"],html.c4 .suits button[data-s="d"]{color:#1A55C4}
 /* the style picker leaves the table in plain view above it */
 .sheet:has(>.panel.gclear){background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
 .panel.gclear{max-height:56vh}
+/* the opponent's plate over their head at a 3D board */
+.gx .gstage .g3op{position:absolute;z-index:3;transform:translate(0,-50%);pointer-events:auto}
+.gx .gstage .g3op .pl{margin:0}
+/* upright phones keep the plate in the top bar; wide screens put it beside the opponent's head */
+@media (max-aspect-ratio:4/5){.gx .gstage .g3op{display:none}}
+@media (min-aspect-ratio:4/5){.gx .ghud.top .oppt{display:none}}
+/* chess analysis */
+.anbody{display:flex;flex-direction:column;gap:10px}
+.anbar{height:6px;border-radius:9px;background:var(--sunk);overflow:hidden}.anbar i{display:block;height:100%;background:var(--gold);transition:width .3s}
+.anacc{display:grid;grid-template-columns:1fr 1fr;gap:8px}.anacc span{display:flex;flex-direction:column;align-items:center;padding:8px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.anacc b{font-size:24px;color:var(--ink);font-variant-numeric:tabular-nums}
+.anb{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);width:min(100%,340px);aspect-ratio:1;flex:none;margin:0 auto;border-radius:8px;overflow:hidden;border:6px solid #5a301b}
+.anb span{display:grid;place-items:center;font-size:min(7.4vw,29px);line-height:1;min-height:0;overflow:hidden}.anb .l{background:#EBD4AE}.anb .d{background:#A9714B}.anb .last{box-shadow:inset 0 0 0 100px rgb(244 188 76/.35)}
+.annav{display:flex;align-items:center;gap:6px;justify-content:center}.annav span{flex:1;text-align:center;font-weight:700;font-size:14px}.annav .ibtn{display:inline-flex;align-items:center;justify-content:center}.annav .ibtn svg{width:16px;height:16px;flex:none}.annav .flip svg{transform:scaleX(-1)}.annav .ibtn svg+svg{margin-left:-9px}
+.anwhy{margin:0;padding:8px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:13.5px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}.anwhy .anev{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--muted)}
+.anwhy.k-blunder b:first-child{color:#E5484D}.anwhy.k-mistake b:first-child{color:#F08A3E}.anwhy.k-inacc b:first-child{color:#E8C04A}.anwhy.k-best b:first-child{color:#4FC383}
+.anlist{display:grid;grid-template-columns:auto 1fr 1fr;gap:4px 6px;max-height:34vh;overflow:auto}
+.ann{color:var(--muted);font-size:12.5px;align-self:center;font-variant-numeric:tabular-nums}
+.anm{display:flex;justify-content:space-between;padding:5px 9px;border-radius:9px;background:var(--surface);font-size:13.5px;font-weight:600}.anm.on{outline:2px solid var(--gold)}
+.anm em{font-style:normal;font-weight:800}.anm.k-blunder em{color:#E5484D}.anm.k-mistake em{color:#F08A3E}.anm.k-inacc em{color:#E8C04A}.anm.k-best em{color:#4FC383}
+/* the puzzle of the day in the lobby */
+.gs-pz{display:flex;align-items:center;gap:14px;padding:12px;border-radius:20px;background:var(--surface);border:1px solid var(--line);text-align:left}
+.gs-pzb{flex:none;width:86px}.gs-pzb .anb{width:86px;border-width:3px;border-radius:6px}.gs-pzb .anb span{font-size:10px}
+.gs-pz b{font-size:16px}.gs-pz small{display:block;font-size:12.5px;color:var(--muted)}.gs-pz .gs-pzs{color:var(--gold);font-weight:600;margin-top:2px}
+.gs-pz .gs-chev svg{transform:scaleX(-1)}
+/* the game card */
+.gpcard{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.gcpic{width:200px;height:220px;border-radius:24px;overflow:hidden;background:#140e0b;display:grid;place-items:center;box-shadow:var(--shadow)}.gcpic img{width:100%;height:100%;object-fit:cover}
+.gpcard h3{margin:0;font-size:20px;color:var(--ink)}
+.gcrs{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;width:100%}
+.gcrs span{display:flex;flex-direction:column;align-items:center;gap:1px;padding:10px 6px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-size:13px;color:var(--muted)}
+.gcrs b{font-size:22px;color:var(--ink);font-variant-numeric:tabular-nums}.gcrs small{font-size:11px;margin-top:2px}
+.gcmed{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.gcmed span{display:flex;flex-direction:column;align-items:center;font-size:28px;padding:6px 10px;border-radius:14px;background:var(--surface)}.gcmed small{font-size:11px;color:var(--muted)}
+.gcb{display:flex;gap:8px;width:100%}.gcb .btn{flex:1;justify-content:center}
+.gpcard #gcr,.gpcard #gcm{width:100%}
+/* the toast of horns on a win */
+.ghorn{position:fixed;left:50%;top:max(8vh,calc(env(safe-area-inset-top) + 40px));transform:translateX(-50%);width:min(64vw,300px);z-index:80;pointer-events:none;text-align:center;animation:ghfade 2.7s ease both}
+.ghorn.big{width:min(78vw,380px)}
+.ghorn svg{display:block;width:100%;height:auto;overflow:visible;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}
+.ghorn b{display:block;margin-top:-2px;font-weight:800;font-size:clamp(24px,6.6vw,34px);line-height:1.1;color:#fff;letter-spacing:.01em;text-shadow:0 2px 10px rgba(0,0,0,.55),0 0 18px rgba(255,200,110,.5);animation:ghtxt 2.7s ease both}
+.ghorn .hl,.ghorn .hr{transform-box:fill-box;transform-origin:15% 97%;animation:ghswing 2.7s cubic-bezier(.3,.7,.25,1) both}
+.ghorn .hspark{transform-box:fill-box;transform-origin:50% 50%;animation:ghspark 2.7s ease both}
+.ghorn .hglow{opacity:0;animation:ghglow 2.7s ease both}
+.ghorn .hd{opacity:0;animation:ghdrop 2.7s cubic-bezier(.2,.6,.4,1) both;animation-delay:var(--dl)}
+@keyframes ghfade{0%{opacity:0}8%{opacity:1}82%{opacity:1}100%{opacity:0}}
+@keyframes ghswing{0%{transform:rotate(-34deg) translate(-26px,24px)}36%{transform:rotate(-9deg)}44%{transform:rotate(3.5deg)}50%{transform:rotate(-2.5deg)}58%{transform:rotate(1deg)}66%,100%{transform:rotate(0)}}
+@keyframes ghspark{0%,40%{transform:scale(0) rotate(0);opacity:0}45%{transform:scale(1.25) rotate(20deg);opacity:1}62%{transform:scale(.4) rotate(45deg);opacity:0}100%{opacity:0}}
+@keyframes ghglow{0%,40%{opacity:0}47%{opacity:1}100%{opacity:.25}}
+@keyframes ghdrop{0%,42%{opacity:0;transform:translate(0,0)}47%{opacity:1}68%{opacity:.9;transform:translate(var(--dx),var(--dy))}80%{opacity:0;transform:translate(calc(var(--dx)*1.3),calc(var(--dy)*.4 + 14px))}100%{opacity:0}}
+@keyframes ghtxt{0%,44%{opacity:0;transform:translateY(8px) scale(.92)}54%{opacity:1;transform:none}100%{opacity:1}}
+.ghorn.still,.ghorn.still *{animation-duration:1.9s!important}
+.ghorn.still .hl,.ghorn.still .hr,.ghorn.still .hspark,.ghorn.still .hd{animation:none!important}.ghorn.still .hspark,.ghorn.still .hd{opacity:0}.ghorn.still b{animation:none}

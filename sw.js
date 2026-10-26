@@ -1,5 +1,5 @@
 /* სუფრა service worker: app shell offline, fonts cache, web push */
-const V='202610260611';
+const V='202610260724';
 const SHELL='sufra-shell-'+V,RUNTIME='sufra-rt-1';
 const ASSETS=['/','/manifest.webmanifest','/icons/icon-192.png','/icons/icon-512.png','/icons/badge-96.png',
  '/css/base.css?v='+V,'/css/app.css?v='+V,
@@ -8,6 +8,8 @@ self.addEventListener('install',e=>{e.waitUntil(caches.open(SHELL).then(c=>c.add
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('sufra-shell-')&&k!==SHELL).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{const r=e.request;if(r.method!=='GET')return;const u=new URL(r.url);
  if(r.mode==='navigate'){e.respondWith(fetch(r).then(res=>{const cp=res.clone();caches.open(SHELL).then(c=>c.put('/',cp));return res}).catch(()=>caches.match('/')));return}
+ /* video loops are fetched in ranges; the cache cannot serve those, so they go to the network */
+ if(/\.(mp4|webm)$/.test(u.pathname))return;
  if(u.origin===location.origin){e.respondWith(caches.match(r).then(hit=>hit||fetch(r).then(res=>{if(res.ok&&/^\/(js|css|icons)\//.test(u.pathname)){const cp=res.clone();caches.open(SHELL).then(c=>c.put(r,cp))}return res})));return}
  if(/fonts\.(googleapis|gstatic)\.com$|cdn\.jsdelivr\.net$|cdnjs\.cloudflare\.com$/.test(u.hostname)){e.respondWith(caches.open(RUNTIME).then(c=>c.match(r).then(hit=>{const net=fetch(r).then(res=>{if(res.ok||res.type==='opaque')c.put(r,res.clone());return res}).catch(()=>hit);return hit||net})));return}
  /* everything else (Supabase API, storage, realtime) goes straight to the network */});

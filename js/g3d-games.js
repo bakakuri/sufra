@@ -4,7 +4,7 @@ const G3S={},G3B={},G3U={};
 const GOLD=lin('#F4BC4C'),GOLDS=lin('#FFD27A'),RED=lin('#FF5A5F'),INK=lin('#20140c'),PALE=lin('#FFF4D6'),MINT=lin('#7CF0B4');
 function g3Show(id){const el=$('.g3',view);if(!el)return;const k=id==='jko'?'joker':id,sc=G3S[k]||(G3S[k]=G3B[k]());sc.host=id;
  const want=G3D.intro||G3W.intro,intro=want===id;if(intro){G3D.intro=null;G3W.intro=null}
- if(!g3Mount(el,sc))return;if(sc.envK)envApply(sc);try{G3U[id](sc)}catch(e){try{console.warn('3D sync',e)}catch(x){}}if(intro)g3StartIntro(sc);g3Insets(sc);g3Draw(sc,performance.now());g3Labels(sc);g3Need()}
+ if(!g3Mount(el,sc))return;if(sc.envK)envApply(sc);if(typeof gAmb==='function')gAmb(sc.envK||null,sc.envT,k);try{G3U[id](sc)}catch(e){try{console.warn('3D sync',e)}catch(x){}}if(intro)g3StartIntro(sc);g3Insets(sc);g3Draw(sc,performance.now());g3Labels(sc);g3Need()}
 const snd=(k,v)=>{if(typeof gSnd==='function')gSnd(k,v)};
 /* a piece that lands knocks on the wood and leaves a ring; one put in a tray knocks softly */
 const woodLand=y=>(o,sc)=>{const soft=(o.s.length?o.s[0]:o.s)<.9;snd(soft?'soft':'wood',soft?.7:1);if(!soft)g3Ripple(sc,[o.p[0],y+.006,o.p[2]],1.1)};
@@ -164,7 +164,8 @@ function pplPush(L,id,key,p,qB,s,hq,o={}){const S=s||1,at=v=>v3.add(p,qt.rot(qB,
 const OPPS={chess:{z:7.95,s:1,y:-.55,x:0,e:5.25},shashi:{z:7.95,s:1,y:-.55,x:0,e:5.25},nardi:{z:9.0,s:1,y:-.6,x:.8,e:6.45}};
 const oppOn=()=>typeof store==='undefined'||store.get('gppl',true)!==false;
 function oppLookOf(c){const s=-c.side,a=c.avs&&c.avs[s],nm=String((c.names&&c.names[s])||'მოთამაშე').replace(/ \(ბოტი\)$/,'');if(c.olk&&typeof c.olk==='object')return c.olk;if(a&&a.look&&typeof a.look==='object')return a.look;return jkLook(nm,a&&(a.h??a.hue))}
-function oppAdd(sc,id,G,L,far){const o=OPPS[id],c=G.ctx,cm=sc.cam;if(!o||!c||!oppOn()){if(cm.p0!=null){cm.pitch=cm.p0;cm.pp=cm.pp0;cm.tgt=cm.t0.slice()}cm.extraW=null;sc.people=null;return}const lk=oppLook(oppLookOf(c)),key='o:'+lkKey(lk);jkPerson(sc,key,lk);
+function oppAdd(sc,id,G,L,far){const o=OPPS[id],c=G.ctx,cm=sc.cam;if(!o||!c||!oppOn()||c.mode==='puzzle'){if(cm.p0!=null){cm.pitch=cm.p0;cm.pp=cm.pp0;cm.tgt=cm.t0.slice()}cm.extraW=null;sc.people=null;sc.anchors=null;return}
+ sc.anchors=[['.g3op',[o.x-far*2.9*o.s,o.y+4.7*o.s,far*o.z]]];const lk=oppLook(oppLookOf(c)),key='o:'+lkKey(lk);jkPerson(sc,key,lk);
  const yaw=far<0?0:Math.PI,ts=G.turnSide?G.turnSide():null,over=G.res&&G.res(),think=!over&&ts===-c.side,lean=think?.08:0,qB=qt.mul(qt.ax(0,1,0,yaw),qt.ax(1,0,0,lean)),p=[o.x,o.y,far*o.z];
  const pitch=over?0:think?.34:.1;
  /* on a wide screen the camera tips down a little less and keeps the head in the picture */
@@ -408,3 +409,9 @@ function pieceGeoModern(t){const SG=40,L=p=>PL(p,SG),top=(y,r)=>PL(arc(0,y,r,-Ma
  const g=gExtrude([[-.2,0],[.2,0],[.2,.36],[.33,.46],[.33,.58],[.06,.7],[-.2,.52]].map(([x,y])=>[x*KR,y*KY]),.26,.03);gXf(g,[0,.14*KY,0],qt.id());return gMerge(L([...base(.34),[.25,.14],[0,.14]]),g)}
 function chessSet(sc,style){sc.sty=style;const geo=style==='modern'?pieceGeoModern:pieceGeo,mat=w=>style==='carved'?g3Mat({t:woodTex(w?'olive':'rosev'),uv:[0,0,2,1],sh:60,sp:.4,gl:.45}):style==='modern'?g3Mat({c:w?'#EEE9DF':'#2C2B2E',sh:24,sp:.14,gl:.06}):pieceMat(w);
  for(const t of'pnbrqk'){const g=g3Mesh(geo(t)),h={p:.6,n:.8,b:.88,r:.72,q:.95,k:1.12}[t]*KY;for(const c of'wb'){const md=g3Model(sc,c+t,[[g,mat(c==='w')]],[.36,h/2,.36],[0,h/2,0]);md.land=woodLand(CHT)}}}
+/* a portrait of a character for the profile: the editor's scene drawn once into a hidden box and kept as a picture */
+const G3PIC=new Map();
+function g3Portrait(look){const lk=oppLook(look),k=lkKey(lk);if(G3PIC.has(k))return G3PIC.get(k);if(!g3Init())return null;
+ const box=document.createElement('div');box.style.cssText='position:fixed;left:-10000px;top:0;width:300px;height:330px';document.body.appendChild(box);
+ let url=null;try{const sc=G3S.look||(G3S.look=G3B.look());sc.host='look';sc.lk=lk;if(g3Mount(box,sc)){G3U.look(sc);g3Size();g3Draw(sc,performance.now());url=G3D.cv.toDataURL('image/jpeg',.86)}}catch(e){url=null}
+ box.remove();if(url)G3PIC.set(k,url);return url}

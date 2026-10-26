@@ -8,7 +8,7 @@ function overMsg(c,w,why){if(w===2)return WHY[why]||'ფრე';const pre=why===
  if(why==='gone')return isPlayer(c)?(w===c.side?'მეტოქე გავიდა. მოგება შენ ჩაგეთვალა':'შენ გახვედი'):esc(c.names[-w])+' გავიდა';
  if(why==='time')return isPlayer(c)?(w===c.side?'მეტოქეს დრო ამოეწურა. მოიგე!':'დრო ამოგეწურა. '+esc(c.names[w])+' მოიგო'):esc(c.names[-w])+'-ს დრო ამოეწურა';
  if(why==='resign')return isPlayer(c)?(w===c.side?'მეტოქე დანებდა. მოიგე!':'დანებდი. '+esc(c.names[w])+' მოიგო'):esc(c.names[-w])+' დანებდა';return pre+endMsg(c,w)}
-const canResign=G=>{const c=G.ctx;return isPlayer(c)&&!c.gone&&!c.finished};
+const canResign=G=>{const c=G.ctx;return isPlayer(c)&&!c.gone&&!c.finished&&c.mode!=='puzzle'};
 const resignBtn=G=>canResign(G)?'<button class="btn ghost sm gres" data-a="gresign">'+ic('flag')+'დანებება</button>':'';
 A.gresign=()=>{const G=GAME[S.game];if(!G||!G.resign||!canResign(G))return;closeSheet();confirmSheet('დანებება','პარტია წაგებულად ჩაითვლება.','დანებება',()=>{if(GAME[S.game]===G&&canResign(G))G.resign()},true)};
 
@@ -229,7 +229,7 @@ function chSearch(st,depth,al,be){if(chKing(st.b,1)<0)return -1e5;if(chKing(st.b
  let best=side===1?-1e9:1e9;for(const m of ms){const v=chSearch(chApply(st,m),depth-1,al,be);if(side===1){if(v>best)best=v;if(v>al)al=v}else{if(v<best)best=v;if(v<be)be=v}if(be<=al)break}return best}
 function chBot(st){const side=st.turn;let best=null,bv=-1e9;for(const m of chLegal(st,side)){const v=side*chSearch(chApply(st,m),2,-1e9,1e9)+Math.random()*8;if(v>bv){bv=v;best=m}}return best}
 const CH=GAME.chess={title:'ჭადრაკი',
- start(){this.st=chInit();this.sel=null;this.pend=null;this.moves=chLegal(this.st,1);this.mv=[];this.ps=this.st;this.full=true},
+ start(){this.st=chInit();this.sel=null;this.pend=null;this.moves=chLegal(this.st,1);this.mv=[];this.ps=this.st;this.full=true;this.hist=[this.st];this.an=null},
  snap(){return this.st},
  load(s){if(!Array.isArray(s.b)||s.b.length!==64)throw 0;const ok=/^[pnbrqkPNBRQK]?$/;
   this.st={b:s.b.map(x=>typeof x==='string'&&ok.test(x)?x:''),turn:s.turn===-1?-1:1,cs:String(s.cs||'').replace(/[^KQkq]/g,''),ep:Number.isInteger(s.ep)&&s.ep>=0&&s.ep<64?s.ep:-1,last:Array.isArray(s.last)?s.last.slice(0,2).map(Number).filter(x=>x>=0&&x<64):[],over:[1,-1,2].includes(s.over)?s.over:0,hm:Math.max(0,Math.min(200,Number(s.hm)||0)),rep:repOk(s.rep),why:['mate','stale','rep','mat','50','resign','time','gone'].includes(s.why)?s.why:''};
@@ -240,13 +240,13 @@ const CH=GAME.chess={title:'ჭადრაკი',
  /* the move list is read off each new position as it arrives, so it is the same for bots, online games and watching.
     if a position does not follow from the last one (joined late, reconnected), the list starts again without move numbers */
  note(){const st=this.st;if(st===this.ps)return;const ps=this.ps;this.ps=st;if(!this.mv)this.mv=[];
-  if(!st.last.length&&st.rep.length<=1){this.mv=[];this.full=true;return}
+  if(!st.last.length&&st.rep.length<=1){this.mv=[];this.full=true;this.hist=[st];this.an=null;return}
   const ok=ps&&st.last.length===2&&ps.turn!==st.turn&&chLegal(ps,ps.turn).some(m=>m.f===st.last[0]&&m.t===st.last[1]);
-  if(!ok){if(ps&&ps.b.join()===st.b.join())return;this.mv=[];this.full=false;return}this.mv.push(chSan(ps,st))},
+  if(!ok){if(ps&&ps.b.join()===st.b.join())return;this.mv=[];this.full=false;this.hist=[st];this.an=null;return}this.mv.push(chSan(ps,st));(this.hist||(this.hist=[ps])).push(st)},
  movesHTML(){const mv=this.mv||[],from=Math.max(0,mv.length-12);let h='';
   for(let j=from;j<mv.length;j++){if(this.full&&j%2===0)h+=`<span class="n">${j/2+1}.</span>`;h+=`<span${j===mv.length-1?' class="now"':''}>${mv[j].replace(/[♔♕♖♗♘]/g,'<i class="fg">$&</i>')}</span>`}
   return `<div class="mvs" aria-label="სვლები">${h}</div>`},
- status(){const c=this.ctx,st=this.st;if(st.over)return overMsg(c,st.over,st.why);if(c.gone)return 'მოწინააღმდეგე გავიდა თამაშიდან';const chk=this.inCheck()?'ქიში! ':'';
+ status(){const c=this.ctx,st=this.st;if(st.over)return c.mode==='puzzle'?'მატი! ამოცანა ამოხსნილია':overMsg(c,st.over,st.why);if(c.mode==='puzzle'&&this.pz)return this.pz.msg||(this.pz.step?'კარგია! ახლა მატი ერთ სვლაში':'მატი ორ სვლაში. იპოვე პირველი სვლა');if(c.gone)return 'მოწინააღმდეგე გავიდა თამაშიდან';const chk=this.inCheck()?'ქიში! ':'';
   return this.mine()?chk+(this.sel!==null?'აირჩიე უჯრა':'შენი სვლაა'):chk+esc(c.names[st.turn])+' ფიქრობს…'},
  render(){this.note();const c=this.ctx,flip=c.side===-1,st=this.st,sel=this.sel,tg=sel!==null?this.moves.filter(m=>m.f===sel):[],chkK=this.inCheck()?chKing(st.b,st.turn):-1;
   let cells='';for(let di=0;di<64;di++){const i=flip?63-di:di,r=i>>3,cc=i&7,p=st.b[i],t=tg.find(m=>m.t===i);
@@ -259,7 +259,7 @@ const CH=GAME.chess={title:'ჭადრაკი',
   else if(n.rep.filter(x=>x===k).length>=3){n.over=2;n.why='rep'}else if(chInsuf(n.b)){n.over=2;n.why='mat'}else if(n.hm>=100){n.over=2;n.why='50'}
   if(this.ctx.mode==='online')netSend();if(n.over){finish(this,n.over);return}this.render();this.kick()},
  resign(s=this.ctx.side,why='resign'){const st=this.st;if(st.over)return;st.over=-s;st.why=why;this.sel=null;this.moves=[];if(this.ctx.mode==='online')netSend();finish(this,st.over)},
- kick(){const c=this.ctx;if(this.st.over)return;if(!(c.mode==='watch'||((c.mode==='bot'||c.mode==='tour')&&this.st.turn!==c.side)))return;const s0=this.st;
+ kick(){const c=this.ctx;if(this.st.over)return;if(c.mode==='puzzle'){pzReply(this);return}if(!(c.mode==='watch'||((c.mode==='bot'||c.mode==='tour')&&this.st.turn!==c.side)))return;const s0=this.st;
   const lv=c.mode==='watch'?2:bLvl('chess'),t0=Date.now(),ok=()=>this.ctx===c&&this.st===s0&&!s0.over;
   botThink({g:'chess',st:s0,lvl:lv,budget:BUDGET[lv]}).then(m=>{if(!ok())return;const mm=(m&&chLegal(s0,s0.turn).find(x=>x.f===m.f&&x.t===m.t&&!!x.pr===!!m.pr))||chBot(s0);setTimeout(()=>{if(ok()&&mm)this.play(mm)},Math.max(0,(c.mode==='watch'?1100:400)-(Date.now()-t0)))})},
  checkEnd(){if(this.st.over)finish(this,this.st.over)}};
@@ -478,8 +478,8 @@ const BOTW={w:undefined,id:0,cb:new Map()};
 function botWorker(){if(BOTW.w!==undefined)return BOTW.w;BOTW.w=null;
  try{if(typeof Worker!=='function')return null;const J=v=>JSON.stringify(v);
   const src=[`const CPV=${J(CPV)},KN=${J(KN)},KG=${J(KG)},BD=${J(BD)},RD=${J(RD)},PST=${J(PST)},PSTS=${J(PSTS)},DIRS=${J(DIRS)};`,`const isW=${isW};const colOf=${colOf};const chKing=${chKing};const chLegal=${chLegal};const inB=${inB};`,
-   chAttacked,chPseudo,chApply,chEval,chOrder,chQS,chNega,chThinkSync,ckJumps,ckAll,ckApply,ckEval,ckNega,ckThinkSync].map(String).join('\n')
-   +`\nonmessage=e=>{const d=e.data;let m=null;try{m=d.g==='chess'?chThinkSync(d.st,d.lvl,d.budget):ckThinkSync(d.b,d.side,d.lvl,d.budget)}catch(x){}postMessage({id:d.id,m})}`;
+   chAttacked,chPseudo,chApply,chEval,chOrder,chQS,chNega,chThinkSync,chScore,ckJumps,ckAll,ckApply,ckEval,ckNega,ckThinkSync].map(String).join('\n')
+   +`\nonmessage=e=>{const d=e.data;let m=null;if(d.g==='chan'){postMessage({id:d.id,m:d.ps.map(st=>{try{const r=chScore(st,d.budget);return{f:r.m?r.m.f:-1,t:r.m?r.m.t:-1,pr:r.m&&r.m.pr||null,sc:r.sc}}catch(x){return null}})});return}try{m=d.g==='chess'?chThinkSync(d.st,d.lvl,d.budget):ckThinkSync(d.b,d.side,d.lvl,d.budget)}catch(x){}postMessage({id:d.id,m})}`;
   const w=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));w.onmessage=e=>{const f=BOTW.cb.get(e.data.id);if(f){BOTW.cb.delete(e.data.id);f(e.data.m)}};w.onerror=()=>{BOTW.w=null};BOTW.w=w}catch(e){BOTW.w=null}return BOTW.w}
 function botThink(job){return new Promise(res=>{const w=botWorker(),sync=()=>{try{res(job.g==='chess'?chThinkSync(job.st,job.lvl,job.budget):ckThinkSync(job.b,job.side,job.lvl,job.budget))}catch(e){res(null)}};
  if(!w){sync();return}const id=++BOTW.id;BOTW.cb.set(id,res);try{w.postMessage(Object.assign({id},job))}catch(e){BOTW.cb.delete(id);sync();return}setTimeout(()=>{if(BOTW.cb.has(id)){BOTW.cb.delete(id);sync()}},job.budget+5000)})}
@@ -492,3 +492,87 @@ function nEval4(T,s){const o=-s,pip=x=>{let n=T.bar[x]*25;for(let i=0;i<24;i++)i
 /* the menu row and its sheet */
 A.gbot=()=>{const id=gCur();if(!id)return;const lv=bLvl(id);sheet(head('ბოტის დონე')+`<div class="gmenu">${[1,2,3,4].map(v=>`<button data-a="gbotset" data-v="${v}"${v===lv?' aria-pressed="true"':''}>${ic(v===lv?'check':'user')}<span><b>${BLV[v].n}</b><br><small class="muted">${BLV[v].d}</small></span></button>`).join('')}</div>`,'short')};
 A.gbotset=t=>{const id=gCur();if(!id)return;const m=Object.assign({},store.get('blv',{})||{});m[id]=+t.dataset.v;store.set('blv',m);closeSheet();toast('ბოტის დონე: '+BLV[+t.dataset.v].n);const G=GAME[id];if(G&&G.render)G.render()};
+
+/* ---------- after a chess game: how good every move was, and the game played back ----------
+   each position is searched for its best move; a move loses what the position was worth before it minus what it is worth after.
+   a move that throws away 3 pawns or more is a blunder, 1.2 a mistake, half a pawn an inaccuracy */
+function chScore(st,budget){const L=chLegal(st,st.turn);if(!L.length){const inC=chAttacked(st.b,chKing(st.b,st.turn),-st.turn);return{m:null,sc:inC?-1e5:0}}
+ const T={n:0,end:Date.now()+budget,stop:false,qs:true};let bestM=L[0],bestV=0;
+ for(let d=1;d<=5;d++){let bv=-1e9,bm=null,al=-1e9;for(const m of chOrder(L.slice(),st,bestM)){const v=-chNega(chApply(st,m),d-1,-1e9,-al,1,T);if(T.stop)break;if(v>bv){bv=v;bm=m}if(v>al)al=v}if(T.stop&&d>1)break;if(bm){bestM=bm;bestV=bv}}
+ return{m:bestM,sc:bestV}}
+function chAnBatch(ps,budget){return new Promise(res=>{const w=botWorker(),sync=()=>{res(ps.map(st=>{try{const r=chScore(st,Math.min(budget,120));return{f:r.m?r.m.f:-1,t:r.m?r.m.t:-1,pr:r.m&&r.m.pr||null,sc:r.sc}}catch(e){return null}}))};
+ if(!w){setTimeout(sync,0);return}const id=++BOTW.id;BOTW.cb.set(id,res);try{w.postMessage({id,g:'chan',ps,budget})}catch(e){BOTW.cb.delete(id);sync();return}setTimeout(()=>{if(BOTW.cb.has(id)){BOTW.cb.delete(id);sync()}},ps.length*budget+8000)})}
+const ANC=x=>Math.max(-2000,Math.min(2000,x));
+async function chAnalyze(G,prog){const H=G.hist||[];if(H.length<2)return null;const out=[];for(let i=0;i<H.length;i+=6){const part=await chAnBatch(H.slice(i,i+6),230);out.push(...part);if(prog)prog(Math.min(H.length,i+6),H.length)}
+ const moves=[];for(let i=0;i+1<H.length;i++){const ps=H[i],ns=H[i+1],a=out[i],b=out[i+1],side=ps.turn;if(!a||!b){moves.push(null);continue}
+  const best=ANC(a.sc),after=ANC(-b.sc),loss=Math.max(0,best-after),same=ns.last[0]===a.f&&ns.last[1]===a.t;
+  let bm=null;if(a.f>=0&&!same){const m=chLegal(ps,side).find(x=>x.f===a.f&&x.t===a.t);if(m)bm=chSan(ps,chApply(ps,m))}
+  const k=same?'best':loss>=300?'blunder':loss>=120?'mistake':loss>=50?'inacc':'ok';moves.push({side,san:chSan(ps,ns),loss:same?0:loss,k,bm,ev:ANC(side===1?after:-after)})}
+ const acc=s=>{const L=moves.filter(m=>m&&m.side===s);return L.length?Math.round(L.reduce((a,m)=>a+100*Math.exp(-m.loss/260),0)/L.length):null};
+ return{moves,acc:{1:acc(1),'-1':acc(-1)}}}
+const ANK={blunder:['??','უხეში შეცდომა'],mistake:['?','შეცდომა'],inacc:['?!','უზუსტობა'],best:['!','საუკეთესო სვლა'],ok:['','კარგი სვლა']};
+function chMini(b,flip,last){let h='';for(let di=0;di<64;di++){const i=flip?63-di:di,r=i>>3,c=i&7,p=b[i];h+=`<span class="${(r+c)%2?'d':'l'}${last&&last.includes(i)?' last':''}">${p?`<i class="${isW(p)?'pw':'pb'}">${GLY[p.toLowerCase()]}</i>`:''}</span>`}return `<div class="anb" aria-hidden="true">${h}</div>`}
+function chAnHTML(G,k){const H=G.hist,A=G.an,c=G.ctx,flip=c.side===-1,n=H.length-1;k=Math.max(0,Math.min(n,k));G.ank=k;
+ if(!A)return `<p class="note">ანალიზი… <b id="anp">0/${H.length}</b></p><div class="anbar"><i id="anbar" style="width:0"></i></div>`;
+ const m=k>0?A.moves[k-1]:null,nm=s=>esc(String(c.names[s]||'').split(' ')[0]);
+ const rows=[];for(let i=0;i<A.moves.length;i+=2){const w=A.moves[i],bl=A.moves[i+1],cell=(x,j)=>x?`<button class="anm k-${x.k}${k===j+1?' on':''}" data-a="chanj" data-k="${j+1}">${esc(x.san)}<em>${ANK[x.k][0]}</em></button>`:'<span></span>';
+  rows.push(`<span class="ann">${i/2+1}.</span>${cell(w,i)}${cell(bl,i+1)}`)}
+ return `<div class="anacc"><span><b>${A.acc[1]??'–'}%</b>${nm(1)} · თეთრები</span><span><b>${A.acc[-1]??'–'}%</b>${nm(-1)} · შავები</span></div>
+ ${chMini(H[k].b,flip,H[k].last)}
+ <div class="annav"><button class="ibtn" data-a="chanj" data-k="0" aria-label="დასაწყისი">${ic('back')}${ic('back')}</button><button class="ibtn" data-a="chanj" data-k="${k-1}" aria-label="წინა">${ic('back')}</button><span>${k?`${Math.ceil(k/2)}. ${k%2?'':'… '}${esc(m?m.san:'')}`:'საწყისი პოზიცია'}</span><button class="ibtn flip" data-a="chanj" data-k="${k+1}" aria-label="შემდეგი">${ic('back')}</button><button class="ibtn flip" data-a="chanj" data-k="${n}" aria-label="ბოლო">${ic('back')}${ic('back')}</button></div>
+ ${m?`<p class="anwhy k-${m.k}"><b>${ANK[m.k][1]}</b>${m.bm?` · უკეთესი იყო <b>${esc(m.bm)}</b>`:''}<span class="anev">${m.ev>=1e4?'მატი':(m.ev>0?'+':'')+(m.ev/100).toFixed(1)}</span></p>`:'<p class="anwhy">გადაათვალიერე პარტია ისრებით ან შეეხე სვლას.</p>'}
+ <div class="anlist">${rows.join('')}</div>`}
+A.chan=async()=>{const G=CH;if(!G.hist||G.hist.length<2){toast('პარტია ჯერ არ დაწყებულა');return}
+ sheet(head('პარტიის ანალიზი')+`<div class="ph-body anbody" id="anbody">${chAnHTML(G,G.hist.length-1)}</div>`);
+ if(!G.an){const H=G.hist;G.an=await chAnalyze(G,(d,n)=>{const p=$('#anp'),b=$('#anbar');if(p)p.textContent=d+'/'+n;if(b)b.style.width=Math.round(d/n*100)+'%'});if(G.hist!==H)return;const el=$('#anbody');if(el)el.innerHTML=chAnHTML(G,G.hist.length-1)}};
+A.chanj=t=>{const el=$('#anbody');if(el&&CH.an)el.innerHTML=chAnHTML(CH,+t.dataset.k)};
+
+/* ---------- the chess puzzle of the day: mate in two ----------
+   the positions come from games the bots played against each other; each has exactly one first move that forces mate in two.
+   a wrong move is taken back; after the right one the defence answers and you finish with mate */
+const chInChk=st=>chAttacked(st.b,chKing(st.b,st.turn),-st.turn);
+const chMated=st=>!chLegal(st,st.turn).length&&chInChk(st);
+const chMate1=st=>chLegal(st,st.turn).filter(m=>chMated(chApply(st,m)));
+function chMate2(st,m){const n=chApply(st,m),rs=chLegal(n,n.turn);if(!rs.length)return false;for(const r of rs)if(!chMate1(chApply(n,r)).length)return false;return true}
+{const pl=CH.play;CH.play=function(m){const c=this.ctx,P=this.pz;if(c.mode!=='puzzle'||!P||this.st.turn!==c.side||this.st.over)return pl.call(this,m);
+ const ps=this.st,n=chApply(ps,m),ok=chMated(n)||(P.step===0&&chMate2(ps,m));
+ if(!ok){P.tries++;P.msg='ეს სვლა მატამდე არ მიდის. სცადე სხვა';this.sel=null;if(typeof gBuzz==='function')gBuzz(30);this.render();setTimeout(()=>{if(this.pz===P){P.msg=null;if(!this.st.over)this.render()}},2200);return}
+ P.msg=null;P.step++;pl.call(this,m)}}
+function pzReply(G){const c=G.ctx,st=G.st;if(st.turn===c.side||st.over)return;const P=G.pz;setTimeout(()=>{if(G.pz!==P||G.st!==st)return;const L=chLegal(st,st.turn);if(!L.length)return;const m=chThinkSync(st,3,300)||L[0];G.st=st;
+ const n=chApply(st,m);n.rep=[];G.st=n;G.moves=chLegal(n,n.turn);G.sel=null;G.render()},650)}
+
+/* the puzzles: board (rank 8 first, dots for empty), side to move, castling, en passant, the key move */
+const CPZ=[
+"r.b..rk.pp..bppN..p.pn.....p.....q.....Q...BP...PPPPNPPPR.B..RK.|w|-|-1|15-21",
+"k..r.b.r.pQ.ppp.p...qnnp.N.p.B.....P........P...PPPB.PPPR....RK.|w|-|-1|10-3",
+"..rq.b.rppNkpppp....bn.....p.......Q.B.......N..PPP.PPPPR...KB.R|w|KQ|-1|35-32",
+"....qb.rpp.kpppp..n......Q.p.bN....PnB.........PPPP..PP.R...KB.R|w|KQ|-1|25-9",
+"r..q.b.rppN.kppp.........Bn.Bb......p.....Q.....PPP..PPPR...K.NR|w|KQ|-1|42-26",
+"r...r.k.ppp..pp.......b....q.p.p.N.n..........bPPPPPB.P.R.B..K.R|b|-|-1|4-52",
+"r.b.r.k.pp.p.ppp..pb...........Q..BBq...P....NP..PP..P.PR....RK.|w|-|-1|31-13",
+"....q..r.p.k.pppp.n.p....Q....N..b.PnB.....P...PPP...PP.R....K.R|w|-|-1|25-9",
+".......k......Rp.......B.n......................P....P.........K|w|-|-1|14-13",
+"....rrk.ppp.qp....n..n.B....p..Q....P.p.P.P.......P.BPPPR....RK.|w|-|-1|31-30",
+"r.bq.k.rp.pp.p.p..p.........Q.......n...........PPP..PPPR.B.KB.R|w|KQ|-1|58-23",
+".....br...Qp..ppkpb...n...q.p.....N.P......P.B..r.P..PPP.R...RK.|w|-|-1|57-17",
+"r....rk..pq..pp.p..........B.b.p...np.......P...PPP..PPPR..K...R|b|-|-1|10-50",
+"R..............k....R............p..p...............rPPK........|w|-|-1|0-8",
+"..q..rk..pp..ppp...p.b...P.P......Q..P....P....bP....P.P....RRK.|b|-|-1|2-38",
+"....k.....R....pP..B...P.........................P...PP.......K.|w|-|-1|16-8",
+".k.r.b.r.pp..ppp........p......b........P......P.P.PnP..R.B....K|b|-|-1|31-45",
+"......k..pp..pp.p..p...p...P.......Pnp..P.P....K.P....P.R.Br....|b|-|-1|36-53",
+"r..r..k.p.Q..pp........p..p.P......q.P..........P....PPPR..R..K.|b|-|-1|35-59",
+"r.k..b.rp.p.p.p........p..P.......q..Bp..........K...PPP.R.....R|b|-|-1|0-1",
+"...k...r..qr.ppp.Q.P.............p.......P.....PP....PP....RR.K.|w|-|-1|19-10",
+".....k...p...r..p.q.Q.......P.Rp..N.p...PP..P..P..P........R..K.|w|-|-1|59-3",
+".....k.rpp...p.p..rp.......Q........P..P..NK....Pq...PP........R|b|-|-1|18-42",
+"r.....k...R..pP......Q.p.p............b.P..q.....P...PPPR.....K.|w|-|-1|21-13",
+"......k..p..Rp.pp......pP.p..............r........r............K|b|-|-1|41-57",
+".k......ppp..p...q.....pr.............p.......P.P....RP....rR.K.|b|-|-1|59-60",
+"......k.ppp...................p.K....p..P...nR...rr.............|b|-|-1|50-18",
+"...r..k..p...ppp.pn.b.......P.............P.........R.PP.......K|b|-|-1|3-59",
+".r....k.p.p..ppp..............P.P.P...............r.....K.......|b|-|-1|50-34",
+".k.r....p.p.Q.pp.........p......................PqP...PPR......K|b|-|-1|49-56",
+".............pk.....p..p.p.bP.p.P.....P..p............r......K..|b|-|-1|41-49",
+".........p.....Qp...k.p.....Pp.....P.P..........PP...P.P.......K|w|-|-1|15-9",
+".r....k.p.p..ppp.....p........P.P.P..P............r.....K.......|b|-|-1|50-34"];
