@@ -2495,3 +2495,20 @@ html.c4 .card[data-s="♦"],html.c4 .suits button[data-s="d"]{color:#1A55C4}
 .gx.lux .bids button.hint{border-color:#3D86FF;background:linear-gradient(180deg,#2457B8,#173E8A);box-shadow:0 0 0 1px #3D86FF,0 0 20px rgb(61 134 255/.5),inset 0 1px 0 rgb(255 255 255/.15)}
 .gx.lux .bids button.hint::after{background:#9CC2FF;box-shadow:0 0 6px #9CC2FF}
 .gx.lux .bids button:disabled{color:rgb(200 210 240/.3);background:transparent;border:1px dashed rgb(150 175 255/.25);box-shadow:none}
+/* the trump: a big suit on a small white card, the name beside it */
+.gx .ginfo>span.tchip{display:inline-flex;align-items:center;gap:9px;padding:4px 14px 4px 4px}
+.gx .ginfo .tsu{display:grid;place-items:center;flex:none;width:34px;height:42px;border-radius:7px;background:linear-gradient(180deg,#FFFFFF,#F1ECE2);box-shadow:inset 0 0 0 1px rgb(0 0 0/.12),0 3px 8px rgb(0 0 0/.35);font-style:normal}
+.gx .ginfo .tsu svg{width:25px;height:25px;filter:drop-shadow(0 1px 0 rgb(0 0 0/.15))}
+.gx .ginfo .tsu .tq{font-size:20px;font-weight:800;line-height:1}
+.gx .ginfo .tsn{display:flex;flex-direction:column;line-height:1.15}
+.gx .ginfo .tsn small{font-size:10.5px;font-weight:600;opacity:.72;letter-spacing:.02em}
+.gx .ginfo .tsn b{font-size:15px;font-weight:800}
+.gx.lux .ginfo>span.tchip{padding:4px 16px 4px 4px}
+.gbig .gx .ginfo .tsu{width:40px;height:50px}.gbig .gx .ginfo .tsu svg{width:30px;height:30px}.gbig .gx .ginfo .tsn b{font-size:18px}
+/* the bids: always sized for ten (pass to nine), so a short hand gets small buttons in the middle, not two big blocks */
+.gx .bids{display:flex;flex-wrap:nowrap;justify-content:center;gap:5px;width:100%;max-width:min(100%,470px)}
+.gx .bids button{flex:0 0 calc((100% - 45px) / 10);height:44px;border-radius:12px;font-size:17px}
+.gx .bids button[data-v="0"]{font-size:11px;letter-spacing:-.01em}
+.gx.lux .bids{gap:5px}
+.gx.lux .bids button{height:44px;border-radius:12px;font-size:17px}
+.gbig .gx .bids button{height:52px;font-size:20px}

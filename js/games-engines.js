@@ -316,6 +316,14 @@ const isRed=s=>s==='h'||s==='d';
 const SC4={s:'#17110E',c:'#1C7A3A',h:'#CE1430',d:'#1A55C4'},SC4D={s:'inherit',c:'#62D18E',h:'#FF8A9A',d:'#8DB0FF'};
 const c4On=()=>!!store.get('c4',false);
 const suitInk=s=>c4On()?SC4D[s]:isRed(s)?'#FF8A9A':'inherit';
+/* the suits drawn as shapes, so every phone shows the same sign (some draw ♦ and ♥ as emoji) */
+const SUITD={h:'<path d="M50 90C22 68 5 52 5 31 5 15 17 5 31 5c9 0 16 5 19 13 3-8 10-13 19-13 14 0 26 10 26 26 0 21-17 37-45 59z"/>',d:'<path d="M50 3 88 50 50 97 12 50z"/>',
+ s:'<path d="M50 4c20 22 46 36 46 58 0 16-12 24-24 24-9 0-16-5-19-11 1 11 5 17 11 21H36c6-4 10-10 11-21-3 6-10 11-19 11C16 86 4 78 4 62 4 40 30 26 50 4z"/>',c:'<circle cx="50" cy="28" r="21"/><circle cx="27" cy="59" r="21"/><circle cx="73" cy="59" r="21"/><path d="M44 54h12l5 42H39z"/>'};
+const suitSvg=s=>`<svg viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">${SUITD[s]||''}</svg>`;
+/* the trump in the top bar: its sign big on a little white card, and its name beside it */
+function trumpChip(s,choosing){const col=s?(c4On()?SC4[s]:isRed(s)?'#D3122E':'#17110E'):'#8A93AE';
+ const b=choosing?'ირჩევა…':s?SN[s]:'უკოზირო',sign=choosing?'<b class="tq">?</b>':s?suitSvg(s):'<b class="tq">✕</b>';
+ return `<span class="trump tchip" aria-label="კოზირი: ${b}"><i class="tsu" style="color:${col}">${sign}</i><span class="tsn"><small>კოზირი</small><b>${b}</b></span></span>`}
 try{document.documentElement.classList.toggle('c4',c4On())}catch(e){}
 /* how many tricks a hand should take, counted the way a careful player does; the bid hint and the stronger bots use it */
 function jEst(hand,tr){let e=0;const len=s=>hand.filter(c=>!c.j&&c.s===s).length,nt=tr?len(tr):0;
@@ -430,7 +438,7 @@ const JK=GAME.joker={title:'ჯოკერი',
   const pips=p=>jPips(this.bids[p],this.taken[p]);
   const seat=(p,pos)=>`<div class="seat ${pos}${this.cur===p&&(this.phase==='bid'||this.phase==='play'||this.phase==='trump')?' turn':''}">${avAny(this.ids[p],38)}<b>${esc(this.nm(p))}</b>${pips(p)}<span class="jsc${this.score[p]<0?' neg':''}">${this.score[p]}</span></div>`;
   const tr=this.trick.map(e=>{const h=jCardHTML(e.card).replace('class="card','class="card p'+e.p);return e.card.j?h.replace('</div>',`<span class="jm">${e.jm==='hi'?'მაღალი':'დაბალი'}${e.js?' '+SY[e.js]:''}</span></div>`):h}).join('');
-  const trumpTxt=this.phase==='trump'?'კოზირი ირჩევა':this.trump?`კოზირი: <b style="color:${suitInk(this.trump)}">${SY[this.trump]}</b> ${SN[this.trump]}`:'უკოზირო';
+  const trumpTxt=trumpChip(this.trump,this.phase==='trump');
   const L=this.phase==='play'&&this.cur===0?this.legal(0):[];
   const hand=this.phase==='trump'&&this.cur===0?this.first3[0].map(c=>jCardHTML(c)).join('')+'<div class="card" style="opacity:.25" aria-hidden="true"></div>'.repeat(this.n-3)
    :this.hands[0].map((c,i)=>`<button class="card${c.j?' jk':''}${!c.j&&isRed(c.s)?' red':''}" data-a="jcard" data-i="${i}"${c.j?'':` data-s="${SY[c.s]}"`} aria-label="${cardName(c)}"${L.includes(c)?'':' disabled'}>${c.j?'<i>★</i>ჯოკერი':`<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span>`}</button>`).join('');
@@ -441,7 +449,7 @@ const JK=GAME.joker={title:'ჯოკერი',
   else if(this.phase==='handover'||this.phase==='over'){const{hand:last,prem}=jLast(this.hist);const mn=last.p[0]+(prem?prem.p[0]:0);
    st=this.phase==='over'?(this.score[0]===Math.max(...this.score)?'მოიგე! +12 რეიტინგი, +10 მონეტა':'თამაში დასრულდა'):`ხელი დასრულდა. შენ: ${mn>0?'+':''}${mn}`+(prem?' · სექციის პრემია':'');
    panel=''}
-  const info=`<div class="ginfo"><span class="trump">${trumpTxt}</span><span>ხელი ${Math.min(this.h+1,JSEQ[this.len].length)}/${JSEQ[this.len].length}, ${this.n} კარტი</span>${this.lastT&&this.phase==='play'?jLastBtn('jlast'):''}</div>`;
+  const info=`<div class="ginfo">${trumpTxt}<span>ხელი ${Math.min(this.h+1,JSEQ[this.len].length)}/${JSEQ[this.len].length}, ${this.n} კარტი</span>${this.lastT&&this.phase==='play'?jLastBtn('jlast'):''}</div>`;
   const stage=`<div class="jt${g3?' g3jt':''}">${seat(2,'top')}${seat(1,'left')}${seat(3,'right')}<div class="trick" aria-label="მაგიდა">${tr}</div>${g3?`<div class="g3 g3-joker${G3W.ready?'':' loading'}">${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div>`:''}</div>`;
   let res='';if(this.phase==='over'){const mx=Math.max(...this.score),win=this.score[0]===mx,pl=[0,1,2,3].sort((a,b)=>this.score[b]-this.score[a]);
    res=gResBox(this,{title:win?'მოიგე!':'თამაში დასრულდა',sub:win?'ყველაზე მეტი ქულა შენ დააგროვე':'გაიმარჯვა: '+esc(this.nm(pl[0])),kind:win?'win':'lose',more:`<div class="gendt">${pl.map(p=>`<span><b>${esc(this.nm(p))}</b>${this.score[p]}</span>`).join('')}</div>`+(this.ctx&&this.ctx.daily&&typeof jdMoreHTML==='function'?jdMoreHTML(this.ctx):''),again:this.ctx&&this.ctx.daily?'<button class="btn gold" data-a="gdaily">კიდევ ერთხელ</button>':'<button class="btn gold" data-a="jagain">ახალი თამაში</button>',share:win?gShareBtn('joker',(this.ctx&&this.ctx.daily?'დღის ხელი, ':'')+this.score[0]+' ქულით'):''})}
