@@ -2,13 +2,13 @@
 
 /* ---------- the computer's players: one person for each level, with a face and a way of talking ---------- */
 const BOTC=[null,
- {n:'ნიკა',h:45,lk:{style:'curly',skin:'#EBC0A0',hair:'#2E2219',shirt:'#C9A227'},d:'სტუდენტი, ახლა სწავლობს. ხშირად ცდება და ბევრს იცინის'},
- {n:'ბებო ნაზი',h:340,lk:{fem:1,style:'pony',glasses:1,skin:'#F2CDB0',hair:'#D9D4CB',brow:'#9A948C',shirt:'#8E3047'},d:'ფრთხილად თამაშობს, ყოველ სვლაზე ფიქრობს'},
- {n:'ბატონი რეზო',h:200,lk:{style:'short',mus:1,hat:1,skin:'#E4B08C',hair:'#9A948C',brow:'#6E675F',shirt:'#2C4A6E'},d:'ეზოს ვეტერანი, იშვიათად ცდება'},
- {n:'ოსტატი გურამი',h:20,lk:{style:'bald',beard:1,mus:1,glasses:1,skin:'#D69C77',hair:'#8A8580',brow:'#4A3F38',shirt:'#2C2C34'},d:'ყველაზე ძლიერი. ფიქრს დრო სჭირდება'}];
+ {n:'ნიკა',h:45,cast:'m5',lk:{style:'curly',skin:'#C08261',hair:'#1A120D',shirt:'#8E3047',hat:1,beard:1},d:'სტუდენტი, ახლა სწავლობს. ხშირად ცდება და ბევრს იცინის'},
+ {n:'მარიამი',h:340,cast:'f4',lk:{fem:1,style:'long',skin:'#F1C9AC',hair:'#3A2216',shirt:'#D9D4C7'},d:'ფრთხილად თამაშობს, ყოველ სვლაზე ფიქრობს'},
+ {n:'ბატონი რეზო',h:200,cast:'m2',lk:{style:'short',mus:1,hat:1,skin:'#D69C77',hair:'#2E2219',brow:'#2E2219',shirt:'#7A5A3E'},d:'ეზოს ვეტერანი, იშვიათად ცდება'},
+ {n:'ოსტატი გურამი',h:20,cast:'m1',lk:{style:'short',skin:'#EBC0A0',hair:'#2E2219',shirt:'#2C2C34'},d:'ყველაზე ძლიერი. ფიქრს დრო სჭირდება'}];
 const BOTP=/^(ბებო|ბატონი|ოსტატი|ქალბატონი|მასწავლებელი|მეზღვაური|ბაბუა|ჩემპიონი) /;
 const botChar=(g,lv)=>BOTC[lv||bLvl(g)]||BOTC[2];
-const botAv=ch=>({n:ch.n.replace(BOTP,'')[0],h:ch.h,look:ch.lk});
+const botAv=ch=>({n:ch.n.replace(BOTP,'')[0],h:ch.h,look:ch.lk,cast:ch.cast});
 const G2P=['nardi','shashi','chess'];
 /* a new level picked in the menu brings its person to the table at once */
 {const set=A.gbotset;A.gbotset=t=>{set(t);const id=gCur(),G=GAME[id],c=G&&G.ctx;if(c&&c.mode==='bot'&&G2P.includes(id)){const ch=botChar(id);c.names[-c.side]=ch.n;c.avs[-c.side]=botAv(ch);G.render()}}}
@@ -64,12 +64,12 @@ const sayNm=c=>{const s=sayBot(c);return s==null?'':String(c.names[s]||'')};
    six opponents in six places, each harder than the last. beat one and the next opens, along with the place you won in,
    which you can then pick for your own table in the menu ("ადგილი") */
 const CAREER=[
- {id:'yard',g:'nardi',pl:'court',n:'ძველი თბილისის ეზო',who:{n:'ვახო',h:25,lk:{style:'short',mus:1,skin:'#DDA984',hair:'#2B1E16',shirt:'#5A4632'}},lvl:2,d:'ეზოს ნარდის მეფე. ამბობს, რომ ოცი წელია არ წაუგია'},
- {id:'sololaki',g:'shashi',pl:'balcony',n:'აივანი სოლოლაკში',who:{n:'ქალბატონი ლია',h:300,lk:{fem:1,style:'long',skin:'#F1C9AC',hair:'#4A2A18',shirt:'#3F6E8C'}},lvl:2,d:'მეზობლებთან ყველა პარტია დამებით მოუგია'},
- {id:'library',g:'chess',pl:'desk',n:'ძველი ბიბლიოთეკა',who:{n:'მასწავლებელი თენგო',h:210,lk:{style:'short',glasses:1,skin:'#E2AF8C',hair:'#6F6862',shirt:'#3E6B47'}},lvl:2,d:'ჭადრაკის წრეს ორმოცი წელი ხელმძღვანელობდა'},
- {id:'batumi',g:'shashi',pl:'sea',n:'ბათუმის ბულვარი',who:{n:'მეზღვაური ზურა',h:200,lk:{style:'short',beard:1,mus:1,hat:1,skin:'#C99169',hair:'#1A120D',shirt:'#2F5D8A'}},lvl:3,d:'გემზე შაშით ერთობოდა, ახლა ბულვარზე ელოდება მეტოქეს'},
- {id:'sighnaghi',g:'chess',pl:'valley',n:'სიღნაღის აივანი',who:{n:'ბაბუა გოგი',h:30,lk:{style:'bald',mus:1,skin:'#D69C77',hair:'#D9D4CB',brow:'#9A948C',shirt:'#7A3B2E'}},lvl:3,d:'ალაზნის ველს გადაჰყურებს და აჩქარება არ უყვარს'},
- {id:'mtatsminda',g:'nardi',pl:'city',n:'მთაწმინდა, ღამით',who:{n:'ჩემპიონი გურამი',h:20,lk:BOTC[4].lk},lvl:4,d:'ბოლო მეტოქე, ქალაქის ჩემპიონი. ბევრს არ მოუგია მისთვის'}];
+ {id:'yard',g:'nardi',pl:'court',n:'ძველი თბილისის ეზო',who:{n:'დათო',h:25,cast:'m4',lk:{style:'short',mus:1,beard:1,skin:'#E2AF8C',hair:'#4E3220',shirt:'#3A4656'}},lvl:2,d:'ეზოს ნარდის მეფე. ამბობს, რომ ათი წელია არ წაუგია'},
+ {id:'sololaki',g:'shashi',pl:'balcony',n:'აივანი სოლოლაკში',who:{n:'ქალბატონი თამარი',h:300,cast:'f1',lk:{fem:1,style:'pony',skin:'#F2CDB0',hair:'#B8875A',shirt:'#8E3047'}},lvl:2,d:'მეზობლებთან ყველა პარტია დამებით მოუგია'},
+ {id:'library',g:'chess',pl:'desk',n:'ძველი ბიბლიოთეკა',who:{n:'მასწავლებელი ლუკა',h:210,cast:'m3',lk:{style:'short',skin:'#EBC0A0',hair:'#4E3220',shirt:'#2F5D8A'}},lvl:2,d:'ჭადრაკის წრეს ხელმძღვანელობს, ყველა დებიუტი ზეპირად იცის'},
+ {id:'batumi',g:'shashi',pl:'sea',n:'ბათუმის ბულვარი',who:{n:'სალომე',h:200,cast:'f5',lk:{fem:1,style:'long',skin:'#F2CDB0',hair:'#B8875A',shirt:'#2F5D8A'}},lvl:3,d:'ზღვისპირას შაშით ერთობა, ბულვარზე ელოდება მეტოქეს'},
+ {id:'sighnaghi',g:'chess',pl:'valley',n:'სიღნაღის აივანი',who:{n:'ანა',h:30,cast:'f3',lk:{fem:1,style:'long',skin:'#EBC0A0',hair:'#4E3220',shirt:'#3E6B47'}},lvl:3,d:'ალაზნის ველს გადაჰყურებს და აჩქარება არ უყვარს'},
+ {id:'mtatsminda',g:'nardi',pl:'city',n:'მთაწმინდა, ღამით',who:{n:'ჩემპიონი გურამი',h:20,cast:'m1',lk:BOTC[4].lk},lvl:4,d:'ბოლო მეტოქე, ქალაქის ჩემპიონი. ბევრს არ მოუგია მისთვის'}];
 const cState=()=>{const s=store.get('career',null);return s&&typeof s==='object'&&s.done?s:{done:{}}};
 const cNext=()=>CAREER.find(x=>!cState().done[x.id])||null;
 const cOpen=x=>{const i=CAREER.indexOf(x);return i===0||!!cState().done[CAREER[i-1].id]};

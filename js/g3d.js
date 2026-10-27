@@ -169,7 +169,7 @@ function g3Set(sc,list,opt={}){const now=performance.now(),rm=RM(),old=sc.objs,n
  for(const o of old.values()){if(next.has(o.id))continue;if(o.dying){next.set(o.id,o);continue}if(used.has(o)||took.has(o))continue;g3Leave(o,opt.gone?opt.gone(o):null,now,rm,opt);next.set(o.id,o)}
  for(const d of pend){if(done.has(d))continue;const o={id:d.k!=null?'k:'+d.k:'a'+(++sc.seq),anon:d.k==null,m:d.m,p:d.p.slice(),q:(d.q||qt.id()).slice(),s:d.s??1,a:d.a??1,p1:d.p.slice()};g3Spawn(o,d,now,rm,opt);g3Props(o,d);next.set(o.id,o)}
  sc.objs=next;g3Need()}
-function g3Props(o,d){o.hud=!!d.hud;o.life=d.life||0;o.blink=d.blink||0;o.dim=d.dim??1;o.glow=d.glow||null;o.pick=d.pick||null;o.uv=d.uv||null;o.cast=d.cast!==false;o.lift=d.lift||0;o.drag=!!d.drag;o.refl=d.refl!==false}
+function g3Props(o,d){o.bb=!!d.bb;o.hud=!!d.hud;o.life=d.life||0;o.blink=d.blink||0;o.dim=d.dim??1;o.glow=d.glow||null;o.pick=d.pick||null;o.uv=d.uv||null;o.cast=d.cast!==false;o.lift=d.lift||0;o.drag=!!d.drag;o.refl=d.refl!==false}
 /* something leaving the hand for the table: from where it was seen, so a turned view does not make it jump */
 function g3Unhud(o){const sc=G3D.sc,lq=sc&&sc.cam&&sc.cam.lookQ,C=sc&&sc.camNow;if(!lq||!C)return;const e=C.eye;o.p=v3.add(e,qt.rot(lq,v3.sub(o.p,e)));o.q=qt.mul(lq,o.q)}
 function g3Aim(o,d,now,opt,rm){if(o.hud&&!d.hud&&!o.held)g3Unhud(o);g3Props(o,d);const q1=d.q||qt.id(),s1=d.s??1,a1=d.a??1,dist=v3.len(v3.sub(o.p1,d.p));
@@ -252,7 +252,8 @@ function g3Part(pt,M,dim,glow,al,sh,uv){const gl=G3D.gl,u=G3D.P.u,m=pt.mat;gl.un
  gl.uniform3f(u.uC,m.c[0]*dim,m.c[1]*dim,m.c[2]*dim);const e=glow||m.e;gl.uniform3f(u.uE,e[0],e[1],e[2]);gl.uniform4f(u.uMat,m.sh,m.sp,m.gl,m.a*al);gl.uniform4f(u.uM2,m.wrap||0,m.rim||0,m.sss||0,0);gl.uniform4f(u.uFx,m.t?1:0,m.unlit?1:0,m.cut?1:0,sh&&!m.nosh?1:0);
  gl.bindTexture(gl.TEXTURE_2D,m.t||G3D.white);if(m.two)gl.disable(gl.CULL_FACE);g3Bind(pt.mesh);gl.drawElements(gl.TRIANGLES,pt.mesh.n,pt.mesh.it,0);if(m.two)gl.enable(gl.CULL_FACE)}
 function g3Draw(sc,now){const gl=G3D.gl,cv=G3D.cv,C=g3Cam(sc),L=sc.light;sc.camNow=C;G3D.bound=null;
- for(const o of sc.objs.values()){o.M=m4.trs(o.lift?v3.add(o.p,[0,o.lift,0]):o.p,o.q,o.s);if(o.hud&&C.lookM&&!o.held)o.M=m4.mul(C.lookM,o.M)}
+ /* a picture standing up (bb) turns about its upright to face the eye; its own turn (a lean, a nod) comes on top */
+ for(const o of sc.objs.values()){const q=o.bb?qt.mul(qt.ax(0,1,0,Math.atan2(C.eye[0]-o.p[0],C.eye[2]-o.p[2])),o.q):o.q;o.M=m4.trs(o.lift?v3.add(o.p,[0,o.lift,0]):o.p,q,o.s);if(o.hud&&C.lookM&&!o.held)o.M=m4.mul(C.lookM,o.M)}
  const q=typeof gqLevel==='function'?gqLevel():'high',sm=G3D.sm&&sc.shadow!==false&&q!=='low'?G3D.sm:null;let LVP=G3_LID||(G3_LID=m4.id());
  if(sm){const c=sc.shC,R=sc.shR,e=v3.add(c,v3.mul(L.d,R*3));LVP=m4.mul(m4.ortho(-R,R,-R,R,R*.5,R*6),m4.look(e,c,Math.abs(L.d[1])>.99?[0,0,-1]:[0,1,0]));
   gl.bindFramebuffer(gl.FRAMEBUFFER,sm.fb);gl.viewport(0,0,sm.S,sm.S);gl.clearColor(1,1,1,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);

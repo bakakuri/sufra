@@ -54,7 +54,7 @@ for s in [1, 2, 4, 8, 16, 32]:
     fill = np.where(need, c, fill); have = np.where(need, 1, have)
 rgb = np.where(A > 1e-3, P / np.maximum(A, 1e-4), fill)
 out = np.concatenate([np.clip(rgb, 0, 1), A], 2)
-Image.fromarray((out * 255 + .5).astype(np.uint8), 'RGBA').save(OUT + 'cast1.webp', quality=88, method=6)
+Image.fromarray((out * 255 + .5).astype(np.uint8), 'RGBA').save(OUT + 'cast2.webp', quality=88, method=6)
 # faces: a square round each face, the cut-out on a warm lamplit glow (the sheet behind has the neighbours' shoulders in it)
 F = 128; faces = Image.new('RGB', (F * 10, F))
 yy, xx = np.mgrid[0:F, 0:F].astype(np.float32); rr = np.hypot(xx - F * .5, yy - F * .38) / F
@@ -64,8 +64,8 @@ for i, n in enumerate(ORDER):
     cut = Image.open(CUT + n + '.png')
     sq = cut.crop((round(c[0] - r), round(c[1] - r), round(c[0] + r), round(c[1] + r))).resize((F, F), Image.LANCZOS)
     b = Image.fromarray(bgc).convert('RGBA'); b.alpha_composite(sq); faces.paste(b.convert('RGB'), (i * F, 0))
-faces.save(OUT + 'cast1f.webp', quality=86, method=6)
-json.dump({'cells': cells, 'ec': EC / CH, 'eye': [EX / CW, EY / CH], 'aspect': CW / CH}, open(OUT + 'cast1.json', 'w'))
+faces.save(OUT + 'cast2f.webp', quality=86, method=6)
+json.dump({'cells': cells, 'ec': EC / CH, 'eye': [EX / CW, EY / CH], 'aspect': CW / CH}, open(OUT + 'cast2.json', 'w'))
 # a check on a checker board
 pv = Image.fromarray((out * 255).astype(np.uint8), 'RGBA'); bg = Image.new('RGBA', pv.size, (40, 60, 90, 255))
 for yy in range(0, AH, 32):

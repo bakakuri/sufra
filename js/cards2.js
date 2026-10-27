@@ -7,7 +7,7 @@ const cKey=c=>c.s+c.r;
 /* a card as a button in my hand */
 const cBtn=(c,i,a,ok,sel,extra='')=>`<button class="card${isRed(c.s)?' red':''}${sel?' sel':''}" data-a="${a}" data-i="${i}" data-s="${SY[c.s]}" aria-label="${cardName(c)}"${sel?' aria-pressed="true"':''}${ok?'':' disabled'}${extra}><span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span></button>`;
 const cBack=n=>`<span class="cbk" aria-label="${n} კარტი">${'<i></i>'.repeat(Math.min(n,8))}<b>${n}</b></span>`;
-const cPlayers=[null,{n:'თამარი',h:190,cast:'f1'},{n:'ლევანი',h:95,cast:'m1'},{n:'ნინო',h:340,cast:'f2'}];
+const cPlayers=[null,{n:'თამარი',h:190,cast:'f1'},{n:'გურამი',h:95,cast:'m1'},{n:'ნინო',h:340,cast:'f2'}];
 
 /* ---------- durak ----------
    six cards each, the next one turned up for trumps and slid under the deck. the attacker leads; the defender beats it

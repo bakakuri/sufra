@@ -2,7 +2,8 @@
    28 tiles, seven each, nothing left to draw. the first hand starts with 6-6, later hands with the last winner.
    you must play a tile that matches an open end, otherwise you pass. the pair that goes out first takes
    the pips left in the other pair's hands; if nobody can play, the pair with fewer pips takes the others' pips */
-const DMN=[null,{n:'გიორგი',h:150},{n:'ანა',h:275},{n:'ლევანი',h:95}];
+/* the three others: three of the ten characters, seated at random each new game (see castRoll) */
+const DMN=[null,{n:'ლუკა',h:150,cast:'m3'},{n:'ანა',h:275,cast:'f3'},{n:'გურამი',h:95,cast:'m1'}];
 const DM_TO=101;
 /* who sits at the table: four in two pairs, or three or two each for themselves, with the rest of the tiles left face down as the bazaar */
 const dmSeats=np=>np===2?[0,2]:np===3?[0,1,3]:[0,1,2,3];
@@ -12,7 +13,7 @@ const dmTeam=p=>p%2;
 const dmHalf=v=>`<span class="dh">${Array.from({length:9},(_,k)=>v&&PIPS[v].includes(k)?'<i></i>':'<span></span>').join('')}</span>`;
 const dmTile=(t,cls='',attr='')=>`<${attr?'button':'span'} class="dmt${t[0]===t[1]?' dbl':''}${cls?' '+cls:''}"${attr} aria-label="${t[0]} და ${t[1]}">${dmHalf(t[0])}${dmHalf(t[1])}</${attr?'button':'span'}>`;
 const DM=GAME.domino={title:'დომინო',
- start(){this.tk=(this.tk||0)+1;this.np=dmNp(this.ctx);this.score=[0,0];this.pts=[0,0,0,0];this.round=0;this.lead=null;this.hist=[];this.deal()},
+ start(){this.tk=(this.tk||0)+1;this.np=dmNp(this.ctx);castRoll();this.score=[0,0];this.pts=[0,0,0,0];this.round=0;this.lead=null;this.hist=[];this.deal()},
  nm(p){return p===0?ME.name:DMN[p].n},
  save(){if(this.phase!=='play'&&this.phase!=='roundover')return null;return{np:this.np,pts:this.pts,baz:this.baz,firstT:this.firstT,score:this.score,round:this.round,lead:this.lead,hist:this.hist,hands:this.hands,root:this.root,L:this.L,R:this.R,passes:this.passes,miss:this.miss.map(x=>[...x]),cur:this.cur,first:this.first,phase:this.phase,res:this.res}},
  restore(s){if(!s||!Array.isArray(s.hands))throw 0;Object.assign(this,{np:[2,3].includes(s.np)?s.np:4,pts:s.pts||[0,0,0,0],baz:s.baz||[],firstT:s.firstT||null,score:s.score,round:s.round,lead:s.lead,hist:s.hist||[],hands:s.hands,root:s.root,L:s.L||[],R:s.R||[],passes:s.passes||0,miss:(s.miss||[[],[],[],[]]).map(a=>new Set(a)),cur:s.cur,first:!!s.first,phase:s.phase,res:s.res,sel:null,last:null,dealAnim:0});if(this.phase==='roundover')this.autoNext()},
@@ -74,7 +75,7 @@ const DM=GAME.domino={title:'დომინო',
   return pre+esc(this.nm(this.cur))+' ფიქრობს…'+(!this.root&&this.first&&this.firstT?` (${this.firstT.join('-')} მასთანაა)`:'')},
 
  render(){if(S.tab!=='games'||S.game!=='domino'||S.page)return;const c=this.ctx,g3=g3Want(),mine=this.phase==='play'&&this.cur===0,ok=new Set(mine?this.moves(0).map(m=>m.i):[]);gTurnSnd(this,mine&&ok.size>0);
-  const SE=dmSeats(this.np||4),solo=SE.length<4,seat=(p,pos)=>SE.includes(p)?`<div class="seat ${pos}${this.cur===p&&this.phase==='play'?' turn':''}">${avAny(DMN[p],36)}<b>${esc(this.nm(p))}</b><span class="bt">${this.hands[p].length} ქვა${p===2&&!solo?' · პარტნიორი':solo?' · '+this.pts[p]:''}</span></div>`:'';
+  const SE=dmSeats(this.np||4),solo=SE.length<4,seat=(p,pos)=>SE.includes(p)?`<div class="seat ${pos}${this.cur===p&&this.phase==='play'?' turn':''}"${castTap(p)}>${avAny(DMN[p],36)}<b>${esc(this.nm(p))}</b><span class="bt">${this.hands[p].length} ქვა${p===2&&!solo?' · პარტნიორი':solo?' · '+this.pts[p]:''}</span></div>`:'';
   const line=this.line();if(!g3On()&&line.length!==this.lineN&&this.lineN!=null)gSnd('tile');this.lineN=line.length;
   const chain=line.map(x=>dmTile(x.t,x.root?'root':'')).join('');
   const hand=this.hands[0].map((t,i)=>dmTile(t,(this.sel===i?'sel':'')+(ok.has(i)?' ok':''),` data-a="dmt" data-i="${i}"${mine&&ok.has(i)?'':' disabled'}`)).join('');
@@ -84,7 +85,7 @@ const DM=GAME.domino={title:'დომინო',
 `}
   let res='';if(this.phase==='over'){if(solo){const mx=Math.max(...this.pts),win=this.pts[0]===mx,w=this.pts.indexOf(mx);res=gResBox(this,{title:win?'მოიგე!':'წააგე',sub:win?'101 ქულა პირველმა დააგროვე':esc(this.nm(w))+'-მა 101 ქულა პირველმა დააგროვა',kind:win?'win':'lose',
    more:`<div class="gendt">${SE.map(p=>`<span><b>${esc(p?this.nm(p):'შენ')}</b>${this.pts[p]}</span>`).join('')}</div>`,again:'<button class="btn gold" data-a="dmagain">ახალი თამაში</button>',share:win?gShareBtn('domino',`${SE.length} მოთამაშე, ${this.pts[0]} ქულა`):''})}
-   else{const win=this.score[0]>this.score[1];res=gResBox(this,{title:win?'მოიგეთ!':'წააგეთ',sub:win?'შენ და ანამ 101 ქულა პირველებმა დააგროვეთ':'გიორგიმ და ლევანმა 101 ქულა პირველებმა დააგროვეს',kind:win?'win':'lose',
+   else{const win=this.score[0]>this.score[1];res=gResBox(this,{title:win?'მოიგეთ!':'წააგეთ',sub:win?`შენ და ${castErg(DMN[2])} 101 ქულა პირველებმა დააგროვეთ`:`${castErg(DMN[1])} და ${castErg(DMN[3])} 101 ქულა პირველებმა დააგროვეს`,kind:win?'win':'lose',
    more:`<div class="gendt"><span><b>ჩვენ</b>${this.score[0]}</span><span><b>მეტოქეები</b>${this.score[1]}</span></div>`,again:'<button class="btn gold" data-a="dmagain">ახალი თამაში</button>',share:win?gShareBtn('domino',`ანასთან ერთად, ${this.score[0]}:${this.score[1]}`):''})}}
   const info=`<div class="ginfo">${solo?`<span class="gscore" aria-label="ანგარიში">${SE.map(p=>`<span>${esc(p?this.nm(p):'შენ')}</span><b>${this.pts[p]}</b>`).join('<i>·</i>')}</span>`:`<span class="gscore" aria-label="ანგარიში: ჩვენ ${this.score[0]}, მეტოქეები ${this.score[1]}"><span>ჩვენ</span><b>${this.score[0]}</b><i>:</i><b>${this.score[1]}</b><span>მეტოქეები</span></span>`}<span>ხელი ${this.round}, ${DM_TO} ქულამდე${solo?` · ბაზარი: ${(this.baz||[]).length}`:''}</span></div>`;
   const stage=`<div class="jt dmtab${g3?' g3jt':''}">${seat(2,'top')}${seat(1,'left')}${seat(3,'right')}<div class="trick dmchain${g3?' g3sr':''}" aria-label="მაგიდა">${chain||'<span class="muted">მაგიდა ცარიელია</span>'}</div>${g3?`<div class="g3 g3-domino${G3W.ready?'':' loading'}">${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div>`:''}</div>`;

@@ -12,10 +12,10 @@ const dmoHere=id=>!!S.page&&S.page.id==='dmtable'&&+S.page.arg===id&&DMO.id===id
 const dmoBot=p=>DMN[p]||DMN[1];
 const dmoName=p=>{const u=DMO.t&&DMO.t.seats[p];if(u)return u===ME.id?'შენ':pname(u);const b=DMO.st&&DMO.st.bots&&DMO.st.bots[p];return b?b+' (ბოტი)':'ცარიელი'};
 const dmoShort=p=>{const u=DMO.t&&DMO.t.seats[p];if(u)return u===ME.id?'შენ':String(pname(u)).split(' ')[0];return (DMO.st&&DMO.st.bots&&DMO.st.bots[p])||'–'};
-const dmoAv=(p,s)=>{const u=DMO.t&&DMO.t.seats[p];if(u)return av(u,s);const b=DMO.st&&DMO.st.bots&&DMO.st.bots[p];return b?avAny({n:b,h:(DMN.find(x=>x&&x.n===b)||{h:150}).h},s):`<span class="av jkempty" style="--s:${s}px" aria-hidden="true">+</span>`};
+const dmoAv=(p,s)=>{const u=DMO.t&&DMO.t.seats[p];if(u)return av(u,s);const b=DMO.st&&DMO.st.bots&&DMO.st.bots[p];return b?avAny({n:b,h:(DMN.find(x=>x&&x.n===b)||{h:150}).h,cast:(castNamed(b)||{}).id},s):`<span class="av jkempty" style="--s:${s}px" aria-hidden="true">+</span>`};
 /* who sits in a seat, for the people around the 3D table */
 function dmoWho(p){const u=DMO.t&&DMO.t.seats[p];if(u){const pr=typeof PC!=='undefined'&&PC.get(u);return{n:u===ME.id?ME.name:(pr&&pr.name)||'მოთამაშე',h:pr&&pr.hue,k:u,lk:(DMO.looks&&DMO.looks[u])||(pr&&pr.look)||null}}
- const b=(DMO.st&&DMO.st.bots&&DMO.st.bots[p])||dmoBot(p).n,d=DMN.find(x=>x&&x.n===b)||dmoBot(p);return{n:b,h:d.h,k:'d:'+b}}
+ const b=(DMO.st&&DMO.st.bots&&DMO.st.bots[p])||dmoBot(p).n,d=DMN.find(x=>x&&x.n===b)||dmoBot(p);return{n:b,h:d.h,k:'d:'+b,cast:(castNamed(b)||{}).id||null}}
 const dmoTiles=a=>(Array.isArray(a)?a:[]).filter(x=>Array.isArray(x)&&x.length===2).map(x=>[Math.max(0,Math.min(6,+x[0]|0)),Math.max(0,Math.min(6,+x[1]|0))]).sort((x,y)=>x[0]-y[0]||x[1]-y[1]);
 
 PG.dmtable={r(id){id=+id;view.innerHTML=pgHead('დომინო ონლაინ',`<button class="ibtn" data-a="dmoshare" aria-label="ბმულის გაზიარება">${ic('share')}</button>${gTools()}`)+`<div class="view-pad game dmo" id="dmo">${skel(2)}</div>`;dmoOpen(id)}};
@@ -64,7 +64,7 @@ function dmoEngine(){const E=Object.create(DM);
    this.lead=kind==='domino'?p:win>=0?[win,win+2].sort((a,b)=>pip(a)-pip(b))[0]:((this.lead??0)+1)%4;
    this.res={kind,win,pts,by:p,pips:[0,1,2,3].map(pip)};this.hist.push({win,pts,kind});this.cur=-1;
    this.phase=this.score.some(x=>x>=DM_TO)?'over':'roundover'}})}
-function dmoBegin(){const t=DMO.t,prev=DMO.E,bots=[null,null,null,null];t.seats.forEach((u,i)=>{if(!u)bots[i]=dmoBot(i).n});
+function dmoBegin(){const t=DMO.t,prev=DMO.E,bots=[null,null,null,null];const pool=shuffle(CAST.map(c=>c.n));let bi=0;t.seats.forEach((u,i)=>{if(!u)bots[i]=pool[bi++]});
  const E=DMO.E=dmoEngine();Object.assign(E,{score:[0,0],pts:[0,0,0,0],round:0,lead:null,hist:[],bots,dn:prev?prev.dn:(DMO.st&&DMO.st.dn)||0,mv:prev?prev.mv:(DMO.st&&DMO.st.mv)||0});
  E.deal();E.dn++;dmoPub(true,true)}
 function dmoRoundNext(){const E=DMO.E;if(E&&E.phase==='roundover'&&dmoIsHost()){E.deal();E.dn++;dmoPub(true)}}

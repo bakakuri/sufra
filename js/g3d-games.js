@@ -214,28 +214,34 @@ function jkPerson(sc,key,L){if(sc.models['pb:'+key])return;if(!PPL.st)pplLoad();
  g3Model(sc,'pb:'+key,[[g.body.shirt,shirt],[g.body.skin,skin],[g.body.chair,chair]],null);
  g3Model(sc,'ph:'+key,[[g.head.face,face],[g.head.skin,skin],...(g.head.eyes?[[g.head.eyes,eyes]]:[]),...(g.head.hair?[[g.head.hair,hair]]:[]),...(g.head.frame?[[g.head.frame,g3Mat({c:'#1C1A1A',sh:80,sp:.6,gl:.4})]]:[]),...(g.head.gold?[[g.head.gold,g3Mat({c:'#E8B64E',sh:160,sp:1.1,gl:.9})]]:[]),...(g.head.hat?[[g.head.hat,g3Mat({c:'#4A443C',sh:8,sp:.04,gl:0,rim:.5})]]:[])],null);
  for(const s of[-1,1])g3Model(sc,'pk:'+key+':'+s,[[g.arms[s].sleeve,shirt],[g.arms[s].hand,skin]],null)}
-/* ---------- the cast: ten drawn characters, cut out of one picture (icons/g/cast1.webp), seated in place of the sculpted people ----------
+/* ---------- the cast: ten drawn characters, cut out of one picture (icons/g/cast2.webp), seated in place of the sculpted people ----------
    each is a flat picture that turns to face your eye, set right at the table's edge so the table hides where it ends.
    every cell of the picture is laid out alike (eyes at the same place, eyes to chin the same size), so one quad seats them all */
 const CST={st:0,img:null},CEY=160/508,CEC=72/508,CASP=400/508,CS=1.1,CTL=3.4;
 function castLoad(){if(CST.st)return;CST.st=1;const v=(($('script[src*="/js/core.js"]')||{}).src||'').split('v=')[1]||'',im=new Image();im.decoding='async';
- im.onload=()=>{CST.img=im;CST.st=2;castRefresh()};im.onerror=()=>{CST.st=3;castRefresh()};im.src='/icons/g/cast1.webp'+(v?'?v='+v:'')}
+ im.onload=()=>{CST.img=im;CST.st=2;castRefresh()};im.onerror=()=>{CST.st=3;castRefresh()};im.src='/icons/g/cast2.webp'+(v?'?v='+v:'')}
 function castRefresh(){const sc=G3D.sc;if(sc&&sc.host&&G3U[sc.host]){try{G3U[sc.host](sc)}catch(e){}g3Need()}}
 /* the drawn characters unless the sculpted ones were chosen (or the picture could not be had) */
 const castPic=()=>(typeof store==='undefined'||store.get('gcast','pic')!=='3d')&&CST.st!==3;
 const castUV=id=>{const i=Math.max(0,CASTI.indexOf(id));return[(i%5)*409/2048,Math.floor(i/5)*516/1024,400/2048,508/1024]};
 /* the quad's origin is on the table line, under the eyes: eyes CTL above it, everything below it out of sight under the table */
 function castModel(sc){if(sc.models.cast)return true;if(CST.st!==2){castLoad();return false}const H=CS/CEC,W=H*CASP,g=gQuad(W,H);gXf(g,[0,CTL*CS-(.5-CEY)*H,0],qt.id());
- g3Model(sc,'cast',[[g,g3Mat({t:g3T('cast1',()=>g3Tex(CST.img)),unlit:true,vary:true,c:'#EEE6DC'}),false]],null);return true}
+ g3Model(sc,'cast',[[g,g3Mat({t:g3T('cast2',()=>g3Tex(CST.img)),unlit:true,vary:true,c:'#EEE6DC'}),false]],null);return true}
 /* who is who: a seat's own character if it has one (the bots), or one picked from who they are (people online); never the same twice at a table.
    ids are in the table's own seat order, so everyone at an online table sees the same people */
-function castSeats(ids){const used=new Set(),out=[];const h=s=>{let k=0;for(const ch of String(s||''))k=(k*31+ch.charCodeAt(0))>>>0;return k};
- ids.forEach((id,i)=>{if(id&&CASTI.includes(id.cast)&&!used.has(id.cast)){used.add(id.cast);out[i]=id.cast}});
- ids.forEach((id,i)=>{if(!id||out[i])return;let k=h(id.k||id.n)%CASTI.length;for(let t=0;t<CASTI.length&&used.has(CASTI[k]);t++)k=(k+1)%CASTI.length;used.add(CASTI[k]);out[i]=CASTI[k]});return out}
-/* a seat's picture: on the line from the table's middle to the chair, turned to the eye; leaning in a touch while thinking */
+function castSeats(ids){const used=new Set(),out=[];
+ ids.forEach((id,i)=>{const w=!id?null:CASTI.includes(id.cast)?id.cast:id.lk&&CASTI.includes(id.lk.cast)?id.lk.cast:null;if(w&&!used.has(w)){used.add(w);out[i]=w}});
+ ids.forEach((id,i)=>{if(!id||out[i])return;const fem=id.lk&&typeof id.lk==='object'?!!id.lk.fem:null;
+  /* one of their own kind when it is known (a man's look gets one of the men), the next free one if that is taken */
+  for(const P of[castPool(fem),CASTI]){let k=P.indexOf(castHashOf(id.k||id.n,fem));if(k<0)k=0;for(let t=0;t<P.length&&used.has(P[k]);t++)k=(k+1)%P.length;if(!used.has(P[k])){used.add(P[k]);out[i]=P[k];return}}out[i]=CASTI[0]});return out}
+/* a picture at a place: it turns to face the eye by itself (bb), leans in a touch while thinking, and nods and laughs with the gestures (its key is the head's) */
+function castAt(L,k,cid,p,o={}){L.push({k,m:'cast',p,q:qt.ax(1,0,0,o.lean||0),s:o.s||1,uv:castUV(cid),a:.998,cast:false,refl:false,life:1,bb:1,dur:o.dur||600})}
+/* a seat at a round table: on the line from the middle to the chair, just outside the rim */
 const CRAD=6.75;
-function castPush(L,r,cid,lean,eye){const d=JSP[r],l=Math.hypot(d[0],d[1]),p=[d[0]/l*CRAD,-.15,d[1]/l*CRAD],yaw=Math.atan2(eye[0]-p[0],eye[2]-p[2]);
- L.push({k:'ph'+r,m:'cast',p,q:qt.mul(qt.ax(0,1,0,yaw),qt.ax(1,0,0,lean)),s:1,uv:castUV(cid),a:.998,cast:false,refl:false,life:1,dur:600})}
+function castPush(L,r,cid,lean,seats,rad,s){const d=(seats||JSP)[r],l=Math.hypot(d[0],d[1]),R=rad||CRAD;castAt(L,'ph'+r,cid,[d[0]/l*R,-.15*(s||1),d[1]/l*R],{lean,s})}
+/* the character for one side of a game of two: the one it was given (the computer's players), the one a person chose, or one picked from who they are */
+function castOfSide(c,s){const a=c&&c.avs&&c.avs[s];if(a&&typeof a==='object'&&CASTI.includes(a.cast))return a.cast;const lk=(s===-c.side&&c.olk)||(a&&typeof a==='object'&&a.look);if(lk&&CASTI.includes(lk.cast))return lk.cast;
+ return castSeats([{k:typeof a==='string'?a:String((c&&c.names&&c.names[s])||'?'),lk:lk&&typeof lk==='object'?lk:null}])[0]}
 /* a person at the table: body, head (turned by hq), and the two forearms that turn at the elbow; id names the seat */
 function pplPush(L,id,key,p,qB,s,hq,o={}){const S=s||1,at=v=>v3.add(p,qt.rot(qB,v3.mul(v,S))),b={refl:false,life:1,dur:o.dur||650};if(o.cast===false)b.cast=false;if(o.now)b.now=1;
  L.push(Object.assign({k:'pb'+id,m:'pb:'+key,p,q:qB,s:S},b),Object.assign({k:'ph'+id,m:'ph:'+key,p:at(HPIV),q:qt.mul(qB,hq),s:S,blink:1},b,{dur:o.hdur||600}));
@@ -247,12 +253,15 @@ const OPPS={chess:{z:8.6,s:1.45,y:-.55,x:0,e:5.25},shashi:{z:8.6,s:1.45,y:-.55,x
 const oppOn=()=>typeof store==='undefined'||store.get('gppl',true)!==false;
 function oppLookOf(c){const s=-c.side,a=c.avs&&c.avs[s],nm=String((c.names&&c.names[s])||'მოთამაშე').replace(/ \(ბოტი\)$/,'');if(c.olk&&typeof c.olk==='object')return c.olk;if(a&&a.look&&typeof a.look==='object')return a.look;return jkLook(nm,a&&(a.h??a.hue))}
 function oppAdd(sc,id,G,L,far){const o=OPPS[id],c=G.ctx,cm=sc.cam;if(!o||!c||!oppOn()||c.mode==='puzzle'||c.mode==='local'){if(cm.p0!=null){cm.pitch=cm.p0;cm.pp=cm.pp0;cm.tgt=cm.t0.slice()}cm.extraW=null;sc.people=null;sc.anchors=null;return}
- sc.anchors=[['.g3op',[o.x-far*2.9*o.s,o.y+4.7*o.s,far*o.z]]];const lk=oppLook(oppLookOf(c)),key='o:'+lkKey(lk);jkPerson(sc,key,lk);
+ sc.anchors=[['.g3op',[o.x-far*2.9*o.s,o.y+4.7*o.s,far*o.z]]];const lk=oppLook(oppLookOf(c)),key='o:'+lkKey(lk);if(!castPic())jkPerson(sc,key,lk);
  const yaw=far<0?0:Math.PI,ts=G.turnSide?G.turnSide():null,over=G.res&&G.res(),think=!over&&ts===-c.side,lean=think?.08:0,qB=qt.mul(qt.ax(0,1,0,yaw),qt.ax(1,0,0,lean)),p=[o.x,o.y,far*o.z];
  const pitch=(over?0:think?.34:.1)*pplNod();
  /* on a wide screen the camera tips down a little less and keeps the head in the picture */
  if(cm.p0==null){cm.p0=cm.pitch;cm.pp0=cm.pp||0;cm.t0=cm.tgt.slice()}cm.pitch=cm.p0-.12;cm.pp=cm.pp0+.12;const wide=(G3D.asp||1)>=.8;cm.tgt=wide?[cm.t0[0],cm.t0[1]+.9,cm.t0[2]+far*1.7]:cm.t0.slice();if(!sc.onResize)sc.onResize=()=>{try{G3U[sc.host](sc)}catch(e){}};const hz=far*(o.z-.2*o.s),S=o.s;cm.extraW=[[o.x-1.5*S,o.y+5.9*S,hz],[o.x+1.5*S,o.y+5.9*S,hz],[o.x-2.6*S,o.y+3.2*S,far*o.z],[o.x+2.6*S,o.y+3.2*S,far*o.z]];
- pplPush(L,'o',key,p,qB,o.s,qt.e(pitch,0,0),{cast:false,dur:700});
+ /* the drawn one sits with the table line at the table's top (the table hides the rest), a little nearer the board than a chair */
+ if(castPic()){const Sb=o.s*1.1,zb=far*(o.z-.6*o.s),top=(CTL+2.3)*CS*Sb;cm.extraW=[[o.x-1.4*Sb,top,zb],[o.x+1.4*Sb,top,zb],[o.x-2.6*S,o.y+3.2*S,far*o.z],[o.x+2.6*S,o.y+3.2*S,far*o.z]];
+  sc.anchors=[['.g3op',[o.x-far*2.6*Sb,top*.8,zb]]];if(castModel(sc))castAt(L,'pho',castOfSide(c,-c.side),[o.x,-.15*Sb,zb],{lean:lean*.6,s:Sb,dur:700})}
+ else pplPush(L,'o',key,p,qB,o.s,qt.e(pitch,0,0),{cast:false,dur:700});
  sc.people=who=>who===-c.side?'o':null}
 /* a look as stored or sent: only known styles and colours pass */
 const LKS=['short','curly','long','pony','bald'],hexOk=v=>typeof v==='string'&&/^#[0-9a-fA-F]{6}$/.test(v);
@@ -304,9 +313,9 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
  if(sc.look){const Lk=sc.look;Lk.on=gLookSet()!=='off';const on=Lk.on&&cur!=null&&cur!==0&&V.win==null,gy=on?(cur===1?.075:cur===3?-.075:0):0,gp=on?(cur===2?.035:.012):0;if(gy!==Lk.gy||gp!==Lk.gp){Lk.gy=gy;Lk.gp=gp;g3Need()}}
  /* the three others */
  /* the drawn people come with their picture; until it is here the chairs wait empty (no sculpted people flashing by first) */
- const want=castPic(),pic=want&&castModel(sc),CA=pic?castSeats(V.ids):null,eye=jkCam(asp).eye;
+ const want=castPic(),pic=want&&castModel(sc),CA=pic?castSeats(V.ids):null;
  for(const r of[1,2,3]){if(V.on&&!V.on.includes(r))continue;const id=V.ids[(r+V.base)%4],lean=cur===r&&V.win==null?.07:0;
-  if(pic)castPush(L,r,CA[(r+V.base)%4],lean*.6,eye);else if(want){/* waiting for the picture */}
+  if(pic)castPush(L,r,CA[(r+V.base)%4],lean*.6);else if(want){/* waiting for the picture */}
   else{const L0=id.lk?oppLook(id.lk):jkLook(id.n,id.h),key=(id.k||id.n||'p'+r)+(id.lk?':'+lkKey(L0):'');jkPerson(sc,key,L0);const g=jkGaze(r,V,rel);
    pplPush(L,r,key,[JSP[r][0],0,JSP[r][1]],jkSeatQ(r,lean),1,qt.e(g.pitch,g.yaw,0))}
   const cnt=V.counts[r]||0;for(let i=0;i<cnt;i++){const f=jkFanAt(r,lean,i,cnt),d={k:'h'+r+'-'+i,m:'card',p:f.p,q:f.q,s:.95,uv:cardUV(38),refl:false,dur:500};
@@ -403,8 +412,10 @@ G3U.egg=sc=>{const G=EG,L=[],M=[],c=G.ctx,duel=G.phase!=='pick',k=duel&&G.phase=
    if(!duel&&e.taken){p=egAt(1,.6);q=qt.id();d.s=EGS}}
   d.p=p;d.q=q;L.push(d);M.push({m:'mk',p:[p[0],.135,p[2]],s:[.9,1,.9],uv:MK.blob,c:[0,0,0],a:.2})});
  /* the other player across, leaning in during the duel */
- if(!G.local){const lk=oppLook(c.olk||jkLook(G.nm(-1),c.avs&&c.avs[-1]&&c.avs[-1].h)),key='o:'+lkKey(lk);jkPerson(sc,key,lk);const lean=duel&&G.phase==='duel'?.1:0;
-  pplPush(L,'o',key,[0,0,-6.6],qt.ax(1,0,0,lean),1,qt.e(duel?.32:.22,0,0),{cast:false})}
+ if(!G.local){const lean=duel&&G.phase==='duel'?.1:0;
+  if(castPic()){if(castModel(sc))castAt(L,'pho',castOfSide(c,-1),[0,-.15,-6.2],{lean:lean*.6})}
+  else{const lk=oppLook(c.olk||jkLook(G.nm(-1),c.avs&&c.avs[-1]&&c.avs[-1].h)),key='o:'+lkKey(lk);jkPerson(sc,key,lk);
+   pplPush(L,'o',key,[0,0,-6.6],qt.ax(1,0,0,lean),1,qt.e(duel?.32:.22,0,0),{cast:false})}}
  sc.marks=M;g3Set(sc,L,{gone:()=>({a:0,dur:200})})};
 
 /* ---------- domino ----------
@@ -457,7 +468,7 @@ const DSTAND=(yaw,tilt)=>qt.mul(qt.ax(0,1,0,yaw),qt.mul(qt.ax(1,0,0,Math.PI/2-ti
 const DRACK={0:{c:[0,.52,5.25],yaw:0,dir:[1,0,0],sp:.7,tilt:.5}};
 for(const r of[1,2,3]){const[x,z]=DSP[r],l=Math.hypot(x,z),u=[x/l,z/l],yaw=Math.atan2(u[0],u[1]);DRACK[r]={c:[u[0]*6.05,.52,u[1]*6.05],yaw,dir:[Math.cos(yaw),0,-Math.sin(yaw)],sp:.62,tilt:.22}}
 const dRack=(s,i,n)=>{const r=DRACK[s];return v3.add(r.c,v3.mul(r.dir,(i-(n-1)/2)*r.sp))};
-G3U.domino=sc=>dmScene(sc,DM,'dm',r=>({n:DMN[r].n,h:DMN[r].h,k:'d:'+DMN[r].n}));
+G3U.domino=sc=>dmScene(sc,DM,'dm',r=>({n:DMN[r].n,h:DMN[r].h,k:'d:'+DMN[r].n,cast:DMN[r].cast}));
 /* the table with friends: the same scene, turned so that I sit at the near edge */
 G3U.dmo=sc=>{if(typeof DMO==='undefined'||!DMO.st||!DMO.st.phase)return;const base=DMO.seat>=0?DMO.seat:0;dmScene(sc,dmoView(),'dmo',r=>dmoWho((r+base)%4))};
 function dmScene(sc,G,act,who){sc.dG=G;sc.dA=act;const L=[],M=[],{out,slots}=dmLayout(G),mine=G.phase==='play'&&G.cur===0,ok=new Set(mine?G.moves(0).map(m=>m.i):[]);
@@ -473,7 +484,10 @@ function dmScene(sc,G,act,who){sc.dG=G;sc.dA=act;const L=[],M=[],{out,slots}=dmL
   for(let k=0;k<nb;k++){const row=Math.floor(k/7),i=k%7,n=Math.min(7,nb-row*7),p=v3.add(v3.add([R0.c[0],DT/2,R0.c[2]],v3.mul(R0.dir,(i-(n-1)/2)*.62)),v3.mul(inw,.3+row*1.2));L.push({k:'bz'+k,m:'tile',p,q,uv:dmUV(28)})}}
  for(const s of[1,2,3]){const cnt=G.hands[s].length;for(let i=0;i<cnt;i++){const d={k:'h'+s+'-'+i,m:'tile',p:dRack(s,i,cnt),q:DSTAND(DRACK[s].yaw,DRACK[s].tilt),uv:dmUV(28)};if(deal){d.from={p:[0,1.2,0],q:DSTAND(0,0),a:0};d.delay=(n+i*3+s)*45;d.dur=520}L.push(d)}}
  /* the three at the table: whoever's turn it is leans in and looks at their tiles, the others watch them */
- for(const r of[1,2,3]){if(!SE.includes(r))continue;const id=who(r),lk=id.lk?oppLook(id.lk):jkLook(id.n,id.h),key=(id.k||id.n)+(id.lk?':'+lkKey(lk):'');jkPerson(sc,key,lk);const think=G.phase==='play'&&G.cur===r,lean=think?.07:0;
+ const want=castPic(),pic=want&&castModel(sc),CA=pic?castSeats([0,1,2,3].map(r=>r===0?(act==='dmo'?who(0):{k:'me'}):who(r))):null;
+ for(const r of[1,2,3]){if(!SE.includes(r))continue;const id=who(r),think=G.phase==='play'&&G.cur===r,lean=think?.07:0;
+  if(want){if(pic)castPush(L,r,CA[r],lean*.6,DSP,8.55);continue}
+  const lk=id.lk?oppLook(id.lk):jkLook(id.n,id.h),key=(id.k||id.n)+(id.lk?':'+lkKey(lk):'');jkPerson(sc,key,lk);
   let yaw=0,pitch=.3;if(think)pitch=.44;else if(G.phase==='play'&&G.cur!=null&&G.cur>=0){const t=G.cur===0?[0,DSR]:DSP[G.cur],me=DSP[r],f=[-me[0],-me[1]],d=[t[0]-me[0],t[1]-me[1]];yaw=clamp(-Math.atan2(f[0]*d[1]-f[1]*d[0],f[0]*d[0]+f[1]*d[1]),-.75,.75);pitch=G.cur===0?.22:.12}
   pplPush(L,r,key,[DSP[r][0],0,DSP[r][1]],dSeatQ(r,lean),1,qt.e(pitch,yaw,0))}
  if(mine&&G.sel!=null){for(const e of G.places(G.hands[0][G.sel]))if(slots[e]){const g=slots[e];L.push({k:'g'+e,m:'ghost',p:[g.x,DT/2,g.z],q:qt.ax(0,1,0,g.yaw),a:.5,cast:false,pick:{e},now:1})}}
@@ -488,8 +502,11 @@ function dmScene(sc,G,act,who){sc.dG=G;sc.dA=act;const L=[],M=[],{out,slots}=dmL
 G3B.look=()=>{const sc=g3Scene({cam:{fixed:asp=>({eye:[0,5.2,2.6],tgt:[0,3.35,-4.3],fov:clamp(2*Math.atan(Math.tan(.34)/Math.min(1,asp*1.35)),.6,1.1),sx:0,sy:0}),tgt:[0,0,0],fov:1,dy:0,dp:0,dz:1},orbit:false,zoom:false,shR:8,shC:[0,0,-3],spot:[0,-2,10,.35],bg:[.05,.036,.028],
   light:{d:v3.norm([-.3,1,.85]),c:[2.3,2.05,1.75],sky:[.32,.28,.25],gnd:[.12,.09,.07],exp:1.0}});
  roundRoom(sc,1.7,g3T('felt',()=>g3Tex(feltCv({a:'#2E7D59',b:'#123B29',ring:1}))));return sc};
-G3U.look=sc=>{const lk=oppLook(sc.lk||{}),key='me:'+lkKey(lk);jkPerson(sc,key,lk);const p=[0,0,-4.3],q=qt.ax(0,1,0,.3);
- const L=[];pplPush(L,0,key,p,q,1,qt.e(-.05,-.2,0),{now:1});g3Set(sc,L)};
+/* what the others will see: my drawn character (the one I chose, or the one they would pick for me), or my sculpted one */
+G3U.look=sc=>{const L=[];
+ if(castPic()){if(castModel(sc)){const raw=sc.lk||{},cid=CASTI.includes(raw.cast)?raw.cast:castSeats([{k:(typeof ME!=='undefined'&&ME&&ME.id)||'me',lk:raw}])[0];castAt(L,'ph0',cid,[0,.55,-4.3],{dur:300})}g3Set(sc,L);return}
+ const lk=oppLook(sc.lk||{}),key='me:'+lkKey(lk);jkPerson(sc,key,lk);const p=[0,0,-4.3],q=qt.ax(0,1,0,.3);
+ pplPush(L,0,key,p,q,1,qt.e(-.05,-.2,0),{now:1});g3Set(sc,L)};
 
 /* ---------- surroundings: where each game is played ----------
    joker in a room with a rug on the wall, domino in a Sololaki yard, chess at a desk among books,

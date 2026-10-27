@@ -1610,7 +1610,7 @@ html.zoomed .pmw{max-height:none}html.zoomed .pmmedia{max-height:calc(68dvh / va
 .jkseat b{font-size:13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .jkseat small{font-size:11.5px;color:var(--muted);line-height:1.25}
 .jkseat.free{background:transparent;border:1.5px dashed var(--line)}
-.av.cav{background:#4A2E20 url(/icons/g/cast1f.webp) 0 0/1000% 100% no-repeat}
+.av.cav{background:#4A2E20 url(/icons/g/cast2f.webp) 0 0/1000% 100% no-repeat}
 .av.jkempty{background:transparent;border:2px dashed currentColor;color:var(--muted);display:inline-grid;place-items:center;font-weight:700;opacity:.7}
 .jt .av.jkempty{color:#F5EFE4}
 .jkwait .seg{margin:0}
@@ -2531,3 +2531,15 @@ html.c4 .card[data-s="♦"],html.c4 .suits button[data-s="d"]{color:#1A55C4}
 .castsh .gmenu{padding-bottom:4px}
 .seat[data-a="gcast"]{cursor:pointer}
 @media (max-width:360px){.cgrid{grid-template-columns:repeat(4,1fr)}}
+.bm div>span{display:flex;align-items:center;gap:6px;min-width:0}
+/* the editor: the drawn character first, then the sculpted figure */
+.lkcast{display:flex;flex-direction:column;gap:6px}
+.lkcast .lkn{flex:none}
+.lkcg{padding:0}
+.lkauto{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:12px;font-size:14px;font-weight:600;text-align:left;background:var(--sunk)}
+.lkauto svg{width:18px;height:18px;color:var(--wine);flex:none}
+.lkauto[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--wine)}
+.lksub{margin:6px 0 -2px;font-size:13.5px;font-weight:700}.lksub small{font-weight:500;color:var(--muted)}
+.cport{display:block;width:200px;height:220px;background:url(/icons/g/cast2.webp) no-repeat,radial-gradient(circle at 50% 38%,#C4804A,#3A2218 70%);background-size:1024px 512px,100% 100%}
+.gmenu button span.av{flex:none}
+.gpcard .gcpic{flex:none;margin:0 auto}

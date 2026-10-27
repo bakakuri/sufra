@@ -106,7 +106,7 @@ LOT.drawn=()=>lotDrawn(LOT.st);
 /* every seat's tickets, the same on every phone */
 function lotTix(s){if(!s||!s.seed)return[];const rng=jdRng(s.seed^0x5bd1e995),out=[];for(let p=0;p<4;p++)for(let k=0;k<(s.tn||2);k++)out.push({p,g:lotoTicket(rng)});return out}
 /* the bots at an online table: the same three for everyone there */
-const LOTBOT=[null,{n:'თამარი',h:190,cast:'f1'},{n:'ლევანი',h:95,cast:'m1'},{n:'ნინო',h:340,cast:'f2'}];
+const LOTBOT=[null,{n:'თამარი',h:190,cast:'f1'},{n:'ლუკა',h:205,cast:'m3'},{n:'ნინო',h:340,cast:'f2'}];
 const lotName=p=>{const u=LOT.t&&LOT.t.seats[p];if(u)return u===ME.id?'შენ':pname(u);return (LOTBOT[p]||LOTBOT[1]).n+' (ბოტი)'};
 PG.lotable={r(id){id=+id;view.innerHTML=pgHead('ლოტო ონლაინ',`<button class="ibtn" data-a="lotshare" aria-label="ბმულის გაზიარება">${ic('share')}</button>${gTools()}`)+`<div class="view-pad game lot" id="lot">${skel(2)}</div>`;lotOpen(id)}};
 function lotStop(){clearTimeout(LOT.tm);if(LOT.ch){try{LOT.ch.untrack()}catch(e){}sb.removeChannel(LOT.ch)}lotReset()}
