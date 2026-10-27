@@ -5,14 +5,31 @@ const GART=(id,w)=>`/icons/g/${id}-${w}.webp?v=2`;
 /* the big poster moves a little: a short silent loop of the table, unless motion is turned down or data is being saved */
 const GLOOP=id=>{try{if(RM()||ECO()||navigator.connection&&navigator.connection.saveData)return ''}catch(e){}return `<video class="gs-pic gs-vid" autoplay muted loop playsinline disablepictureinpicture preload="auto" poster="${GART(id,1000)}" aria-hidden="true" tabindex="-1"><source src="/icons/g/${id}-loop.webm?v=2" type="video/webm"><source src="/icons/g/${id}-loop.mp4?v=2" type="video/mp4"></video>`};
 const GAME={};
-const JK_BOTS=['ნინო','ლუკა','დათო'],JK_ERG=['ნინომ','ლუკამ','დათომ'];
+const JK_BOTS=['ნინო','ლუკა','დათო'];
+/* the people at the card tables: ten drawn characters, each with a name (and the name's ergative, for "…მა წაიღო").
+   every new game seats some of them at random, or the ones chosen in the players sheet; TCAST holds who sits where now (seats 1-3) */
+const CAST=[{id:'m1',n:'ლევანი',e:'ლევანმა',d:'სმოკინგში'},{id:'m2',n:'გია',e:'გიამ',d:'ქუდით და ულვაშით'},{id:'m3',n:'ლუკა',e:'ლუკამ',d:'ლურჯ მაისურში'},{id:'m4',n:'დათო',e:'დათომ',d:'ჟილეტით, კამათლით'},{id:'m5',n:'საბა',e:'საბამ',d:'კეპით, ჰუდით'},
+ {id:'f1',n:'თამარი',e:'თამარმა',d:'წითელ კაბაში'},{id:'f2',n:'ნინო',e:'ნინომ',d:'კრუპიე, პეპელა-ჰალსტუხით'},{id:'f3',n:'ანა',e:'ანამ',d:'მწვანე ქურთუკში'},{id:'f4',n:'მარიამი',e:'მარიამმა',d:'თეთრ პერანგში'},{id:'f5',n:'სალომე',e:'სალომემ',d:'ყვავილებიან კაბაში'}];
+const castBy=id=>CAST.find(c=>c.id===id)||null,castNamed=n=>CAST.find(c=>c.n===String(n||'').replace(/ \(ბოტი\)$/,''))||null;
+const castRandOn=()=>store.get('jkcastr',true)!==false;
+const castFixed=()=>{const f=store.get('jkcast',null);return Array.isArray(f)&&f.length===3&&f.every(castBy)&&new Set(f).size===3?f.slice():null};
+const TCAST=[null,'f1','m1','f2'];
+/* a new game: three at random (all different), unless a choice was saved */
+function castRoll(){const f=!castRandOn()&&castFixed();const ids=f||shuffle(CAST.map(c=>c.id)).slice(0,3);TCAST[1]=ids[0];TCAST[2]=ids[1];TCAST[3]=ids[2];castSync()}
+/* the names in the games follow the seats: joker's ids, and the players of durak, bura and loto */
+function castSync(){for(const p of[1,2,3]){const c=castBy(TCAST[p]);if(!c)continue;if(typeof cPlayers!=='undefined')cPlayers[p]={n:c.n,h:cPlayers[p]&&cPlayers[p].h||200,cast:c.id};
+  if(typeof JK!=='undefined'&&JK.ids&&JK.ids[p]&&typeof JK.ids[p]==='object')JK.ids[p]={n:c.n,h:JK.ids[p].h,cast:c.id}}}
+/* the card games whose players are the cast; a saved game keeps its people */
+const CASTG=['joker','durak','bura'];
+function castResume(a){if(!Array.isArray(a)||a.length!==3||!a.every(castBy)||new Set(a).size!==3)return;TCAST[1]=a[0];TCAST[2]=a[1];TCAST[3]=a[2];castSync()}
+const castErg=x=>{const c=x&&(castBy(x.cast)||castNamed(x.n));return c?c.e:String((x&&x.n)||'')+'მ'};
 const BOTN=[['ლუკა',205],['დათო',12],['გიორგი',150],['ნინო',340],['ანა',275],['ლევანი',95],['თამარი',190]];
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 const BOT={n:'ბ',h:42};
 /* a game opens over the whole screen, like a game app; one back step closes it */
 /* games against the computer are kept on the phone and go on where they stopped (two weeks at most) */
 const GSV='gs:';
-function gSaveLater(G){const c=G&&G.ctx;if(!c||c.mode!=='bot'||!c.gk)return;clearTimeout(G.svT);G.svT=setTimeout(()=>{try{const over=G.res&&G.res(),s=over?null:(G.save?G.save():G.snap());store.set(GSV+c.gk,s==null?null:{t:Date.now(),s})}catch(e){}},300)}
+function gSaveLater(G){const c=G&&G.ctx;if(!c||c.mode!=='bot'||!c.gk)return;clearTimeout(G.svT);G.svT=setTimeout(()=>{try{const over=G.res&&G.res(),s=over?null:(G.save?G.save():G.snap());store.set(GSV+c.gk,s==null?null:Object.assign({t:Date.now(),s},CASTG.includes(c.gk)?{cast:TCAST.slice(1)}:{}))}catch(e){}},300)}
 const gSaved=id=>{const v=store.get(GSV+id,null);return v&&v.s&&Date.now()-v.t<14*864e5?v:null};
 const gUnsave=id=>store.set(GSV+id,null);
 /* starting a game from a page or another tab is one step: the tab change rides along with the game's own step,
@@ -20,7 +37,7 @@ const gUnsave=id=>store.set(GSV+id,null);
 function gToTab(){if(!S.page&&S.tab==='games')return;NAV.busy++;try{go('games')}finally{NAV.busy--}}
 function startGame(id,ctx,sv){const G=GAME[id],fresh=!S.game;if(fresh&&(!ctx||ctx.mode!=='watch')&&GAMES.some(g=>g.id===id))store.set('glast',id);S.game=id;const bc=['nardi','shashi','chess'].includes(id)&&typeof botChar==='function'?botChar(id):null;G.ctx=Object.assign({mode:'bot',side:1,names:{1:ME.name,'-1':bc?bc.n:'სუფრა ბოტი'},avs:{1:'me','-1':bc?botAv(bc):BOT},seq:0,gk:id},ctx||{});
  if(G.ctx.mode==='bot'&&!(ctx&&'tc' in ctx)&&typeof gTcOf==='function')G.ctx.tc=gTcOf(id);if(G.ctx.tc)clkInit(G.ctx);
- G.resHide=0;G.resSnd=0;G.wasMine=false;G.start();if(sv){try{G.restore?G.restore(sv.s):G.load(sv.s);if(G.ctx.gk==='chess'&&G.st){G.mv=[];G.ps=G.st;G.full=false}}catch(e){gUnsave(id)}}view.scrollTop=0;if(fresh){fsEnter();g3Intro(id)}G.render();if(G.kick)G.kick();if(fresh)navOpen('game')}
+ G.resHide=0;G.resSnd=0;G.wasMine=false;G.start();if(sv){try{G.restore?G.restore(sv.s):G.load(sv.s);castResume(sv.cast);if(G.ctx.gk==='chess'&&G.st){G.mv=[];G.ps=G.st;G.full=false}}catch(e){gUnsave(id)}}view.scrollTop=0;if(fresh){fsEnter();g3Intro(id)}G.render();if(G.kick)G.kick();if(fresh)navOpen('game')}
 const isPlayer=c=>['bot','online','tour','puzzle','career','learn','local'].includes(c.mode);
 /* under the name: a small disc in the player's colour (side 1 plays white in every two-player game), then rating or connection */
 function plSub(c,s){const col=`<i class="pc ${s===1?'w':'b'}"></i>`,cn=s===1?'თეთრები':'შავები';if(c.mode==='watch'||c.mode==='netwatch')return col+cn;if(s===c.side&&c.mode!=='local')return col+'რეიტინგი '+myRating(c.gk);if(c.mode==='local')return col+cn;return col+(c.mode==='online'&&!c.corr?(c.gone?'გავიდა':'ონლაინ'):cn+(c.gk&&botSide(c)?', '+BLV[c.lvl||bLvl(c.gk)].n.toLowerCase():''))}
@@ -225,6 +242,7 @@ A.gmenu=()=>{const id=gCur(),G=GAME[id],c=G&&G.ctx,sw=on=>`<i class="sw${on?' on
   <button data-a="gsnd" aria-pressed="${GS.on}">${ic('mic')}<span>ხმა და ვიბრაცია</span>${sw(GS.on)}</button>
   ${g3Want()&&id!=="loto"?`<button data-a="genvm">${ic('tree')}<span>მაგიდა და გარემო</span><small class="gmv">გრაფიკა, სტილი, ამინდი…</small></button>`:''}
   ${c&&c.mode==='bot'&&!S.page?`<button data-a="gbot">${ic('user')}<span>ბოტის დონე</span><small class="gmv">${BLV[bLvl(id)].n}</small></button>`:''}
+  ${castEdit(id)?`<button data-a="gcast">${ic('users')}<span>მოთამაშეები</span><small class="gmv">${castSeatsOf(id).map(p=>esc(castBy(TCAST[p]).n)).join(', ')}</small></button>`:''}
   ${['joker','durak','bura'].includes(id)?`<button data-a="gc4" aria-pressed="${c4On()}">${ic('cards')}<span>ოთხფერიანი დასტა</span>${sw(c4On())}</button>`:''}
   ${id==='bura'?`<button data-a="bupts" aria-pressed="${buShowPts()}">${ic('chart')}<span>ჩემი ქულის ჩვენება</span>${sw(buShowPts())}</button>`:''}
   ${id==='joker'&&c&&c.mode==='bot'&&!S.page?`<button data-a="ghint" aria-pressed="${jHintOn()}">${ic('help')}<span>ნათქვამის რჩევა</span>${sw(jHintOn())}</button>`:''}
@@ -487,6 +505,37 @@ const GWX={auto:'სეზონის მიხედვით',clear:'მო�
 const gwxSet=()=>{const v=store.get('gwx','auto');return GWX[v]?v:'auto'};
 A.gwx=()=>{const cur=gwxSet();sheet(head('ამინდი')+`<div class="gmenu">${Object.keys(GWX).map(k=>`<button data-a="gwxset" data-v="${k}"${k===cur?' aria-pressed="true"':''}>${ic(k===cur?'check':'drop')}<span><b>${GWX[k]}</b><br><small class="muted">${{auto:'ზამთარში ზოგჯერ თოვს, გაზაფხულსა და შემოდგომაზე წვიმს',clear:'ყოველთვის მშრალი ამინდი',snow:'ეზოში და აივანზე თოვს',rain:'ეზოში და აივანზე წვიმს'}[k]}</small></span></button>`).join('')}</div>`,'short')};
 /* the card table's room, and a camera that looks round the table like a pair of eyes */
+/* ---------- who sits at the card table: the players sheet ----------
+   the seats along the top (tap one), the ten characters below (tap one to seat it there; if it sat elsewhere the two swap).
+   a choice made here stays for the next games; "every game at random" brings the shuffle back. the sheet redraws in place, so back closes it in one step */
+const CASTSN={1:'მარცხნივ',2:'პირისპირ',3:'მარჯვნივ'};
+const castEdit=id=>{const c=GAME[id]&&GAME[id].ctx;return CASTG.includes(id)&&!S.page&&(!c||c.mode==='bot')};
+const castSeatsOf=id=>id==='bura'?[2]:id==='durak'&&DK.SE?DK.SE.filter(p=>p):[1,2,3];
+/* a seat plate that opens the sheet on that seat */
+const castTap=p=>castEdit(gCur())?` data-a="gcast" data-s="${p}" role="button" tabindex="0" title="მოთამაშის შეცვლა"`:'';
+let CASTSEL=1;
+function castSheetHTML(){const id=gCur(),seats=castSeatsOf(id);if(!seats.includes(CASTSEL))CASTSEL=seats[0];const rnd=castRandOn(),pic=store.get('gcast','pic')!=='3d';
+ const who=c=>{const p=seats.find(q=>TCAST[q]===c);return p?p:0};
+ return head('მოთამაშეები')+`<div class="castsh">
+  ${seats.length>1?`<div class="cseats" role="group" aria-label="ადგილი">${seats.map(p=>{const c=castBy(TCAST[p]);return `<button class="cseat" data-a="gcastseat" data-s="${p}" aria-pressed="${p===CASTSEL}">${castAv(c.id,46)}<b>${esc(c.n)}</b><small>${CASTSN[p]}</small></button>`}).join('')}</div>
+  <p class="chint">${esc(CASTSN[CASTSEL])} ზის <b>${esc(castBy(TCAST[CASTSEL]).n)}</b>. აირჩიე, ვინ დაჯდეს მის ადგილზე</p>`:`<p class="chint">პირისპირ ზის <b>${esc(castBy(TCAST[CASTSEL]).n)}</b>. აირჩიე, ვინ დაჯდეს მის ადგილზე</p>`}
+  <div class="cgrid">${CAST.map(c=>{const p=who(c.id);return `<button class="cpick${p===CASTSEL?' cur':p?' busy':''}" data-a="gcastpick" data-c="${c.id}" aria-pressed="${p===CASTSEL}" aria-label="${esc(c.n)}, ${esc(c.d)}${p&&p!==CASTSEL?', ზის '+CASTSN[p]:''}">${castAv(c.id,58)}<b>${esc(c.n)}</b>${p&&p!==CASTSEL?`<small>${CASTSN[p]}</small>`:''}</button>`}).join('')}</div>
+  <div class="gmenu">
+   <button data-a="gcastroll">${ic('dice')}<span>აურიე ახლავე</span></button>
+   <button data-a="gcastr" aria-pressed="${rnd}">${ic('turn')}<span>ყოველ ახალ თამაშზე შემთხვევით</span><i class="sw${rnd?' on':''}" aria-hidden="true"></i></button>
+  </div>
+  ${g3Want()?`<div class="seg" role="group" aria-label="პერსონაჟების სახე"><button data-a="gcaststy" data-v="pic" aria-pressed="${pic}">ნახატი პერსონაჟები</button><button data-a="gcaststy" data-v="3d" aria-pressed="${!pic}">3D ფიგურები</button></div>`:''}
+ </div>`}
+A.gcast=t=>{const s=t&&t.dataset&&+t.dataset.s;if(s)CASTSEL=s;navMark('gcast',()=>A.gcast());sheet(castSheetHTML(),'short castp')};
+const castRedrawSheet=()=>{const pn=$('#sheet .panel.castp');if(pn)pn.innerHTML=castSheetHTML()};
+/* a change at the table: names everywhere, the durak tally keeps counting for the same company, and the game draws again */
+function castChanged(save){castSync();if(save){store.set('jkcast',TCAST.slice(1));store.set('jkcastr',false)}else if(!castRandOn())store.set('jkcast',TCAST.slice(1));
+ if(typeof DK!=='undefined'&&DK.fools)DK.fools.cast=TCAST.slice();castRedrawSheet();gRedraw();if(typeof g3Need==='function')g3Need()}
+A.gcastseat=t=>{CASTSEL=+t.dataset.s||1;castRedrawSheet()};
+A.gcastpick=t=>{const c=t.dataset.c;if(!castBy(c))return;const cur=TCAST[CASTSEL];if(cur===c)return;const o=[1,2,3].find(p=>p!==CASTSEL&&TCAST[p]===c);if(o)TCAST[o]=cur;TCAST[CASTSEL]=c;if(typeof gSnd==='function')gSnd('card',.5);castChanged(true)};
+A.gcastroll=()=>{const pool=shuffle(CAST.map(c=>c.id));TCAST[1]=pool[0];TCAST[2]=pool[1];TCAST[3]=pool[2];castChanged(false)};
+A.gcastr=()=>{const on=!castRandOn();store.set('jkcastr',on);if(!on)store.set('jkcast',TCAST.slice(1));castRedrawSheet()};
+A.gcaststy=t=>{store.set('gcast',t.dataset.v==='3d'?'3d':'pic');castRedrawSheet();gRedraw();if(typeof g3Need==='function')g3Need()};
 const JKROOMN={lounge:'ღამის ლაუნჯი',room:'ძველი ოთახი ხალიჩით'},GLOOKN={auto:'თვალებით',tilt:'თვალებით და დახრით',off:'გაჩერებული'};
 const jkRoomSet=()=>store.get('jkroom','lounge')==='room'?'room':'lounge';
 const gLookSet2=()=>{const v=store.get('glook','auto');return GLOOKN[v]?v:'auto'};

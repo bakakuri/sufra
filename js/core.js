@@ -29,7 +29,10 @@ const prof=id=>id&&ME&&id===ME.id?ME:PC.get(id)||{id,name:'მომხმარ
 const pname=id=>prof(id).name;
 function av(p,s=40){if(p==='me')p=ME;else if(typeof p==='string')p=prof(p);p=p||{};const st=`--s:${s}px;--h:${(p.hue??200)%360}`;
  return p.avatar_url?`<img class="av" style="${st}" src="${esc(p.avatar_url)}" alt="" loading="lazy">`:`<span class="av" style="${st}" aria-hidden="true">${esc((String(p.name||'?').trim()[0])||'?')}</span>`}
-const avAny=(x,s)=>typeof x==='string'||x?.id?av(x,s):x&&/^https:/.test(String(x.u||''))?`<img class="av" style="--h:${Math.abs(Number(x.h)||200)%360};--s:${s}px" src="${esc(x.u)}" alt="" loading="lazy">`:`<span class="av" style="--h:${Math.abs(Number(x&&x.h)||200)%360};--s:${s}px" aria-hidden="true">${esc(String((x&&x.n)||'?').slice(0,1)||'?')}</span>`;
+/* the drawn characters at the card tables: their faces are one strip of pictures */
+const CASTI=['m1','m2','m3','m4','m5','f1','f2','f3','f4','f5'];
+const castAv=(id,s)=>`<span class="av cav" style="--s:${s}px;background-position:${CASTI.indexOf(id)*100/9}% 0" aria-hidden="true"></span>`;
+const avAny=(x,s)=>typeof x==='string'||x?.id?av(x,s):x&&CASTI.includes(x.cast)?castAv(x.cast,s):x&&/^https:/.test(String(x.u||''))?`<img class="av" style="--h:${Math.abs(Number(x.h)||200)%360};--s:${s}px" src="${esc(x.u)}" alt="" loading="lazy">`:`<span class="av" style="--h:${Math.abs(Number(x&&x.h)||200)%360};--s:${s}px" aria-hidden="true">${esc(String((x&&x.n)||'?').slice(0,1)||'?')}</span>`;
 const vb=p=>(typeof p==='string'?prof(p):p)?.verified?`<span class="vb" title="ვერიფიცირებული" aria-label="ვერიფიცირებული">${ic('check')}</span>`:'';
 const isOnline=id=>S.online.has(id);
 const isStaff=()=>ME&&(ME.role==='admin'||ME.role==='moderator');

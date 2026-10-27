@@ -1610,6 +1610,7 @@ html.zoomed .pmw{max-height:none}html.zoomed .pmmedia{max-height:calc(68dvh / va
 .jkseat b{font-size:13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .jkseat small{font-size:11.5px;color:var(--muted);line-height:1.25}
 .jkseat.free{background:transparent;border:1.5px dashed var(--line)}
+.av.cav{background:#4A2E20 url(/icons/g/cast1f.webp) 0 0/1000% 100% no-repeat}
 .av.jkempty{background:transparent;border:2px dashed currentColor;color:var(--muted);display:inline-grid;place-items:center;font-weight:700;opacity:.7}
 .jt .av.jkempty{color:#F5EFE4}
 .jkwait .seg{margin:0}
@@ -2512,3 +2513,21 @@ html.c4 .card[data-s="♦"],html.c4 .suits button[data-s="d"]{color:#1A55C4}
 .gx.lux .bids{gap:5px}
 .gx.lux .bids button{height:44px;border-radius:12px;font-size:17px}
 .gbig .gx .bids button{height:52px;font-size:20px}
+/* the players sheet: the seats, then the ten characters to seat there */
+.castsh{overflow-y:auto;min-height:0;flex:0 1 auto;overscroll-behavior:contain;padding:2px 0 8px}
+.cseats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:4px 14px 2px}
+.cseat{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 8px;border-radius:16px;background:var(--sunk);border:2px solid transparent;min-width:0}
+.cseat b{font-size:14px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cseat small{font-size:12px;color:var(--muted)}
+.cseat[aria-pressed="true"]{border-color:var(--wine);background:var(--surface);box-shadow:var(--shadow)}
+.chint{margin:10px 16px 6px;font-size:13.5px;color:var(--muted);line-height:1.4}.chint b{color:var(--ink)}
+.cgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px 4px;padding:4px 10px 6px}
+.cpick{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px 5px;border-radius:14px;min-width:0;position:relative}
+.cpick b{font-size:12.5px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cpick small{font-size:10.5px;color:var(--muted);margin-top:-2px}
+.cpick .av{box-shadow:0 0 0 2px var(--surface),0 0 0 3px var(--line)}
+.cpick.cur .av{box-shadow:0 0 0 2px var(--surface),0 0 0 4.5px var(--wine)}.cpick.cur b{color:var(--wine)}
+.cpick.busy .av{opacity:.55}
+.cpick:hover{background:var(--sunk)}
+.castsh .gmenu{padding-bottom:4px}
+.seat[data-a="gcast"]{cursor:pointer}
+@media (max-width:360px){.cgrid{grid-template-columns:repeat(4,1fr)}}

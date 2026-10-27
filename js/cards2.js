@@ -7,7 +7,7 @@ const cKey=c=>c.s+c.r;
 /* a card as a button in my hand */
 const cBtn=(c,i,a,ok,sel,extra='')=>`<button class="card${isRed(c.s)?' red':''}${sel?' sel':''}" data-a="${a}" data-i="${i}" data-s="${SY[c.s]}" aria-label="${cardName(c)}"${sel?' aria-pressed="true"':''}${ok?'':' disabled'}${extra}><span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span></button>`;
 const cBack=n=>`<span class="cbk" aria-label="${n} კარტი">${'<i></i>'.repeat(Math.min(n,8))}<b>${n}</b></span>`;
-const cPlayers=[null,{n:'თამარი',h:190},{n:'ლევანი',h:95},{n:'ნინო',h:340}];
+const cPlayers=[null,{n:'თამარი',h:190,cast:'f1'},{n:'ლევანი',h:95,cast:'m1'},{n:'ნინო',h:340,cast:'f2'}];
 
 /* ---------- durak ----------
    six cards each, the next one turned up for trumps and slid under the deck. the attacker leads; the defender beats it
@@ -17,7 +17,7 @@ const cPlayers=[null,{n:'თამარი',h:190},{n:'ლევანი',h:95
 const dkSeats=np=>np===2?[0,2]:np===3?[0,1,3]:[0,1,2,3];
 const dkNp=()=>{const v=+store.get('dkn',2);return[2,3,4].includes(v)?v:2};
 const DK=GAME.durak={title:'დურაკი',
- start(){this.tk=(this.tk||0)+1;this.np=dkNp();this.SE=dkSeats(this.np);this.fools=this.fools&&this.fools.np===this.np?this.fools:{np:this.np,n:[0,0,0,0],games:0};this.deal()},
+ start(){this.tk=(this.tk||0)+1;this.np=dkNp();this.SE=dkSeats(this.np);castRoll();const f=this.fools;this.fools=f&&f.np===this.np&&String(f.cast)===String(TCAST)?f:{np:this.np,n:[0,0,0,0],games:0,cast:TCAST.slice()};this.deal()},
  nm(p){return p===0?ME.name:cPlayers[p].n},
  later(fn,ms){const tk=this.tk;setTimeout(()=>{if(tk===this.tk&&S.game==='durak'&&!S.page)fn()},ms)},
  deal(){const d=shuffle(d36());this.hands=[[],[],[],[]];for(let k=0;k<6;k++)for(const p of this.SE)this.hands[p].push(d.pop());
@@ -93,7 +93,7 @@ const DK=GAME.durak={title:'დურაკი',
   return this.tbl.length?'დაამატე იგივე ღირსების კარტი ან თქვი „ბიტა“':lb+'შენ იწყებ: დადე კარტი'},
  render(){if(S.tab!=='games'||S.game!=='durak'||S.page)return;const g3=g3Want(),c=this.ctx,mine=this.cur===0&&['att','def','take'].includes(this.phase);
   const L=mine?this.legal(0):[];gTurnSnd(this,mine&&(L.length>0||this.phase==='def'));
-  const seat=(p,pos)=>this.SE.includes(p)?`<div class="seat ${pos}${this.cur===p&&this.phase!=='over'?' turn':''}${p===this.def&&this.tbl.length?' dfd':''}">${avAny(cPlayers[p],36)}<b>${esc(this.nm(p))}</b><span class="bt">${this.hands[p].length?this.hands[p].length+' კარტი':this.active(p)?'—':'გამოვიდა'}${p===this.def&&this.phase!=='over'?' · იგერიებს':''}</span></div>`:'';
+  const seat=(p,pos)=>this.SE.includes(p)?`<div class="seat ${pos}${this.cur===p&&this.phase!=='over'?' turn':''}${p===this.def&&this.tbl.length?' dfd':''}"${castTap(p)}>${avAny(cPlayers[p],36)}<b>${esc(this.nm(p))}</b><span class="bt">${this.hands[p].length?this.hands[p].length+' კარტი':this.active(p)?'—':'გამოვიდა'}${p===this.def&&this.phase!=='over'?' · იგერიებს':''}</span></div>`:'';
   const pairs=this.tbl.map(x=>`<span class="dpair">${jCardHTML(x.a)}${x.d?jCardHTML(x.d).replace('class="card','class="card dd'):''}</span>`).join('');
   const deck=this.deck.length?`<span class="ddeck">${jCardHTML(this.trumpCard).replace('class="card','class="card dtr')}${this.deck.length>1?cBack(this.deck.length-1):''}</span>`:`<span class="ddeck none">კოზირი <b style="color:${suitInk(this.trump)}">${SY[this.trump]}</b></span>`;
   const hand=this.hands[0].map((cd,i)=>cBtn(cd,i,'dkc',L.some(x=>cSame(x,cd)))).join('');
@@ -124,7 +124,7 @@ const buPts=cs=>cs.reduce((a,c)=>a+(BU_PT[c.r]||0),0);
 const buTo=()=>{const v=+store.get('buto',5);return[3,5,7].includes(v)?v:5};
 const buShowPts=()=>store.get('bupts',true)!==false;
 const BU=GAME.bura={title:'ბურა',
- start(){this.tk=(this.tk||0)+1;this.to=buTo();this.match=[0,0,0,0];this.dealer=Math.random()<.5?0:2;this.dealN=0;this.newDeal()},
+ start(){this.tk=(this.tk||0)+1;castRoll();this.to=buTo();this.match=[0,0,0,0];this.dealer=Math.random()<.5?0:2;this.dealN=0;this.newDeal()},
  nm(p){return p===0?ME.name:cPlayers[2].n},
  opp(p){return p===0?2:0},
  later(fn,ms){const tk=this.tk;setTimeout(()=>{if(tk===this.tk&&S.game==='bura'&&!S.page)fn()},ms)},
@@ -202,7 +202,7 @@ const BU=GAME.bura={title:'ბურა',
   else if(mine&&this.phase==='resp')panel=`<div class="jkacts"><button class="btn gold" data-a="bugo"${selC.length===n?'':' disabled'}>პასუხი</button></div>`;
   const myPts=buShowPts()?` · ჩემი ქულა: <b>${buPts(this.taken[0])}</b>`:'';
   const info=`<div class="ginfo">${trumpChip(this.trump)}<span class="gscore" aria-label="ანგარიში: შენ ${this.match[0]}, ${esc(this.nm(2))} ${this.match[2]}"><span>შენ</span><b>${this.match[0]}</b><i>:</i><b>${this.match[2]}</b><span>${esc(this.nm(2))}</span></span><span>${this.to} ქულამდე · დასტაში ${this.deck.length}</span></div>`;
-  const seat=`<div class="seat top${this.cur===2?' turn':''}">${avAny(cPlayers[2],36)}<b>${esc(this.nm(2))}</b><span class="bt">${this.hands[2].length} კარტი · წაიღო ${this.tricks[2]}</span></div>`;
+  const seat=`<div class="seat top${this.cur===2?' turn':''}"${castTap(2)}>${avAny(cPlayers[2],36)}<b>${esc(this.nm(2))}</b><span class="bt">${this.hands[2].length} კარტი · წაიღო ${this.tricks[2]}</span></div>`;
   const stage=`<div class="jt bura${g3?' g3jt':''}">${seat}<div class="trick btable" aria-label="მაგიდა">${tbl||'<span class="muted">მაგიდა ცარიელია</span>'}${deck}</div>${g3?`<div class="g3 g3-joker${G3W.ready?'':' loading'}">${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div>`:''}</div>`;
   let res='';if(this.phase==='over'){const win=this.match[0]>=this.to;res=gResBox(this,{title:win?'მოიგე!':'წააგე',sub:`მატჩი ${this.to} ქულამდე · ${this.match[0]}:${this.match[2]}`,kind:win?'win':'lose',again:'<button class="btn gold" data-a="buagain">ახალი მატჩი</button>',share:win?gShareBtn('bura',`${this.match[0]}:${this.match[2]}`):''})}
   gSaveLater(this);view.innerHTML=gShell('bura',{stage,mid:stage,top:gTop('ბურა',null)+info,bot:`<div class="pl me${mine?' turn':''}"><span class="plav">${av('me',34)}</span><span class="pln"><b>${esc(ME.name)}</b><span class="muted">წაიღე ${this.tricks[0]}${myPts}</span></span></div>

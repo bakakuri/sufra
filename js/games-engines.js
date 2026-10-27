@@ -373,8 +373,8 @@ function jPips(b,t){const lab=`aria-label="ნათქვამი ${b??'ჯე
  return `<span class="bt pips${t>b?' over':''}" ${lab}>${Array.from({length:b},(_,k)=>`<i${k<t?' class="on"':''}></i>`).join('')}${t>b?`<em>+${t-b}</em>`:''}</span>`}
 const jBidCols=n=>n+1<=8?n+1:Math.ceil((n+1)/2);
 const JK=GAME.joker={title:'ჯოკერი',
- start(){this.tk=(this.tk||0)+1;this.phase='setup';this.ids=['me',{n:JK_BOTS[0],h:20},{n:JK_BOTS[1],h:200},{n:JK_BOTS[2],h:120}]},
- nm(p){return p===0?ME.name:JK_BOTS[p-1]},
+ start(){this.tk=(this.tk||0)+1;this.phase='setup';castRoll();this.ids=['me',...[1,2,3].map((p,i)=>{const c=castBy(TCAST[p]);return{n:c.n,h:[20,200,120][i],cast:c.id}})]},
+ nm(p){return p===0?ME.name:(this.ids&&this.ids[p]&&this.ids[p].n)||JK_BOTS[p-1]},
  save(){if(!['trump','bid','play','handover'].includes(this.phase)||!this.hands)return null;return{lastT:this.lastT||null,len:this.len,h:this.h,score:this.score,hist:this.hist,dealer:this.dealer,n:this.n,hands:this.hands,first3:this.first3,bids:this.bids,taken:this.taken,trick:this.trick,trump:this.trump,trumpCard:this.trumpCard,phase:this.phase,cur:this.cur,win:this.win,gone:[...(this.gone||[])]}},
  restore(s){if(!s||!JSEQ[s.len]||!Array.isArray(s.hands))throw 0;Object.assign(this,{len:s.len,h:s.h,score:s.score,hist:s.hist||[],dealer:s.dealer,n:s.n,hands:s.hands,first3:s.first3,bids:s.bids,taken:s.taken,trick:s.trick||[],trump:s.trump,trumpCard:s.trumpCard,phase:s.phase,cur:s.cur,win:s.win,gone:new Set(s.gone||[]),lastT:s.lastT&&Array.isArray(s.lastT.t)?s.lastT:null});
   if(this.phase==='handover')this.later(()=>{if(this.phase==='handover')this.newHand()},1800);
@@ -436,7 +436,7 @@ const JK=GAME.joker={title:'ჯოკერი',
    <div class="jkonline"><div><b>მეგობრებთან ონლაინ</b><p class="note">გაშალე მაგიდა და მოიწვიე მეგობრები. ცარიელ ადგილებზე ბოტები ჩაჯდებიან.</p></div><button class="btn ghost" data-a="jkonew">${ic('users')}მაგიდის გაშლა</button></div></section>`,bot:''});return}
   const g3=g3Want(),mine=this.cur===0&&['bid','play','trump'].includes(this.phase)&&this.win==null;gTurnSnd(this,mine);
   const pips=p=>jPips(this.bids[p],this.taken[p]);
-  const seat=(p,pos)=>`<div class="seat ${pos}${this.cur===p&&(this.phase==='bid'||this.phase==='play'||this.phase==='trump')?' turn':''}">${avAny(this.ids[p],38)}<b>${esc(this.nm(p))}</b>${pips(p)}<span class="jsc${this.score[p]<0?' neg':''}">${this.score[p]}</span></div>`;
+  const seat=(p,pos)=>`<div class="seat ${pos}${this.cur===p&&(this.phase==='bid'||this.phase==='play'||this.phase==='trump')?' turn':''}"${castTap(p)}>${avAny(this.ids[p],38)}<b>${esc(this.nm(p))}</b>${pips(p)}<span class="jsc${this.score[p]<0?' neg':''}">${this.score[p]}</span></div>`;
   const tr=this.trick.map(e=>{const h=jCardHTML(e.card).replace('class="card','class="card p'+e.p);return e.card.j?h.replace('</div>',`<span class="jm">${e.jm==='hi'?'მაღალი':'დაბალი'}${e.js?' '+SY[e.js]:''}</span></div>`):h}).join('');
   const trumpTxt=trumpChip(this.trump,this.phase==='trump');
   const L=this.phase==='play'&&this.cur===0?this.legal(0):[];
@@ -445,7 +445,7 @@ const JK=GAME.joker={title:'ჯოკერი',
   let panel='',st='';
   if(this.phase==='trump'){if(this.cur===0){st='ნახე პირველი სამი კარტი და აირჩიე კოზირი';panel=`<div class="suits">${SUITS.map(s=>`<button class="${isRed(s)?'red':''}" data-a="jtrump" data-s="${s}" aria-label="${SN[s]}">${SY[s]}</button>`).join('')}</div><button class="btn ghost" data-a="jtrump" data-s="" style="align-self:center">უკოზირო</button>`}else st=esc(this.nm(this.cur))+' ირჩევს კოზირს…'}
   else if(this.phase==='bid'){if(this.cur===0){const f=this.forbidden(0),hn=jHintOn()?jHint(this.hands[0],this.trump,this.n,f):-1;st='რამდენს წაიღებ?'+(f>=0?` დამრიგებელი ხარ, ${f}-ს ვერ იტყვი`:'')+(hn>=0?`<small class="bhint">რჩევა: ${hn===0?'პასი':hn}</small>`:'');panel=`<div class="bids" role="group" aria-label="ნათქვამი" style="--c:${jBidCols(this.n)}">${Array.from({length:this.n+1},(_,v)=>`<button data-a="jbid" data-v="${v}"${v===f?' disabled':''}${v===hn?' class="hint" aria-description="რჩევა"':''}>${v===0?'პასი':v}</button>`).join('')}</div>`}else st=esc(this.nm(this.cur))+' ამბობს…'}
-  else if(this.phase==='play'){st=this.win!=null?(this.win===0?'ეს ხელი შენ წაიღე':esc(JK_ERG[this.win-1])+' წაიღო ხელი'):this.cur===0?(g3?'შენი სვლაა. შეეხე კარტს ორჯერ ან აიტანე მაგიდაზე':'შენი სვლაა'):esc(this.nm(this.cur))+' ფიქრობს…'}
+  else if(this.phase==='play'){st=this.win!=null?(this.win===0?'ეს ხელი შენ წაიღე':esc(castErg(this.ids[this.win]))+' წაიღო ხელი'):this.cur===0?(g3?'შენი სვლაა. შეეხე კარტს ორჯერ ან აიტანე მაგიდაზე':'შენი სვლაა'):esc(this.nm(this.cur))+' ფიქრობს…'}
   else if(this.phase==='handover'||this.phase==='over'){const{hand:last,prem}=jLast(this.hist);const mn=last.p[0]+(prem?prem.p[0]:0);
    st=this.phase==='over'?(this.score[0]===Math.max(...this.score)?'მოიგე! +12 რეიტინგი, +10 მონეტა':'თამაში დასრულდა'):`ხელი დასრულდა. შენ: ${mn>0?'+':''}${mn}`+(prem?' · სექციის პრემია':'');
    panel=''}

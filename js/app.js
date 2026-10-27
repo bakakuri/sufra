@@ -120,6 +120,8 @@ $('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)r
 document.addEventListener('click',e=>{if(!e.target.closest('.rwrap'))$$('.picker').forEach(x=>x.remove());const t=e.target.closest('[data-a]');if(!t)return;const f=A[t.dataset.a];if(!f)return;if(t.tagName==='A')e.preventDefault();try{const r=f(t,e);if(r&&r.catch)r.catch(x=>toast(errMsg(x)))}catch(x){toast(errMsg(x))}});
 $('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeSheet()});
 $('#layer').addEventListener('click',e=>{if(e.target.id==='layer')closeLayer()});
+/* a plate or card that acts as a button (role=button with an action) answers Enter and Space like one */
+document.addEventListener('keydown',e=>{const t=e.target;if((e.key==='Enter'||e.key===' ')&&t&&t.getAttribute&&t.getAttribute('role')==='button'&&t.dataset&&t.dataset.a&&t.tagName!=='BUTTON'){e.preventDefault();t.click()}});
 document.addEventListener('keydown',e=>{if(PV&&!$('#pv')?.hidden&&$('#sheet').hidden&&(e.key==='ArrowRight'||e.key==='ArrowLeft')){const b=$(`#pv .pmnav.${e.key==='ArrowRight'?'next':'prev'}`);if(b)b.click();return}if(e.key!=='Escape')return;if(!$('#layer').hidden)closeLayer();else if($('#pv.top')&&!$('#pv').hidden)closePV();else if(!$('#story').hidden)closeStory();else if(!$('#sheet').hidden)closeSheet();else if($('#pv')&&!$('#pv').hidden)closePV()});
 {let lastY=0;view.addEventListener('scroll',()=>{const y=view.scrollTop,app=$('#app');$('#top').classList.toggle('shadow',y>4);if(view.classList.contains('is-clips'))return;
  if(y>lastY+8&&y>90)app.classList.add('barhidden');else if(y<lastY-8||y<40)app.classList.remove('barhidden');lastY=y},{passive:true})}

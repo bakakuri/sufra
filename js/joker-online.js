@@ -13,7 +13,7 @@ const joHere=id=>!!S.page&&S.page.id==='jktable'&&+S.page.arg===id&&JO.id===id;
 const joBotHue=n=>[20,200,120][JK_BOTS.indexOf(n)]??160;
 const joName=p=>{const u=JO.t&&JO.t.seats[p];if(u)return u===ME.id?'შენ':pname(u);const b=JO.st&&JO.st.bots&&JO.st.bots[p];return b?b+' (ბოტი)':'ცარიელი'};
 const joShort=p=>{const u=JO.t&&JO.t.seats[p];if(u)return u===ME.id?'შენ':String(pname(u)).split(' ')[0];return (JO.st&&JO.st.bots&&JO.st.bots[p])||'–'};
-const joAv=(p,s)=>{const u=JO.t&&JO.t.seats[p];if(u)return av(u,s);const b=JO.st&&JO.st.bots&&JO.st.bots[p];return b?avAny({n:b,h:joBotHue(b)},s):`<span class="av jkempty" style="--s:${s}px" aria-hidden="true">+</span>`};
+const joAv=(p,s)=>{const u=JO.t&&JO.t.seats[p];if(u)return av(u,s);const b=JO.st&&JO.st.bots&&JO.st.bots[p];return b?avAny({n:b,h:joBotHue(b),cast:(castNamed(b)||{}).id},s):`<span class="av jkempty" style="--s:${s}px" aria-hidden="true">+</span>`};
 
 PG.jktable={r(id){id=+id;view.innerHTML=pgHead('ჯოკერი ონლაინ',`<button class="ibtn" data-a="jkoshare" aria-label="ბმულის გაზიარება">${ic('share')}</button>${gTools()}`)+`<div class="view-pad game jko" id="jko">${skel(2)}</div>`;joOpen(id)}};
 
@@ -52,7 +52,7 @@ async function joFetchHand(){const id=JO.id,seat=JO.seat;if(seat<0)return;JO.dea
 
 /* ---------- the host's engine: the same rules and bots as the game against the computer ---------- */
 const joEngine=()=>({legal:JK.legal,winner:JK.winner,val:JK.val,forbidden:JK.forbidden,botBid:JK.botBid,botPlay:JK.botPlay,botTrump:JK.botTrump,pts:JK.pts});
-function joBegin(){const t=JO.t,bots=[null,null,null,null],prev=JO.E;let bi=0;t.seats.forEach((u,i)=>{if(!u)bots[i]=JK_BOTS[bi++]});
+function joBegin(){const t=JO.t,bots=[null,null,null,null],prev=JO.E;let bi=0;const pool=shuffle(CAST.map(c=>c.n));t.seats.forEach((u,i)=>{if(!u)bots[i]=pool[bi++]});
  const E=JO.E=joEngine();Object.assign(E,{opt:Object.assign({kh:'std',prem:true,tt:JO_TURN},(JO.st&&JO.st.opt)||(typeof jkOptGet==='function'?jkOptGet():{})),len:t.len,h:0,score:[0,0,0,0],hist:[],dealer:Math.floor(Math.random()*4),bots,deal:prev?prev.deal:(JO.st&&JO.st.deal)||0,mv:prev?prev.mv:(JO.st&&JO.st.mv)||0});
  joDeal(true,true)}
 function joDeal(adv,start){const E=JO.E;const n=JSEQ[E.len][E.h];E.n=n;if(adv)E.dealer=(E.dealer+1)%4;const d=shuffle(jDeck());

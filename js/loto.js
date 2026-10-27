@@ -39,7 +39,7 @@ function lotoBarrelHTML(cur,drawn){const last=drawn.slice(-6,-1).reverse();
 function lotoBoardOpen(drawn){const D=new Set(drawn);sheet(head('ამოსული რიცხვები')+`<div class="ph-body"><div class="l90">${Array.from({length:90},(_,i)=>`<span${D.has(i+1)?' class="on"':''}>${i+1}</span>`).join('')}</div><p class="note">ამოვიდა ${drawn.length} რიცხვი 90-დან.</p></div>`,'short')}
 
 const LOTO=GAME.loto={title:'ლოტო',
- start(){this.tk=(this.tk||0)+1;clearTimeout(this.tm);this.phase='setup';this.score=this.score||[0,0,0,0]},
+ start(){this.tk=(this.tk||0)+1;clearTimeout(this.tm);this.phase='setup';castRoll();this.score=this.score||[0,0,0,0]},
  nm(p){return p===0?ME.name:cPlayers[p].n},
  begin(){const o=lotoOpt(),rng=Math.random;this.opt=o;this.tk++;clearTimeout(this.tm);this.bag=lotoBag(rng);this.drawn=[];this.cur=null;this.win=null;this.paused=false;
   this.tix=[];for(let k=0;k<o.n;k++)this.tix.push({p:0,g:lotoTicket(rng),m:new Set()});for(const p of[1,2,3])for(let k=0;k<(p===2?2:1);k++)this.tix.push({p,g:lotoTicket(rng),m:new Set()});
@@ -105,7 +105,9 @@ const lotDrawn=s=>{if(!s||!s.seed)return[];const b=lotoBag(jdRng(s.seed));return
 LOT.drawn=()=>lotDrawn(LOT.st);
 /* every seat's tickets, the same on every phone */
 function lotTix(s){if(!s||!s.seed)return[];const rng=jdRng(s.seed^0x5bd1e995),out=[];for(let p=0;p<4;p++)for(let k=0;k<(s.tn||2);k++)out.push({p,g:lotoTicket(rng)});return out}
-const lotName=p=>{const u=LOT.t&&LOT.t.seats[p];if(u)return u===ME.id?'შენ':pname(u);return (cPlayers[p]||cPlayers[1]).n+' (ბოტი)'};
+/* the bots at an online table: the same three for everyone there */
+const LOTBOT=[null,{n:'თამარი',h:190,cast:'f1'},{n:'ლევანი',h:95,cast:'m1'},{n:'ნინო',h:340,cast:'f2'}];
+const lotName=p=>{const u=LOT.t&&LOT.t.seats[p];if(u)return u===ME.id?'შენ':pname(u);return (LOTBOT[p]||LOTBOT[1]).n+' (ბოტი)'};
 PG.lotable={r(id){id=+id;view.innerHTML=pgHead('ლოტო ონლაინ',`<button class="ibtn" data-a="lotshare" aria-label="ბმულის გაზიარება">${ic('share')}</button>${gTools()}`)+`<div class="view-pad game lot" id="lot">${skel(2)}</div>`;lotOpen(id)}};
 function lotStop(){clearTimeout(LOT.tm);if(LOT.ch){try{LOT.ch.untrack()}catch(e){}sb.removeChannel(LOT.ch)}lotReset()}
 async function lotOpen(id){lotStop();LOT.id=id;S.chanCleanup=()=>{lotStop();fsExit()};fsEnter();let t=null;
@@ -168,7 +170,7 @@ function lotDraw(){const el=$('#lot');if(!el||!LOT.t||!lotHere(LOT.id))return;co
    ${host?`<div class="jkacts"><button class="btn" data-a="lotstart">${ic('play')}დაწყება</button><button class="btn ghost" data-a="lotinvite">${ic('users')}მეგობრების მოწვევა</button><button class="btn ghost sm" data-a="lotclose">მაგიდის დახურვა</button></div>`:me>=0?'<p class="hint">მასპინძელი მალე დაიწყებს.</p><div class="jkacts"><button class="btn ghost sm" data-a="lotleave">მაგიდიდან ადგომა</button></div>':t.seats.some(x=>!x)?'<div class="jkacts"><button class="btn" data-a="lotjoin">მაგიდასთან დაჯდომა</button></div>':'<p class="hint">მაგიდა სავსეა.</p>'}</section>`);return}
  const D=lotDrawn(s),cur=D[D.length-1]||null,T=lotTix(s),mode=s.mode,mineT=T.map((x,i)=>({x,i})).filter(o=>o.x.p===me);
  const ppl=[0,1,2,3].filter(p=>p!==me).map(p=>{const ts=T.filter(x=>x.p===p),Ds=new Set(D),left=Math.min(...ts.map(x=>lotoLeft(x.g,y=>Ds.has(y),mode)));const u=t.seats[p];
-  return `<span class="lpl${left<=1?' hot':''}${s.win&&s.win.p===p?' won':''}"${u?` data-vu="${u}"`:''}>${u?av(u,28):avAny(cPlayers[p]||cPlayers[1],28)}<b>${esc(String(lotName(p)).split(' ')[0])}</b><small>${s.win&&s.win.p===p?'ლოტო!':left===1?'ერთი აკლია!':`აკლია ${left}`}</small></span>`}).join('');
+  return `<span class="lpl${left<=1?' hot':''}${s.win&&s.win.p===p?' won':''}"${u?` data-vu="${u}"`:''}>${u?av(u,28):avAny(LOTBOT[p]||LOTBOT[1],28)}<b>${esc(String(lotName(p)).split(' ')[0])}</b><small>${s.win&&s.win.p===p?'ლოტო!':left===1?'ერთი აკლია!':`აკლია ${left}`}</small></span>`}).join('');
  const tixH=mineT.map(({x,i})=>{const m=lotMarked(i);return lotoTixHTML([{g:x.g,m}],null,cur,'lotm',mode).replace(/data-t="0"/g,`data-t="${i}"`)}).join('');
  const done=mineT.find(({x,i})=>lotoDone(x.g,y=>lotMarked(i).has(y),mode));
  const info=`<div class="ginfo"><span>${mode==='full'?'მთელი ბილეთი':'ერთი ხაზი'}</span><span>ამოვიდა ${D.length}/90</span>${!host&&!LOT.hostHere?'<span>მასპინძელი გავიდა, ბარაბანი გაჩერდა</span>':''}</div>`;
