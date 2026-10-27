@@ -41,7 +41,7 @@ function descHTML(p,lines){const b=String(p.body||'');if(!b.trim())return '';con
  return `<div class="pdesc${long?' clamp':''}" style="--l:${lines}">${tx(b)}${long?'<button class="pmore2" data-a="pmore2">სრულად</button>':''}</div>`}
 A.pmore2=t=>{const d=t.closest('.pdesc');if(!d)return;const open=!d.classList.contains('open');d.classList.toggle('open',open);t.textContent=open?'მოკლედ':'სრულად'};
 function mediaTile(m,i,p){const alt=p.body?esc(String(p.body).slice(0,80)):'';
- return `<button class="pmi" data-a="pmtap" data-pid="${p.id}" data-i="${i}" aria-label="${m.type==='video'?'ვიდეოს გახსნა':'ფოტოს გახსნა'}">${m.type==='video'?`<video src="${esc(m.url)}"${mPoster(m)?` poster="${esc(mPoster(m))}" preload="none"`:' preload="metadata"'} muted playsinline></video><span class="pmplay">${ic('clips')}</span>`:`<img src="${esc(mMd(m))}" alt="${alt}" loading="lazy" decoding="async"${m.w&&m.h?` width="${+m.w|0}" height="${+m.h|0}"`:''}>`}</button>`}
+ return `<button class="pmi" data-a="pmtap" data-pid="${p.id}" data-i="${i}" aria-label="${m.type==='video'?'ვიდეოს გახსნა':'ფოტოს გახსნა'}">${m.type==='video'?`<video src="${esc(m.url)}${mPoster(m)?'':'#t=0.1'}"${mPoster(m)?` poster="${esc(mPoster(m))}" preload="none"`:' preload="metadata"'} muted playsinline loop disablepictureinpicture disableremoteplayback></video><span class="pmplay">${ic('play','currentColor')}</span><span class="pmdur" aria-hidden="true"></span>`:`<img src="${esc(mMd(m))}" alt="${alt}" loading="lazy" decoding="async"${m.w&&m.h?` width="${+m.w|0}" height="${+m.h|0}"`:''}>`}</button>`}
 /* a plain repost shows the original under a "shared" line; a quote is the sharer's own post with the original as a card */
 function quoteHTML(o,still){if(!o)return `<div class="qcard gone">${ic('repost')}ეს პოსტი აღარ არის ხელმისაწვდომი</div>`;const u=o.page?{name:o.page.name,hue:o.page.hue}:(o.ap||prof(o.author)),m=pmedia(o)[0];
  const tag=still?'div':'button';
@@ -54,7 +54,7 @@ function postHTML(p){if(p.repost_of&&!String(p.body||'').trim()){const o=POSTS.g
  if(media.length&&!(ECO()&&!p._eco)){const n=media.length;
   return `<article class="${cls} pm" data-id="${p.id}"><div class="pmw${n>1?' multi':''}">
    <div class="pmtop">${whoHTML(p,u,pg)}${n>1?`<span class="pmcount" aria-hidden="true"><b>1</b>/${n}</span>`:''}</div>
-   <div class="pmmedia" style="--ar:${boxRatio(media[0])}"${media[0]&&+media[0].w>0&&+media[0].h>0?'':' data-fit'}><div class="pmtrack">${media.map((m,i)=>mediaTile(m,i,p)).join('')}</div>
+   <div class="pmmedia" style="--ar:${boxRatio(media[0])}"${media[0]&&+media[0].w>0&&+media[0].h>0?'':' data-fit'}><div class="pmtrack">${media.map((m,i)=>mediaTile(m,i,p)).join('')}</div>${media.some(m=>m.type==='video')?fvSndHTML():''}
    ${n>1?`<button class="pmnav prev" data-a="pmnav" data-d="-1" aria-label="წინა">${ic('back')}</button><button class="pmnav next" data-a="pmnav" data-d="1" aria-label="შემდეგი">${ic('back')}</button>`:''}
    <span class="burst">${ic('heart','currentColor')}</span></div>
    <div class="pmbot">${n>1?`<div class="pmdots" aria-hidden="true">${media.map((_,i)=>`<i${i?'':' class="on"'}></i>`).join('')}</div>`:''}${gradeHTML(p,s)}${actsHTML(p,s)}</div></div>
@@ -63,15 +63,48 @@ function postHTML(p){if(p.repost_of&&!String(p.body||'').trim()){const o=POSTS.g
   ${media.length?`<button class="ecoimg" data-a="ecopost" data-pid="${p.id}">${ic(media.some(x=>x.type==='video')?'clips':'image')}<span>${media.length>1?media.length+' ფაილი':media[0].type==='video'?'ვიდეო':'ფოტო'} · დააჭირე ჩასატვირთად</span></button>`:''}
   ${descHTML(p,6)}${p.repost_of?quoteHTML(POSTS.get(p.repost_of)):''}${p.link&&!media.length&&!p.repost_of?linkCard(p.link):''}${pollBlock(p,s)}${gradeHTML(p,s)}${actsHTML(p,s)}</article>`}
 const pidOf=t=>+(t.dataset.pid||t.closest('.post,[data-pv]')?.dataset.id||t.closest('[data-pv]')?.dataset.pv);
-function rerenderPost(id){$$(`.post[data-id="${id}"]`).forEach(el=>{const p=POSTS.get(id);if(!p)return;const tr=$('.pmtrack',el),x=tr?tr.scrollLeft:0;el.outerHTML=postHTML(p);if(x){const n=$(`.post[data-id="${id}"] .pmtrack`);if(n){n.scrollLeft=x;pmSync(n)}}});if(PV&&PV.id===id)refreshPV()}
+function rerenderPost(id){$$(`.post[data-id="${id}"]`).forEach(el=>{const p=POSTS.get(id);if(!p)return;const tr=$('.pmtrack',el),x=tr?tr.scrollLeft:0,om=$('.pmmedia',el);
+  const box=document.createElement('div');box.innerHTML=postHTML(p);const nu=box.firstElementChild;if(!nu){el.remove();return}
+  const nm=$('.pmmedia',nu),srcs=e=>$$('.pmtrack video,.pmtrack img',e).map(x=>x.getAttribute('src')).join('|');
+  if(om&&nm&&srcs(om)===srcs(nm)){$$('.pmsnd',om).forEach(b=>b.remove());const sb=$('.pmsnd',nm);nm.replaceWith(om);if(sb)om.appendChild(sb)}
+  el.replaceWith(nu);if(x){const n=$('.pmtrack',nu);if(n){n.scrollLeft=x;pmSync(n)}}fvSnd()});if(PV&&PV.id===id)refreshPV()}
 /* carousel: counter, dots and arrows follow the swipe */
-function pmSync(tr){const w=tr.clientWidth||1,i=Math.round(tr.scrollLeft/w),box=tr.closest('.pmw,.pvframe');if(!box)return;const c=$('.pmcount b,.pvcount b',box);if(c)c.textContent=i+1;$$('.pmdots i,.pvdots i',box).forEach((d,k)=>d.classList.toggle('on',k===i));if(box.classList.contains('pvframe')&&PV)PV.i=i}
+function pmSync(tr){const w=tr.clientWidth||1,i=Math.round(tr.scrollLeft/w),box=tr.closest('.pmw,.pvframe');if(!box)return;const c=$('.pmcount b,.pvcount b',box);if(c)c.textContent=i+1;$$('.pmdots i,.pvdots i',box).forEach((d,k)=>d.classList.toggle('on',k===i));if(box.classList.contains('pvframe')){if(PV)PV.i=i;$$('.pvs',box).forEach((sl,k)=>{const v=$('video',sl);if(!v)return;if(k!==i)v.pause();else if(v.paused&&!v.ended&&!v._pvseen){v._pvseen=1;pvPlay(v,0)}})}}
 document.addEventListener('scroll',e=>{const t=e.target;if(t&&t.classList&&(t.classList.contains('pmtrack')||t.classList.contains('pvtrack'))){clearTimeout(t._st);t._st=setTimeout(()=>pmSync(t),60)}},true);
 A.pmnav=t=>{const tr=$('.pmtrack,.pvtrack',t.closest('.pmw,.pvframe'));if(tr)tr.scrollBy({left:(+t.dataset.d)*tr.clientWidth,behavior:RM()?'auto':'smooth'})};
 /* one tap opens the photo, two taps like it */
 A.pmtap=t=>{const id=pidOf(t),i=+t.dataset.i||0,now=Date.now(),T=A.pmtap;
  if(T.id===id&&now-(T.l||0)<300){clearTimeout(T.t);T.l=0;const b=$('.burst',t.closest('.pmw'));if(b){b.classList.remove('go');void b.offsetWidth;b.classList.add('go')}const s=STAT.get(id);if(!s||s.my_reaction!=='❤️')setTimeout(()=>setReaction(id,'❤️'),450);return}
  T.id=id;T.l=now;clearTimeout(T.t);T.t=setTimeout(()=>{T.l=0;openPV(id,i)},290)};
+
+/* feed videos play by themselves, without sound, while most of one is on screen; of several, the one nearest the middle plays */
+const FV={r:new Map(),cur:null,snd:false,t:0};
+const fvOn=()=>!ECO()&&store.get('vauto',true)!==false;
+const fvBlocked=()=>document.hidden||document.documentElement.classList.contains('pvopen')||!!($('#story')&&!$('#story').hidden);
+const fvSndHTML=()=>`<button class="pmsnd" data-a="fvsnd" aria-pressed="${FV.snd}" aria-label="${FV.snd?'ხმის გამორთვა':'ხმის ჩართვა'}">${ic(FV.snd?'vol':'voloff')}</button>`;
+const fvClock=s=>{s=Math.max(0,Math.round(s||0));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+FV.io=new IntersectionObserver(es=>{for(const e of es)FV.r.set(e.target,e.isIntersecting?e.intersectionRatio:0);fvSoon()},{threshold:[0,.3,.6,.8,1]});
+function fvSoon(){if(!FV.t)FV.t=requestAnimationFrame(fvPick)}
+function fvWatch(v){if(v._fv)return;v._fv=1;FV.r.set(v,0);FV.io.observe(v);const tile=v.closest('.pmi');if(!tile)return;
+ const dur=()=>{const d=$('.pmdur',tile);if(d&&v.duration&&isFinite(v.duration))d.textContent=fvClock(v.duration-(v.currentTime||0))};
+ v.addEventListener('loadedmetadata',dur);v.addEventListener('timeupdate',dur);
+ v.addEventListener('playing',()=>tile.classList.add('on'));v.addEventListener('pause',()=>tile.classList.remove('on'));
+ v.addEventListener('error',()=>{tile.classList.add('bad');tile.classList.remove('on');if(FV.cur===v){FV.cur=null;fvSoon()}})}
+function fvScan(root){if(!root||root.nodeType!==1)return;if(root.matches('.pmi video'))fvWatch(root);else $$('.pmi video',root).forEach(fvWatch)}
+function fvPick(){FV.t=0;if(!FV.r.size&&!FV.cur)return;for(const v of FV.r.keys())if(!v.isConnected){FV.r.delete(v);FV.io.unobserve(v);if(FV.cur===v)FV.cur=null}
+ let best=null;if(fvOn()&&!fvBlocked()){let bs=-9;const mid=innerHeight/2;
+  for(const[v,r]of FV.r){if(r<.6||v.closest('.pmi.bad'))continue;const b=v.getBoundingClientRect(),sc=r-Math.abs((b.top+b.bottom)/2-mid)/innerHeight;if(sc>bs){bs=sc;best=v}}}
+ if(FV.cur&&FV.cur!==best){try{FV.cur.pause()}catch(e){}}
+ FV.cur=best;$$('.pmmedia.vact').forEach(m=>{if(!best||!m.contains(best))m.classList.remove('vact')});
+ if(!best)return;best.closest('.pmmedia')?.classList.add('vact');
+ if(best.paused){best.muted=!FV.snd;if(best.preload==='none')best.preload='auto';const r=best.play();
+  if(r&&r.catch)r.catch(e=>{if(e&&e.name==='NotAllowedError'&&!best.muted&&FV.cur===best){best.muted=true;FV.snd=false;fvSnd();best.play().catch(()=>{})}})}}
+function fvSnd(){$$('.pmsnd').forEach(b=>{b.innerHTML=ic(FV.snd?'vol':'voloff');b.setAttribute('aria-pressed',String(FV.snd));b.setAttribute('aria-label',FV.snd?'ხმის გამორთვა':'ხმის ჩართვა')})}
+A.fvsnd=t=>{FV.snd=!FV.snd;const v=FV.cur;if(v&&t.closest('.pmmedia')?.contains(v)){v.muted=!FV.snd;if(v.paused)v.play().catch(()=>{})}else if(v)v.muted=!FV.snd;fvSnd()};
+new MutationObserver(ms=>{let any=false;for(const m of ms){for(const n of m.addedNodes)if(n.nodeType===1&&(n.matches('.pmi video')||n.querySelector('.pmi video'))){fvScan(n);any=true}if(m.removedNodes.length&&FV.r.size)any=true}if(any)fvSoon()}).observe(view,{childList:true,subtree:true});
+new MutationObserver(()=>{if(FV.r.size)fvSoon()}).observe(document.documentElement,{attributes:true,attributeFilter:['class']});
+{const st=$('#story');if(st)new MutationObserver(fvSoon).observe(st,{attributes:true,attributeFilter:['hidden']})}
+document.addEventListener('visibilitychange',fvSoon);
 
 /* the post viewer: rises from below, a fixed black frame, author above and actions below the photo */
 let PV=null;
@@ -85,9 +118,13 @@ function openPV(id,i=0){const p=POSTS.get(id);if(!p)return;PV={id,i};let el=$('#
   <div class="pvbot">${gradeHTML(p,s)}${actsHTML(p,s)}</div>
   <div class="pvdesc">${n&&p.body?tx(p.body):''}${pollBlock(p,s)}${p.link&&!n?linkCard(p.link):''}<button class="btn sm ghost" data-a="comments">${ic('comment')}კომენტარები${s.comments?' · '+s.comments:''}</button></div></div>`;
  const tr=$('.pvtrack',el);if(tr&&i)requestAnimationFrame(()=>{tr.scrollLeft=i*tr.clientWidth});
- document.documentElement.classList.add('pvopen');$$('.pmi video').forEach(v=>{try{v.pause()}catch(e){}})}
+ const fvv=$(`.post[data-id="${id}"] .pmi[data-i="${i}"] video`),ft=fvv?fvv.currentTime:0;
+ document.documentElement.classList.add('pvopen');$$('.pmi video').forEach(v=>{try{v.pause()}catch(e){}});
+ const sl=$$('.pvs',el)[i],pvv=sl&&$('video',sl);if(pvv)pvPlay(pvv,ft)}
+/* a video in the viewer starts on its own, with sound when the browser allows it */
+function pvPlay(v,t){v._pvseen=1;const go=()=>{if(t>0&&v.duration&&t<v.duration-.3){try{v.currentTime=t}catch(e){}}const r=v.play();if(r&&r.catch)r.catch(e=>{if(e&&e.name==='NotAllowedError'&&!v.muted){v.muted=true;v.play().catch(()=>{})}})};t=+t||0;if(v.readyState>=1)go();else v.addEventListener('loadedmetadata',go,{once:true})}
 function refreshPV(){const el=$('#pv');if(!el||el.hidden||!PV)return;const p=POSTS.get(PV.id);if(!p)return;const s=STAT.get(p.id)||blankStat(p.id);const b=$('.pvbot',el);if(b)b.innerHTML=gradeHTML(p,s)+actsHTML(p,s);const c=$('.pvdesc>[data-a="comments"]',el);if(c)c.innerHTML=`${ic('comment')}კომენტარები${s.comments?' · '+s.comments:''}`;const pl=$('.pvdesc .poll',el);if(pl)pl.outerHTML=pollBlock(p,s)}
-function closePV(nav){const el=$('#pv');if(!el||el.hidden)return;if(!nav)navKill('pv');PV=null;setTimeout(()=>el.classList.remove('top'),240);$$('video',el).forEach(v=>{try{v.pause()}catch(e){}});document.documentElement.classList.remove('pvopen');
+function closePV(nav){const el=$('#pv');if(!el||el.hidden)return;if(!nav)navKill('pv');if(PV&&PV.id)$$('.pvs',el).forEach((sl,k)=>{const v=$('video',sl),f=v&&$(`.post[data-id="${PV.id}"] .pmi[data-i="${k}"] video`);if(f&&v.currentTime>0&&isFinite(v.currentTime)){try{f.currentTime=v.currentTime}catch(e){}}});PV=null;setTimeout(()=>el.classList.remove('top'),240);$$('video',el).forEach(v=>{try{v.pause()}catch(e){}});document.documentElement.classList.remove('pvopen');
  if(RM()){el.hidden=true;el.innerHTML='';return}el.classList.add('closing');setTimeout(()=>{if(el.classList.contains('closing')){el.hidden=true;el.innerHTML='';el.classList.remove('closing')}},220)}
 A.pvclose=()=>closePV();
 A.pvopen=t=>openPV(pidOf(t),+t.dataset.i||0);

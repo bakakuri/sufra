@@ -153,14 +153,22 @@ async function uploadBlob(blob,ext,bucket='media'){const path=`${ME.id}/${Date.n
 async function scaledCopy(src,max,qual){const im=await loadImg(src);const W=im.naturalWidth||im.width,H=im.naturalHeight||im.height,sc=Math.min(1,max/Math.max(W,H));
  const c=document.createElement('canvas');c.width=Math.max(1,Math.round(W*sc));c.height=Math.max(1,Math.round(H*sc));c.getContext('2d').drawImage(im,0,0,c.width,c.height);
  return {b:await new Promise(r=>c.toBlob(r,'image/jpeg',qual)),w:W,h:H}}
-function videoPoster(blob,max=720){return new Promise(res=>{const v=document.createElement('video'),u=URL.createObjectURL(blob);let done=false;
- const fin=x=>{if(done)return;done=true;clearTimeout(tm);URL.revokeObjectURL(u);v.removeAttribute('src');res(x)},tm=setTimeout(()=>fin(null),8000);
- v.muted=true;v.playsInline=true;v.preload='auto';
- v.onloadeddata=()=>{try{v.currentTime=Math.min(.5,(v.duration||1)/4)}catch(e){fin(null)}};
- v.onseeked=()=>{try{const sc=Math.min(1,max/Math.max(v.videoWidth,v.videoHeight)||1),c=document.createElement('canvas');c.width=Math.max(1,Math.round(v.videoWidth*sc));c.height=Math.max(1,Math.round(v.videoHeight*sc));c.getContext('2d').drawImage(v,0,0,c.width,c.height);c.toBlob(b=>fin(b?{b,w:v.videoWidth,h:v.videoHeight}:null),'image/jpeg',.78)}catch(e){fin(null)}};
- v.onerror=()=>fin(null);v.src=u})}
+/* the poster is a real frame: on phones (iOS above all) a video that has not played paints black, so it plays a moment first,
+   and a frame that comes out black is tried again further in; if every try is black there is no poster and the video shows itself */
+function videoPoster(blob,max=720){return new Promise(res=>{const v=document.createElement('video'),u=URL.createObjectURL(blob);let done=false,ts=[],k=0;
+ const fin=x=>{if(done)return;done=true;clearTimeout(tm);try{v.pause()}catch(e){}URL.revokeObjectURL(u);v.removeAttribute('src');try{v.load()}catch(e){}res(x)},tm=setTimeout(()=>fin(null),12000);
+ v.muted=true;v.defaultMuted=true;v.playsInline=true;v.setAttribute('playsinline','');v.setAttribute('muted','');v.preload='auto';
+ const seek=()=>{if(k>=ts.length){fin(v.videoWidth?{b:null,w:v.videoWidth,h:v.videoHeight}:null);return}try{v.currentTime=ts[k++]}catch(e){fin(null)}};
+ const blank=()=>{try{const c=document.createElement('canvas');c.width=c.height=24;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(v,0,0,24,24);const d=x.getImageData(0,0,24,24).data;let s=0,s2=0,n=0;
+  for(let i=0;i<d.length;i+=4){const l=.3*d[i]+.59*d[i+1]+.11*d[i+2];s+=l;s2+=l*l;n++}const m=s/n,sd=Math.sqrt(Math.max(0,s2/n-m*m));return m<10&&sd<4}catch(e){return false}};
+ const grab=()=>{if(done)return;if(blank()){seek();return}
+  try{const sc=Math.min(1,max/Math.max(v.videoWidth,v.videoHeight)||1),c=document.createElement('canvas');c.width=Math.max(1,Math.round(v.videoWidth*sc));c.height=Math.max(1,Math.round(v.videoHeight*sc));c.getContext('2d').drawImage(v,0,0,c.width,c.height);c.toBlob(b=>fin(b?{b,w:v.videoWidth,h:v.videoHeight}:null),'image/jpeg',.8)}catch(e){fin(null)}};
+ const frame=f=>{if(v.requestVideoFrameCallback){let ok=false;v.requestVideoFrameCallback(()=>{ok=true;f()});setTimeout(()=>{if(!ok)f()},400)}else setTimeout(f,80)};
+ v.onloadedmetadata=()=>{const d=isFinite(v.duration)&&v.duration>0?v.duration:2;ts=[Math.min(.5,d/4),d*.3,d*.6].filter((t,i,a)=>t<d&&a.indexOf(t)===i)};
+ let began=false;v.onloadeddata=()=>{if(began)return;began=true;const go=()=>{try{v.pause()}catch(e){}seek()},r=v.play();if(r&&r.then)r.then(()=>frame(go)).catch(go);else go()};
+ v.onseeked=()=>frame(grab);v.onerror=()=>fin(null);v.src=u})}
 async function uploadMedia(blob,type){
- if(type==='video'){const m={url:await uploadBlob(blob,extOf(blob)),type:'video'};try{const p=await videoPoster(blob);if(p&&p.b){m.poster=await uploadBlob(p.b,'jpg');m.w=p.w;m.h=p.h}}catch(e){}return m}
+ if(type==='video'){const m={url:await uploadBlob(blob,extOf(blob)),type:'video'};try{const p=await videoPoster(blob);if(p&&p.w){m.w=p.w;m.h=p.h}if(p&&p.b)m.poster=await uploadBlob(p.b,'jpg')}catch(e){}return m}
  const gif=blob.type==='image/gif',m={url:await uploadBlob(blob,gif?'gif':'jpg'),type:'image'};if(gif)return m;
  const src=URL.createObjectURL(blob);
  try{const md=await scaledCopy(src,1080,.82);m.w=md.w;m.h=md.h;const big=Math.max(md.w,md.h)>1200;

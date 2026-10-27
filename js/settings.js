@@ -14,6 +14,7 @@ PG.settings={r(){const push=store.get('push',false);view.innerHTML=pgHead('პ�
  <div class="setrow"><div class="grow"><span>Push შეტყობინებები</span><small>მოწონებები, კომენტარები, მესიჯები, ზარები, როცა აპი დახურულია</small></div><button class="switch" role="switch" aria-checked="${push}" data-a="pushtog" aria-label="Push შეტყობინებები"></button></div>
  <button class="setrow" data-a="page" data-p="notifset">${ic('bell')}<div class="grow"><span>რა შეტყობინებები მივიღო</span><small>${notifSummary()}</small></div></button>
  <div class="setrow"><div class="grow"><span>ეკონომიური რეჟიმი</span><small>სუსტი ინტერნეტისთვის: ფოტო და ვიდეო იტვირთება შეხებით, კლიპები თავისით არ ირთვება, ატვირთვა უფრო მსუბუქია</small></div><button class="switch" role="switch" aria-checked="${!!S.eco}" data-a="ecotog" aria-label="ეკონომიური რეჟიმი"></button></div>
+ <div class="setrow"><div class="grow"><span>ვიდეოს ავტოჩართვა</span><small>ფიდზე ვიდეო თავისით ირთვება უხმოდ, როცა ეკრანზე გამოჩნდება</small></div><button class="switch" role="switch" aria-checked="${store.get('vauto',true)!==false}" data-a="vautotog" aria-label="ვიდეოს ავტოჩართვა"></button></div>
  <button class="setrow" data-a="page" data-p="close">${ic('star')}<div class="grow"><span>ახლო მეგობრები</span><small>ვინ ნახავს „ახლო მეგობრების“ ისტორიებს</small></div></button>
  <button class="setrow" data-a="install">${ic('download')}<div class="grow"><span>ტელეფონზე დაყენება</span><small>სუფრა აპივით მთავარ ეკრანზე</small></div></button>
  <h3 class="sec" style="margin:18px 0 4px">მხედველობა და კითხვა</h3>
@@ -64,6 +65,7 @@ A.ncat=t=>{const c=notifCfg(),k=t.dataset.k,on=!!c.off[k];if(on)delete c.off[k];
 A.nquiet=t=>{const c=notifCfg();c.quiet.on=!c.quiet.on;t.setAttribute('aria-checked',String(c.quiet.on));$('#nqh').hidden=!c.quiet.on;$('#nqs').hidden=!c.quiet.on;saveNotif(c).then(()=>{const el=$('#nqs');if(el&&c.quiet.on)el.textContent=`ყოველდღე ${String(c.quiet.from).padStart(2,'0')}:00-დან ${String(c.quiet.to).padStart(2,'0')}:00-მდე push ჩუმადაა.`})};
 A.pset=t=>{ME.privacy=Object.assign({},ME.privacy,{[t.dataset.k]:t.dataset.v});$$(`[data-a="pset"][data-k="${t.dataset.k}"]`).forEach(b=>b.setAttribute('aria-pressed',String(b===t)));savePrivacy()};
 A.setlang=()=>{};
+A.vautotog=t=>{const on=store.get('vauto',true)===false;store.set('vauto',on);t.setAttribute('aria-checked',String(on));if(!on)$$('.pmi video').forEach(v=>{try{v.pause()}catch(e){}});toast(on?'ვიდეო თავისით ჩაირთვება':'ვიდეო ჩაირთვება შეხებით')};
 A.ecotog=t=>{S.eco=!S.eco;store.set('eco',S.eco);document.documentElement.classList.toggle('eco',S.eco);t.setAttribute('aria-checked',String(S.eco));toast(S.eco?'ეკონომიური რეჟიმი ჩართულია':'ეკონომიური რეჟიმი გამორთულია')};
 const urlB64=s=>{const p='='.repeat((4-s.length%4)%4),b=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...b].map(c=>c.charCodeAt(0)))};
 async function enablePush(){if(!('serviceWorker' in navigator)||!('PushManager' in window)){toast(/iPhone|iPad/.test(navigator.userAgent)?'iPhone-ზე ჯერ დაამატე სუფრა მთავარ ეკრანზე (გაზიარება → „Add to Home Screen“)':'ამ ბრაუზერს push შეტყობინებები არ აქვს');return false}

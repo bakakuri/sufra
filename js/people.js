@@ -268,20 +268,47 @@ A.storyviews=async t=>{clearTimeout(SV?.t);const sid=+t.dataset.id,st=SVL()[SV?.
   const R=new Map(rx.map(r=>[r.user_id,r.emoji])),V=new Map(votes.map(v=>[v.user_id,v.opt])),ids=[...new Set([...rows.map(r=>r.user_id),...R.keys(),...V.keys()])].filter(u=>u!==ME.id);await loadProfiles(ids);closeStory();
   sheet(head(`ნახვები · ${ids.length}`)+`<div class="ph-body">${st?.poll&&poll?`<div class="svpoll inline">${pollStoryHTML(st,poll,true)}</div>`:''}${R.size?`<p class="note">${R.size} რეაქცია</p>`:''}<div class="list">${ids.sort((a,b)=>(R.has(b)?1:0)-(R.has(a)?1:0)).map(u=>`<button class="row" data-a="user" data-u="${u}">${av(u,42)}<span class="grow"><b>${esc(pname(u))}${vb(u)}</b>${V.has(u)&&st?.poll?`<span class="sub">ხმა: ${esc(st.poll.opts[V.get(u)]||'')}</span>`:''}</span>${R.has(u)?`<span class="rxe">${rg(R.get(u))}</span>`:''}</button>`).join('')||'<p class="muted">ჯერ არავის უნახავს</p>'}</div></div>`)}catch(e){toast(errMsg(e))}};
 
-/* clips: vertical video feed */
+/* clips: a vertical feed, one clip to a screen; the one on screen plays by itself, a tap pauses it, two taps like it */
+const CLIP={io:null,cur:null,raf:0};
 R.clips=()=>{view.innerHTML=`<div class="clip-top"><span class="on">კლიპები</span><button class="cliptop-add" data-a="newclip" aria-label="კლიპის ატვირთვა">${ic('plus')}</button></div><div id="clipb"><section class="clip clipload"><span class="spin"></span></section></div>`;
  fetchPosts(b=>b.eq('is_clip',true).eq('hidden',false).order('created_at',{ascending:false}).limit(30)).then(rows=>{const el=$('#clipb');if(!el)return;rows=rows.filter(p=>(p.media||[]).some(m=>m.type==='video'));
   if(!rows.length){el.innerHTML=`<section class="clip clipempty"><div><h3>კლიპები ჯერ არ არის</h3><p>ატვირთე პირველი მოკლე ვიდეო და აქ გამოჩნდება.</p><button class="btn" data-a="newclip">${ic('plus')}კლიპის ატვირთვა</button></div></section>`;return}
-  el.innerHTML=rows.map(p=>{const v=p.media.find(m=>m.type==='video'),s=STAT.get(p.id)||blankStat(p.id),u=p.ap||prof(p.author),on=s.my_reaction==='❤️';
-   return `<section class="clip" data-pid="${p.id}"><video class="cv" src="${esc(v.url)}"${mPoster(v)?` poster="${esc(mPoster(v))}"`:''} playsinline loop muted preload="${ECO()?'none':'metadata'}"></video>${ECO()?`<button class="ecoplay" data-a="ecoplay" aria-label="ჩართვა">${ic('clips')}<span>შეხებით ჩართვა</span></button>`:''}<div class="shade"></div>
-   <div class="side"><button data-a="user" data-u="${u.id}" class="cav" aria-label="${esc(u.name)}">${av(u,46)}</button>
-   <button class="${on?'on':''}" data-a="clike" data-pid="${p.id}" aria-label="მოწონება">${ic('heart',on?'currentColor':'')}<span>${fmt(rTotal(s))}</span></button>
-   <button data-a="comments" data-pid="${p.id}" aria-label="კომენტარები">${ic('comment')}<span>${fmt(s.comments)}</span></button>
-   <button data-a="share" data-pid="${p.id}" aria-label="გაზიარება">${ic('send')}<span>გაზიარება</span></button><button data-a="pmore" data-pid="${p.id}" aria-label="მეტი">${ic('more')}</button></div>
-   <div class="cap"><b>${esc(u.name)}${vb(u)}</b>${tx(p.body,'media')}</div><button class="mute" data-a="unmute" aria-label="ხმის ჩართვა">${ic('micoff')}</button></section>`}).join('');
-  const io=new IntersectionObserver(es=>es.forEach(e=>{const v=$('video',e.target);if(!v)return;if(e.isIntersecting&&e.intersectionRatio>.6){if(!ECO())v.play().catch(()=>{})}else v.pause()}),{root:view,threshold:[0,.6,1]});$$('.clip',el).forEach(c=>io.observe(c))}).catch(e=>{const el=$('#clipb');if(el)el.innerHTML=`<section class="clip clipempty"><div><h3>ვერ ჩაიტვირთა</h3><p>${errMsg(e)}</p></div></section>`})};
+  el.innerHTML=rows.map(clipHTML).join('');clipWire(el)}).catch(e=>{const el=$('#clipb');if(el)el.innerHTML=`<section class="clip clipempty"><div><h3>ვერ ჩაიტვირთა</h3><p>${errMsg(e)}</p></div></section>`})};
+function clipHTML(p){const v=p.media.find(m=>m.type==='video'),s=STAT.get(p.id)||blankStat(p.id),u=p.ap||prof(p.author),on=s.my_reaction==='❤️',snd=!!S.clipSound,eco=ECO();
+ return `<section class="clip${eco?' paused':''}" data-pid="${p.id}"><video class="cv" src="${esc(v.url)}"${mPoster(v)?` poster="${esc(mPoster(v))}"`:''} playsinline loop muted preload="none" disablepictureinpicture disableremoteplayback></video>
+  <button class="ctap" data-a="ctap" aria-label="${eco?'ჩართვა':'პაუზა'}"></button><div class="shade"></div>
+  <span class="cbig" aria-hidden="true">${ic('play','currentColor')}${eco?'<small>შეხებით ჩართვა</small>':''}</span><span class="cbuf" aria-hidden="true"><span class="spin"></span></span><span class="burst">${ic('heart','currentColor')}</span>
+  <div class="cerr" hidden>${ic('clips')}<b>ეს ვიდეო ვერ ჩაირთო</b><small>შესაძლოა მის ფორმატს ეს ბრაუზერი ვერ კითხულობს</small></div>
+  <div class="side"><button data-a="user" data-u="${u.id}" class="cav" aria-label="${esc(u.name)}">${av(u,46)}</button>
+  <button class="${on?'on':''}" data-a="clike" data-pid="${p.id}" aria-label="მოწონება">${ic('heart',on?'currentColor':'')}<span>${fmt(rTotal(s))}</span></button>
+  <button data-a="comments" data-pid="${p.id}" aria-label="კომენტარები">${ic('comment')}<span>${fmt(s.comments)}</span></button>
+  <button data-a="share" data-pid="${p.id}" aria-label="გაზიარება">${ic('send')}<span>გაზიარება</span></button><button data-a="pmore" data-pid="${p.id}" aria-label="მეტი">${ic('more')}</button></div>
+  <div class="cap"><b>${esc(u.name)}${vb(u)}</b>${tx(p.body,'media')}</div><button class="mute" data-a="unmute" aria-pressed="${snd}" aria-label="${snd?'ხმის გამორთვა':'ხმის ჩართვა'}">${ic(snd?'vol':'voloff')}</button><div class="cprog" aria-hidden="true"><i></i></div></section>`}
+function clipWire(el){if(CLIP.io)CLIP.io.disconnect();CLIP.cur=null;
+ CLIP.io=new IntersectionObserver(es=>es.forEach(e=>{const c=e.target;if(e.isIntersecting&&e.intersectionRatio>.6)clipOn(c);else if(CLIP.cur===c)clipOff(c)}),{root:view,threshold:[0,.6,1]});
+ $$('.clip[data-pid]',el).forEach(c=>{const v=$('video',c),ok=()=>{clearTimeout(c._bt);c.classList.remove('buf')};
+  v.addEventListener('loadedmetadata',()=>c.classList.toggle('land',v.videoWidth>v.videoHeight*1.05));
+  v.addEventListener('waiting',()=>{clearTimeout(c._bt);c._bt=setTimeout(()=>{if(!v.paused)c.classList.add('buf')},350)});
+  v.addEventListener('playing',()=>{ok();c.classList.add('started');clipProg()});v.addEventListener('canplay',ok);v.addEventListener('pause',ok);
+  v.addEventListener('error',()=>{ok();c.classList.add('bad');c.classList.remove('paused');const m=$('.cerr',c);if(m)m.hidden=false});
+  CLIP.io.observe(c)})}
+function clipOn(c){if(CLIP.cur&&CLIP.cur!==c)clipOff(CLIP.cur);CLIP.cur=c;const v=$('video',c);if(!v)return;
+ /* this one and the next start loading, so a swipe lands on a clip that is ready */
+ if(!ECO()){if(v.preload==='none')v.preload='auto';const n=c.nextElementSibling&&$('video',c.nextElementSibling);if(n&&n.preload==='none')n.preload='auto'}
+ if(ECO()&&!c._go)return;if(c._held)return;clipPlay(c)}
+function clipOff(c){const v=$('video',c);if(v){v.pause();try{if(v.currentTime>0)v.currentTime=0}catch(e){}}if(CLIP.cur===c)CLIP.cur=null;c._held=0;if(!ECO())c.classList.remove('paused');const b=$('.cprog i',c);if(b)b.style.transform=''}
+function clipPlay(c){const v=$('video',c);if(!v||c.classList.contains('bad'))return;v.muted=!S.clipSound;clipSnd(c);c.classList.remove('paused');$('.ctap',c)?.setAttribute('aria-label','პაუზა');
+ const r=v.play();if(r&&r.catch)r.catch(e=>{if(!c.isConnected||CLIP.cur!==c||!e||e.name!=='NotAllowedError')return;
+  /* the browser would not start it with sound: it starts muted, the sound button stays one tap away */
+  if(!v.muted){v.muted=true;S.clipSound=false;$$('.clip',view).forEach(clipSnd);v.play().catch(()=>c.classList.add('paused'))}else c.classList.add('paused')});clipProg()}
+function clipProg(){if(CLIP.raf)return;const f=()=>{const c=CLIP.cur,v=c&&$('video',c);if(!v||!c.isConnected||v.paused){CLIP.raf=0;return}const b=$('.cprog i',c);if(b&&v.duration)b.style.transform=`scaleX(${Math.min(1,v.currentTime/v.duration)})`;CLIP.raf=requestAnimationFrame(f)};CLIP.raf=requestAnimationFrame(f)}
+function clipSnd(c){const b=$('.mute',c);if(!b)return;const on=!!S.clipSound;b.innerHTML=ic(on?'vol':'voloff');b.setAttribute('aria-pressed',String(on));b.setAttribute('aria-label',on?'ხმის გამორთვა':'ხმის ჩართვა')}
+A.ctap=t=>{const c=t.closest('.clip'),v=c&&$('video',c);if(!v)return;const now=Date.now(),T=A.ctap;
+ if(T.c===c&&now-(T.l||0)<300){clearTimeout(T.t);T.l=0;const b=$('.burst',c);if(b){b.classList.remove('go');void b.offsetWidth;b.classList.add('go')}const s=STAT.get(+c.dataset.pid);if(!s||s.my_reaction!=='❤️'){const h=$('[data-a="clike"]',c);if(h)A.clike(h)}return}
+ T.c=c;T.l=now;clearTimeout(T.t);T.t=setTimeout(()=>{T.l=0;if(!c.isConnected)return;if(v.paused){c._held=0;c._go=1;if(CLIP.cur&&CLIP.cur!==c)clipOff(CLIP.cur);CLIP.cur=c;clipPlay(c)}else{v.pause();c._held=1;c.classList.add('paused');t.setAttribute('aria-label','ჩართვა')}},260)};
+document.addEventListener('visibilitychange',()=>{const c=CLIP.cur;if(!c||!c.isConnected)return;const v=$('video',c);if(!v)return;if(document.hidden)v.pause();else if(!c._held&&!(ECO()&&!c._go))clipPlay(c)});
 A.clike=async t=>{const id=pidOf(t),s=STAT.get(id)||blankStat(id),on=s.my_reaction==='❤️';await setReaction(id,on?null:'❤️');const now=STAT.get(id);t.classList.toggle('on',!on);t.innerHTML=`${ic('heart',!on?'currentColor':'')}<span>${fmt(rTotal(now))}</span>`;if(!on){pop($('svg',t));burst(t,'#FF5A6E')}};
-A.unmute=t=>{const v=$('video',t.closest('.clip'));if(!v)return;v.muted=!v.muted;$$('.clip video',view).forEach(x=>{if(x!==v)x.muted=true});t.innerHTML=ic(v.muted?'micoff':'mic');S.clipSound=!v.muted};
+A.unmute=t=>{const c=t.closest('.clip'),v=c&&$('video',c);if(!v)return;S.clipSound=!S.clipSound;v.muted=!S.clipSound;$$('.clip',view).forEach(clipSnd);if(!v.muted&&v.paused&&CLIP.cur===c&&!c._held&&!(ECO()&&!c._go))clipPlay(c)};
 A.newclip=()=>compose({clip:true});
 
 /* close friends for stories */
@@ -291,7 +318,6 @@ async function loadClose(){const el=$('#clb');if(!el)return;try{await loadFriend
  $$('[data-cf]',el).forEach(i=>i.onchange=async()=>{const f=i.dataset.cf;try{if(i.checked)await q(sb.from('close_friends').insert({owner:ME.id,friend:f}));else await q(sb.from('close_friends').delete().eq('owner',ME.id).eq('friend',f));toast(i.checked?'დაემატა ახლო მეგობრებში':'ამოიშალა')}catch(e){toast(errMsg(e));i.checked=!i.checked}})}
  catch(e){el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))}}
 
-A.ecoplay=t=>{const v=$('video',t.closest('.clip'));if(v){v.play().catch(()=>{});t.remove()}};
 
 /* a story made of text on a colour, optionally with a poll (2 to 4 answers) */
 const STG=[['#A8164A','#5B0B2A'],['#2C7A55','#0F3D2A'],['#C98A12','#7A4A05'],['#3E5BD8','#1B2A70'],['#7A3FC2','#341565'],['#1D1724','#4A3A56']];
