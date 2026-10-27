@@ -2543,3 +2543,10 @@ html.c4 .card[data-s="♦"],html.c4 .suits button[data-s="d"]{color:#1A55C4}
 .cport{display:block;width:200px;height:220px;background:url(/icons/g/cast2.webp) no-repeat,radial-gradient(circle at 50% 38%,#C4804A,#3A2218 70%);background-size:1024px 512px,100% 100%}
 .gmenu button span.av{flex:none}
 .gpcard .gcpic{flex:none;margin:0 auto}
+/* over the moving 3D table a blur behind each panel would be worked out again on every frame, which costs phones dearly:
+   in the game screen the panels are just a little more solid instead */
+.gx *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.gx .pl{background:rgb(18 12 9/.84)}
+.g3jt .seat{background:rgb(12 8 6/.82)}
+.gx .status{background:rgb(12 8 5/.78)}
+.gx .gtop .ibtn{background:rgb(28 20 16/.74)}

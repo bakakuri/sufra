@@ -10,7 +10,7 @@ const snd=(k,v)=>{if(typeof gSnd==='function')gSnd(k,v)};
 const woodLand=y=>(o,sc)=>{const soft=(o.s.length?o.s[0]:o.s)<.9;snd(soft?'soft':'wood',soft?.7:1);if(!soft)g3Ripple(sc,[o.p[0],y+.006,o.p[2]],1.1)};
 const mkModel=sc=>g3Model(sc,'mk',[[gPlane(1,1),g3Mat({t:g3T('marks',()=>g3Tex(marksCv(),{af:false})),unlit:true,vary:true}),false]],null);
 function g3Table(sc,o={}){const g=gPlane(o.w||44,o.d||44,o.rep||6,o.rep||6);sc.statics.push({parts:[{mesh:g3Mesh(g),mat:g3Mat({t:woodTex(o.wood||'table'),sh:18,sp:.1,gl:.06}),cast:false}],M:m4.trs([0,o.y||0,0],qt.id(),1),cast:false})}
-function g3Static(sc,g,mat,p,q,cast=true){sc.statics.push({parts:[{mesh:g3Mesh(g),mat,cast}],M:m4.trs(p,q||qt.id(),1),cast})}
+function g3Static(sc,g,mat,p,q,cast=true){sc.shV=(sc.shV||0)+1;sc.statics.push({parts:[{mesh:g3Mesh(g),mat,cast}],M:m4.trs(p,q||qt.id(),1),cast})}
 const pieceMat=w=>w?g3Mat({t:woodTex('boxv'),uv:[0,0,2,1],sh:70,sp:.45,gl:.55}):g3Mat({t:woodTex('ebonyv'),uv:[0,0,2,1],sh:90,sp:.6,gl:.75});
 WOOD.boxv=Object.assign({},WOOD.box,{dir:'v'});WOOD.ebonyv=Object.assign({},WOOD.ebony,{dir:'v'});
 const blob=(x,y,z,s,a=.42)=>({m:'mk',p:[x,y+.002,z],s:[s,1,s],uv:MK.blob,c:[0,0,0],a});
@@ -42,9 +42,12 @@ G3U.chess=sc=>{const G=CH,st=G.st,c=G.ctx,T=CHT;sc.cam.yaw=c.side===-1?Math.PI:0
  if(G.sel!=null){mk(G.sel,MK.sq,GOLD,1,1.02,{add:true});for(const m of G.moves.filter(m=>m.f===G.sel))(st.b[m.t]||m.ep)?mk(m.t,MK.ring,GOLD,.95,.95,{add:true}):mk(m.t,MK.dot,GOLD,.9,.38,{add:true})}
  if(sc.sty!==gStyleOf('chess'))chessSet(sc,gStyleOf('chess'));oppAdd(sc,'chess',G,L,c.side===-1?1:-1);mkBig(M);
  mhPush(sc,L,{on:mhShow(c),yaw:c.side===-1?Math.PI:0,y:-1.3,S:1.35,rest:[[-3.6,8.9],[3.6,8.9]]});
- const mvk=st.last.join()+'|'+st.turn+'|'+(G.mv?G.mv.length:0);let reach=null;if(sc.mvk!==mvk){if(sc.mvk!=null&&st.last.length===2&&sc.mh&&mhMover(c,st.turn)&&performance.now()-(sc.dragAt||0)>900)reach=st.last.map(chXZ);sc.mvk=mvk}
+ const mvk=st.last.join()+'|'+st.turn+'|'+(G.mv?G.mv.length:0);let reach=null,oreach=null;if(sc.mvk!==mvk){if(sc.mvk!=null&&st.last.length===2&&sc.mh&&mhMover(c,st.turn)&&performance.now()-(sc.dragAt||0)>900)reach=st.last.map(chXZ);else if(sc.mvk!=null&&st.last.length===2&&!mhMover(c,st.turn)&&oppRig(sc))oreach=st.last.map(chXZ);sc.mvk=mvk}
  const at=(d,xz)=>!!xz&&Math.abs(d.p[0]-xz[0])<.01&&Math.abs(d.p[2]-xz[1])<.01&&Math.abs(d.p[1]-T)<.01;
- sc.marks=M;g3Set(sc,L,{delay:(o,d)=>d.s<1&&d.m.length===2?280:reach&&at(d,reach[1])?MH_WAIT:0,dur:(o,d,far)=>d.m[1]==='n'&&far>1?560:Math.min(620,280+90*Math.sqrt(far))});
+ sc.marks=M;g3Set(sc,L,{delay:(o,d)=>d.s<1&&d.m.length===2?280:reach&&at(d,reach[1])?MH_WAIT:oreach&&at(d,oreach[1])?OH_WAIT:0,dur:(o,d,far)=>d.m[1]==='n'&&far>1?560:Math.min(620,280+90*Math.sqrt(far))});
+ /* the other side's move, made by their own hand: it goes to the piece, takes it, carries it over and lets go */
+ if(oreach){const[f,t]=oreach,far=Math.hypot(t[0]-f[0],t[1]-f[1]),pc=(st.b[st.last[1]]||'').toLowerCase(),dur=pc==='n'&&far>1?560:Math.min(620,280+90*Math.sqrt(far)),H=T+.75;
+  oppCarry(sc,[[f[0],H,f[1]],[t[0],H,t[1]]],[dur],[pc==='n'&&far>1?1.4:far>.7?Math.min(1.5,.3+far*.13):0])}
  if(reach){const[f,t]=reach,far=Math.hypot(t[0]-f[0],t[1]-f[1]),pc=st.b[st.last[1]]||'';mhCarry(sc,[{p:[f[0],T,f[1]]},{p:[t[0],T,t[1]],d:pc.toLowerCase()==='n'&&far>1?560:mhDur(far),arc:far>.7?Math.min(1.5,.3+far*.13):0}])}
  if(st.over){const k=st.why==='mate'?chKing(st.b,st.turn):-1,i=k>=0?k:st.last[1];if(i!=null&&i>=0){const[x,z]=chXZ(i);g3CineGo(sc,G,[x,T,z])}}};
 
@@ -80,10 +83,11 @@ G3U.shashi=sc=>{const G=CK,c=G.ctx,T=CKT;sc.cam.yaw=c.side===-1?Math.PI:0;const 
  if(must&&!G.sel)for(const k of new Set(G.moves.map(m=>m.path[0].join()))){const[r,cc]=k.split(',').map(Number);mk(r,cc,MK.ring,GOLD,.9,1.05,{add:true,pulse:true})}
  if(G.sel){mk(G.sel[0],G.sel[1],MK.sq,GOLD,1,1.02,{add:true});for(const k of G.targets()){const[r,cc]=k.split(',').map(Number);mk(r,cc,MK.dot,GOLD,.9,.4,{add:true})}}
  oppAdd(sc,'shashi',G,L,c.side===-1?1:-1);mkBig(M);mhPush(sc,L,{on:mhShow(c),yaw:c.side===-1?Math.PI:0,y:-1.3,S:1.35,rest:[[-3.6,8.9],[3.6,8.9]]});
- const hand=fresh&&!!sc.mh&&sc.lm0!=null&&mhMover(c,G.turn)&&performance.now()-(sc.dragAt||0)>900,hw=hand?MH_WAIT:0;sc.lm0=mv;
+ const hand=fresh&&!!sc.mh&&sc.lm0!=null&&mhMover(c,G.turn)&&performance.now()-(sc.dragAt||0)>900,ohand=fresh&&sc.lm0!=null&&!hand&&!mhMover(c,G.turn)&&!!oppRig(sc),hw=hand?MH_WAIT:ohand?OH_WAIT:0;sc.lm0=mv;
  sc.marks=M;const caps=(G.lcap||[]).map(([r,cc])=>xz(r,cc)),endXZ=end?xz(end[0],end[1]):null;
  g3Set(sc,L,{gone:o=>fresh&&G.last.length&&Math.abs(o.p[0]-(G.last[0][1]-3.5))<.01&&Math.abs(o.p[2]-(G.last[0][0]-3.5))<.01?{a:0,dur:1}:null,
   delay:(o,d)=>{if(!fresh)return 0;if(hw&&endXZ&&Math.abs(d.p[0]-endXZ[0])<.01&&Math.abs(d.p[2]-endXZ[1])<.01&&d.m!=='mk')return hw;const k=caps.findIndex(([x,z])=>Math.abs(o.p[0]-x)<.01&&Math.abs(o.p[2]-z)<.01);return k<0?0:180+k*300+hw}});
+ if(ohand){const pts=G.last.map(([r,cc])=>{const[x,z]=xz(r,cc);return[x,T+.55,z]}),hop=G.last.length>2;oppCarry(sc,pts,pts.slice(1).map(p=>hop?300:Math.min(700,260+90*Math.sqrt(Math.hypot(p[0]-pts[0][0],p[2]-pts[0][2])))),pts.slice(1).map(()=>hop?.55:.3))}
  if(hand){const pts=G.last.map(([r,cc])=>{const[x,z]=xz(r,cc);return[x,T,z]}),hop=G.last.length>2;mhCarry(sc,pts.map((p,i)=>({p,d:i?(hop?300:mhDur(Math.hypot(p[0]-pts[0][0],p[2]-pts[0][2]))):0,arc:hop?.55:.3})))}
  if(G.over&&endXZ)g3CineGo(sc,G,[endXZ[0],T,endXZ[1]])};
 
@@ -118,11 +122,11 @@ G3U.nardi=sc=>{const G=NR,c=G.ctx,me=c.side,flip=me===-1,L=[],M=[],dI=i=>flip?(G
  /* dice: the mover's dice lie in their half; a fresh roll is thrown from their edge and tumbles */
  const all=G.last.length===2?(G.last[0]===G.last[1]?[G.last[0],G.last[0],G.last[0],G.last[0]]:G.last.slice()):[],left=G.dice.slice();
  const used=all.map(v=>{const k=left.indexOf(v);if(k>=0){left.splice(k,1);return false}return true});
- const sig=G.rolled?G.turn+':'+G.last.join(','):'';G.rollAnim=0;let myThrow=false;if(sig&&sig!==sc.rsig){const was=sc.rsig!=null;sc.rsig=sig;sc.roll=(sc.roll||0)+1;sc.dside=G.turn===me?1:-1;myThrow=was&&!G.open&&mhShow(c)&&(c.mode==='local'||G.turn===me)&&myHandsOn()}if(sc.dside==null)sc.dside=G.turn===me?1:-1;
+ const sig=G.rolled?G.turn+':'+G.last.join(','):'';G.rollAnim=0;let myThrow=false,oThrow=false,thr=null;if(sig&&sig!==sc.rsig){const was=sc.rsig!=null;sc.rsig=sig;sc.roll=(sc.roll||0)+1;sc.dside=G.turn===me?1:-1;myThrow=was&&!G.open&&mhShow(c)&&(c.mode==='local'||G.turn===me)&&myHandsOn();oThrow=was&&!G.open&&c.mode!=='local'&&G.turn!==me&&!!oppRig(sc)}if(sc.dside==null)sc.dside=G.turn===me?1:-1;
  const side=sc.dside,R=rng((sc.roll||0)*977+7),thrower=side;
  all.forEach((v,i)=>{const x=side*(all.length>2?1.9+i*.82:2.7+i*1.05),z=all.length>2?(i%2?.12:-.12):(i?.14:-.1),yaw=(R()-.5)*1.2,q=qt.mul(qt.ax(0,1,0,yaw),dieUp(v)),d={k:'d'+(sc.roll||0)+'-'+i,m:'die',p:[x,NT+.31,z],q,dim:used[i]?.42:1};
-  if(sc.roll&&sc.rolled!==sc.roll){const from=[x+side*(1.5+R()),NT+2.4,thrower*4.6];d.from={p:from,q:qt.mul(qt.ax(R(),R(),R(),R()*6),q)};
-   d.path=[[x+side*.5*(R()-.2),NT+.31,z*.5+thrower*1.2],[x,NT+.31,z]];d.hops=[.15,.55];d.spin=[R()-.5,R()-.5,R()-.5,2+Math.floor(R()*2)];d.ez='out';d.dur=1000+i*90;d.delay=i*40+(myThrow?200:0)}
+  if(sc.roll&&sc.rolled!==sc.roll){const from=[x+side*(1.5+R()),NT+2.4,thrower*4.6];if(!i)thr=[from,[x,NT+.31,z]];d.from={p:from,q:qt.mul(qt.ax(R(),R(),R(),R()*6),q)};
+   d.path=[[x+side*.5*(R()-.2),NT+.31,z*.5+thrower*1.2],[x,NT+.31,z]];d.hops=[.15,.55];d.spin=[R()-.5,R()-.5,R()-.5,2+Math.floor(R()*2)];d.ez='out';d.dur=1000+i*90;d.delay=i*40+(myThrow?200:oThrow?400:0)}
   L.push(d)});
  if(sc.roll)sc.rolled=sc.roll;
  /* marks: the chosen point, where it can go, and which checkers can move */
@@ -135,10 +139,15 @@ G3U.nardi=sc=>{const G=NR,c=G.ctx,me=c.side,flip=me===-1,L=[],M=[],dI=i=>flip?(G
    const n=Math.abs(G.p[f]),p=nSlot(dI(f),n-1);mk([p[0],p[1]+.17,p[2]],MK.ring,GOLD,.9,[1.05,1,1.05],{add:true,pulse:true})}}
  oppAdd(sc,'nardi',G,L,-1);mkBig(M);mhPush(sc,L,{on:mhShow(c),yaw:0,y:-1.5,S:1.7,rest:[[-3.2,10.2],[5.4,10.2]]});
  /* the checker I just moved: where it came from and where it went */
- let reach=null;if(sc.mvn!==G.mvN){if(sc.mvn!=null&&sc.mh&&G.lastTo!=null&&G.lastFrom!=null&&(c.mode==='local'||G.lastBy===me)&&performance.now()-(sc.dragAt||0)>900){const s=G.lastBy,f=G.lastFrom,t=G.lastTo,sg=s===me?1:-1;
-   const fp=f==='bar'?(k=>[0,NT+NRIM+.02+Math.floor(k/4)*.165,sg*(1.05+(k%4)*.9)])(G.bar[s]):nSlot(dI(f),Math.abs(G.p[f])),tp=t==='off'?(k=>[7.55,NT+.44,sg*(5.3-k*.172)])(G.off[s]-1):nSlot(dI(t),Math.abs(G.p[t])-1);reach=[fp,tp]}sc.mvn=G.mvN}
+ let reach=null,oreach=null;if(sc.mvn!==G.mvN){if(sc.mvn!=null&&sc.mh&&G.lastTo!=null&&G.lastFrom!=null&&(c.mode==='local'||G.lastBy===me)&&performance.now()-(sc.dragAt||0)>900){const s=G.lastBy,f=G.lastFrom,t=G.lastTo,sg=s===me?1:-1;
+   const fp=f==='bar'?(k=>[0,NT+NRIM+.02+Math.floor(k/4)*.165,sg*(1.05+(k%4)*.9)])(G.bar[s]):nSlot(dI(f),Math.abs(G.p[f])),tp=t==='off'?(k=>[7.55,NT+.44,sg*(5.3-k*.172)])(G.off[s]-1):nSlot(dI(t),Math.abs(G.p[t])-1);reach=[fp,tp]}
+  else if(sc.mvn!=null&&G.lastTo!=null&&G.lastFrom!=null&&c.mode!=='local'&&G.lastBy===-me&&oppRig(sc)){const s=G.lastBy,f=G.lastFrom,t=G.lastTo;
+   const fp=f==='bar'?(k=>[0,NT+NRIM+.02+Math.floor(k/4)*.165,-(1.05+(k%4)*.9)])(G.bar[s]):nSlot(dI(f),Math.abs(G.p[f])),tp=t==='off'?(k=>[7.55,NT+.44,-(5.3-k*.172)])(G.off[s]-1):nSlot(dI(t),Math.abs(G.p[t])-1);oreach=[fp,tp]}sc.mvn=G.mvN}
  const near=(a,b)=>!!b&&Math.abs(a[0]-b[0])<.01&&Math.abs(a[1]-b[1])<.01&&Math.abs(a[2]-b[2])<.01;
- sc.marks=M;g3Set(sc,L,{gone:o=>o.m==='die'?{a:0,dur:220}:null,delay:(o,d)=>reach&&d.m!=='die'&&near(d.p,reach[1])?MH_WAIT:d.m!=='die'&&Math.abs(d.p[0])<.01&&o.p[0]!==0?260:0});
+ sc.marks=M;g3Set(sc,L,{gone:o=>o.m==='die'?{a:0,dur:220}:null,delay:(o,d)=>reach&&d.m!=='die'&&near(d.p,reach[1])?MH_WAIT:oreach&&d.m!=='die'&&near(d.p,oreach[1])?OH_WAIT:d.m!=='die'&&Math.abs(d.p[0])<.01&&o.p[0]!==0?260:0});
+ if(oreach){const H=[0,.5,0];oppCarry(sc,[v3.add(oreach[0],H),v3.add(oreach[1],H)],[Math.min(700,260+90*Math.sqrt(v3.len(v3.sub(oreach[1],oreach[0]))))],[.6])}
+ /* their roll: the hand comes over the board's far half and lets the dice go */
+ if(oThrow&&thr&&oppRig(sc))rigGo(sc,'o',[{p:thr[0],d:330,arc:.2},{p:v3.lerp(thr[0],thr[1],.3),d:150}],{lean:.1});
  if(reach)mhCarry(sc,[{p:reach[0]},{p:reach[1],d:mhDur(v3.len(v3.sub(reach[1],reach[0]))),arc:.6}]);if(myThrow)mhThrow(sc,[4.4,NT+.6,4.4]);
  if(G.over)g3CineGo(sc,G,[7.55,NT,(G.over===me?1:-1)*3.2])};
 
@@ -218,8 +227,10 @@ function jkPerson(sc,key,L){if(sc.models['pb:'+key])return;if(!PPL.st)pplLoad();
    each is a flat picture that turns to face your eye, set right at the table's edge so the table hides where it ends.
    every cell of the picture is laid out alike (eyes at the same place, eyes to chin the same size), so one quad seats them all */
 const CST={st:0,img:null},CEY=160/508,CEC=72/508,CASP=400/508,CS=1.1,CTL=3.4;
-function castLoad(){if(CST.st)return;CST.st=1;const v=(($('script[src*="/js/core.js"]')||{}).src||'').split('v=')[1]||'',im=new Image();im.decoding='async';
- im.onload=()=>{CST.img=im;CST.st=2;castRefresh()};im.onerror=()=>{CST.st=3;castRefresh()};im.src='/icons/g/cast2.webp'+(v?'?v='+v:'')}
+/* the picture of the ten, and the hand they reach with; the table waits for the first, the arms come when the second is here */
+function castLoad(){if(CST.st)return;CST.st=1;const v=(($('script[src*="/js/core.js"]')||{}).src||'').split('v=')[1]||'',q=v?'?v='+v:'',im=new Image(),hd=new Image();im.decoding='async';hd.decoding='async';
+ im.onload=()=>{CST.img=im;CST.st=2;castRefresh()};im.onerror=()=>{CST.st=3;castRefresh()};im.src='/icons/g/cast2.webp'+q;
+ hd.onload=()=>{CST.hand=hd;if(CST.st===2)castRefresh()};hd.src='/icons/g/hand1.webp'+q}
 function castRefresh(){const sc=G3D.sc;if(sc&&sc.host&&G3U[sc.host]){try{G3U[sc.host](sc)}catch(e){}g3Need()}}
 /* the drawn characters unless the sculpted ones were chosen (or the picture could not be had) */
 const castPic=()=>(typeof store==='undefined'||store.get('gcast','pic')!=='3d')&&CST.st!==3;
@@ -238,10 +249,45 @@ function castSeats(ids){const used=new Set(),out=[];
 function castAt(L,k,cid,p,o={}){L.push({k,m:'cast',p,q:qt.ax(1,0,0,o.lean||0),s:o.s||1,uv:castUV(cid),a:.998,cast:false,refl:false,life:1,bb:1,dur:o.dur||600})}
 /* a seat at a round table: on the line from the middle to the chair, just outside the rim */
 const CRAD=6.75;
-function castPush(L,r,cid,lean,seats,rad,s){const d=(seats||JSP)[r],l=Math.hypot(d[0],d[1]),R=rad||CRAD;castAt(L,'ph'+r,cid,[d[0]/l*R,-.15*(s||1),d[1]/l*R],{lean,s})}
+function castPush(L,r,cid,lean,seats,rad,s){const d=(seats||JSP)[r],l=Math.hypot(d[0],d[1]),R=rad||CRAD,B=[d[0]/l*R,-.15*(s||1),d[1]/l*R];castAt(L,'ph'+r,cid,B,{lean,s});return B}
 /* the character for one side of a game of two: the one it was given (the computer's players), the one a person chose, or one picked from who they are */
 function castOfSide(c,s){const a=c&&c.avs&&c.avs[s];if(a&&typeof a==='object'&&CASTI.includes(a.cast))return a.cast;const lk=(s===-c.side&&c.olk)||(a&&typeof a==='object'&&a.look);if(lk&&CASTI.includes(lk.cast))return lk.cast;
  return castSeats([{k:typeof a==='string'?a:String((c&&c.names&&c.names[s])||'?'),lk:lk&&typeof lk==='object'?lk:null}])[0]}
+/* ---------- the drawn people's arm: a forearm from the elbow resting on the table's edge, and a hand at its end ----------
+   the hand holds the cards, reaches for a card, a piece, a tile or the dice, carries it and comes back.
+   each of the ten has a sleeve colour and a skin (the hand picture is one, tinted); and the side the arm comes from, away from what they already hold */
+const RIG={m1:{sl:'#24252D',sk:'#FFFFFF'},m2:{sl:'#7A5A3E',sk:'#E6C6AC'},m3:{sl:'#E9B996',sk:'#FFFFFF'},m4:{sl:'#EEEAE4',sk:'#FFF4EC'},m5:{sl:'#963330',sk:'#8E6452'},
+ f1:{sl:'#1E1E24',sk:'#2E2E35',f:1},f2:{sl:'#F3EFE9',sk:'#FFF3EC',f:1},f3:{sl:'#5E6542',sk:'#FFF1E8',f:1},f4:{sl:'#F2EEE8',sk:'#FFF3EC',f:1,side:-1},f5:{sl:'#F3C9A9',sk:'#FFF3EC',f:1,side:-1}};
+const rigOn=()=>castPic()&&!!CST.hand;
+function sleeveCv(){const c=document.createElement('canvas');c.width=64;c.height=8;const x=c.getContext('2d'),g=x.createLinearGradient(0,0,64,0);
+ [[0,'rgba(120,120,120,0)'],[.08,'rgba(150,150,150,1)'],[.3,'#FFFFFF'],[.45,'#F4F4F4'],[.8,'#B4B4B4'],[.93,'rgba(120,120,120,1)'],[1,'rgba(100,100,100,0)']].forEach(([o,c])=>g.addColorStop(o,c));x.fillStyle=g;x.fillRect(0,0,64,8);return c}
+function rigModels(sc,cid){if(sc.models['hand:'+cid])return;const R=RIG[cid]||RIG.m1,strip=()=>gXf(gQuad(1,1),[0,.5,0],qt.id());
+ g3Model(sc,'arm:'+cid,[[strip(),g3Mat({t:g3T('sleeve',()=>g3Tex(sleeveCv())),unlit:true,c:R.sl,two:true}),false]],null);
+ g3Model(sc,'hand:'+cid,[[strip(),g3Mat({t:g3T('hand1',()=>g3Tex(CST.hand)),unlit:true,c:R.sk,two:true}),false]],null)}
+/* a person's frame: B on the table line under the eyes, R to their left as you see it, F toward you, E the size of a face (eyes to chin) */
+function rigFrame(B,s,cid){const eye=G3D.sc&&G3D.sc.camNow?G3D.sc.camNow.eye:[0,8,12],yaw=Math.atan2(eye[0]-B[0],eye[2]-B[2]),R0=RIG[cid]||RIG.m1;
+ return{B,E:CS*(s||1),R:[Math.cos(yaw),0,-Math.sin(yaw)],F:[Math.sin(yaw),0,Math.cos(yaw)],yaw,side:R0.side||1,fem:!!R0.f,cid}}
+const rigP=(f,x,y,z)=>[f.B[0]+(f.R[0]*x*f.side+f.F[0]*z)*f.E,f.B[1]+y*f.E,f.B[2]+(f.R[2]*x*f.side+f.F[2]*z)*f.E];
+/* where the wrist goes for the fingers to be at P (the hand points along the arm; close by, the forearm keeps a little length and the hand overshoots) */
+function rigWrist(g,P){const v=v3.sub(P,g.A),l=v3.len(v)||1e-3,d=v3.mul(v,1/l);return v3.add(g.A,v3.mul(d,Math.max(l-g.hl*.7,g.hl*.22)))}
+/* the arm and hand at rest: the elbow on the table's edge, the hand up holding the fan of cards (hold) or lying on the table in front */
+function rigPush(L,sc,key,cid,B,s,o={}){if(!rigOn())return null;rigModels(sc,cid);const f=rigFrame(B,s,cid),E=f.E,hl=(f.fem?.98:1.12)*E,
+ g={f,key,cid,E,hl,A:rigP(f,.66,-.08,.6),grip:o.grip||(o.hold?rigP(f,.32,1.15,1.1):rigP(f,.3,.32,1.15))};g.rest=rigWrist(g,g.grip);
+ (sc.rigs||(sc.rigs={}))[key]=g;const W=f.fem?.42:.5;
+ L.push({k:'pw'+key,m:'hand:'+cid,p:g.rest,s:1,a:.998,cast:false,refl:false,arm:{a:g.A,len:hl,w:hl*.5},dur:o.dur||450},
+  {k:'pa'+key,m:'arm:'+cid,p:g.A,s:1,a:.998,cast:false,refl:false,arm:{a:g.A,of:'k:pw'+key,w:W*E},now:1});return g}
+/* the fan held in that hand: the cards spread from the fingers, faces toward the one who holds them */
+function rigFan(g,i,n,s){const f=g.f,q0=qt.mul(qt.ax(0,1,0,f.yaw+Math.PI),qt.ax(1,0,0,-.22)),rt=qt.rot(q0,[1,0,0]),up=qt.rot(q0,[0,1,0]),nr=qt.rot(q0,[0,0,1]);
+ const sp=Math.min(.3,1.5/Math.max(n-1,1)),ph=(i-(n-1)/2)*sp,rad=.6*g.E,pv=v3.sub(g.grip,v3.mul(f.F,.14*g.E));
+ return{p:v3.add(pv,v3.add(v3.mul(rt,Math.sin(ph)*rad),v3.add(v3.mul(up,Math.cos(ph)*rad),v3.mul(nr,-i*.006)))),q:qt.mul(q0,qt.ax(0,0,1,-ph)),s:.74*(s||1)}}
+/* the hand goes through the given points (where the fingers are), each in its own time, and comes back; the body leans in while it does */
+function rigGo(sc,key,stops,o={}){const g=sc.rigs&&sc.rigs[key],h=sc.objs.get('k:pw'+key);if(!g||!h||RM())return 0;let t=0;
+ /* an arm reaches so far and no farther: beyond it the hand lets go and the thing goes on by itself */
+ const far=P=>{const v=v3.sub(P,g.A),l=v3.len(v),m=(o.reach||3.1)*g.E;return l>m?v3.add(g.A,v3.mul(v,m/l)):P};
+ const K=stops.map(st=>{t+=st.d||300;return{p:rigWrist(g,far(st.p)),d:st.d||300,arc:st.arc||0,delay:st.delay||0}});K.push({p:g.rest,d:o.back||430,arc:.12});t+=o.back||430;
+ h.kfL=0;g3Kf(h,K);if(o.lean!==0)g3Wig(sc,'k:ph'+key,{ax:'x',a:o.lean??.07,f:.5,d:t,delay:o.leanDelay||0});return t}
+/* the fingers' point a little above a place on the table */
+const rigAbove=(P,h)=>[P[0],P[1]+(h??.25),P[2]];
 /* a person at the table: body, head (turned by hq), and the two forearms that turn at the elbow; id names the seat */
 function pplPush(L,id,key,p,qB,s,hq,o={}){const S=s||1,at=v=>v3.add(p,qt.rot(qB,v3.mul(v,S))),b={refl:false,life:1,dur:o.dur||650};if(o.cast===false)b.cast=false;if(o.now)b.now=1;
  L.push(Object.assign({k:'pb'+id,m:'pb:'+key,p,q:qB,s:S},b),Object.assign({k:'ph'+id,m:'ph:'+key,p:at(HPIV),q:qt.mul(qB,hq),s:S,blink:1},b,{dur:o.hdur||600}));
@@ -260,9 +306,14 @@ function oppAdd(sc,id,G,L,far){const o=OPPS[id],c=G.ctx,cm=sc.cam;if(!o||!c||!op
  if(cm.p0==null){cm.p0=cm.pitch;cm.pp0=cm.pp||0;cm.t0=cm.tgt.slice()}cm.pitch=cm.p0-.12;cm.pp=cm.pp0+.12;const wide=(G3D.asp||1)>=.8;cm.tgt=wide?[cm.t0[0],cm.t0[1]+.9,cm.t0[2]+far*1.7]:cm.t0.slice();if(!sc.onResize)sc.onResize=()=>{try{G3U[sc.host](sc)}catch(e){}};const hz=far*(o.z-.2*o.s),S=o.s;cm.extraW=[[o.x-1.5*S,o.y+5.9*S,hz],[o.x+1.5*S,o.y+5.9*S,hz],[o.x-2.6*S,o.y+3.2*S,far*o.z],[o.x+2.6*S,o.y+3.2*S,far*o.z]];
  /* the drawn one sits with the table line at the table's top (the table hides the rest), a little nearer the board than a chair */
  if(castPic()){const Sb=o.s*1.1,zb=far*(o.z-.6*o.s),top=(CTL+2.3)*CS*Sb;cm.extraW=[[o.x-1.4*Sb,top,zb],[o.x+1.4*Sb,top,zb],[o.x-2.6*S,o.y+3.2*S,far*o.z],[o.x+2.6*S,o.y+3.2*S,far*o.z]];
-  sc.anchors=[['.g3op',[o.x-far*2.6*Sb,top*.8,zb]]];if(castModel(sc))castAt(L,'pho',castOfSide(c,-c.side),[o.x,-.15*Sb,zb],{lean:lean*.6,s:Sb,dur:700})}
+  sc.anchors=[['.g3op',[o.x-far*2.6*Sb,top*.8,zb]]];if(castModel(sc)){const cid=castOfSide(c,-c.side),B=[o.x,-.15*Sb,zb];castAt(L,'pho',cid,B,{lean:lean*.6,s:Sb,dur:700});rigPush(L,sc,'o',cid,B,Sb,{})}}
  else pplPush(L,'o',key,p,qB,o.s,qt.e(pitch,0,0),{cast:false,dur:700});
  sc.people=who=>who===-c.side?'o':null}
+/* the other side's hand at a game of two: its rig (if the drawn people and their hand are here), and a carry through points above the board:
+   down to the first (the piece is taken), along the rest in the given times and arcs, up and home. OH_WAIT is how long the piece waits for the hand */
+const OH_WAIT=430,oppRig=sc=>rigOn()&&sc.rigs&&sc.rigs.o&&sc.objs.has('k:pwo')?sc.rigs.o:null;
+function oppCarry(sc,pts,durs,arcs){if(!oppRig(sc))return;const up=p=>[p[0],p[1]+.7,p[2]],st=[{p:up(pts[0]),d:320,arc:.25},{p:pts[0],d:110}];
+ for(let i=1;i<pts.length;i++)st.push({p:pts[i],d:durs[i-1]||400,arc:arcs[i-1]||0});st.push({p:up(pts[pts.length-1]),d:140});rigGo(sc,'o',st,{lean:.09})}
 /* a look as stored or sent: only known styles and colours pass */
 const LKS=['short','curly','long','pony','bald'],hexOk=v=>typeof v==='string'&&/^#[0-9a-fA-F]{6}$/.test(v);
 function oppLook(L){const o=L&&typeof L==='object'?L:{};return{style:LKS.includes(o.style)?o.style:'short',fem:o.fem?1:0,mus:o.mus?1:0,beard:o.beard?1:0,glasses:o.glasses?1:0,hat:o.hat?1:0,skin:hexOk(o.skin)?o.skin:'#E2AF8C',hair:hexOk(o.hair)?o.hair:'#2A1A12',brow:hexOk(o.brow)?o.brow:undefined,eye:hexOk(o.eye)?o.eye:undefined,old:o.old?1:0,shirt:hexOk(o.shirt)?o.shirt:(typeof o.shirt==='string'&&/^hsl\(/.test(o.shirt)?o.shirt:'#2F5D8A')}}
@@ -308,18 +359,23 @@ function jkGaze(r,V,rel){const cur=V.cur!=null&&V.cur>=0?rel(V.cur):null,me=JSP[
 const pplNod=()=>PPL.st===2?.3:1;
 /* one picture of the table for both kinds of game */
 function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.act=V.act;sc.tap1=!!V.tap1;jkDeck(sc);
- const deal=V.deal!==sc.deal;if(deal)sc.deal=V.deal;const dealer=V.dealer!=null?rel(V.dealer):2,dp=dealer===0?[0,1.4,6.6]:jkLocal(dealer,0,[0,1.6,2.6]),cur=V.cur!=null&&V.cur>=0?rel(V.cur):null;
+ const deal=V.deal!==sc.deal;if(deal)sc.deal=V.deal;const dealer=V.dealer!=null?rel(V.dealer):2,cur=V.cur!=null&&V.cur>=0?rel(V.cur):null,dg=dealer>0&&castPic()&&sc.rigs&&sc.rigs[String(dealer)],dp=dealer===0?[0,1.4,6.6]:dg?rigP(dg.f,.25,.6,1.5):jkLocal(dealer,0,[0,1.6,2.6]);
  /* my eyes go a little toward whoever is to move, and back to my hand when it is me */
  if(sc.look){const Lk=sc.look;Lk.on=gLookSet()!=='off';const on=Lk.on&&cur!=null&&cur!==0&&V.win==null,gy=on?(cur===1?.075:cur===3?-.075:0):0,gp=on?(cur===2?.035:.012):0;if(gy!==Lk.gy||gp!==Lk.gp){Lk.gy=gy;Lk.gp=gp;g3Need()}}
  /* the three others */
  /* the drawn people come with their picture; until it is here the chairs wait empty (no sculpted people flashing by first) */
  const want=castPic(),pic=want&&castModel(sc),CA=pic?castSeats(V.ids):null;
  for(const r of[1,2,3]){if(V.on&&!V.on.includes(r))continue;const id=V.ids[(r+V.base)%4],lean=cur===r&&V.win==null?.07:0;
-  if(pic)castPush(L,r,CA[(r+V.base)%4],lean*.6);else if(want){/* waiting for the picture */}
+  const cnt=V.counts[r]||0;
+  if(pic){const cid=CA[(r+V.base)%4],B=castPush(L,r,cid,lean*.6);rigPush(L,sc,String(r),cid,B,1,{hold:cnt>0})}else if(want){/* waiting for the picture */}
   else{const L0=id.lk?oppLook(id.lk):jkLook(id.n,id.h),key=(id.k||id.n||'p'+r)+(id.lk?':'+lkKey(L0):'');jkPerson(sc,key,L0);const g=jkGaze(r,V,rel);
    pplPush(L,r,key,[JSP[r][0],0,JSP[r][1]],jkSeatQ(r,lean),1,qt.e(g.pitch,g.yaw,0))}
-  const cnt=V.counts[r]||0;for(let i=0;i<cnt;i++){const f=jkFanAt(r,lean,i,cnt),d={k:'h'+r+'-'+i,m:'card',p:f.p,q:f.q,s:.95,uv:cardUV(38),refl:false,dur:500};
+  const rg=pic&&sc.rigs&&sc.rigs[String(r)];
+  for(let i=0;i<cnt;i++){const f=rg?rigFan(rg,i,cnt):jkFanAt(r,lean,i,cnt),d={k:'h'+r+'-'+i,m:'card',p:f.p,q:f.q,s:f.s||.95,uv:cardUV(38),refl:false,dur:500};
    if(deal){d.from={p:dp,q:FACEDN(0),s:.9};d.delay=(i*4+r)*40;d.dur=520}L.push(d)}}
+ /* a drawn person's hand: the card they play is pulled from the fan and tossed to its place; the hand comes back to the fan */
+ const rigOf=r=>r>0&&pic&&sc.rigs&&sc.rigs[String(r)],fromFan=r=>{const g=rigOf(r),n=Math.max(1,V.counts[r]||0),f=rigFan(g,n,n+1);return{p:f.p,q:f.q,s:f.s}};
+ const tossBy=(r,P)=>{const g=rigOf(r);if(!g)return 0;const st=fromFan(r).p;rigGo(sc,String(r),[{p:st,d:170},{p:v3.lerp(st,rigAbove(P,.5),.5),d:300,arc:.5}],{lean:.08});return 170};
  /* my hand, held in front of me at the bottom of the screen */
  const n=V.hand.length;if(!V.mine||!V.hand.some(cd=>'c'+cardIdx(cd)===sc.csel))sc.csel=null;
  if(n){const tall=asp<.8,hs=tall?.165:.19,dd=2.4,C=jkCam(asp),t=Math.tan(C.fov/2),s=hs*2*t*dd/CDH,cw=CDW*s/(t*asp*dd),room=(2+2*C.sx)*.8,spc=Math.min(cw*.62,(room-cw*1.1)/Math.max(1,n-1)),qf=jkFace(asp);
@@ -328,13 +384,13 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
    if(deal){d.from={p:dp,q:FACEDN(0),s:.9};d.delay=i*70;d.dur=560}L.push(d)})}
  /* the trick, each card in front of whoever played it, all turned to read from my chair */
  V.trick.forEach((e,k)=>{const r=rel(e.p),[tx,tz]=JTRK[r],idx=cardIdx(e.card),p=[tx,.012+k*.008,tz],won=V.win!=null&&rel(V.win)===r&&V.trick.length===4,d={k:'c'+idx,m:'card',p,q:FACEUP(JTJ[r]),s:JTS,uv:cardUV(idx),glow:won?[.2,.14,.04]:null,cast:true};
-  if(r!==0||!sc.objs.has('k:c'+idx)){const f=r===0?{p:jkScr(asp,0,-.55,2.4),q:jkFace(asp),s:.6}:{p:jkLocal(r,0,[0,1.95,2.5]),q:qt.mul(jkSeatQ(r,0),qt.mul(qt.ax(0,1,0,Math.PI),qt.ax(1,0,0,-.5))),s:.95};d.from=f;d.dur=560;d.arc=1.4}
+  if(r!==0||!sc.objs.has('k:c'+idx)){const fresh=!sc.objs.has('k:c'+idx),f=r===0?{p:jkScr(asp,0,-.55,2.4),q:jkFace(asp),s:.6}:rigOf(r)?fromFan(r):{p:jkLocal(r,0,[0,1.95,2.5]),q:qt.mul(jkSeatQ(r,0),qt.mul(qt.ax(0,1,0,Math.PI),qt.ax(1,0,0,-.5))),s:.95};d.from=f;d.dur=560;d.arc=1.4;if(fresh&&r!==0)d.delay=tossBy(r,p)}
   L.push(d);if(won)M.push({m:'mk',p:[tx,.01,tz],s:[JTS*1.25,1,JTS*1.6],uv:MK.blob,c:[1,.78,.3],a:.55,add:true});
   else if(V.win==null&&k===V.trick.length-1)M.push({m:'mk',p:[tx,.009,tz],s:[JTS*1.1,1,JTS*1.45],uv:MK.blob,c:[1,.9,.6],a:.28,add:true});
   if(e.card.j){const t=(e.jm==='hi'?'მაღალი':'დაბალი')+(e.js?' '+SY[e.js]:'');lblModel(sc,t);L.push({k:'lb'+idx,m:'l:'+t,p:[tx,.05+k*.008,tz+1.45],q:qt.id(),s:1.15,cast:false,now:1})}});
  /* cards laid on the table by place: durak's pairs, bura's two rows; each flies in from whoever played it */
  (V.tbl||[]).forEach(e=>{const idx=cardIdx(e.card),r=e.r,key='c'+idx,d={k:key,m:'card',p:[e.x,.012+(e.y||0),e.z],q:FACEUP(e.yaw||0),s:e.s||JTS,uv:cardUV(idx),glow:e.glow?[.2,.14,.04]:null,cast:true};
-  if(r!=null&&(r!==0||!sc.objs.has('k:'+key))){d.from=r===0?{p:jkScr(asp,0,-.55,2.4),q:jkFace(asp),s:.6}:{p:jkLocal(r,0,[0,1.95,2.5]),q:qt.mul(jkSeatQ(r,0),qt.mul(qt.ax(0,1,0,Math.PI),qt.ax(1,0,0,-.5))),s:.95};d.dur=560;d.arc=1.2}
+  if(r!=null&&(r!==0||!sc.objs.has('k:'+key))){const fresh=!sc.objs.has('k:'+key);d.from=r===0?{p:jkScr(asp,0,-.55,2.4),q:jkFace(asp),s:.6}:rigOf(r)?fromFan(r):{p:jkLocal(r,0,[0,1.95,2.5]),q:qt.mul(jkSeatQ(r,0),qt.mul(qt.ax(0,1,0,Math.PI),qt.ax(1,0,0,-.5))),s:.95};d.dur=560;d.arc=1.2;if(fresh&&r!==0)d.delay=tossBy(r,d.p)}
   L.push(d)});
  if(V.disc){const h=Math.max(.02,V.disc*.006);L.push({k:'disc',m:'deck',p:[3.35,h/2+.01,.85],s:[1.15,h,1.15],q:qt.ax(0,1,0,.55),dur:400})}
  /* tricks already taken lie in a little pile in front of each player */
@@ -344,15 +400,22 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
  if(V.trumpCard&&V.deckN>0&&['bid','play'].includes(V.phase)){const h=Math.max(.02,V.deckN*.008),c=dealer===0?[-2.6,0,3.1]:jkLocal(dealer,0,[1.9,0,4.1]),yw=dealer===0?0:JYAW[dealer];
   L.push({k:'tc',m:'card',p:[c[0],.008,c[2]],q:FACEUP(yw+Math.PI/2),s:1.35,uv:cardUV(cardIdx(V.trumpCard)),cast:false});L.push({k:'deck',m:'deck',p:[c[0]+.35*Math.cos(yw),h/2+.02,c[2]-.35*Math.sin(yw)],s:[1.3,h,1.3],q:qt.ax(0,1,0,yw+.06)})}
  sc.jw=V.gto!=null?V.gto:V.win!=null?rel(V.win):sc.jw;
- sc.marks=M;g3Set(sc,L,{gone:o=>{if(o.m==='card'&&o.id.startsWith('k:c')){const w=sc.jw??0,p=w==='disc'?[3.35,.25,.85]:w===0?[2.7,.2,3.6]:jkLocal(w,0,[-1.7,.2,3.9]);return{p,a:0,dur:560,delay:150,s:1.05,q:FACEDN(w==='disc'||w===0?0:JYAW[w])}}if(o.id.startsWith('k:h'))return{a:0,dur:160};return{a:0,dur:250}}})}
+ /* the winner of a trick gathers it: the hand goes to the middle and draws the cards to their pile */
+ const keys=new Set(L.map(d=>'k:'+d.k)),leaving=[...sc.objs.values()].some(o=>o.m==='card'&&o.id.startsWith('k:c')&&!o.dying&&!o.hud&&!keys.has(o.id)),sw=sc.jw;let sweep=0;
+ if(leaving&&typeof sw==='number'&&rigOf(sw)){const pile=jkLocal(sw,0,[-1.7,.25,3.9]);rigGo(sc,String(sw),[{p:[0,.4,0],d:320,arc:.3},{p:pile,d:520,arc:.4}],{lean:.1});sweep=320}
+ /* a drawn dealer deals with their hand: a flick toward each player in turn */
+ if(deal&&rigOf(dealer)){const g=rigOf(dealer),T=[1,2,3,0].filter(r=>r!==dealer).map(r=>r===0?[0,.5,4]:v3.lerp(jkLocal(r,0,[0,.5,2.5]),[0,.5,0],.35)),st=[];for(let k=0;k<6;k++){st.push({p:v3.lerp(dp,T[k%T.length],.35),d:120,arc:.15},{p:dp,d:110})}rigGo(sc,String(dealer),st,{lean:.04})}
+ /* a word said at the table: a nod for a number, a knock on the table for a pass */
+ if(V.bids&&pic){const B0=sc.bids0||[];for(const r of[1,2,3]){const b=V.bids[(r+V.base)%4],was=B0[(r+V.base)%4];if(b!=null&&was===null){g3Wig(sc,'k:ph'+r,{ax:'x',a:.09,f:1,d:700});if(b===0&&rigOf(r)){const g=rigOf(r),P=rigP(g.f,.1,.05,1.6);rigGo(sc,String(r),[{p:rigAbove(P,.35),d:200},{p:P,d:90},{p:rigAbove(P,.3),d:110},{p:P,d:90}],{lean:.05})}}}sc.bids0=V.bids.slice()}
+ sc.marks=M;g3Set(sc,L,{gone:o=>{if(o.m==='card'&&o.id.startsWith('k:c')){const w=sc.jw??0,p=w==='disc'?[3.35,.25,.85]:w===0?[2.7,.2,3.6]:jkLocal(w,0,[-1.7,.2,3.9]);return{p,a:0,dur:560,delay:150+sweep,s:1.05,q:FACEDN(w==='disc'||w===0?0:JYAW[w])}}if(o.id.startsWith('k:h'))return{a:0,dur:160};return{a:0,dur:250}}})}
 G3U.joker=sc=>{const G=JK,V={hint:typeof jkPlayHint==='function'?(m=>m&&m.c)(jkPlayHint()):null,base:0,act:'jcard',hand:[],legal:[],counts:[0,0,0,0],taken:[0,0,0,0],trick:[],win:null,deal:null,dealer:null,cur:null,phase:G.phase,mine:false,trumpCard:null,deckN:0,ids:G.ids.map((x,i)=>i===0?{n:ME.name,k:'me'}:{n:x.n,h:x.h,k:x.n,cast:x.cast})};
  if(G.hands){const tr=G.phase==='trump'&&G.cur===0;V.hand=tr?G.first3[0]:G.phase==='trump'?[]:G.hands[0];V.legal=G.phase==='play'&&G.cur===0&&G.win==null?G.legal(0):[];V.mine=V.legal.length>0;
-  V.counts=[0,1,2,3].map(p=>G.phase==='trump'?(p===0?0:3):G.hands[p].length);V.taken=G.taken||V.taken;V.trick=G.trick;V.win=G.win;V.cur=G.cur;V.dealer=G.dealer;V.deal=G.len+':'+G.h+':'+G.dealer;V.trumpCard=G.trumpCard;V.deckN=36-4*G.n}
+  V.counts=[0,1,2,3].map(p=>G.phase==='trump'?(p===0?0:3):G.hands[p].length);V.taken=G.taken||V.taken;V.trick=G.trick;V.bids=G.bids;V.win=G.win;V.cur=G.cur;V.dealer=G.dealer;V.deal=G.len+':'+G.h+':'+G.dealer;V.trumpCard=G.trumpCard;V.deckN=36-4*G.n}
  jkScene(sc,V)};
 G3U.jko=sc=>{const s=JO.st,me=JO.seat,V={base:me>=0?me:0,act:'jkocard',hand:[],legal:[],counts:[0,0,0,0],taken:[0,0,0,0],trick:[],win:null,deal:null,dealer:null,cur:null,phase:s?s.phase:'wait',mine:false,trumpCard:null,deckN:0,
   ids:[0,1,2,3].map(p=>{const u=JO.t&&JO.t.seats[p];if(u){const pr=typeof PC!=='undefined'&&PC.get(u);return{n:u===ME.id?ME.name:(pr&&pr.name)||'მოთამაშე',h:pr&&pr.hue,k:u,lk:(JO.looks&&JO.looks[u])||(pr&&pr.look)||null}}const b=s&&s.bots&&s.bots[p];return{n:b||'ბოტი',h:b?joBotHue(b):30,k:'b'+(b||p),cast:b&&castNamed(b)?castNamed(b).id:null}})};
  if(s&&s.counts){V.hand=me>=0?JO.hand:[];const myTurn=me>=0&&s.cur===me&&s.win==null&&!JO.wait&&s.phase==='play';V.legal=myTurn?JK.legal.call({hands:{[me]:JO.hand},trick:s.trick,trump:s.trump},me):[];V.mine=V.legal.length>0;
-  V.counts=[0,1,2,3].map(r=>s.counts[(r+V.base)%4]||0);V.taken=s.taken||V.taken;V.trick=s.trick||[];V.win=s.win;V.cur=s.cur;V.dealer=s.dealer;V.deal=s.deal;V.trumpCard=s.trumpCard;V.deckN=36-4*s.n}
+  V.counts=[0,1,2,3].map(r=>s.counts[(r+V.base)%4]||0);V.taken=s.taken||V.taken;V.bids=s.bids||null;V.trick=s.trick||[];V.win=s.win;V.cur=s.cur;V.dealer=s.dealer;V.deal=s.deal;V.trumpCard=s.trumpCard;V.deckN=36-4*s.n}
  jkScene(sc,V)};
 
 /* durak: the pairs on the table in two rows of three, the deck with its trump by the table's left side, the discard on the right */
@@ -399,7 +462,7 @@ G3B.egg=()=>{const sc=g3Scene({cam:{fixed:eggCam,tgt:[0,1,0],fov:1,dy:0,dp:0,dz:
  sc.tap=ray=>{const o=g3HitObj(sc,ray,o=>o.pick);if(o)g3Act('eggk',{i:String(o.pick.i)})};
  sc.onResize=()=>{try{G3U.egg(sc)}catch(e){}};sc.people=who=>who==='r2'||who===-1?'o':null;
  return sc};
-G3U.egg=sc=>{const G=EG,L=[],M=[],c=G.ctx,duel=G.phase!=='pick',k=duel&&G.phase==='duel'?G.clash():null;
+G3U.egg=sc=>{const G=EG,L=[],M=[],c=G.ctx,duel=G.phase!=='pick',k=duel&&G.phase==='duel'?G.clash():null;let oe=null,oeD=450;
  const ends={1:k?k.ea:'t','-1':k?k.eb:'t'};
  G.basket.forEach((e,i)=>{const key=eggModel(sc,e),held=duel&&(G.pick[1]===i||G.pick[-1]===i);let p,q,d={k:'e'+i,m:key,dur:520};
   if(held){const s=G.pick[1]===i?1:-1;p=egAt(s,.38);q=egAim(s,ends[s]);d.s=EGS;
@@ -410,10 +473,11 @@ G3U.egg=sc=>{const G=EG,L=[],M=[],c=G.ctx,duel=G.phase!=='pick',k=duel&&G.phase=
   else{const n=G.basket.length,a=i/n*Math.PI*2+.3,r=.92;p=[EGP[0]+Math.cos(a)*r,EGP[1]+EGR*.94,EGP[2]+Math.sin(a)*r*.8];q=qt.mul(qt.ax(0,1,0,-a),qt.ax(0,0,1,Math.PI/2));
    if(!duel&&!e.taken){d.pick={i};if(G.sel===i){p=[p[0]*.5,1.55,p[2]+.8];q=qt.ax(1,0,0,-.25);d.s=1.15;d.glow=[.06,.04,.01]}}
    if(!duel&&e.taken){p=egAt(1,.6);q=qt.id();d.s=EGS}}
+  if(held&&G.pick[-1]===i&&G.phase!=='over'){oe=p;oeD=d.dur}
   d.p=p;d.q=q;L.push(d);M.push({m:'mk',p:[p[0],.135,p[2]],s:[.9,1,.9],uv:MK.blob,c:[0,0,0],a:.2})});
  /* the other player across, leaning in during the duel */
  if(!G.local){const lean=duel&&G.phase==='duel'?.1:0;
-  if(castPic()){if(castModel(sc))castAt(L,'pho',castOfSide(c,-1),[0,-.15,-6.2],{lean:lean*.6})}
+  if(castPic()){if(castModel(sc)){const cid=castOfSide(c,-1),B=[0,-.15,-6.2];castAt(L,'pho',cid,B,{lean:lean*.6});rigPush(L,sc,'o',cid,B,1,oe?{grip:v3.add(oe,[0,-.12,.18]),dur:oeD}:{})}}
   else{const lk=oppLook(c.olk||jkLook(G.nm(-1),c.avs&&c.avs[-1]&&c.avs[-1].h)),key='o:'+lkKey(lk);jkPerson(sc,key,lk);
    pplPush(L,'o',key,[0,0,-6.6],qt.ax(1,0,0,lean),1,qt.e(duel?.32:.22,0,0),{cast:false})}}
  sc.marks=M;g3Set(sc,L,{gone:()=>({a:0,dur:200})})};
@@ -475,7 +539,9 @@ function dmScene(sc,G,act,who){sc.dG=G;sc.dA=act;const L=[],M=[],{out,slots}=dmL
  const deal=G.round!==sc.round;if(deal)sc.round=G.round;
  const flat=(t,x,z,yaw)=>({p:[x,DT/2,z],q:qt.ax(0,1,0,yaw),uv:dmUV(dmIdx(t[0],t[1]))});
  out.forEach(o=>{const f=flat(o.t,o.x,o.z,o.yaw),key='t'+dmIdx(o.t[0],o.t[1]),d=Object.assign({k:key,m:'tile'},f);
-  if(!sc.objs.has('k:'+key)){const by=G.last&&G.last.t&&dmIdx(G.last.t[0],G.last.t[1])===dmIdx(o.t[0],o.t[1])?G.last.p:null;if(by!=null&&by!==0){const n=G.hands[by].length;d.from={p:dRack(by,n,n+1),q:DSTAND(DRACK[by].yaw,DRACK[by].tilt)};d.arc=.9;d.dur=560}}
+  if(!sc.objs.has('k:'+key)){const by=G.last&&G.last.t&&dmIdx(G.last.t[0],G.last.t[1])===dmIdx(o.t[0],o.t[1])?G.last.p:null;if(by!=null&&by!==0){const n=G.hands[by].length,fp=dRack(by,n,n+1);d.from={p:fp,q:DSTAND(DRACK[by].yaw,DRACK[by].tilt)};d.arc=.9;d.dur=560;
+   /* a drawn player's hand takes the tile from the row in front of them and lays it on the line */
+   if(sc.rigs&&sc.rigs[String(by)]&&castPic()){rigGo(sc,String(by),[{p:rigAbove(fp,.45),d:230},{p:rigAbove(fp,.3),d:90},{p:rigAbove(d.p,.3),d:560,arc:.9}],{lean:.1});d.delay=320}}}
   L.push(d);M.push({m:'mk',p:[o.x,.003,o.z],s:[1.35,1,1.35],uv:MK.blob,c:[0,0,0],a:.22,q:qt.ax(0,1,0,o.yaw)})});
  const n=G.hands[0].length;G.hands[0].forEach((t,i)=>{const lift=G.sel===i?.32:ok.has(i)?.12:0,p=v3.add(dRack(0,i,n),[0,lift,0]),d={k:'t'+dmIdx(t[0],t[1]),m:'tile',p,q:DSTAND(0,DRACK[0].tilt),uv:dmUV(dmIdx(t[0],t[1])),dim:mine&&!ok.has(i)?.6:1,glow:G.sel===i?[.12,.09,.02]:null,pick:mine?{i}:null,drag:mine&&ok.has(i)};
   if(deal){d.from={p:[0,1.2,0],q:DSTAND(0,0),a:0};d.delay=i*70;d.dur=520}L.push(d)});
@@ -486,7 +552,7 @@ function dmScene(sc,G,act,who){sc.dG=G;sc.dA=act;const L=[],M=[],{out,slots}=dmL
  /* the three at the table: whoever's turn it is leans in and looks at their tiles, the others watch them */
  const want=castPic(),pic=want&&castModel(sc),CA=pic?castSeats([0,1,2,3].map(r=>r===0?(act==='dmo'?who(0):{k:'me'}):who(r))):null;
  for(const r of[1,2,3]){if(!SE.includes(r))continue;const id=who(r),think=G.phase==='play'&&G.cur===r,lean=think?.07:0;
-  if(want){if(pic)castPush(L,r,CA[r],lean*.6,DSP,8.55);continue}
+  if(want){if(pic){const B=castPush(L,r,CA[r],lean*.6,DSP,8.55);rigPush(L,sc,String(r),CA[r],B,1,{})}continue}
   const lk=id.lk?oppLook(id.lk):jkLook(id.n,id.h),key=(id.k||id.n)+(id.lk?':'+lkKey(lk):'');jkPerson(sc,key,lk);
   let yaw=0,pitch=.3;if(think)pitch=.44;else if(G.phase==='play'&&G.cur!=null&&G.cur>=0){const t=G.cur===0?[0,DSR]:DSP[G.cur],me=DSP[r],f=[-me[0],-me[1]],d=[t[0]-me[0],t[1]-me[1]];yaw=clamp(-Math.atan2(f[0]*d[1]-f[1]*d[0],f[0]*d[0]+f[1]*d[1]),-.75,.75);pitch=G.cur===0?.22:.12}
   pplPush(L,r,key,[DSP[r][0],0,DSP[r][1]],dSeatQ(r,lean),1,qt.e(pitch,yaw,0))}
@@ -670,7 +736,8 @@ const mhShow=c=>!!c&&(c.mode==='local'||isPlayer(c))&&!c.gone;
 const mhMover=(c,turnNow)=>c.mode==='local'||turnNow===-c.side;
 /* rest: [left, right] as [x, z] in my own frame (z toward me); y: the table top; S: how big */
 function mhPush(sc,L,o){sc.mh=null;if(!o.on||!myHandsOn())return;mhModels(sc);const q0=qt.ax(0,1,0,o.yaw||0),H={q0,S:o.S,rest:{},rq:{}};
- for(const s of[-1,1]){const r=o.rest[s<0?0:1],p=v3.add(qt.rot(q0,[r[0],0,r[1]]),[0,o.y+.12*o.S,0]),q=qt.mul(q0,qt.ax(0,1,0,s*.26));H.rest[s]=p;H.rq[s]=q;L.push({k:'mh'+s,m:'mh'+s,p,q,s:o.S,refl:false,dur:450})}sc.mh=H}
+/* at rest my hands wait below the bottom of the picture (hanging under the table they looked lost); they come up into view only to move something */
+ for(const s of[-1,1]){const r=o.rest[s<0?0:1],p=v3.add(qt.rot(q0,[r[0]*1.15,0,r[1]+2.6*o.S]),[0,o.y-1.2*o.S,0]),q=qt.mul(q0,qt.ax(0,1,0,s*.26));H.rest[s]=p;H.rq[s]=q;L.push({k:'mh'+s,m:'mh'+s,p,q,s:o.S,refl:false,dur:450})}sc.mh=H}
 /* where the wrist goes so that the fingertips are over a point */
 const mhAt=(H,s,P,up)=>v3.add(P,qt.rot(H.q0,[s*.1*H.S,(up??.4)*H.S,.8*H.S]));
 const mhSide=(H,P)=>qt.rot(qt.inv(H.q0),P)[0]<-2.2?-1:1;

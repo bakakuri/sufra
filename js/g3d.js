@@ -38,14 +38,14 @@ const lin=h=>{const n=parseInt(h.slice(1),16);return[(n>>16&255)/255,(n>>8&255)/
 /* ---------- shaders ---------- */
 const VS_MAIN=`attribute vec3 aP;attribute vec3 aN;attribute vec2 aU;attribute float aA;uniform mat4 uM,uVP,uL;uniform vec4 uUV;varying vec3 vW;varying vec3 vN;varying vec2 vU;varying vec4 vS;varying float vA;
 void main(){vA=aA;vec4 w=uM*vec4(aP,1.0);vW=w.xyz;vN=(uM*vec4(aN,0.0)).xyz;vU=uUV.xy+aU*uUV.zw;vS=uL*w;gl_Position=uVP*w;}`;
-const FS_MAIN=`uniform sampler2D uT,uSh;uniform vec3 uC,uE,uEye,uLd,uLc,uSky,uGnd,uRe,uRimD;uniform vec4 uMat,uFx,uSp,uRf,uRc,uM2,uRim;uniform float uSS,uExp;
+const FS_MAIN=`uniform sampler2D uT,uSh;uniform vec3 uC,uE,uEye,uLd,uLc,uSky,uGnd,uRe,uRimD;uniform vec4 uMat,uFx,uSp,uRf,uRc,uM2,uRim;uniform float uSS,uExp,uShQ;
 varying vec3 vW;varying vec3 vN;varying vec2 vU;varying vec4 vS;varying float vA;
 float unp(vec4 c){return dot(c,vec4(1.0,1.0/255.0,1.0/65025.0,1.0/16581375.0));}
 float cmp(vec2 uv,float z){return step(z,unp(texture2D(uSh,uv)));}
 float pcf(vec2 uv,float z){vec2 t=uv/uSS-0.5;vec2 f=fract(t);vec2 b=(floor(t)+0.5)*uSS;
  return mix(mix(cmp(b,z),cmp(b+vec2(uSS,0.0),z),f.x),mix(cmp(b+vec2(0.0,uSS),z),cmp(b+vec2(uSS,uSS),z),f.x),f.y);}
 float shade(float nl){if(uFx.w<0.5)return 1.0;vec3 p=vS.xyz/vS.w*0.5+0.5;if(p.x<0.0||p.x>1.0||p.y<0.0||p.y>1.0||p.z>1.0)return 1.0;
- float z=p.z-0.0007-0.0022*(1.0-nl);float k=uSS*1.5;return (pcf(p.xy+vec2(-k,-k),z)+pcf(p.xy+vec2(k,-k),z)+pcf(p.xy+vec2(-k,k),z)+pcf(p.xy+vec2(k,k),z))*0.25;}
+ float z=p.z-0.0007-0.0022*(1.0-nl);if(uShQ<0.5)return pcf(p.xy,z);float k=uSS*1.5;return (pcf(p.xy+vec2(-k,-k),z)+pcf(p.xy+vec2(k,-k),z)+pcf(p.xy+vec2(-k,k),z)+pcf(p.xy+vec2(k,k),z))*0.25;}
 vec3 aces(vec3 x){return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);}
 void main(){float ra=1.0;if(uRf.x>0.0){vec3 d=vW-uRe;vec3 s=uRe+d*((uRf.y-uRe.y)/d.y);if(s.x<uRc.x||s.x>uRc.z||s.z<uRc.y||s.z>uRc.w)discard;ra=uRf.x*(1.0-smoothstep(0.0,uRf.z,uRf.y-vW.y));}
  vec4 tx=uFx.x>0.5?texture2D(uT,vU):vec4(1.0);if(uFx.z>0.5&&tx.a<0.5)discard;
@@ -71,7 +71,7 @@ const FS_SH=`varying float vZ;void main(){vec4 e=fract(vZ*vec4(1.0,255.0,65025.0
 function g3Prog(vs,fs,us){const gl=G3D.gl,sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o};
  const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,vs));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,fs));['aP','aN','aU','aA'].forEach((n,i)=>gl.bindAttribLocation(p,i,n));gl.linkProgram(p);
  if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));const u={};for(const n of us)u[n]=gl.getUniformLocation(p,n);return{p,u}}
-function g3ShadowFB(){const gl=G3D.gl,S=Math.min(2048,gl.getParameter(gl.MAX_TEXTURE_SIZE)),t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+function g3ShadowFB(){const gl=G3D.gl,small=(navigator.deviceMemory||8)<=4||(navigator.hardwareConcurrency||8)<=4,S=Math.min(small?1024:2048,gl.getParameter(gl.MAX_TEXTURE_SIZE)),t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,S,S,0,gl.RGBA,gl.UNSIGNED_BYTE,null);for(const k of[gl.TEXTURE_MIN_FILTER,gl.TEXTURE_MAG_FILTER])gl.texParameteri(gl.TEXTURE_2D,k,gl.NEAREST);
  for(const k of[gl.TEXTURE_WRAP_S,gl.TEXTURE_WRAP_T])gl.texParameteri(gl.TEXTURE_2D,k,gl.CLAMP_TO_EDGE);
  const fb=gl.createFramebuffer(),rb=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,rb);gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT16,S,S);
@@ -84,7 +84,7 @@ function g3Init(){if(G3D.ok!==null)return G3D.ok;G3D.ok=false;
   G3D.cv=cv;G3D.gl=gl;const hp=gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER,gl.HIGH_FLOAT);G3D.hp=!!hp&&hp.precision>0;
   G3D.af=gl.getExtension('EXT_texture_filter_anisotropic')||gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic');if(G3D.af)G3D.afM=gl.getParameter(G3D.af.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
   G3D.u32=!!gl.getExtension('OES_element_index_uint');
-  G3D.P=g3Prog(VS_MAIN,(G3D.hp?'precision highp float;':'precision mediump float;')+FS_MAIN,['uM','uVP','uL','uUV','uT','uSh','uC','uE','uEye','uLd','uLc','uSky','uGnd','uMat','uFx','uSp','uSS','uExp','uRf','uRc','uRe','uM2','uRim','uRimD']);
+  G3D.P=g3Prog(VS_MAIN,(G3D.hp?'precision highp float;':'precision mediump float;')+FS_MAIN,['uM','uVP','uL','uUV','uT','uSh','uC','uE','uEye','uLd','uLc','uSky','uGnd','uMat','uFx','uSp','uSS','uExp','uRf','uRc','uRe','uM2','uRim','uRimD','uShQ']);
   if(G3D.hp){G3D.Q=g3Prog(VS_SH,'precision highp float;'+FS_SH,['uM','uL']);g3ShadowFB()}
   const w=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,w);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,255,255,255]));G3D.white=w;
   g3Input(cv);
@@ -169,10 +169,10 @@ function g3Set(sc,list,opt={}){const now=performance.now(),rm=RM(),old=sc.objs,n
  for(const o of old.values()){if(next.has(o.id))continue;if(o.dying){next.set(o.id,o);continue}if(used.has(o)||took.has(o))continue;g3Leave(o,opt.gone?opt.gone(o):null,now,rm,opt);next.set(o.id,o)}
  for(const d of pend){if(done.has(d))continue;const o={id:d.k!=null?'k:'+d.k:'a'+(++sc.seq),anon:d.k==null,m:d.m,p:d.p.slice(),q:(d.q||qt.id()).slice(),s:d.s??1,a:d.a??1,p1:d.p.slice()};g3Spawn(o,d,now,rm,opt);g3Props(o,d);next.set(o.id,o)}
  sc.objs=next;g3Need()}
-function g3Props(o,d){o.bb=!!d.bb;o.hud=!!d.hud;o.life=d.life||0;o.blink=d.blink||0;o.dim=d.dim??1;o.glow=d.glow||null;o.pick=d.pick||null;o.uv=d.uv||null;o.cast=d.cast!==false;o.lift=d.lift||0;o.drag=!!d.drag;o.refl=d.refl!==false}
+function g3Props(o,d){o.bb=!!d.bb;o.arm=d.arm||null;o.hud=!!d.hud;o.life=d.life||0;o.blink=d.blink||0;o.dim=d.dim??1;o.glow=d.glow||null;o.pick=d.pick||null;o.uv=d.uv||null;o.cast=d.cast!==false;o.lift=d.lift||0;o.drag=!!d.drag;o.refl=d.refl!==false}
 /* something leaving the hand for the table: from where it was seen, so a turned view does not make it jump */
 function g3Unhud(o){const sc=G3D.sc,lq=sc&&sc.cam&&sc.cam.lookQ,C=sc&&sc.camNow;if(!lq||!C)return;const e=C.eye;o.p=v3.add(e,qt.rot(lq,v3.sub(o.p,e)));o.q=qt.mul(lq,o.q)}
-function g3Aim(o,d,now,opt,rm){if(o.hud&&!d.hud&&!o.held)g3Unhud(o);g3Props(o,d);const q1=d.q||qt.id(),s1=d.s??1,a1=d.a??1,dist=v3.len(v3.sub(o.p1,d.p));
+function g3Aim(o,d,now,opt,rm){if(o.hud&&!d.hud&&!o.held)g3Unhud(o);g3Props(o,d);if(o.kfL){o.rest=d;return}const q1=d.q||qt.id(),s1=d.s??1,a1=d.a??1,dist=v3.len(v3.sub(o.p1,d.p));
  if(dist<1e-4&&qt.same(o.q1||o.q,q1)&&sDiff(o.s1??o.s,s1)<1e-4&&Math.abs((o.a1??o.a)-a1)<1e-3&&!d.path&&!d.spin)return;
  o.kf=null;o.p1=d.p.slice();o.q1=q1;o.s1=s1;o.a1=a1;if(rm){o.p=d.p.slice();o.q=q1.slice();o.s=s1;o.a=a1;o.tw=null;return}
  const far=v3.len(v3.sub(o.p,d.p)),dur=d.dur??(opt.dur?opt.dur(o,d,far):Math.min(700,260+90*Math.sqrt(far))),arc=d.arc??(far>.7?Math.min(1.5,.3+far*.13):0);
@@ -192,16 +192,25 @@ function g3Tick(sc,now){let busy=false;const c=sc.cam;
   else{o.p=v3.lerp(t.p0,t.p1,e);if(t.arc)o.p[1]+=t.arc*4*e*(1-e)}
   o.q=qt.slerp(t.q0,t.q1,e);if(t.spin)o.q=qt.mul(o.q,qt.ax(t.spin[0],t.spin[1],t.spin[2],t.spin[3]*Math.PI*2*(1-e)));
   o.s=sLerp(t.s0,t.s1,e);o.a=t.a0+(t.a1-t.a0)*e;
-  if(k>=1){o.tw=null;o.p=t.p1.slice();o.q=t.q1.slice();if(o.dying)sc.objs.delete(o.id);else if(o.kf&&o.kf.length){g3KfGo(o,o.kf.shift(),now);busy=true}else if(t.land){const md=sc.models[o.m];if(md&&md.land)try{md.land(o,sc)}catch(e){}}}else busy=true}
+  if(k>=1){o.tw=null;o.p=t.p1.slice();o.q=t.q1.slice();if(o.dying)sc.objs.delete(o.id);else if(o.kf&&o.kf.length){g3KfGo(o,o.kf.shift(),now);busy=true}else if(o.kfL){o.kfL=0;if(o.rest){const r=o.rest;o.rest=null;g3Aim(o,r,now,{},false);busy=true}}else if(t.land){const md=sc.models[o.m];if(md&&md.land)try{md.land(o,sc)}catch(e){}}}else busy=true}
  for(const o of sc.objs.values())if(o.wg&&g3WgStep(o,now))busy=true;
  if(sc.look&&g3LookStep(sc,now))busy=true;
  g3Life(sc,now);return busy}
 /* people at rest are not statues: they breathe (on high quality) and blink now and then; this needs a few frames a second, not sixty */
 const hashS=s=>{let k=0;for(const ch of s)k=(k*31+ch.charCodeAt(0))>>>0;return(k%1000)/1000};
-function g3Life(sc,now){sc.life=false;if(RM())return;const lq=typeof gqLevel==='function'?gqLevel():'high';if(lq==='low')return;const t=now/1000;
- for(const o of sc.objs.values()){if(!o.life||o.dying)continue;sc.life=true;const g=o.grp||(o.grp=o.id.replace(/^k:p(b|h|kl|kr)/,'')),sd=o.sd??(o.sd=hashS(g));
+function g3Life(sc,now){sc.life=false;sc.fid=false;if(RM())return;const lq=typeof gqLevel==='function'?gqLevel():'high';if(lq==='low')return;const t=now/1000;
+ for(const o of sc.objs.values()){if(!o.life||o.dying)continue;if(o.bb){sc.fid=true;continue}sc.life=true;const g=o.grp||(o.grp=o.id.replace(/^k:p(b|h|kl|kr)/,'')),sd=o.sd??(o.sd=hashS(g));
   if(o.blink)o.uv=((t+sd*9.7)%4.6)<.15?[.5,0,.5,1]:null;
   if(lq==='high'&&!o.tw&&!o.wg){const s=(o.s1&&o.s1.length?o.s1[0]:o.s1)||1;o.p=[o.p1[0],o.p1[1]+Math.sin(t*1.75+sd*6.3)*.022*s,o.p1[2]]}}}
+/* someone at the table shifts a little: a lean, a small turn, a nod, now and then and one at a time, so a table at rest needs no drawing in between */
+const FIDG=[{ax:'z',a:.035,f:.5,d:1500},{ax:'y',a:.16,f:.5,d:1700},{ax:'x',a:.06,f:1,d:1200},{ax:'z',a:-.03,f:.5,d:1400,b:.05,bf:1}];
+function g3Fidget(sc){if(RM()||document.hidden)return;const L=[...sc.objs.values()].filter(o=>o.bb&&o.life&&!o.dying&&!o.wg&&!o.tw);if(!L.length)return;const o=L[Math.floor(Math.random()*L.length)];
+ o.wg=Object.assign({},FIDG[Math.floor(Math.random()*FIDG.length)],{t0:performance.now()});g3Need()}
+/* an arm of a drawn person: a flat strip turned to face the eye along a line. a sleeve runs from its root (arm.a, below the table's edge) to the wrist,
+   which is where its hand object is now; the hand runs from the wrist on along the same line for its own length. the mesh is a unit strip (x -.5..5, y 0..1) */
+function g3ArmM(sc,o,eye){const A=o.arm,h=A.of?sc.objs.get(A.of):o,W=h?h.p:o.p,a=A.a;let d=v3.sub(W,a);const l=v3.len(d)||1e-3;d=v3.mul(d,1/l);
+ const from=A.of?a:W,len=A.of?l:A.len,mid=v3.add(from,v3.mul(d,len*.5)),x=v3.norm(v3.cross(d,v3.sub(eye,mid))),z=v3.cross(x,d),w=A.w,m=new Float32Array(16);
+ m[0]=x[0]*w;m[1]=x[1]*w;m[2]=x[2]*w;m[4]=d[0]*len;m[5]=d[1]*len;m[6]=d[2]*len;m[8]=z[0];m[9]=z[1];m[10]=z[2];m[12]=from[0];m[13]=from[1];m[14]=from[2];m[15]=1;return m}
 /* a gesture laid over whatever the object is doing: a nod, a shake, a bounce. it swings and settles back where it was */
 function g3WgStep(o,now){const w=o.wg,k=(now-w.t0)/w.d,bq=o.tw?o.q:(o.q1||o.q),bp=o.tw?o.p:(o.p1||o.p);
  if(k>=1){o.wg=null;if(!o.tw){o.q=bq.slice();o.p=bp.slice()}return true}if(k<0)return true;const env=Math.sin(Math.PI*k);
@@ -253,19 +262,22 @@ function g3Part(pt,M,dim,glow,al,sh,uv){const gl=G3D.gl,u=G3D.P.u,m=pt.mat;gl.un
  gl.bindTexture(gl.TEXTURE_2D,m.t||G3D.white);if(m.two)gl.disable(gl.CULL_FACE);g3Bind(pt.mesh);gl.drawElements(gl.TRIANGLES,pt.mesh.n,pt.mesh.it,0);if(m.two)gl.enable(gl.CULL_FACE)}
 function g3Draw(sc,now){const gl=G3D.gl,cv=G3D.cv,C=g3Cam(sc),L=sc.light;sc.camNow=C;G3D.bound=null;
  /* a picture standing up (bb) turns about its upright to face the eye; its own turn (a lean, a nod) comes on top */
- for(const o of sc.objs.values()){const q=o.bb?qt.mul(qt.ax(0,1,0,Math.atan2(C.eye[0]-o.p[0],C.eye[2]-o.p[2])),o.q):o.q;o.M=m4.trs(o.lift?v3.add(o.p,[0,o.lift,0]):o.p,q,o.s);if(o.hud&&C.lookM&&!o.held)o.M=m4.mul(C.lookM,o.M)}
+ for(const o of sc.objs.values()){if(o.arm){o.M=g3ArmM(sc,o,C.eye);continue}const q=o.bb?qt.mul(qt.ax(0,1,0,Math.atan2(C.eye[0]-o.p[0],C.eye[2]-o.p[2])),o.q):o.q;o.M=m4.trs(o.lift?v3.add(o.p,[0,o.lift,0]):o.p,q,o.s);if(o.hud&&C.lookM&&!o.held)o.M=m4.mul(C.lookM,o.M)}
  const q=typeof gqLevel==='function'?gqLevel():'high',sm=G3D.sm&&sc.shadow!==false&&q!=='low'?G3D.sm:null;let LVP=G3_LID||(G3_LID=m4.id());
- if(sm){const c=sc.shC,R=sc.shR,e=v3.add(c,v3.mul(L.d,R*3));LVP=m4.mul(m4.ortho(-R,R,-R,R,R*.5,R*6),m4.look(e,c,Math.abs(L.d[1])>.99?[0,0,-1]:[0,1,0]));
+ /* the shadow picture is drawn again only when something that casts a shadow has moved (or the scene changed): at rest it is reused */
+ let shSig=0;if(sm){let n=0;for(const o of sc.objs.values()){if(o.a<.55||!o.cast)continue;const P=o.life&&!o.tw&&o.p1?o.p1:o.p,Q=o.q,S=o.s&&o.s.length?o.s[0]+o.s[1]*3+o.s[2]*7:o.s||1;n++;shSig+=(P[0]*1.7+P[1]*3.1+P[2]*5.3+Q[0]*11+Q[1]*13+Q[2]*17+Q[3]*19+S*23)*(1+(n%7)*.13)}shSig+=n*1e3+sc.statics.length*1e5+L.d[0]*7e5+L.d[1]*9e5+L.d[2]*1.1e6+(sc.shV||0)*1.3e7}
+ if(sm&&(G3D.shSc!==sc||G3D.shSig!==shSig||G3D.shSm!==sm)){G3D.shSc=sc;G3D.shSig=shSig;G3D.shSm=sm;const c=sc.shC,R=sc.shR,e=v3.add(c,v3.mul(L.d,R*3));G3D.shLVP=m4.mul(m4.ortho(-R,R,-R,R,R*.5,R*6),m4.look(e,c,Math.abs(L.d[1])>.99?[0,0,-1]:[0,1,0]));LVP=G3D.shLVP;
   gl.bindFramebuffer(gl.FRAMEBUFFER,sm.fb);gl.viewport(0,0,sm.S,sm.S);gl.clearColor(1,1,1,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.disable(gl.BLEND);gl.enable(gl.CULL_FACE);gl.cullFace(gl.FRONT);const Q=G3D.Q;gl.useProgram(Q.p);gl.uniformMatrix4fv(Q.u.uL,false,LVP);
   const one=(mesh,M)=>{gl.uniformMatrix4fv(Q.u.uM,false,M);g3Bind(mesh);gl.drawElements(gl.TRIANGLES,mesh.n,mesh.it,0)};
   for(const s of sc.statics)if(s.cast)for(const pt of s.parts)if(pt.cast)one(pt.mesh,s.M);
   for(const o of sc.objs.values()){if(o.a<.55||!o.cast)continue;const md=sc.models[o.m];if(md)for(const pt of md.parts)if(pt.cast)one(pt.mesh,o.M)}
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.cullFace(gl.BACK)}
+ else if(sm&&G3D.shLVP)LVP=G3D.shLVP;
  gl.viewport(0,0,cv.width,cv.height);gl.clearColor(sc.bg[0],sc.bg[1],sc.bg[2],1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
  const P=G3D.P,u=P.u;gl.useProgram(P.p);gl.uniformMatrix4fv(u.uVP,false,C.VP);gl.uniformMatrix4fv(u.uL,false,LVP);gl.uniform3fv(u.uEye,C.eye);gl.uniform3fv(u.uLd,L.d);gl.uniform3fv(u.uLc,L.c);
  gl.uniform3fv(u.uSky,L.sky);gl.uniform3fv(u.uGnd,L.gnd);gl.uniform1f(u.uExp,L.exp);gl.uniform4fv(u.uSp,sc.spot);const RL=sc.rimL||{c:[0,0,0],d:[0,0,-1]};gl.uniform4f(u.uRim,RL.c[0],RL.c[1],RL.c[2],0);gl.uniform3fv(u.uRimD,RL.d);
- gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,sm?sm.t:G3D.white);gl.uniform1i(u.uSh,1);gl.uniform1f(u.uSS,sm?1/sm.S:0);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(u.uT,0);
+ gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,sm?sm.t:G3D.white);gl.uniform1i(u.uSh,1);gl.uniform1f(u.uSS,sm?1/sm.S:0);gl.uniform1f(u.uShQ,q==='high'?1:0);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(u.uT,0);
  gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.disable(gl.BLEND);gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);
  for(const s of sc.statics){if(s.late)continue;for(const pt of s.parts)g3Part(pt,s.M,1,null,1,!!sm&&s.recv!==false)}
  if(sc.refl&&q==='high'){const R=sc.refl,Mi=m4.id(),me=[C.eye[0],2*R.y-C.eye[1],C.eye[2]];Mi[5]=-1;Mi[13]=2*R.y;
@@ -303,14 +315,16 @@ function g3Labels(sc){g3Hug(sc);const C=sc.camNow,cv=G3D.cv,root=cv&&cv.parentNo
   el.style.left=clamp((r[0]*.5+.5)*W,w,W-w).toFixed(1)+'px';el.style.top=clamp((.5-r[1]*.5)*H,h,H-h).toFixed(1)+'px'}}
 function g3Need(){if(!G3D.raf&&G3D.ok)G3D.raf=requestAnimationFrame(g3Frame)}
 function g3Pace(now){const L=G3D.lastF;G3D.lastF=now;if(!L||now-L>250)return;(G3D.ft||(G3D.ft=[])).push(now-L);if(G3D.ft.length<50)return;const a=G3D.ft.sort((x,y)=>x-y)[25];G3D.ft=[];
- if(a<36||typeof gqSet!=='function'||gqSet()!=='auto')return;const cur=gqLevel(),nx=cur==='high'?'mid':cur==='mid'?'low':null;if(!nx)return;store.set('gqa',nx);if(typeof toast==='function')toast('გრაფიკა შემსუბუქდა, რომ თამაში შეუფერხებლად იმუშაოს')}
+ if(a<30||typeof gqSet!=='function'||gqSet()!=='auto')return;const cur=gqLevel(),nx=cur==='high'?'mid':cur==='mid'?'low':null;if(!nx)return;store.set('gqa',nx);if(typeof toast==='function')toast('გრაფიკა შემსუბუქდა, რომ თამაში შეუფერხებლად იმუშაოს')}
 function g3Frame(now){G3D.raf=0;const sc=G3D.sc,cv=G3D.cv;if(!sc||!cv||!cv.isConnected||!G3D.ok)return;if(G3D.idleReq){G3D.idleReq=0;G3D.lastF=0}else g3Pace(now);const busy=g3Tick(sc,now);g3Size();sc.camBusy=false;
  try{g3Draw(sc,now);g3Labels(sc)}catch(e){try{console.warn('3D draw',e)}catch(x){}return}
  if(G3D.rec)try{G3D.rec(cv,now)}catch(e){G3D.rec=null}
  if(busy||sc.camBusy)g3Need();else if(!RM()&&sc.marks.some(m=>m.pulse)){clearTimeout(G3D.slow);G3D.slow=setTimeout(()=>{G3D.idleReq=1;g3Need()},80)}
  else if(sc.wx&&!RM()){clearTimeout(G3D.wxT);G3D.wxT=setTimeout(()=>{if(G3D.sc===sc&&!G3D.raf){G3D.idleReq=1;g3Need()}},(typeof gqLevel==='function'?gqLevel():'high')==='low'?60:33)}
- else if(sc.life){clearTimeout(G3D.lifeT);G3D.lifeT=setTimeout(()=>{if(G3D.sc===sc&&!G3D.raf){G3D.idleReq=1;g3Need()}},(typeof gqLevel==='function'?gqLevel():'high')==='high'?70:170)}}
-function g3Size(){const cv=G3D.cv,el=cv.parentNode;if(!el)return;const q=typeof gqLevel==='function'?gqLevel():'high',r=el.getBoundingClientRect(),d=Math.min(window.devicePixelRatio||1,q==='low'?1:q==='mid'?1.5:2),w=Math.max(2,Math.round(r.width*d)),h=Math.max(2,Math.round(r.height*d));
+ else if(sc.fid&&!sc.life){if(!G3D.fidT)G3D.fidT=setTimeout(()=>{G3D.fidT=0;if(G3D.sc===sc&&!G3D.raf)g3Fidget(sc)},4500+Math.random()*4500)}
+ if(!busy&&!sc.camBusy&&sc.life){clearTimeout(G3D.lifeT);G3D.lifeT=setTimeout(()=>{if(G3D.sc===sc&&!G3D.raf){G3D.idleReq=1;g3Need()}},(typeof gqLevel==='function'?gqLevel():'high')==='high'?70:170)}}
+const G3_COARSE=typeof matchMedia==='function'&&matchMedia('(pointer:coarse)').matches;
+function g3Size(){const cv=G3D.cv,el=cv.parentNode;if(!el)return;const q=typeof gqLevel==='function'?gqLevel():'high',r=el.getBoundingClientRect(),d=Math.min(window.devicePixelRatio||1,q==='low'?1:q==='mid'?1.5:G3_COARSE?1.75:2),w=Math.max(2,Math.round(r.width*d)),h=Math.max(2,Math.round(r.height*d));
  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}G3D.asp=w/h}
 /* put the canvas into a board on screen and draw at once, so there is no empty frame */
 function g3Mount(el,sc){if(!g3Init())return false;const cv=G3D.cv;if(cv.parentNode!==el)el.prepend(cv);G3D.sc=sc;
@@ -363,7 +377,7 @@ function g3Tap(x,y){const sc=G3D.sc;if(!sc||!sc.tap)return;try{sc.tap(g3Ray(x,y)
 const g3Act=(a,data)=>{if(A[a])A[a]({dataset:data,closest:()=>null})};
 /* one step of a keyframed move; the rest wait in o.kf */
 function g3KfGo(o,n,now){o.tw={t0:now+(n.delay||0),d:n.d||300,p0:o.p.slice(),q0:o.q.slice(),s0:o.s,a0:o.a,p1:n.p.slice(),q1:(n.q||o.q).slice(),s1:o.s,a1:o.a,arc:n.arc||0,ez:n.ez||null}}
-function g3Kf(o,list){if(!o||!list||!list.length||RM())return;o.kf=list.slice(1);g3KfGo(o,list[0],performance.now());g3Need()}
+function g3Kf(o,list){if(!o||!list||!list.length||RM())return;o.kfL=1;o.kf=list.slice(1);g3KfGo(o,list[0],performance.now());g3Need()}
 /* snow or rain: a block of flakes (or drops) built once, drawn twice one above the other and slid down without end */
 function g3Wx(sc,now){const W=sc.wx;if(!W.mesh){const g=[],R=rng(W.k==='snow'?71:73),n=W.k==='snow'?520:420;
   for(let i=0;i<n;i++){const x=(R()-.5)*W.w,y=R()*W.h,z=W.z0+R()*(W.z1-W.z0),s=W.k==='snow'?.09+R()*.09:1;
