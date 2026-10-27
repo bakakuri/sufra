@@ -530,7 +530,7 @@ function face2Cv(o){const S=512,c=cvs(S,S),x=c.getContext('2d'),R=rng(((o.skin||
  /* soft shadow round each eye socket */
  for(const s of[-1,1])rad(s*E.x,E.y+.04,E.r+.12,'rgba(130,64,52,.12)');
  /* eyebrows: thick at the inner end, tapering out, a little arched */
- x.fillStyle=o.brow||o.hair;for(const s of[-1,1]){const P0=FUV(s*.12,.29),P1=FUV(s*.36,.39),P2=FUV(s*.58,.3),w0=o.fem?9:15,w1=o.fem?4:8;
+ x.fillStyle=o.brow||o.hair;for(const s of[-1,1]){const P0=FUV(s*.12,.33),P1=FUV(s*.35,.42),P2=FUV(s*.58,.31),w0=o.fem?8:14,w1=o.fem?4:8;
   x.beginPath();x.moveTo(P0[0],P0[1]-w0/2);x.quadraticCurveTo(P1[0],P1[1]-w0*.8,P2[0],P2[1]-w1/2);x.quadraticCurveTo(P2[0]+s*2,P2[1],P2[0],P2[1]+w1/2);x.quadraticCurveTo(P1[0],P1[1]+w0*.4,P0[0],P0[1]+w0/2);x.closePath();x.fill()}
  /* lines of an older face */
  if(o.old){x.strokeStyle='rgba(120,60,45,.32)';x.lineWidth=2.2;for(const yy of[.62,.72]){const a=FUV(-.32,yy),b=FUV(0,yy+.03),d=FUV(.32,yy);x.beginPath();x.moveTo(a[0],a[1]);x.quadraticCurveTo(b[0],b[1]-6,d[0],d[1]);x.stroke()}
@@ -539,7 +539,7 @@ function face2Cv(o){const S=512,c=cvs(S,S),x=c.getContext('2d'),R=rng(((o.skin||
  const lip=o.fem?'rgba(196,96,100,.6)':'rgba(176,100,90,.4)';x.fillStyle=lip;const L0=FUV(-.19,-.55),L1=FUV(0,-.5),L2=FUV(.19,-.55),L3=FUV(0,-.67);
  x.beginPath();x.moveTo(L0[0],L0[1]);x.quadraticCurveTo(L1[0]-14,L1[1]-6,L1[0],L1[1]+2);x.quadraticCurveTo(L1[0]+14,L1[1]-6,L2[0],L2[1]);x.quadraticCurveTo(L1[0],L1[1]+10,L0[0],L0[1]);x.fill();
  x.beginPath();x.moveTo(L0[0]+3,L0[1]+2);x.quadraticCurveTo(L3[0],L3[1]+8,L2[0]-3,L2[1]+2);x.quadraticCurveTo(L1[0],L1[1]+12,L0[0]+3,L0[1]+2);x.fill();
- x.strokeStyle='rgba(70,24,24,.75)';x.lineWidth=2.4;x.lineCap='round';const M0=FUV(-.2,-.565),M1=FUV(0,-.59),M2=FUV(.2,-.565);x.beginPath();x.moveTo(M0[0],M0[1]);x.quadraticCurveTo(M1[0],M1[1]+5,M2[0],M2[1]);x.stroke();
+ x.strokeStyle='rgba(70,24,24,.75)';x.lineWidth=2.4;x.lineCap='round';const M0=FUV(-.2,-.54),M1=FUV(0,-.6),M2=FUV(.2,-.54);x.beginPath();x.moveTo(M0[0],M0[1]);x.quadraticCurveTo(M1[0],M1[1]+5,M2[0],M2[1]);x.stroke();
  x.globalCompositeOperation='multiply';x.globalAlpha=.06;x.drawImage(noiseCv(128,128,R,200,255),0,0,S,S);x.globalAlpha=1;x.globalCompositeOperation='source-over';return c}
 /* the eyeball for a head with lids of its own: open (white, iris, pupil, catch lights, the lid's shadow at the top), and shut for a blink */
 function eye2Cv(o){const W=512,H=256,c=cvs(W,H),x=c.getContext('2d'),skin=o.skin||'#E2AF8C';
@@ -550,9 +550,9 @@ function eye2Cv(o){const W=512,H=256,c=cvs(W,H),x=c.getContext('2d'),skin=o.skin
  x.fillStyle='#050308';x.beginPath();x.arc(0,0,11,0,Math.PI*2);x.fill();x.restore();
  const lg=x.createLinearGradient(0,30,0,118);lg.addColorStop(0,'rgba(60,28,20,.55)');lg.addColorStop(1,'rgba(60,28,20,0)');x.fillStyle=lg;x.fillRect(0,0,256,118);
  /* the lash line just under the lid's edge (the lid stands at about this height on the ball) */
- const lv=Math.round((90-Math.asin(o.fem?.8:.74)*180/Math.PI)/180*256);x.fillStyle='rgba(22,10,8,.95)';x.fillRect(0,lv-2,256,o.fem?9:6);
+ const lv=Math.round((90-Math.asin(o.fem?.68:.62)*180/Math.PI)/180*256);x.fillStyle='rgba(22,10,8,.95)';x.fillRect(0,lv-2,256,o.fem?9:6);
  x.fillStyle='rgba(255,255,255,.98)';x.beginPath();x.ellipse(53,112,8,15,0,0,Math.PI*2);x.fill();x.fillStyle='rgba(255,255,255,.7)';x.beginPath();x.ellipse(74,150,3.5,7,0,0,Math.PI*2);x.fill();
  x.fillStyle=skin;x.fillRect(256,0,256,H);x.strokeStyle='rgba(30,14,10,.8)';x.lineWidth=o.fem?6:4;x.lineCap='round';x.beginPath();x.moveTo(256+14,146);x.quadraticCurveTo(256+64,156,256+114,146);x.stroke();return c}
 /* hair: fine strands and clumps in grey, tinted by the hair colour */
-function hairCv(){const S=256,c=cvs(S,S),x=c.getContext('2d'),R=rng(331);x.fillStyle='#BDBDBD';x.fillRect(0,0,S,S);
- for(let k=0;k<420;k++){const X=R()*S,w=1+R()*2.5,a=.08+R()*.22;x.strokeStyle=R()<.5?`rgba(0,0,0,${a})`:`rgba(255,255,255,${a*.8})`;x.lineWidth=w;x.beginPath();x.moveTo(X,-10);x.bezierCurveTo(X+(R()-.5)*30,S*.3,X+(R()-.5)*30,S*.7,X+(R()-.5)*20,S+10);x.stroke()}return c}
+function hairCv(){const S=256,c=cvs(S,S),x=c.getContext('2d'),R=rng(331);x.fillStyle='#C4C4C4';x.fillRect(0,0,S,S);
+ for(let k=0;k<520;k++){const X=R()*S,w=1+R()*3,a=.12+R()*.3;x.strokeStyle=R()<.5?`rgba(0,0,0,${a})`:`rgba(255,255,255,${a*.8})`;x.lineWidth=w;x.beginPath();x.moveTo(X,-10);x.bezierCurveTo(X+(R()-.5)*30,S*.3,X+(R()-.5)*30,S*.7,X+(R()-.5)*20,S+10);x.stroke()}return c}

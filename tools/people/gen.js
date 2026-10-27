@@ -15,6 +15,14 @@ for(const s of[-1,1]){const A=P.armW(s);const lo=[Math.min(0,A.hand[0])-.8,Math.
  parts.push(['sleeve'+(s<0?'L':'R'),'knit',P.sleeveF(s),[lo,hi],.04,.15]);
  const h=A.hand;parts.push(['hand'+(s<0?'L':'R'),'skin',P.handF(s),[[h[0]-.75,h[1]-.75,h[2]-.75],[h[0]+.75,h[1]+.75,h[2]+.75]],.02,.15])}
 const only=process.env.ONLY?process.env.ONLY.split(','):null;
+/* what else is near each part when the light is shut out of its creases: the eyeballs in their sockets, the head under the hair,
+   the head and neck over the collar, the hand at the end of the sleeve. L is how far to look */
+const HPIV=[0,3.4,.1],eyes=fem=>{const E=P.EYE[fem?'f':'m'],H=P.HC;return p=>Math.min(S.sphere(p,[E.x,H[1]+E.y,H[2]+E.z],E.r),S.sphere(p,[-E.x,H[1]+E.y,H[2]+E.z],E.r))};
+const HM=P.headF(false),HF=P.headF(true),U=(...fs)=>p=>{let d=1e9;for(const f of fs)d=Math.min(d,f(p));return d},atPivot=f=>p=>f(S.sub(p,HPIV));
+const CTX={head_m:[U(HM,eyes(false)),.32],head_f:[U(HF,eyes(true)),.32],hair_short:[U(P.hairF('short'),HM),.3],hair_curly:[U(P.hairF('curly'),HM),.3],hair_long:[U(P.hairF('long'),HF),.3],hair_pony:[U(P.hairF('pony'),HF),.3],hair_bald:[U(P.hairF('bald'),HM),.3],
+ mus:[U(P.musF(),HM),.12],beard:[U(P.beardF(),HM),.25],body_m:[U(P.bodyF(false),P.neckF(),atPivot(HM)),.6],body_f:[U(P.bodyF(true),P.neckF(),atPivot(HF)),.6],neck:[U(P.neckF(),atPivot(HM)),.25],
+ sleeveL:[U(P.sleeveF(-1),P.handF(-1)),.35],sleeveR:[U(P.sleeveF(1),P.handF(1)),.35],handL:[U(P.handF(-1),P.sleeveF(-1)),.12],handR:[U(P.handF(1),P.sleeveF(1)),.12]};
+function aoAt(f,L,x,y,z,n){let occ=0,ws=0;for(let i=1;i<=5;i++){const h=L*i/5,d=f([x+n[0]*h,y+n[1]*h,z+n[2]*h]),w=1/i;occ+=Math.max(0,(h-d)/h)*w;ws+=w}return Math.max(.12,Math.min(1,1-1.35*occ/ws))}
 const head=[],bufs=[];let off=0,tot=0;
 for(const[name,kind,f,box,step0,ratio]of parts){if(only&&!only.includes(name))continue;const step=step0*Q,t0=Date.now(),m0=S.mesh(f,box[0],box[1],step);
  /* fewer triangles, then normals again from the shape itself at the vertices that are left */
@@ -24,12 +32,13 @@ for(const[name,kind,f,box,step0,ratio]of parts){if(only&&!only.includes(name))co
  let agree=0;for(let k=0;k<m.i.length;k+=3){const a=m.i[k]*3,b=m.i[k+1]*3,c=m.i[k+2]*3,u=[m.p[b]-m.p[a],m.p[b+1]-m.p[a+1],m.p[b+2]-m.p[a+2]],v=[m.p[c]-m.p[a],m.p[c+1]-m.p[a+1],m.p[c+2]-m.p[a+2]],g=S.cross(u,v);agree+=Math.sign(g[0]*m.n[a]+g[1]*m.n[a+1]+g[2]*m.n[a+2])}
  if(agree<0)for(let k=0;k<m.i.length;k+=3){const t=m.i[k+1];m.i[k+1]=m.i[k+2];m.i[k+2]=t}
  const nv=m.p.length/3,mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];for(let k=0;k<nv;k++)for(let a=0;a<3;a++){mn[a]=Math.min(mn[a],m.p[k*3+a]);mx[a]=Math.max(mx[a],m.p[k*3+a])}
+ const[cf,cl]=CTX[name]||[f,.3],ao=new Uint8Array(nv);for(let k=0;k<nv;k++)ao[k]=Math.round(255*aoAt(cf,cl,m.p[k*3],m.p[k*3+1],m.p[k*3+2],[m.n[k*3],m.n[k*3+1],m.n[k*3+2]]));
  const pos=new Uint16Array(nv*3),nor=new Int8Array(nv*4);for(let k=0;k<nv;k++)for(let a=0;a<3;a++){pos[k*3+a]=Math.round((m.p[k*3+a]-mn[a])/((mx[a]-mn[a])||1)*65535);nor[k*4+a]=Math.round(m.n[k*3+a]*127)}
  /* each value stored as the change from the one before: small numbers, which pack well */
  for(let k=nv-1;k>0;k--)for(let a=0;a<3;a++)pos[k*3+a]=(pos[k*3+a]-pos[(k-1)*3+a])&65535;
  const big=false,idx=new Int32Array(m.i.length);for(let k=m.i.length-1;k>=0;k--)idx[k]=m.i[k]-(k?m.i[k-1]:0);
  const pad=b=>{const r=(4-(b.byteLength%4))%4;return r?Buffer.concat([Buffer.from(b.buffer,b.byteOffset,b.byteLength),Buffer.alloc(r)]):Buffer.from(b.buffer,b.byteOffset,b.byteLength)};
- const B=[pad(pos),pad(nor),pad(idx)];head.push({name,kind,nv,ni:m.i.length,big,mn,mx,o:off});for(const b of B){bufs.push(b);off+=b.length}
+ const B=[pad(pos),pad(nor),pad(ao),pad(idx)];head.push({name,kind,nv,ni:m.i.length,big,mn,mx,o:off,ao:1});for(const b of B){bufs.push(b);off+=b.length}
  tot+=nv;console.log(name.padEnd(12),'verts',String(nv).padStart(6),'tris',String(m.i.length/3).padStart(6),'agree',(agree/(m.i.length/3)).toFixed(2),(Date.now()-t0)+'ms')}
 const meta={v:1,HC:P.HC,eye:P.EYE,parts:head},js=Buffer.from(JSON.stringify(meta)),jl=Buffer.alloc(4);jl.writeUInt32LE(js.length);const jp=Buffer.alloc((4-(js.length%4))%4);
 const file=Buffer.concat([jl,js,jp,...bufs]),gz=zlib.gzipSync(file,{level:9});fs.writeFileSync(out,gz);console.log('total verts',tot,'bytes',file.length,'gzip',gz.length);

@@ -4,7 +4,7 @@
 'use strict';
 const S=require('./sdf.js');const{V,sub,add,mul,norm,clamp,mix,sstep,smin,smax,sphere,ellipsoid,cone,capsule,chain,rbox,torus,qax,qmul,qinv,qrot,qbasis}=S;
 const HC=[0,.84,.08];
-const EYE={m:{x:.35,y:.02,z:.72,r:.24,lid:.74},f:{x:.345,y:.03,z:.715,r:.255,lid:.8}};
+const EYE={m:{x:.35,y:.02,z:.72,r:.24,lid:.62},f:{x:.345,y:.03,z:.715,r:.255,lid:.68}};
 /* heads a little bigger than the bodies, as in animated films: shapes are made at this scale round HC */
 const HS=1.1,scaled=f=>P=>f(mul(sub(P,HC),1/HS))*HS;
 const EYEX={};for(const k in EYE){const e=EYE[k];EYEX[k]={x:e.x*HS,y:e.y*HS,z:e.z*HS,r:e.r*HS,lid:e.lid}}
@@ -24,7 +24,7 @@ function headF(fem){const E=fem?EYE.f:EYE.m;return scaled(p=>{const q=mir(p);
  else{d=smin(d,chain(p,[[0,.12,.86],[0,-.12,1.03],[0,-.25,1.11]],[.09,.1,.12]),.1);d=smin(d,sphere(p,[0,-.27,1.13],.16),.08);d=smin(d,sphere(q,[.12,-.31,1.02],.09),.05);d=smax(d,-sphere(q,[.065,-.38,1.07],.03),.018)}
  /* lips and the line of the mouth, with small dents at its corners */
  const lz=fem?.87:.86;d=smin(d,ellipsoid(p,[0,-.6,lz-.04],fem?[.12,.05,.05]:[.12,.04,.045]),.06);
- d=smax(d,-chain(p,[[-.17,-.545,lz-.02],[0,-.565,lz+.035],[.17,-.545,lz-.02]],[.008,.011,.008]),.01);
+ d=smax(d,-chain(p,[[-.18,-.525,lz-.025],[-.09,-.56,lz+.02],[0,-.57,lz+.035],[.09,-.56,lz+.02],[.18,-.525,lz-.025]],[.008,.01,.011,.01,.008]),.01);
  /* the ears, with a hollow */
  d=smin(d,ellipsoid(q,[.88,-.05,-.05],fem?[.095,.24,.17]:[.105,.27,.19]),.06);d=smax(d,-ellipsoid(q,[.95,-.05,-.02],[.05,.16,.1]),.03);
  /* the neck stub that disappears into the collar */
@@ -43,7 +43,9 @@ function hairF(style){return scaled(p=>{const q=mir(p);let d;
   /* the volume above the forehead, swept up and over to the right */
   d=smin(d,ellipsoid(qrot(qax(0,0,1,.12),sub(p,[-.05,.98,.42])),[0,0,0],[.78,.38,.52]),.28);
   d=smin(d,ellipsoid(qrot(qax(0,0,1,-.3),sub(p,[.25,.86,.66])),[0,0,0],[.5,.22,.28]),.16);
-  for(let i=0;i<8;i++){const x0=-.62+i*.18;d=smin(d,capsule(p,[x0,.95-Math.abs(x0)*.25,.66],[x0*1.05+.18,1.18-Math.abs(x0)*.22,-.55],.12),.07)}
+  for(let i=0;i<11;i++){const x0=-.7+i*.14,lift=.02*Math.sin(i*2.3);d=smin(d,chain(p,[[x0,.92-Math.abs(x0)*.28+lift,.7],[x0*1.02+.1,1.2-Math.abs(x0)*.25+lift,.15],[x0*1.05+.2,1.12-Math.abs(x0)*.2,-.6]],[.1,.11,.09]),.045)}
+  /* the side hair combed back above the ears, in a few locks */
+  for(let i=0;i<4;i++)d=smin(d,capsule(q,[.84,.62-i*.13,.42-i*.05],[.88,.6-i*.12,-.55],.08),.04);
   d=smin(d,capsule(q,[.86,.32,.18],[.88,-.05,.22],.065),.05);d=smax(d,-capsule(p,[-.38,1.2,.62],[-.44,1.12,-.5],.03),.025)}
  else if(style==='curly'){d=ellipsoid(p,[0,.3,-.1],[1.0,1.1,1.08]);let h=mix(-.55,.6,sstep(-.6,.5,p[2]));h+=.2*sstep(.6,.9,q[0])*sstep(-.1,.6,p[2]);d=keepAbove(d,p,h,.08);
   let R=17;const rnd=()=>{R=(R*16807)%2147483647;return R/2147483647};

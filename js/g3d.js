@@ -36,10 +36,10 @@ const sDiff=(a,b)=>a.length||b.length?Math.max(...[0,1,2].map(k=>Math.abs((a.len
 const lin=h=>{const n=parseInt(h.slice(1),16);return[(n>>16&255)/255,(n>>8&255)/255,(n&255)/255].map(c=>Math.pow(c,2.2))};
 
 /* ---------- shaders ---------- */
-const VS_MAIN=`attribute vec3 aP;attribute vec3 aN;attribute vec2 aU;uniform mat4 uM,uVP,uL;uniform vec4 uUV;varying vec3 vW;varying vec3 vN;varying vec2 vU;varying vec4 vS;
-void main(){vec4 w=uM*vec4(aP,1.0);vW=w.xyz;vN=(uM*vec4(aN,0.0)).xyz;vU=uUV.xy+aU*uUV.zw;vS=uL*w;gl_Position=uVP*w;}`;
+const VS_MAIN=`attribute vec3 aP;attribute vec3 aN;attribute vec2 aU;attribute float aA;uniform mat4 uM,uVP,uL;uniform vec4 uUV;varying vec3 vW;varying vec3 vN;varying vec2 vU;varying vec4 vS;varying float vA;
+void main(){vA=aA;vec4 w=uM*vec4(aP,1.0);vW=w.xyz;vN=(uM*vec4(aN,0.0)).xyz;vU=uUV.xy+aU*uUV.zw;vS=uL*w;gl_Position=uVP*w;}`;
 const FS_MAIN=`uniform sampler2D uT,uSh;uniform vec3 uC,uE,uEye,uLd,uLc,uSky,uGnd,uRe,uRimD;uniform vec4 uMat,uFx,uSp,uRf,uRc,uM2,uRim;uniform float uSS,uExp;
-varying vec3 vW;varying vec3 vN;varying vec2 vU;varying vec4 vS;
+varying vec3 vW;varying vec3 vN;varying vec2 vU;varying vec4 vS;varying float vA;
 float unp(vec4 c){return dot(c,vec4(1.0,1.0/255.0,1.0/65025.0,1.0/16581375.0));}
 float cmp(vec2 uv,float z){return step(z,unp(texture2D(uSh,uv)));}
 float pcf(vec2 uv,float z){vec2 t=uv/uSS-0.5;vec2 f=fract(t);vec2 b=(floor(t)+0.5)*uSS;
@@ -57,7 +57,9 @@ void main(){float ra=1.0;if(uRf.x>0.0){vec3 d=vW-uRe;vec3 s=uRe+d*((uRf.y-uRe.y)
  vec3 amb=mix(uGnd,uSky,n.y*0.5+0.5);float fr=pow(1.0-max(dot(n,v),0.0),5.0);vec3 r=reflect(-v,n);
  vec3 env=mix(uGnd*0.6,uSky*1.5,smoothstep(-0.25,0.85,r.y))+vec3(2.6)*pow(max(dot(r,normalize(vec3(-0.35,0.8,0.5))),0.0),40.0);
  float g=uMat.z*(0.04+0.96*fr);
- vec3 col=base*(amb*(0.5+0.5*sp)+uLc*nl*mix(sh,1.0,uM2.x*0.35)*sp)*(1.0-g*0.6)+uLc*spec*sh*sp+env*g*(0.35+0.65*sp)+uE;
+ /* light shut out of creases, worked out for each vertex when the shape was made (1 where nothing is near) */
+ float ao=vA,aoD=mix(1.0,ao,0.85);
+ vec3 col=base*(amb*ao*(0.5+0.5*sp)+uLc*nl*mix(sh,1.0,uM2.x*0.35)*sp*aoD)*(1.0-g*0.6)+uLc*spec*sh*sp*ao+env*g*(0.35+0.65*sp)*ao+uE;
  /* the light from behind that outlines people against a bright window: strongest at the silhouette, on the side turned away */
  /* skin lets light through: a warm red where the light turns into shadow */
  if(uM2.z>0.0)col+=base*uLc*sp*max(nl-nlh,0.0)*uM2.z*vec3(1.0,0.28,0.16);
@@ -67,7 +69,7 @@ const VS_SH=`attribute vec3 aP;uniform mat4 uM,uL;varying float vZ;void main(){v
 const FS_SH=`varying float vZ;void main(){vec4 e=fract(vZ*vec4(1.0,255.0,65025.0,16581375.0));e-=e.yzww*vec4(1.0/255.0,1.0/255.0,1.0/255.0,0.0);gl_FragColor=e;}`;
 
 function g3Prog(vs,fs,us){const gl=G3D.gl,sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o};
- const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,vs));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,fs));['aP','aN','aU'].forEach((n,i)=>gl.bindAttribLocation(p,i,n));gl.linkProgram(p);
+ const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,vs));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,fs));['aP','aN','aU','aA'].forEach((n,i)=>gl.bindAttribLocation(p,i,n));gl.linkProgram(p);
  if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));const u={};for(const n of us)u[n]=gl.getUniformLocation(p,n);return{p,u}}
 function g3ShadowFB(){const gl=G3D.gl,S=Math.min(2048,gl.getParameter(gl.MAX_TEXTURE_SIZE)),t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,S,S,0,gl.RGBA,gl.UNSIGNED_BYTE,null);for(const k of[gl.TEXTURE_MIN_FILTER,gl.TEXTURE_MAG_FILTER])gl.texParameteri(gl.TEXTURE_2D,k,gl.NEAREST);
@@ -140,7 +142,8 @@ function gDisc(r,sg=64,ru=1){const g=geo();gv(g,0,0,0,0,1,0,.5*ru,.5*ru);for(let
 function gQuad(w,h,back){const g=geo(),s=back?-1:1;gv(g,-w/2*s,h/2,0,0,0,s,0,0);gv(g,w/2*s,h/2,0,0,0,s,1,0);gv(g,w/2*s,-h/2,0,0,0,s,1,1);gv(g,-w/2*s,-h/2,0,0,0,s,0,1);g.i.push(0,3,2,0,2,1);return g}
 function g3Mesh(g){const gl=G3D.gl,n=g.p.length/3,d=new Float32Array(n*8);for(let i=0;i<n;i++){d[i*8]=g.p[i*3];d[i*8+1]=g.p[i*3+1];d[i*8+2]=g.p[i*3+2];d[i*8+3]=g.n[i*3];d[i*8+4]=g.n[i*3+1];d[i*8+5]=g.n[i*3+2];d[i*8+6]=g.u[i*2];d[i*8+7]=g.u[i*2+1]}
  const big=n>65535&&G3D.u32,vb=gl.createBuffer(),ib=gl.createBuffer();G3D.bound=null;gl.bindBuffer(gl.ARRAY_BUFFER,vb);gl.bufferData(gl.ARRAY_BUFFER,d,gl.STATIC_DRAW);
- gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,big?new Uint32Array(g.i):new Uint16Array(g.i),gl.STATIC_DRAW);return{vb,ib,n:g.i.length,it:big?gl.UNSIGNED_INT:gl.UNSIGNED_SHORT}}
+ gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,big?new Uint32Array(g.i):new Uint16Array(g.i),gl.STATIC_DRAW);
+ let ab=null;if(g.a){ab=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,ab);gl.bufferData(gl.ARRAY_BUFFER,g.a instanceof Uint8Array?g.a:new Uint8Array(g.a),gl.STATIC_DRAW)}return{vb,ib,ab,n:g.i.length,it:big?gl.UNSIGNED_INT:gl.UNSIGNED_SHORT}}
 /* a texture from a canvas; every canvas here is a power of two, so it gets mipmaps */
 function g3Tex(cv,{rep=false,af=true}={}){const gl=G3D.gl,t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);
  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,cv);gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
@@ -243,7 +246,8 @@ function g3Insets(sc){const cv=G3D.cv,gx=cv&&cv.isConnected&&cv.closest('.gx'),c
 /* ---------- drawing ---------- */
 let G3_LID=null;
 function g3Bind(m){const gl=G3D.gl;if(G3D.bound===m)return;G3D.bound=m;gl.bindBuffer(gl.ARRAY_BUFFER,m.vb);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.ib);
- gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,32,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,32,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,2,gl.FLOAT,false,32,24)}
+ gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,32,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,32,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,2,gl.FLOAT,false,32,24);
+ if(m.ab){gl.bindBuffer(gl.ARRAY_BUFFER,m.ab);gl.enableVertexAttribArray(3);gl.vertexAttribPointer(3,1,gl.UNSIGNED_BYTE,true,0,0);gl.bindBuffer(gl.ARRAY_BUFFER,m.vb)}else{gl.disableVertexAttribArray(3);gl.vertexAttrib1f(3,1)}}
 function g3Part(pt,M,dim,glow,al,sh,uv){const gl=G3D.gl,u=G3D.P.u,m=pt.mat;gl.uniformMatrix4fv(u.uM,false,M);gl.uniform4fv(u.uUV,m.vary&&uv?uv:m.uv);
  gl.uniform3f(u.uC,m.c[0]*dim,m.c[1]*dim,m.c[2]*dim);const e=glow||m.e;gl.uniform3f(u.uE,e[0],e[1],e[2]);gl.uniform4f(u.uMat,m.sh,m.sp,m.gl,m.a*al);gl.uniform4f(u.uM2,m.wrap||0,m.rim||0,m.sss||0,0);gl.uniform4f(u.uFx,m.t?1:0,m.unlit?1:0,m.cut?1:0,sh&&!m.nosh?1:0);
  gl.bindTexture(gl.TEXTURE_2D,m.t||G3D.white);if(m.two)gl.disable(gl.CULL_FACE);g3Bind(pt.mesh);gl.drawElements(gl.TRIANGLES,pt.mesh.n,pt.mesh.it,0);if(m.two)gl.enable(gl.CULL_FACE)}

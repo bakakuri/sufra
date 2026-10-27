@@ -161,7 +161,7 @@ function jkScr(asp,nx,ny,d){const C=jkCam(asp),F=v3.norm(v3.sub(C.tgt,C.eye)),R=
  return v3.add(C.eye,v3.add(v3.mul(F,d),v3.add(v3.mul(R,(nx-C.sx)*t*asp*d),v3.mul(U,(ny-C.sy)*t*d))))}
 const jkFace=asp=>{const C=jkCam(asp),F=v3.norm(v3.sub(C.tgt,C.eye));return qt.ax(1,0,0,-Math.atan2(-F[1],-F[2]))};
 /* who sits where: bots get a look of their own; people online get one picked from their name */
-const JLOOK={'სუფრა ბოტი':{style:'short',mus:1,hat:1,skin:'#E4B08C',hair:'#9A948C',brow:'#6E675F',shirt:'#2C4A6E',eye:'#4E6A8A'},'ანა':{style:'pony',fem:1,skin:'#F1C9AC',hair:'#4A2A18',shirt:'#3F6E8C',eye:'#4C6A3A'},'გიორგი':{style:'curly',skin:'#E6B593',hair:'#24170F',shirt:'#7A3B2E'},'ლევანი':{style:'short',beard:1,mus:1,skin:'#DCA683',hair:'#2B1E16',shirt:'#4E5E3A'},'ნინო':{style:'long',fem:1,skin:'#EDB896',hair:'#24150E',shirt:'#A8283E',eye:'#7A4A26'},'ლუკა':{style:'short',glasses:1,skin:'#E3A985',hair:'#1A110C',shirt:'#2B57A6',eye:'#6A4222'},'დათო':{style:'bald',mus:1,old:1,skin:'#DDA27C',hair:'#B3ACA4',brow:'#7E7871',shirt:'#3C7A4C',eye:'#5C88B4'}};
+const JLOOK={'სუფრა ბოტი':{style:'short',mus:1,hat:1,skin:'#E4B08C',hair:'#9A948C',brow:'#6E675F',shirt:'#2C4A6E',eye:'#4E6A8A'},'ანა':{style:'pony',fem:1,skin:'#F1C9AC',hair:'#4A2A18',shirt:'#3F6E8C',eye:'#4C6A3A'},'გიორგი':{style:'curly',skin:'#E6B593',hair:'#24170F',shirt:'#7A3B2E'},'ლევანი':{style:'short',beard:1,mus:1,skin:'#DCA683',hair:'#2B1E16',shirt:'#4E5E3A'},'ნინო':{style:'long',fem:1,skin:'#EDB896',hair:'#3A2216',shirt:'#A8283E',eye:'#7A4A26'},'ლუკა':{style:'short',glasses:1,skin:'#E3A985',hair:'#2C1B12',shirt:'#2B57A6',eye:'#6A4222'},'დათო':{style:'bald',mus:1,old:1,skin:'#DDA27C',hair:'#B3ACA4',brow:'#7E7871',shirt:'#3C7A4C',eye:'#5C88B4'}};
 function jkLook(nm,h){if(JLOOK[nm])return JLOOK[nm];let k=0;for(const ch of String(nm||''))k=(k*31+ch.charCodeAt(0))>>>0;
  const sk=['#EBC0A0','#DDA984','#F2CDB0','#C99169'],hr=['#24170F','#1A120D','#4E3220','#2E2219'];
  return{style:k%5===0?'bald':'short',mus:k%3===0,skin:sk[k%4],hair:hr[(k>>3)%4],shirt:`hsl(${h??(k%360)} 38% 36%)`}}
@@ -169,13 +169,13 @@ const hex=c=>{if(c[0]==='#')return c;const d=document.createElement('canvas').ge
 /* ---------- the sculpted people: made ahead of time from smooth shapes, loaded once, shared by every scene ----------
    until the file is here (or on a browser that cannot unpack it) the simpler people stand in */
 const PPL={st:0,g:null,meta:null,m:{},eyes:{}};
-function pplLoad(){if(PPL.st)return;PPL.st=1;if(typeof DecompressionStream!=='function'||typeof fetch!=='function'){PPL.st=3;return}
+function pplLoad(){if(PPL.st)return;PPL.st=1;if(typeof window.DecompressionStream!=='function'||typeof fetch!=='function'){PPL.st=3;return}
  const v=(($('script[src*="/js/core.js"]')||{}).src||'').split('v=')[1]||'';
- fetch('/icons/g/people.bin'+(v?'?v='+v:'')).then(r=>{if(!r.ok)throw new Error('people '+r.status);return new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()})
+ fetch('/icons/g/people.bin'+(v?'?v='+v:'')).then(r=>{if(!r.ok)throw new Error('people '+r.status);return new window.Response(r.body.pipeThrough(new window.DecompressionStream('gzip'))).arrayBuffer()})
   .then(b=>{pplParse(b);PPL.st=2;pplRefresh()}).catch(e=>{PPL.st=3;try{console.warn('people',e)}catch(x){}})}
 function pplParse(buf){const dv=new DataView(buf),jl=dv.getUint32(0,true),meta=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,4,jl)));let base=4+jl;base+=(4-base%4)%4;const out={},HC0=meta.HC;
- for(const pt of meta.parts){let o=base+pt.o;const nv=pt.nv,Pq=new Uint16Array(buf,o,nv*3);o+=nv*6;o+=(4-o%4)%4;const Nq=new Int8Array(buf,o,nv*4);o+=nv*4;const Iq=new Int32Array(buf,o,pt.ni);
-  const G={p:new Array(nv*3),n:new Array(nv*3),u:new Array(nv*2),i:new Array(pt.ni)},a=[0,0,0];
+ for(const pt of meta.parts){let o=base+pt.o;const nv=pt.nv,Pq=new Uint16Array(buf,o,nv*3);o+=nv*6;o+=(4-o%4)%4;const Nq=new Int8Array(buf,o,nv*4);o+=nv*4;let Aq=null;if(pt.ao){Aq=new Uint8Array(buf,o,nv).slice();o+=nv;o+=(4-o%4)%4}const Iq=new Int32Array(buf,o,pt.ni);
+  const G={p:new Array(nv*3),n:new Array(nv*3),u:new Array(nv*2),i:new Array(pt.ni),a:Aq},a=[0,0,0];
   for(let k=0;k<nv;k++)for(let c=0;c<3;c++){a[c]=(a[c]+Pq[k*3+c])&65535;G.p[k*3+c]=pt.mn[c]+a[c]/65535*(pt.mx[c]-pt.mn[c]);G.n[k*3+c]=Nq[k*4+c]/127}
   let s=0;for(let k=0;k<pt.ni;k++){s+=Iq[k];G.i[k]=s}
   /* the pictures go on by projection: the face from the front, hair and sweater round the body */
@@ -192,7 +192,7 @@ function jkPerson2(sc,key,L){const fem=!!L.fem,E=PPL.meta.eye[fem?'f':'m'],H=PPL
  const skin=g3Mat({c:L.skin,sh:22,sp:.14,gl:.03,wrap:.4,rim:.35,sss:.5}),
   face=g3Mat({t:g3T('face5:'+[L.skin,L.hair,L.brow||'',fem?1:0,L.old?1:0].join(':'),()=>g3Tex(face2Cv({skin:L.skin,hair:L.hair,brow:L.brow,fem,old:!!L.old,eye3:E}))),sh:22,sp:.14,gl:.03,wrap:.4,rim:.35,sss:.5,nosh:1}),
   shirt=g3Mat({c:hex(L.shirt),t:g3T('knit',()=>g3Tex(knitCv(),{rep:true})),sh:6,sp:.05,gl:0,wrap:.35,rim:.6}),
-  hair=g3Mat({c:L.hair,t:g3T('hairs',()=>g3Tex(hairCv(),{rep:true})),sh:18,sp:.09,gl:.02,wrap:.3,rim:.85}),
+  hair=g3Mat({c:L.hair,t:g3T('hairs',()=>g3Tex(hairCv(),{rep:true})),sh:22,sp:.16,gl:.02,wrap:.3,rim:.9}),
   eyes=g3Mat({t:g3T('eye2:'+L.skin+':'+(L.eye||'')+':'+(fem?1:0),()=>g3Tex(eye2Cv({skin:L.skin,eye:L.eye,fem}))),uv:[0,0,.5,1],vary:true,sh:240,sp:1.5,gl:.55,wrap:.5,e:'#101010'}),
   chair=sc.lux?g3Mat({c:'#1C2335',sh:80,sp:.5,gl:.35,rim:.35}):g3Mat({t:woodTex('walnut'),uv:[0,0,1,1],sh:50,sp:.3,gl:.25}),old=personGeo(L);
  g3Model(sc,'pb:'+key,[[pplMesh(fem?'body_f':'body_m'),shirt],[pplMesh('neck'),skin],[old.body.chair,chair]],null);
@@ -274,7 +274,7 @@ function jkGaze(r,V,rel){const cur=V.cur!=null&&V.cur>=0?rel(V.cur):null,me=JSP[
  if(V.win!=null){tx=0;tz=0;pitch=.34}else if(cur===r){return{yaw:0,pitch:.42*pplNod()}}else if(cur!=null){tx=cur===0?0:JSP[cur][0];tz=cur===0?JR:JSP[cur][1];pitch=cur===0?.2:.1}else{tx=0;tz=0;pitch=.28}
  const f=[-me[0],-me[1]],d=[tx-me[0],tz-me[1]],a=Math.atan2(f[0]*d[1]-f[1]*d[0],f[0]*d[0]+f[1]*d[1]);return{yaw:clamp(-a,-.75,.75),pitch:pitch*pplNod()}}
 /* the sculpted people have lids of their own: a head bowed as far would hide their eyes from a camera above, so they bow less */
-const pplNod=()=>PPL.st===2?.38:1;
+const pplNod=()=>PPL.st===2?.3:1;
 /* one picture of the table for both kinds of game */
 function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.act=V.act;sc.tap1=!!V.tap1;jkDeck(sc);
  const deal=V.deal!==sc.deal;if(deal)sc.deal=V.deal;const dealer=V.dealer!=null?rel(V.dealer):2,dp=dealer===0?[0,1.4,6.6]:jkLocal(dealer,0,[0,1.6,2.6]),cur=V.cur!=null&&V.cur>=0?rel(V.cur):null;
