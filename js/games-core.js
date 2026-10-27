@@ -1,9 +1,9 @@
 /* games: lobby, online play over realtime, tournaments, leaderboard */
 /* pl: players at the table. on: can be played online with people. ac: accent colour taken from the board's own material (key art in icons/g, rendered with the game's 3D engine) */
 const GAMES=[{id:'nardi',n:'ნარდი',d:'ტავლა, ქვის მოჭრით და ზარით',ic:'dice',net:1,on:1,pl:2,ac:'#E3A04A'},{id:'shashi',n:'შაში',d:'რუსული წესები, მფრინავი დამით',ic:'checker',net:1,on:1,pl:2,ac:'#E0574C'},{id:'chess',n:'ჭადრაკი',d:'კლასიკური წესები, როქით და გავლით აღებით',ic:'chess',net:1,on:1,pl:2,ac:'#EAD9B8'},{id:'joker',n:'ჯოკერი',d:'ქართული ბანქო ოთხ მოთამაშეზე',ic:'cards',on:1,pl:4,ac:'#4FC383'},{id:'domino',n:'დომინო',d:'წყვილებში, 101 ქულამდე',ic:'domino',on:1,pl:4,ac:'#4BB4DA'},{id:'durak',n:'დურაკი',d:'ორიდან ოთხამდე, ყველა თავისთვის',ic:'cards',pl:'2–4',ac:'#E58A4E'},{id:'bura',n:'ბურა',d:'ერთი ერთზე, „31“ და სამი კოზირი',ic:'cards',pl:2,ac:'#A88BE6'},{id:'loto',n:'ლოტო',d:'90 კასრი, ბილეთები და „ლოტო!“',ic:'grid',on:1,pl:'2–4',ac:'#E7C14A'},{id:'egg',n:'კვერცხის ჭახუნი',d:'აღდგომის თამაში წითელი კვერცხებით',ic:'star',pl:2,ac:'#D9433B'}];
-const GART=(id,w)=>`/icons/g/${id}-${w}.webp?v=3`;
+const GART=(id,w)=>`/icons/g/${id}-${w}.webp?v=4`;
 /* the big poster moves a little: a short silent loop of the table, unless motion is turned down or data is being saved */
-const GLOOP=id=>{try{if(RM()||ECO()||navigator.connection&&navigator.connection.saveData)return ''}catch(e){}return `<video class="gs-pic gs-vid" autoplay muted loop playsinline disablepictureinpicture preload="auto" poster="${GART(id,1000)}" aria-hidden="true" tabindex="-1"><source src="/icons/g/${id}-loop.webm?v=3" type="video/webm"><source src="/icons/g/${id}-loop.mp4?v=3" type="video/mp4"></video>`};
+const GLOOP=id=>{try{if(RM()||ECO()||navigator.connection&&navigator.connection.saveData)return ''}catch(e){}return `<video class="gs-pic gs-vid" autoplay muted loop playsinline disablepictureinpicture preload="auto" poster="${GART(id,1000)}" aria-hidden="true" tabindex="-1"><source src="/icons/g/${id}-loop.webm?v=4" type="video/webm"><source src="/icons/g/${id}-loop.mp4?v=4" type="video/mp4"></video>`};
 const GAME={};
 const JK_BOTS=['ნინო','ლუკა','დათო'];
 /* the people at the card tables: ten drawn characters, each with a name (and the name's ergative, for "…მა წაიღო").
