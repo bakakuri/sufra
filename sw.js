@@ -1,5 +1,5 @@
 /* კურსელები service worker: app shell offline, fonts cache, web push */
-const V='202611051402';
+const V='202611051403';
 const SHELL='sufra-shell-'+V,RUNTIME='sufra-rt-1';
 const ASSETS=['/','/manifest.webmanifest','/icons/icon-192.png','/icons/icon-512.png','/icons/badge-96.png',
  '/css/base.css?v='+V,'/css/app.css?v='+V,

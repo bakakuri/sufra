@@ -19,9 +19,9 @@
     {"src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
   ],
   "shortcuts": [
+    {"name": "სწავლა", "url": "/#study", "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]},
     {"name": "მიმოწერა", "url": "/#chats", "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]},
     {"name": "კლიპები", "url": "/#clips", "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]},
-    {"name": "თამაშები", "url": "/#games", "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]},
-    {"name": "გაცნობა", "url": "/#date", "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]}
+    {"name": "თამაშები", "url": "/#games", "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]}
   ]
 }
