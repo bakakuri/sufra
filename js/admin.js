@@ -134,7 +134,7 @@ async function admUserInfo(u){const el=$('#aui');try{const d=await rpc('admin_us
  const it=(n,l)=>`<span><b>${fmt(n||0)}</b>${l}</span>`;
  el.innerHTML=`<div class="auin">${it(d.posts,'პოსტი')}${it(d.comments,'კომენტარი')}${it(d.friends,'მეგობარი')}${it(d.coins,'მონეტა')}${it(d.reports,'საჩივარი პროფილზე')}${it(d.reported_content,'საჩივარი პოსტებზე')}</div><p class="sub">${d.last_seen?'ბოლოს იყო '+ago(d.last_seen):'ჯერ არ შემოსულა'}${d.email?' · '+esc(d.email):''}</p>`}
  catch(e){if(el)el.innerHTML=`<p class="note">${esc(errMsg(e))}</p>`}}
-A.admsg=t=>{const u=t.dataset.u;sheet(head('შეტყობინება · '+esc(String(pname(u)).split(' ')[0]))+`<form class="ph-body" id="amf"><p class="note">მივა მის შეტყობინებებში „კურსელების გუნდის“ სახელით. ამ ტიპს ვერ გამორთავს, ამიტომ გამოიყენე მნიშვნელოვანი საკითხისთვის.</p><label class="fld">ტექსტი<textarea id="am_t" maxlength="300" rows="4" placeholder="მაგ. შენი პოსტი წაიშალა, რადგან წესებს არღვევდა"></textarea></label><button class="btn">${ic('send')}გაგზავნა</button></form>`,'short');
+A.admsg=t=>{const u=t.dataset.u;sheet(head('შეტყობინება · '+esc(String(pname(u)).split(' ')[0]))+`<form class="ph-body" id="amf"><p class="note">მივა მის შეტყობინებებში „Peera-ს გუნდის“ სახელით. ამ ტიპს ვერ გამორთავს, ამიტომ გამოიყენე მნიშვნელოვანი საკითხისთვის.</p><label class="fld">ტექსტი<textarea id="am_t" maxlength="300" rows="4" placeholder="მაგ. შენი პოსტი წაიშალა, რადგან წესებს არღვევდა"></textarea></label><button class="btn">${ic('send')}გაგზავნა</button></form>`,'short');
  $('#amf').onsubmit=async e=>{e.preventDefault();const v=$('#am_t').value.trim();if(v.length<2){toast('დაწერე ტექსტი');return}try{await rpc('admin_notify_user',{p_user:u,p_text:v});closeSheet();toast('გაიგზავნა')}catch(x){toast(errMsg(x))}}};
 A.adcoins=t=>{const u=t.dataset.u;sheet(head('მონეტები · '+esc(String(pname(u)).split(' ')[0]))+`<form class="ph-body" id="acof"><div class="seg flat" role="group" aria-label="მოქმედება"><button type="button" data-s="1" aria-pressed="true">მიცემა</button><button type="button" data-s="-1" aria-pressed="false">ჩამოჭრა</button></div>
  <div class="chips">${[5,10,25,50,100].map(n=>`<button type="button" class="chip" data-n="${n}">${n}</button>`).join('')}</div><label class="fld">რაოდენობა<input id="aco_n" type="number" min="1" max="100000" value="10"></label><label class="fld">მიზეზი (ნახავს მომხმარებელი)<input id="aco_r" maxlength="80" placeholder="მაგ. კონკურსის გამარჯვებული"></label><button class="btn">${ic('coin')}შენახვა</button></form>`,'short');
@@ -193,7 +193,7 @@ A.acend=t=>{const{row,r}=acRow(t);if(!r)return;confirmSheet('ოთახის 
 const PRLINKS=[['#events','შეხვედრები'],['#market','ბაზრობა'],['#rooms','სასწავლო ოთახები'],['#games','თამაშები'],['#coins','მონეტები']];
 const linkOk=l=>!l||/^https:\/\/[^\s"'<>()]+$/.test(l)||/^#[a-z]+(-[^\s"'<>()]+)?$/.test(l);
 async function admPromo(el){const adm=ME.role==='admin';if(!adm)ADM.pt='pages';
- el.innerHTML=(adm?`<div class="seg" role="group" aria-label="რეკლამის სახე"><button data-a="adpt" data-k="mine" aria-pressed="${ADM.pt==='mine'}">კურსელების რეკლამა</button><button data-a="adpt" data-k="pages" aria-pressed="${ADM.pt==='pages'}">გვერდების რეკლამა${ADM.st.pending_ads?` <span class="badge">${ADM.st.pending_ads}</span>`:''}</button></div>`:'')+`<div id="apb">${skel(2)}</div>`;
+ el.innerHTML=(adm?`<div class="seg" role="group" aria-label="რეკლამის სახე"><button data-a="adpt" data-k="mine" aria-pressed="${ADM.pt==='mine'}">Peera-ს რეკლამა</button><button data-a="adpt" data-k="pages" aria-pressed="${ADM.pt==='pages'}">გვერდების რეკლამა${ADM.st.pending_ads?` <span class="badge">${ADM.st.pending_ads}</span>`:''}</button></div>`:'')+`<div id="apb">${skel(2)}</div>`;
  const b=$('#apb');if(ADM.pt==='pages'){await admAds(b);return}
  const rows=await q(sb.from('promos').select(PSEL).order('created_at',{ascending:false}).limit(60));ADM.promos=rows;if(!b.isConnected)return;
  b.innerHTML=`<div class="adquick"><button class="btn" data-a="adpromonew" data-k="post">${ic('plus')}რეკლამა ფიდში</button><button class="btn ghost" data-a="adpromonew" data-k="story">${ic('story')}სარეკლამო ისტორია</button></div>
@@ -213,7 +213,7 @@ A.adpromoview=t=>{const p=admP(t);if(!p)return;if(p.kind==='story'){openStory(0,
  sheet(head('ასე გამოჩნდება ფიდში')+`<div class="ph-body prev">${promoHTML(p)}</div>`)};
 A.adpromoact=async t=>{const p=admP(t);if(!p)return;t.disabled=true;try{await q(sb.from('promos').update({active:t.dataset.v==='1'}).eq('id',p.id));toast(t.dataset.v==='1'?'რეკლამა გაეშვა':'რეკლამა დაპაუზდა');PROMOS.at=0;adminTab()}catch(e){toast(errMsg(e));t.disabled=false}};
 A.adpromodel=t=>{const p=admP(t);if(!p)return;confirmSheet('რეკლამის წაშლა','რეკლამა და მისი სტატისტიკა წაიშლება.','წაშლა',async()=>{await q(sb.from('promos').delete().eq('id',p.id));toast('წაიშალა');PROMOS.at=0;adminTab()},true)};
-function promoEditor(p,kind){const isNew=!p;p=p||{kind:kind||'post',brand:'კურსელები',brand_url:null,title:'',body:'',media_url:null,media_type:'image',w:null,h:null,link:'',cta:'',every:8,starts_at:new Date().toISOString(),ends_at:null,active:true};
+function promoEditor(p,kind){const isNew=!p;p=p||{kind:kind||'post',brand:'Peera',brand_url:null,title:'',body:'',media_url:null,media_type:'image',w:null,h:null,link:'',cta:'',every:8,starts_at:new Date().toISOString(),ends_at:null,active:true};
  const st={kind:p.kind,media:p.media_url?{url:p.media_url,type:p.media_type,w:p.w,h:p.h}:null,logo:{url:p.brand_url||null},busy:null};
  const dt=v=>{if(!v)return '';const d=new Date(v);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
  sheet(head(isNew?'ახალი რეკლამა':'რეკლამის შეცვლა')+`<form class="ph-body prform" id="prf">
@@ -221,7 +221,7 @@ function promoEditor(p,kind){const isNew=!p;p=p||{kind:kind||'post',brand:'კ�
   <div class="prmd" id="prmd"></div>
   <div class="row2"><button type="button" class="btn sm ghost" id="pr_img">${ic('image')}ფოტო</button><button type="button" class="btn sm ghost" id="pr_vid">${ic('clips')}ვიდეო</button><button type="button" class="btn sm ghost" id="pr_rm"${st.media?'':' hidden'}>მოშორება</button></div>
   <label class="fld">ვისი სახელით<input id="pr_b" maxlength="60" value="${esc(p.brand)}"></label>${picField('pr_logo',p.brand_url,'ლოგო','არასავალდებულო, მრგვალში ჩანს')}
-  <label class="fld">სათაური<input id="pr_t" maxlength="120" value="${esc(p.title||'')}" placeholder="მაგ. ახალი სასწავლო ოთახები კურსელებში"></label>
+  <label class="fld">სათაური<input id="pr_t" maxlength="120" value="${esc(p.title||'')}" placeholder="მაგ. ახალი სასწავლო ოთახები Peera-ზე"></label>
   <label class="fld">ტექსტი<textarea id="pr_x" maxlength="1000" rows="3">${esc(p.body||'')}</textarea></label>
   <label class="fld">ბმული<input id="pr_l" maxlength="300" value="${esc(p.link||'')}" placeholder="https://… ან საიტის გვერდი ქვემოთ"></label>
   <div class="chips prlinks">${PRLINKS.map(([h,l])=>`<button type="button" class="chip" data-l="${h}">${l}</button>`).join('')}</div>
@@ -247,7 +247,7 @@ function promoEditor(p,kind){const isNew=!p;p=p||{kind:kind||'post',brand:'კ�
    if(!title&&!body&&!st.media)return fail('დაწერე სათაური ან ტექსტი, ან დაამატე ფოტო');
    if(!linkOk(link))return fail('ბმული https://-ით ან #-ით უნდა იწყებოდეს');
    const start=s0?new Date(s0):new Date(),end=e0?new Date(e0):null;if(end&&end<=start)return fail('დასრულება დაწყების შემდეგ უნდა იყოს');
-   const row={kind:st.kind,brand:$('#pr_b').value.trim()||'კურსელები',brand_url:st.logo.url||null,title:title||null,body:body||null,media_url:st.media?st.media.url:null,media_type:st.media?st.media.type:'image',w:st.media&&st.media.w?Math.round(st.media.w):null,h:st.media&&st.media.h?Math.round(st.media.h):null,link:link||null,cta:$('#pr_c').value.trim()||null,every:Math.max(3,Math.min(50,+$('#pr_e').value||8)),starts_at:start.toISOString(),ends_at:end?end.toISOString():null};
+   const row={kind:st.kind,brand:$('#pr_b').value.trim()||'Peera',brand_url:st.logo.url||null,title:title||null,body:body||null,media_url:st.media?st.media.url:null,media_type:st.media?st.media.type:'image',w:st.media&&st.media.w?Math.round(st.media.w):null,h:st.media&&st.media.h?Math.round(st.media.h):null,link:link||null,cta:$('#pr_c').value.trim()||null,every:Math.max(3,Math.min(50,+$('#pr_e').value||8)),starts_at:start.toISOString(),ends_at:end?end.toISOString():null};
    if(isNew)await q(sb.from('promos').insert(row));else await q(sb.from('promos').update(row).eq('id',p.id));
    closeSheet();PROMOS.at=0;toast(isNew?'რეკლამა გაეშვა':'შენახულია');ADM.tab='promo';ADM.pt='mine';if(S.page&&S.page.id==='admin'){drawAdTabs();adminTab()}else openPage('admin','promo')}
   catch(x){toast(errMsg(x));ok.disabled=false}}}
@@ -255,7 +255,7 @@ function promoEditor(p,kind){const isNew=!p;p=p||{kind:kind||'post',brand:'კ�
 /* ---------- a notification to everyone ---------- */
 const AUD_L={all:'ყველას',active:'აქტიურებს (7 დღე)',region:'კუთხეს',verified:'ვერიფიცირებულებს',me:'მხოლოდ მე'};
 async function admNotify(el){el.innerHTML=`<form class="form adnf" id="anf"><p class="note">მივა შეტყობინებებში და ტელეფონზე (push), ვისაც ჩართული აქვს. ნებისმიერს შეუძლია ეს ტიპი გამორთოს შეტყობინებების პარამეტრებში („სიახლეები და რეკლამა“), ამიტომ იყოს იშვიათი და საინტერესო.</p>
- <label class="fld">ტექსტი<textarea id="an_t" maxlength="200" rows="3" placeholder="მაგ. კურსელებში ახალი ლექციების ცხრილია: ჩაწერე შენი და კურსელებიც ნახავენ 📚"></textarea><small class="cnt" id="an_c">0 / 200</small></label>
+ <label class="fld">ტექსტი<textarea id="an_t" maxlength="200" rows="3" placeholder="მაგ. Peera-ზე ახალი ლექციების ცხრილია: ჩაწერე შენი და კურსელებიც ნახავენ 📚"></textarea><small class="cnt" id="an_c">0 / 200</small></label>
  <label class="fld">ბმული (არასავალდებულო)<input id="an_l" maxlength="300" placeholder="https://… ან საიტის გვერდი ქვემოთ"></label>
  <div class="chips prlinks">${PRLINKS.map(([h,l])=>`<button type="button" class="chip" data-l="${h}">${l}</button>`).join('')}</div>
  <label class="fld">ვის მიუვიდეს<select id="an_a">${Object.entries(AUD_L).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></label>
@@ -280,7 +280,7 @@ async function admSite(el){let rows=[];try{rows=await q(sb.from('app_settings').
  const m=Object.fromEntries(rows.map(r=>[r.key,r.value])),b=Object.assign({on:false,text:'',link:'',tone:'info',cta:''},m.banner||{}),off=new Set((m.features&&m.features.off)||[]);
  el.innerHTML=`<section class="tourcard adsite"><h3>ბანერი ყველასთვის</h3><p class="note">ჩანს მთავარი გვერდის თავში. ვინც დახურავს, იმავე ტექსტს აღარ დაინახავს. ახალი ტექსტი ყველას ისევ გამოუჩნდება.</p>
   <div class="setrow"><div class="grow"><span>ბანერი ჩართულია</span></div><button type="button" class="switch" role="switch" id="bn_on" aria-checked="${!!b.on}" aria-label="ბანერი ჩართულია"></button></div>
-  <label class="fld">ტექსტი<textarea id="bn_t" maxlength="160" rows="2" placeholder="მაგ. შაბათს 12:00-დან კურსელებში დიდი ონლაინ ჯოკერის ტურნირია 🃏">${esc(b.text||'')}</textarea></label>
+  <label class="fld">ტექსტი<textarea id="bn_t" maxlength="160" rows="2" placeholder="მაგ. შაბათს 12:00-დან Peera-ზე დიდი ონლაინ ჯოკერის ტურნირია 🃏">${esc(b.text||'')}</textarea></label>
   <div class="seg flat" role="group" aria-label="ბანერის სახე" id="bn_tone">${[['info','სიახლე'],['warn','გაფრთხილება'],['fest','დღესასწაული']].map(([k,l])=>`<button type="button" data-k="${k}" aria-pressed="${(b.tone||'info')===k}">${l}</button>`).join('')}</div>
   <div class="frow"><label class="fld">ბმული<input id="bn_l" maxlength="300" value="${esc(b.link||'')}" placeholder="#recipes ან https://…"></label><label class="fld">ღილაკი<input id="bn_c" maxlength="24" value="${esc(b.cta||'')}" placeholder="ნახვა"></label></div>
   <div id="bn_pv" class="bnpv"></div><button class="btn" id="bn_save">${ic('check')}ბანერის შენახვა</button></section>

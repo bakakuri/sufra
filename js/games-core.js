@@ -43,7 +43,7 @@ const gUnsave=id=>store.set(GSV+id,null);
 /* starting a game from a page or another tab is one step: the tab change rides along with the game's own step,
    so back closes the game and lands where the person pressed play */
 function gToTab(){if(!S.page&&S.tab==='games')return;NAV.busy++;try{go('games')}finally{NAV.busy--}}
-function startGame(id,ctx,sv){const G=GAME[id],fresh=!S.game;if(fresh&&(!ctx||ctx.mode!=='watch')&&GAMES.some(g=>g.id===id))store.set('glast',id);S.game=id;const bc=['nardi','shashi','chess'].includes(id)&&typeof botChar==='function'?botChar(id):null;G.ctx=Object.assign({mode:'bot',side:1,names:{1:ME.name,'-1':bc?bc.n:'კურსელების ბოტი'},avs:{1:'me','-1':bc?botAv(bc):BOT},seq:0,gk:id},ctx||{});
+function startGame(id,ctx,sv){const G=GAME[id],fresh=!S.game;if(fresh&&(!ctx||ctx.mode!=='watch')&&GAMES.some(g=>g.id===id))store.set('glast',id);S.game=id;const bc=['nardi','shashi','chess'].includes(id)&&typeof botChar==='function'?botChar(id):null;G.ctx=Object.assign({mode:'bot',side:1,names:{1:ME.name,'-1':bc?bc.n:'Peera ბოტი'},avs:{1:'me','-1':bc?botAv(bc):BOT},seq:0,gk:id},ctx||{});
  if(G.ctx.mode==='bot'&&!(ctx&&'tc' in ctx)&&typeof gTcOf==='function')G.ctx.tc=gTcOf(id);if(G.ctx.tc)clkInit(G.ctx);
  G.resHide=0;G.resSnd=0;G.wasMine=false;G.start();if(sv){try{G.restore?G.restore(sv.s):G.load(sv.s);castResume(sv.cast);if(G.ctx.gk==='chess'&&G.st){G.mv=[];G.ps=G.st;G.full=false}}catch(e){gUnsave(id)}}view.scrollTop=0;if(fresh){fsEnter();g3Intro(id)}G.render();if(G.kick)G.kick();if(fresh)navOpen('game')}
 const isPlayer=c=>['bot','online','tour','puzzle','career','learn','local'].includes(c.mode);
@@ -353,7 +353,7 @@ async function gWinPic(id,title,sub){const S2=1080,cv=document.createElement('ca
  x.fillStyle='rgba(255,247,234,.85)';fit(sub,S2-144,42,600);x.fillText(sub,72,S2-112);
  const d=new Date(),MN=['იანვარი','თებერვალი','მარტი','აპრილი','მაისი','ივნისი','ივლისი','აგვისტო','სექტემბერი','ოქტომბერი','ნოემბერი','დეკემბერი'];
  x.fillStyle='rgba(255,247,234,.55)';x.font=`600 30px ${FS}`;x.fillText(`${d.getDate()} ${MN[d.getMonth()]}, ${d.getFullYear()}`,72,S2-56);
- x.font=`800 34px ${FS}`;const bw=x.measureText('კურსელები').width+44+50;x.fillStyle='rgba(10,6,4,.55)';x.beginPath();x.roundRect?x.roundRect(S2-bw-48,48,bw,62,31):x.rect(S2-bw-48,48,bw,62);x.fill();kDraw(x,S2-bw-48+14,52,52);x.fillStyle='#FFF7EA';x.fillText('კურსელები',S2-bw-48+72,91);
+ x.font=`800 34px ${FS}`;const bw=x.measureText('Peera').width+44+50;x.fillStyle='rgba(10,6,4,.55)';x.beginPath();x.roundRect?x.roundRect(S2-bw-48,48,bw,62,31):x.rect(S2-bw-48,48,bw,62);x.fill();kDraw(x,S2-bw-48+14,52,52);x.fillStyle='#FFF7EA';x.fillText('Peera',S2-bw-48+72,91);
  return await new Promise(r=>cv.toBlob(r,'image/jpeg',.88))}
 A.gshare=async t=>{const id=t.dataset.g||gCur(),g=GAMES.find(x=>x.id===id);if(!g)return;const sub=String(t.dataset.sub||'').slice(0,80);
  t.disabled=true;let pic=null;try{pic=await gWinPic(id,g.n,sub)}catch(e){}t.disabled=false;
@@ -528,7 +528,7 @@ function gClipStart(G,sc,I){const c=G&&G.ctx,r=G&&G.res?G.res():(G===GAME.domino
  G3D.rec=(s,now)=>{x.drawImage(s,0,0,W,H);const a=Math.max(0,Math.min(1,(now-I.t0-500)/700));if(!a)return;x.save();x.globalAlpha=a;
   const gr=x.createLinearGradient(0,H*.62,0,H);gr.addColorStop(0,'rgba(10,6,4,0)');gr.addColorStop(1,'rgba(10,6,4,.82)');x.fillStyle=gr;x.fillRect(0,H*.62,W,H*.38);
   x.fillStyle='#F4BC4C';x.font=`800 ${5.2*u}px ${FS}`;x.fillText(g.n,6*u,H-17*u);x.fillStyle='#FFF7EA';x.font=`800 ${11*u}px ${FS}`;x.fillText(big,5.5*u,H-6*u);
-  x.font=`800 ${4.2*u}px ${FS}`;x.fillStyle='rgba(255,247,234,.8)';const t='კურსელები',tw=x.measureText(t).width;x.fillText(t,W-tw-5*u,7*u);kDraw(x,W-tw-12.4*u,1.6*u,6.6*u);x.restore()};
+  x.font=`800 ${4.2*u}px ${FS}`;x.fillStyle='rgba(255,247,234,.8)';const t='Peera',tw=x.measureText(t).width;x.fillText(t,W-tw-5*u,7*u);kDraw(x,W-tw-12.4*u,1.6*u,6.6*u);x.restore()};
  rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
  rec.onstop=()=>{if(G3D.rec)G3D.rec=null;const b=new Blob(chunks,{type:mt.split(';')[0]});if(b.size>1500&&G.ctx===c){c.clip=b;if(S.game===(c.gk||S.game)&&G.render)G.render()}};
  try{rec.start(250)}catch(e){G3D.rec=null;return null}

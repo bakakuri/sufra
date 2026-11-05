@@ -33,7 +33,7 @@ function showAuth(mode='in'){
 A.authmode=t=>showAuth(t.dataset.m);
 function showOnboarding(){
  const max=new Date();max.setFullYear(max.getFullYear()-13);const mx=max.toISOString().slice(0,10);
- authShell(`<h2>მოგესალმები კურსელებში!</h2><p class="note">რამდენიმე დეტალი და მზად ხარ. დაბადების თარიღი სხვებს არ უჩანთ: საჭიროა ასაკის შესამოწმებლად (გაცნობა მხოლოდ 18+).</p>
+ authShell(`<h2>მოგესალმები Peera-ზე!</h2><p class="note">რამდენიმე დეტალი და მზად ხარ. დაბადების თარიღი სხვებს არ უჩანთ: საჭიროა ასაკის შესამოწმებლად (გაცნობა მხოლოდ 18+).</p>
  <form class="form0" id="of"><label class="fld">სახელი და გვარი<input id="o_n" maxlength="60" required value="${esc(ME.name||'')}"></label>
  <label class="fld">მომხმარებლის სახელი (არასავალდებულო)<input id="o_u" maxlength="24" pattern="[a-z0-9_.]{3,24}" placeholder="მაგ. nino.beridze" autocapitalize="none" spellcheck="false"></label>
  <label class="fld">დაბადების თარიღი<input id="o_b" type="date" max="${mx}" min="1900-01-01" required></label>

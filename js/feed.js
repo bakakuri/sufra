@@ -155,7 +155,7 @@ A.vote=async t=>{const id=pidOf(t),i=+t.dataset.i,s=STAT.get(id)||blankStat(id);
  try{await q(sb.from('poll_votes').upsert({post_id:id,user_id:ME.id,opt:i},{onConflict:'post_id,user_id'}))}catch(e){toast(errMsg(e))}};
 A.save=async t=>{const id=pidOf(t),s=STAT.get(id)||blankStat(id);s.saved=!s.saved;STAT.set(id,s);rerenderPost(id);if(!s.saved)toast('შენახულიდან ამოიშალა');
  try{if(s.saved){await q(sb.from('saves').insert({user_id:ME.id,post_id:id}));savedBanner(id)}else await q(sb.from('saves').delete().eq('user_id',ME.id).eq('post_id',id))}catch(e){toast(errMsg(e))}};
-async function shareLink(url,title){try{if(navigator.share){await navigator.share({title:title||'კურსელები',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast('ბმული დაკოპირდა')}catch(e){toast(url)}}
+async function shareLink(url,title){try{if(navigator.share){await navigator.share({title:title||'Peera',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast('ბმული დაკოპირდა')}catch(e){toast(url)}}
 /* sharing: repost, quote, story, message, link */
 A.share=t=>{const id=pidOf(t),p=POSTS.get(id);if(!p)return;const r=RS.get(id)||{n:0,mine:null},own=p.author===ME.id,canRp=!p.group_id&&!own&&!p.hidden&&!p.draft;
  sheet(head('გაზიარება')+`<div class="shgrid">${canRp?`<button data-a="${r.mine?'unrepost':'repost'}" data-pid="${id}"${r.mine?` data-rid="${r.mine}"`:''}><span class="shi${r.mine?' on':''}">${ic('repost')}</span>${r.mine?'გაუქმება':'რეპოსტი'}</button><button data-a="quote" data-pid="${id}"><span class="shi">${ic('edit')}</span>ციტირებით</button>`:''}
@@ -193,10 +193,10 @@ async function postCardImage(p){const W=1080,H=1920,c=document.createElement('ca
  x.save();x.shadowColor='rgba(0,0,0,.45)';x.shadowBlur=60;x.shadowOffsetY=24;rr(cx,cy,cw,ch,44);x.fillStyle='#fff';x.fill();x.restore();
  const ay=cy+40;x.save();x.beginPath();x.arc(cx+86,ay+38,38,0,Math.PI*2);x.closePath();x.clip();
  if(avi){const s2=Math.max(76/avi.width,76/avi.height);x.drawImage(avi,cx+86-avi.width*s2/2,ay+38-avi.height*s2/2,avi.width*s2,avi.height*s2)}else{x.fillStyle=`hsl(${hue} 55% 45%)`;x.fillRect(cx+48,ay,76,76);x.fillStyle='#fff';x.font=`700 36px ${font}`;x.textAlign='center';x.textBaseline='middle';x.fillText(String(u.name||'?').slice(0,1),cx+86,ay+40)}x.restore();
- x.textAlign='left';x.textBaseline='alphabetic';x.fillStyle='#1d1420';x.font=`700 38px ${font}`;x.fillText(String(u.name||'').slice(0,26),cx+144,ay+34);x.fillStyle='#7a6d78';x.font=`400 30px ${font}`;x.fillText(p.page?'არხი კურსელებში':'პოსტი კურსელებში',cx+144,ay+74);
+ x.textAlign='left';x.textBaseline='alphabetic';x.fillStyle='#1d1420';x.font=`700 38px ${font}`;x.fillText(String(u.name||'').slice(0,26),cx+144,ay+34);x.fillStyle='#7a6d78';x.font=`400 30px ${font}`;x.fillText(p.page?'არხი Peera-ზე':'პოსტი Peera-ზე',cx+144,ay+74);
  let yy=cy+150;if(img){x.save();rr(cx+24,yy,cw-48,ih,28);x.clip();const sc=Math.max((cw-48)/img.width,ih/img.height),dw=img.width*sc,dh=img.height*sc;x.drawImage(img,cx+24+((cw-48)-dw)/2,yy+(ih-dh)/2,dw,dh);x.restore();yy+=ih+20}
  if(lines.length){x.fillStyle='#2a2030';x.font=`500 42px ${font}`;lines.forEach((l,i)=>x.fillText(l,cx+48,yy+48+i*60))}
- x.fillStyle='rgba(255,255,255,.86)';x.font=`700 36px ${font}`;x.textAlign='left';{const tw=x.measureText('კურსელები').width,ms=58,gx=Math.round(W/2-(ms+14+tw)/2);kDraw(x,gx,H-140-12-ms/2-2,ms);x.fillText('კურსელები',gx+ms+14,H-140)}
+ x.fillStyle='rgba(255,255,255,.86)';x.font=`700 36px ${font}`;x.textAlign='left';{const tw=x.measureText('Peera').width,ms=58,gx=Math.round(W/2-(ms+14+tw)/2);kDraw(x,gx,H-140-12-ms/2-2,ms);x.fillText('Peera',gx+ms+14,H-140)}
  return new Promise((res,rej)=>{try{c.toBlob(b=>b?res(b):rej(new Error('სურათი ვერ შეიქმნა')),'image/jpeg',.9)}catch(e){rej(e)}})}
 A.storypost=async t=>{const id=pidOf(t),p=POSTS.get(id);if(!p)return;closeSheet();toast('ისტორია მზადდება…');
  try{const b=await postCardImage(p);const url=await uploadBlob(b,'jpg');await q(sb.from('stories').insert({author:ME.id,media_url:url,media_type:'image',audience:'all',post_id:id}));toast('დაემატა შენს ისტორიაში');if($('#stories'))loadStories()}catch(e){toast(errMsg(e))}};

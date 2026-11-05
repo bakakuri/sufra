@@ -3,7 +3,7 @@ const TABS=[['home','მთავარი','home'],['study','სწავლა
 const SVC=[['schedule','cal','ლექციების ცხრილი'],['exams','clock','გამოცდები და დავალებები'],['notes','book','კონსპექტები'],['classmates','school','კლასელები და კურსელები'],['tips','help','სასწავლო რჩევები'],['rooms','video','სასწავლო ოთახი'],['rooms','mic','დისკუსია','birja'],['rooms','live','ლაივი','live'],['groups','users','ჯგუფები'],['friends','users','მეგობრები'],['events','cal','შეხვედრები'],['jobs','school','ვაკანსიები და CV'],['pages','mega','არხები და გვერდები'],['albums','image','ალბომები'],['market','store','ბაზრობა'],['places','map','ადგილები'],['sport','trophy','მატჩის ოთახი'],['help','help','დახმარება'],['rides','pin','ერთად წავიდეთ'],['namedays','cal','სახელის დღეები'],['tree','tree','ოჯახის ხე'],['calendar','gift','კალენდარი'],['tour','trophy','ტურნირი'],['saved','bookmark','შენახული'],['storyarch','archive','ისტორიების არქივი'],['drafts','clock','დრაფტები'],['coins','coin','მონეტები'],['verify','shield','ვერიფიკაცია'],['settings','gear','პარამეტრები']];
 const today=()=>new Date().toISOString().slice(0,10);
 
-function renderTop(){if(!ME)return;$('#top').innerHTML=`<button class="logo" data-a="home" aria-label="კურსელები, მთავარზე დაბრუნება">${kLogo()}</button><span class="sp"></span>
+function renderTop(){if(!ME)return;$('#top').innerHTML=`<button class="logo" data-a="home" aria-label="Peera, მთავარზე დაბრუნება">${kLogo()}</button><span class="sp"></span>
  <button class="coinchip${ME.last_bonus===today()?'':' bonus'}" data-a="page" data-p="coins" aria-label="მონეტები">${ic('coin')}<span id="coinv">${ME.coins??0}</span></button>
  <span class="hicons"><button class="ibtn" data-a="search" aria-label="ძიება">${ic('search')}</button>
  <button class="ibtn" data-a="chats" aria-label="მიმოწერა">${ic('msg')}<span class="dot" id="dm" hidden></span></button>
@@ -22,7 +22,7 @@ function renderTabs(){const v=visTabs(),el=$('#tabs');el.style.setProperty('--tn
 function renderBadges(){const set=(id,n)=>{const d=$('#'+id);if(!d)return;const was=d.hidden?0:parseInt(d.textContent,10)||0;d.hidden=!n;d.textContent=n>99?'99+':String(n);if(n>was)pop(d)};
  set('dn',S.unreadNotes);set('dm',S.unreadMsgs);set('dn2',S.unreadNotes);set('dm2',S.unreadMsgs);set('df',typeof PENDING_IN!=='undefined'?PENDING_IN.size:0);set('dg',S.newGuests||0);
  const me=$('.tab[data-tab="me"] .tdot');if(me)me.hidden=!(typeof PENDING_IN!=='undefined'&&PENDING_IN.size);
- const tot=(S.unreadNotes||0)+(S.unreadMsgs||0);document.title=tot?`(${tot}) კურსელები`:'კურსელები';
+ const tot=(S.unreadNotes||0)+(S.unreadMsgs||0);document.title=tot?`(${tot}) Peera`:'Peera';
  try{if(tot&&navigator.setAppBadge)navigator.setAppBadge(tot);else if(navigator.clearAppBadge)navigator.clearAppBadge()}catch(e){}}
 
 /* tabs and pages */
@@ -66,7 +66,7 @@ A.cgchat=()=>A.newgroupchat();
 const WIDE=matchMedia('(min-width:1000px)');
 function renderSide(){const on=WIDE.matches&&!!ME;document.body.classList.toggle('wide',on);if(!on){$('#sidel')?.remove();$('#sider')?.remove();return}
  let L=$('#sidel');if(!L){L=document.createElement('aside');L.id='sidel';L.className='side-l';L.setAttribute('aria-label','ნავიგაცია');document.body.appendChild(L)}
- L.innerHTML=`<button class="logo" data-a="home" aria-label="კურსელები">${kLogo()}</button><nav class="snavs">${visTabs().map(([k,l,i])=>`<button class="snav" data-tab2="${k}">${ic(i)}<span>${l}</span></button>`).join('')}
+ L.innerHTML=`<button class="logo" data-a="home" aria-label="Peera">${kLogo()}</button><nav class="snavs">${visTabs().map(([k,l,i])=>`<button class="snav" data-tab2="${k}">${ic(i)}<span>${l}</span></button>`).join('')}
   <button class="snav" data-a="chats">${ic('msg')}<span>მიმოწერა</span><i class="sdot" id="dm2" hidden></i></button><button class="snav" data-a="notifs">${ic('bell')}<span>შეტყობინებები</span><i class="sdot" id="dn2" hidden></i></button>
   <span class="snavsep"></span>${SVC.filter(x=>pageOk(x[0])).slice(0,8).map(([p,i,l,a])=>`<button class="snav sm" data-a="${R[p]&&!PG[p]?'tabgo':'page'}" data-p="${p}"${a?` data-arg="${a}"`:''}>${ic(i)}<span>${l}</span></button>`).join('')}<button class="snav sm" data-a="menu">${ic('grid')}<span>ყველა სერვისი</span></button></nav>
   <button class="btn wide" data-a="create">${ic('plus')}შექმნა</button><button class="smine" data-tab2="me">${av('me',40)}<span class="grow"><b>${esc(ME.name)}</b><small>${ME.username?'@'+esc(ME.username):'პროფილი'}</small></span></button>`;
@@ -74,7 +74,7 @@ function renderSide(){const on=WIDE.matches&&!!ME;document.body.classList.toggle
  markSide();renderBadges()}
 function markSide(){$$('#sidel [data-tab2]').forEach(b=>b.setAttribute('aria-current',String(!S.page&&b.dataset.tab2===S.tab)))}
 async function loadSideR(){const el=$('#sider');if(!el)return;
- el.innerHTML=`<form class="ssearch" id="ssf" role="search">${ic('search')}<input id="ssq" type="search" placeholder="ძიება კურსელებში" aria-label="ძიება"></form><section class="scard" id="sr_live"></section><section class="scard" id="sr_tr"></section><section class="scard" id="sr_sg"></section><section class="scard" id="sr_bd"></section><p class="sfoot"><button class="trb" data-a="rules">წესები</button> · <button class="trb" data-a="privacy">კონფიდენციალურობა</button> · კურსელები ${new Date().getFullYear()}</p>`;
+ el.innerHTML=`<form class="ssearch" id="ssf" role="search">${ic('search')}<input id="ssq" type="search" placeholder="ძიება Peera-ზე" aria-label="ძიება"></form><section class="scard" id="sr_live"></section><section class="scard" id="sr_tr"></section><section class="scard" id="sr_sg"></section><section class="scard" id="sr_bd"></section><p class="sfoot"><button class="trb" data-a="rules">წესები</button> · <button class="trb" data-a="privacy">კონფიდენციალურობა</button> · Peera ${new Date().getFullYear()}</p>`;
  $('#ssf').onsubmit=e=>{e.preventDefault();openPage('search',$('#ssq').value.trim())};
  try{const[t,sg,rooms]=await Promise.all([rpc('trending_tags',{p_limit:8}),rpc('friend_suggestions',{p_limit:5}),q(sb.from('rooms').select('id,kind,title,host').eq('live',true).gt('created_at',new Date(Date.now()-12*36e5).toISOString()).order('created_at',{ascending:false}).limit(4))]);
   sg.forEach(p=>PC.set(p.id,Object.assign(PC.get(p.id)||{},p)));await loadProfiles(rooms.map(r=>r.host));
@@ -116,7 +116,7 @@ function route(h){h=String(h||'');if(!h||h==='#'||h.includes('='))return false;l
 function registerSW(){if(!('serviceWorker'in navigator))return;navigator.serviceWorker.register('/sw.js').catch(()=>{});
  navigator.serviceWorker.addEventListener('message',e=>{const d=e.data||{};if(d.type==='open'&&d.url){const u=new URL(d.url,location.origin);route(u.hash)}})}
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();S.installEvt=e});
-window.addEventListener('appinstalled',()=>{S.installEvt=null;toast('კურსელები ტელეფონზე დაყენდა 🎉')});
+window.addEventListener('appinstalled',()=>{S.installEvt=null;toast('Peera ტელეფონზე დაყენდა 🎉')});
 window.addEventListener('offline',()=>toast('ინტერნეტი გაითიშა'));
 window.addEventListener('online',()=>{toast('კავშირი აღდგა');if(ME)countUnread()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ME){countUnread();touchSeen()}});

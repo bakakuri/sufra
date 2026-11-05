@@ -23,7 +23,7 @@ A.texpand=t=>t.classList.toggle('open');
 A.tlike=async t=>{const id=+t.dataset.tid,tt=TOASTS_C.get(id);if(!tt)return;const on=!TLIKED.has(id);on?TLIKED.add(id):TLIKED.delete(id);tt.likes=Math.max(0,(tt.likes||0)+(on?1:-1));
  t.classList.toggle('on',on);t.setAttribute('aria-pressed',String(on));$('span',t).textContent=tt.likes||'';if(on){pop(t);burst(t,'#C98A12')}
  try{if(on)await q(sb.from('toast_likes').insert({toast_id:id,user_id:ME.id}));else await q(sb.from('toast_likes').delete().eq('toast_id',id).eq('user_id',ME.id))}catch(e){if(!/duplicate/i.test(e.message))toast(errMsg(e))}};
-A.tshare=t=>{const tt=TOASTS_C.get(+t.dataset.tid);if(!tt)return;const txt=`${tt.title}\n\n${tt.body}\n\n— კურსელები`;
+A.tshare=t=>{const tt=TOASTS_C.get(+t.dataset.tid);if(!tt)return;const txt=`${tt.title}\n\n${tt.body}\n\n— Peera`;
  if(navigator.share){navigator.share({title:tt.title,text:txt}).catch(()=>{});return}navigator.clipboard?.writeText(txt).then(()=>toast('ტექსტი დაკოპირდა'),()=>toast('ვერ დაკოპირდა'))};
 A.tmore=t=>{const tt=TOASTS_C.get(+t.dataset.tid);if(!tt)return;const mine=tt.author===ME.id;
  sheet(head(esc(tt.title))+`<div class="reasons"><button data-a="tcompose" data-tid="${tt.id}">${ic('edit')} პოსტად გაზიარება</button>${mine?`<button data-a="newtoast" data-tid="${tt.id}">${ic('edit')} რედაქტირება</button><button class="warnbtn" data-a="tdel" data-tid="${tt.id}">${ic('trash')} წაშლა</button>`:`<button data-a="report" data-type="toast" data-id="${tt.id}">${ic('flag')} საჩივარი</button>`}${isStaff()&&!mine?`<button class="warnbtn" data-a="modhide" data-type="toast" data-id="${tt.id}" data-h="1">მოდერაცია: დამალვა</button>`:''}</div>`,'short')};

@@ -39,7 +39,7 @@ async function loadPromos(force){if(!force&&Date.now()-PROMOS.at<120000)return P
  try{const rows=(await q(sb.from('promos').select(PSEL).order('created_at',{ascending:false}).limit(30))).filter(p=>promoLive(p)&&!promoHidden(p.id));PROMOS={at:Date.now(),post:rows.filter(p=>p.kind==='post'),story:rows.filter(p=>p.kind==='story')}}catch(e){}return PROMOS}
 const promoById=id=>[...PROMOS.post,...PROMOS.story,...(typeof ADM!=='undefined'&&ADM.promos||[])].find(p=>p.id===id);
 function promoSeen(id){if(PROMO_HIT.has(id))return;PROMO_HIT.add(id);sb.rpc('promo_hit',{p_promo:id,p_click:false}).then(()=>{},()=>{})}
-const promoAv=(p,s)=>!p.brand_url&&/^\s*(კურსელები)?\s*$/.test(p.brand||'')?kAv(s):avAny({n:p.brand,u:p.brand_url,h:330},s);
+const promoAv=(p,s)=>!p.brand_url&&/^\s*(peera|კურსელები)?\s*$/i.test(p.brand||'')?kAv(s):avAny({n:p.brand,u:p.brand_url,h:330},s);
 function promoHTML(p){const ar=p.w>0&&p.h>0?boxRatio({w:p.w,h:p.h}):1;
  return `<article class="post pc promo" data-promo="${p.id}"><div class="pchead"><span class="pwho">${promoAv(p,38)}</span><span class="pwt"><span class="pwn"><b>${esc(p.brand)}</b><span class="ptag ad">რეკლამა</span></span><span class="pwtime">სპონსორი</span></span><button class="ibtn sm" data-a="promomore" data-id="${p.id}" aria-label="მეტი">${ic('more')}</button></div>
   ${p.title?`<h3 class="prt">${esc(p.title)}</h3>`:''}${p.body?`<div class="pdesc"><div class="txt">${tx(p.body)}</div></div>`:''}
@@ -47,7 +47,7 @@ function promoHTML(p){const ar=p.w>0&&p.h>0?boxRatio({w:p.w,h:p.h}):1;
   ${p.link?`<button class="prcta" data-a="promogo" data-id="${p.id}"><span>${esc(p.cta||'გაიგე მეტი')}</span>${ic('back')}</button>`:'<span class="prpad"></span>'}</article>`}
 A.promogo=t=>{const id=+t.dataset.id,p=promoById(id);if(!p)return;const prev=t.dataset.prev||t.closest('.prev');if(prev)closeSheet(true);if(promoLive(p)&&!prev)sb.rpc('promo_hit',{p_promo:id,p_click:true}).then(()=>{},()=>{});
  if(!$('#story').hidden)closeStory();if(p.link)openLink(p.link);else if(p.media_url&&p.media_type!=='video')openImage(p.media_url,{})};
-A.promomore=t=>{const id=+t.dataset.id;sheet(head('რეკლამა')+`<p class="hint" style="padding:12px 16px 0">ამ რეკლამას კურსელების გუნდი აჩვენებს. თუ არ გაინტერესებს, დამალე და აღარ გამოჩნდება.</p><div class="reasons"><button data-a="promohide" data-id="${id}">${ic('eye')}რეკლამის დამალვა</button>${isAdm()?`<button data-a="page" data-p="admin" data-arg="promo">${ic('shield')}რეკლამის მართვა</button>`:''}</div>`,'short')};
+A.promomore=t=>{const id=+t.dataset.id;sheet(head('რეკლამა')+`<p class="hint" style="padding:12px 16px 0">ამ რეკლამას Peera-ს გუნდი აჩვენებს. თუ არ გაინტერესებს, დამალე და აღარ გამოჩნდება.</p><div class="reasons"><button data-a="promohide" data-id="${id}">${ic('eye')}რეკლამის დამალვა</button>${isAdm()?`<button data-a="page" data-p="admin" data-arg="promo">${ic('shield')}რეკლამის მართვა</button>`:''}</div>`,'short')};
 A.promohide=t=>{const id=+t.dataset.id;try{const a=JSON.parse(localStorage.getItem('promoHide')||'[]');a.push(id);localStorage.setItem('promoHide',JSON.stringify(a.slice(-200)))}catch(e){}
  PROMOS.post=PROMOS.post.filter(p=>p.id!==id);PROMOS.story=PROMOS.story.filter(p=>p.id!==id);closeSheet();$$(`.promo[data-promo="${id}"]`).forEach(e=>e.remove());toast('რეკლამა დაიმალა')};
 /* sponsored stories go into the ring right after your own */

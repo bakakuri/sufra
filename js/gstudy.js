@@ -329,7 +329,7 @@ function rpDraw(){const el=$('#rpv');if(!el||!RPV.o)return;const o=RPV.o,P=RPV.L
 A.rpgo=t=>{RPV.i=Math.max(0,Math.min(RPV.L.length-1,+t.dataset.k));rpDraw()};
 A.rpstep=t=>{RPV.i=Math.max(0,Math.min(RPV.L.length-1,RPV.i+ +t.dataset.d));rpDraw()};
 A.rpauto=()=>{if(RPV.iv){clearInterval(RPV.iv);RPV.iv=0;rpDraw();return}if(RPV.i>=RPV.L.length-1)RPV.i=0;RPV.iv=setInterval(()=>{if(!S.page||S.page.id!=='replay'){clearInterval(RPV.iv);RPV.iv=0;return}if(RPV.i>=RPV.L.length-1){clearInterval(RPV.iv);RPV.iv=0}else RPV.i++;rpDraw()},1100);rpDraw()};
-A.rpshare=()=>{const G=GAME[S.game];if(!G)return;const code=rpEncode(G);if(!code){toast('ამ პარტიის ჩანაწერი არ შენახულა');return}shareLink(location.origin+'/#replay-'+code,'პარტია კურსელებში: ნახე სვლა-სვლა')};
+A.rpshare=()=>{const G=GAME[S.game];if(!G)return;const code=rpEncode(G);if(!code){toast('ამ პარტიის ჩანაწერი არ შენახულა');return}shareLink(location.origin+'/#replay-'+code,'პარტია Peera-ზე: ნახე სვლა-სვლა')};
 /* the buttons on the result card: the nardi analysis and the replay link */
 {const gr=gResHTML;gResHTML=function(G){let h=gr(G);if(!h)return h;const c=G.ctx,more=[];
   if(G===NR&&G.alog&&G.alog.length>2&&isPlayer(c)&&c.mode!=='puzzle')more.push(`<button class="btn ghost" data-a="nan">${ic('chart')}პარტიის ანალიზი</button>`);

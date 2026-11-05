@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     let final = u, r: Response | null = null;
     for (let hop = 0; hop < 4; hop++) {
       if (!(await publicHost(final.hostname))) return json({ error: "bad_url" }, 400);
-      r = await fetch(final.toString(), { signal: ctl.signal, redirect: "manual", headers: { "User-Agent": "Mozilla/5.0 (compatible; KurselebiBot/1.0; +https://www.peera.my)", "Accept": "text/html,application/xhtml+xml", "Accept-Language": "ka,en;q=0.8" } });
+      r = await fetch(final.toString(), { signal: ctl.signal, redirect: "manual", headers: { "User-Agent": "Mozilla/5.0 (compatible; PeeraBot/1.0; +https://www.peera.my)", "Accept": "text/html,application/xhtml+xml", "Accept-Language": "ka,en;q=0.8" } });
       if (r.status >= 300 && r.status < 400 && r.headers.get("location")) {
         const next = safeUrl(new URL(r.headers.get("location")!, final).toString());
         if (!next) return json({ error: "bad_url" }, 400);

@@ -85,15 +85,15 @@ const IC={
  folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'
 };
 const ic=(n,f)=>`<svg viewBox="0 0 24 24" fill="${f||'none'}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
-/* the კურსელები mark: a speech bubble (friends talking) wearing a graduation cap (study), the letter კ inside.
+/* the Peera mark: a speech bubble (friends talking) wearing a graduation cap (study), the letter P inside.
    One drawing for everything: the sprite below for the page, kDraw for pictures made on a canvas, icons/logo.svg for the tab and the boot screen */
-const KM={"b":"M15 12H49Q57 12 57 20V42Q57 50 49 50H27.5L16.2 58.6Q13 61 13 57V49.6Q5 48.6 5 41V20Q5 12 15 12Z","k":"M38.18 38.01Q38.2 42.07 36.15 44.09Q34.09 46.1 29.96 46.1Q21.04 46.1 21.02 38.23L21.68 33.83H27.3L26.84 38.12Q26.84 41.96 29.99 41.96Q32.36 42 32.36 38.01V35.32Q32.36 31.84 29.76 31.84H25.86V27.59H28.2Q32.15 26.64 32.15 23.97Q32.15 21.11 27.92 17.1H35.25Q37.85 20.69 37.85 23.97Q37.85 27.21 34.59 29.13Q38.18 31.16 38.18 35.32Z","ct":"M47.5 3.6L61.5 10L47.5 16.4L33.5 10Z","cb":"M40 13V17.6Q47.5 21.8 55 17.6V13L47.5 16.4Z","ts":"M59 11V17.2"};
+const KM={"b":"M15 12H49Q57 12 57 20V42Q57 50 49 50H27.5L16.2 58.6Q13 61 13 57V49.6Q5 48.6 5 41V20Q5 12 15 12Z","k":"M29.86 18.3Q34.85 18.3 37.27 20.41Q39.69 22.52 39.69 26.42Q39.69 28.17 39.18 29.77Q38.68 31.37 37.53 32.63Q36.38 33.89 34.45 34.61Q32.52 35.34 29.72 35.34H27.57V44.3H21.31V18.3ZM29.68 23.36H27.57V30.24H29.21Q30.45 30.24 31.41 29.9Q32.38 29.55 32.9 28.73Q33.43 27.91 33.43 26.6Q33.43 25.11 32.52 24.24Q31.61 23.36 29.68 23.36Z","ct":"M47.5 3.6L61.5 10L47.5 16.4L33.5 10Z","cb":"M40 13V17.6Q47.5 21.8 55 17.6V13L47.5 16.4Z","ts":"M59 11V17.2"};
 const KM_T='rotate(-13 47.5 11.5)';
 (()=>{const d=document.createElement('div');d.innerHTML=`<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;overflow:hidden"><defs><linearGradient id="kmg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7B6CFF"/><stop offset=".55" stop-color="#4F46E5"/><stop offset="1" stop-color="#3A2EC4"/></linearGradient>
 <symbol id="kmark" viewBox="0 0 64 64"><path d="${KM.b}" fill="url(#kmg)"/><path d="${KM.k}" fill="#fff"/><g class="kcap" transform="${KM_T}"><path d="${KM.cb}" fill="#F08C00"/><path d="${KM.ct}" fill="#FFB020"/><path d="${KM.ts}" stroke="#FFB020" stroke-width="1.9" stroke-linecap="round" fill="none"/><circle cx="59" cy="18.6" r="2" fill="#FFB020"/></g></symbol></defs></svg>`;
  const put=()=>document.body.prepend(d.firstChild);document.body?put():document.addEventListener('DOMContentLoaded',put)})();
 const kMark=(c='')=>`<svg class="kmk${c?' '+c:''}" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#kmark"/></svg>`;
-const kLogo=()=>kMark()+'<span class="lw">კურსელები</span>';
+const kLogo=()=>kMark()+'<span class="lw">Peera</span>';
 const kAv=s=>`<span class="av kav" style="--s:${s}px" aria-hidden="true">${kMark()}</span>`;
 let KMP=null;
 function kDraw(x,X,Y,s){const P=window.Path2D;if(typeof P!=='function')return;if(!KMP)KMP={b:new P(KM.b),k:new P(KM.k),ct:new P(KM.ct),cb:new P(KM.cb),ts:new P(KM.ts)};

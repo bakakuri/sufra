@@ -1,5 +1,5 @@
-/* კურსელები service worker: app shell offline, fonts cache, web push */
-const V='202611052017';
+/* Peera service worker: app shell offline, fonts cache, web push */
+const V='202611052039';
 const SHELL='sufra-shell-'+V,RUNTIME='sufra-rt-1';
 const ASSETS=['/','/manifest.webmanifest','/icons/icon-192.png','/icons/icon-512.png','/icons/badge-96.png','/icons/logo.svg',
  '/css/base.css?v='+V,'/css/app.css?v='+V,
@@ -15,7 +15,7 @@ self.addEventListener('fetch',e=>{const r=e.request;if(r.method!=='GET')return;c
  /* everything else (Supabase API, storage, realtime) goes straight to the network */});
 
 self.addEventListener('push',e=>{let d={};try{d=e.data?e.data.json():{}}catch(x){d={body:e.data&&e.data.text()}}
- const title=d.title||'კურსელები',url=d.url||'/';
+ const title=d.title||'Peera',url=d.url||'/';
  e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{
   /* if the app is open and visible, the in-app banner already shows it */
   if(list.some(c=>c.visibilityState==='visible'&&c.focused))return;

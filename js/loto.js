@@ -151,7 +151,7 @@ A.lotm=t=>{const s=LOT.st;if(!s||s.win||LOT.seat<0)return;const ti=+t.dataset.t,
 A.lotclaim=t=>lotClaim(+t.dataset.t);
 async function lotNewTable(){const r=await q(sb.from('jk_tables').insert({host:ME.id,len:'quick',seats:[ME.id,null,null,null],state:{g:'loto'}}).select('id').single());return r.id}
 A.lotnew=async()=>{closeSheet();try{openPage('lotable',await lotNewTable())}catch(e){toast(errMsg(e))}};
-A.lotshare=()=>{if(LOT.id)shareLink(location.origin+'/#lotable-'+LOT.id,'ლოტო კურსელებში: შემოდი, ბილეთი გელოდება')};
+A.lotshare=()=>{if(LOT.id)shareLink(location.origin+'/#lotable-'+LOT.id,'ლოტო Peera-ზე: შემოდი, ბილეთი გელოდება')};
 A.lotjoin=async()=>{try{const seat=await rpc('jk_join',{p_table:LOT.id});LOT.seat=seat;if(LOT.t)LOT.t.seats[seat]=ME.id;lotDraw()}catch(e){toast(e&&String(e.message||'').includes('album_full')?'მაგიდა უკვე სავსეა':errMsg(e))}};
 A.lotleave=async()=>{try{await rpc('jk_leave',{p_table:LOT.id});if(LOT.t&&LOT.seat>=0)LOT.t.seats[LOT.seat]=null;LOT.seat=-1;lotDraw()}catch(e){toast(errMsg(e))}};
 A.lotinvite=()=>{if(!LOT.t)return;const id=LOT.id;friendPicker('მოწვევა ლოტოზე','მოწვევა',async sel=>{let n=0;for(const u of[...sel].slice(0,10)){try{const c=await rpc('start_dm',{other:u});await q(sb.from('messages').insert({conv_id:c,sender:ME.id,body:'🎱 ლოტო: მაგიდა გავშალე, შემოდი!',media:{game:{gt:'loto',tbl:id}}}));n++}catch(e){}}

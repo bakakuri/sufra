@@ -49,9 +49,9 @@ async function loadFeed(reset){if(reset){FEED.done=false;FEED.cursor=null;FEED.c
  finally{FEED.loading=false}}
 FEED.tok=0;
 A.reload=()=>go(S.tab);
-A.invite=()=>shareLink(location.origin,'შემოდი კურსელებში');
+A.invite=()=>shareLink(location.origin,'შემოდი Peera-ზე');
 async function loadSuggest(){const el=$('#sugg');if(!el)return;try{const s=await rpc('friend_suggestions',{p_limit:10});if(!s.length){el.remove();return}s.forEach(p=>PC.set(p.id,Object.assign(PC.get(p.id)||{},p)));
- el.outerHTML=`<section class="suggest"><div class="shead"><h3>შეიძლება იცნობდე</h3><button class="trb" data-a="page" data-p="friends">ყველა</button></div><div class="hscroll">${s.map(p=>`<div class="pcard2"><button data-a="user" data-u="${p.id}" class="pc2">${av(p,64)}<b>${esc(p.name)}${vb(p)}</b><span>${p.mutual?p.mutual+' საერთო მეგობარი':esc(p.city||'კურსელებშია')}</span></button><button class="btn sm" data-a="addfriend" data-u="${p.id}">დამატება</button></div>`).join('')}</div></section>`}catch(e){el.remove()}}
+ el.outerHTML=`<section class="suggest"><div class="shead"><h3>შეიძლება იცნობდე</h3><button class="trb" data-a="page" data-p="friends">ყველა</button></div><div class="hscroll">${s.map(p=>`<div class="pcard2"><button data-a="user" data-u="${p.id}" class="pc2">${av(p,64)}<b>${esc(p.name)}${vb(p)}</b><span>${p.mutual?p.mutual+' საერთო მეგობარი':esc(p.city||'Peera-ზეა')}</span></button><button class="btn sm" data-a="addfriend" data-u="${p.id}">დამატება</button></div>`).join('')}</div></section>`}catch(e){el.remove()}}
 async function loadTrends(){const el=$('#trends');if(!el)return;try{const t=await rpc('trending_tags',{p_limit:8});if(!t.length)return;el.innerHTML=`<div class="trends"><span class="eyebrow">ტრენდები</span>${t.map(x=>`<button class="tchip" data-a="tag" data-t="${esc(x.tag)}">#${esc(x.tag)} <em>${x.uses}</em></button>`).join('')}</div>`}catch(e){}}
 
 /* friends' birthdays and name days */

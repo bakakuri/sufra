@@ -40,17 +40,17 @@ function qrLib(){return QRLIB||(QRLIB=new Promise((res,rej)=>{const s=document.c
 A.sharepro=t=>qrSheet(t.dataset.u||ME.id);
 async function qrSheet(uid){const p=prof(uid),mine=uid===ME.id,url=location.origin+'/#user-'+uid;
  sheet(head(mine?'ჩემი QR კოდი':'QR კოდი')+`<div class="ph-body qrb"><div class="qrcard"><div class="qrimg" id="qri"><span class="spin"></span></div><div class="qrwho">${av(p,36)}<b>${esc(p.name||'')}</b></div></div>
-  <p class="note" style="text-align:center">${mine?'მეგობარი ტელეფონის კამერით დაასკანერებს და პირდაპირ შენს პროფილზე მოხვდება. კურსელებში სახელის ძებნა აღარ დაგჭირდებათ.':'დაასკანერე ან გაუზიარე სხვას.'}</p>
+  <p class="note" style="text-align:center">${mine?'მეგობარი ტელეფონის კამერით დაასკანერებს და პირდაპირ შენს პროფილზე მოხვდება. Peera-ზე სახელის ძებნა აღარ დაგჭირდებათ.':'დაასკანერე ან გაუზიარე სხვას.'}</p>
   <div class="row2"><button class="btn" data-a="qrshare" data-u="${uid}">${ic('share')}ბმულის გაზიარება</button><button class="btn ghost" data-a="qrscan">${ic('camera')}სკანირება</button></div></div>`,'short');
  try{const qrcode=await qrLib();const qr=qrcode(0,'M');qr.addData(url);qr.make();const el=$('#qri');if(el)el.innerHTML=qr.createSvgTag({cellSize:6,margin:2,scalable:true})}catch(e){const el=$('#qri');if(el)el.innerHTML=`<p class="note">${esc(errMsg(e))}</p>`}}
 A.qrshare=t=>shareLink(location.origin+'/#user-'+t.dataset.u);
 A.qrscan=async()=>{const BD=window.BarcodeDetector;
- if(!BD||!navigator.mediaDevices?.getUserMedia){sheet(head('QR-ის სკანირება')+`<div class="ph-body"><p>გახსენი ტელეფონის კამერა და მიუშვირე მეგობრის QR კოდს. კამერა ბმულს თავად იცნობს: დააჭირე და პროფილი კურსელებში გაიხსნება.</p></div>`,'short');return}
+ if(!BD||!navigator.mediaDevices?.getUserMedia){sheet(head('QR-ის სკანირება')+`<div class="ph-body"><p>გახსენი ტელეფონის კამერა და მიუშვირე მეგობრის QR კოდს. კამერა ბმულს თავად იცნობს: დააჭირე და პროფილი Peera-ზე გაიხსნება.</p></div>`,'short');return}
  let stream;try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false})}catch(e){toast('კამერაზე წვდომა არ არის');return}
  let alive=true;const det=new BD({formats:['qr_code']});
  layer(lhead('QR-ის სკანირება')+`<div class="ph-body qrscan"><div class="qrcam"><video id="qrv" playsinline muted autoplay></video><i class="qrframe"></i></div><p class="note" style="text-align:center">მიუშვირე კამერა მეგობრის QR კოდს</p></div>`,()=>{alive=false;stream.getTracks().forEach(x=>x.stop())});
  const v=$('#qrv');v.srcObject=stream;let warned=0;
- const tick=async()=>{if(!alive)return;try{const r=await det.detect(v),raw=r&&r[0]&&r[0].rawValue;if(raw){const m=String(raw).match(/#user-([0-9a-f-]{36})/);if(m){closeLayer();closeSheet(true);openPage('user',m[1]);return}if(Date.now()-warned>3000){warned=Date.now();toast('ეს კურსელების QR კოდი არ არის')}}}catch(e){}setTimeout(tick,350)};
+ const tick=async()=>{if(!alive)return;try{const r=await det.detect(v),raw=r&&r[0]&&r[0].rawValue;if(raw){const m=String(raw).match(/#user-([0-9a-f-]{36})/);if(m){closeLayer();closeSheet(true);openPage('user',m[1]);return}if(Date.now()-warned>3000){warned=Date.now();toast('ეს Peera-ს QR კოდი არ არის')}}}catch(e){}setTimeout(tick,350)};
  v.onloadeddata=tick};
 
 /* ---------- badges: earned on the server, each with a few coins ---------- */

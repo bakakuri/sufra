@@ -2,7 +2,7 @@
 S.dmode='swipe';let DECK=[];
 const INTERESTS=['სწავლა','ლაშქრობა','მოგზაურობა','ნარდი','ჭადრაკი','კინო','მუსიკა','ცეკვა','სპორტი','წიგნები','ფოტოგრაფია','კულინარია','ყავა','ზღვა','მთა','თამაშები','ხელოვნება','პროგრამირება'];
 R.date=()=>{
- if(!isAdult()){view.innerHTML=`<div class="view-pad">${empty('გაცნობა მხოლოდ 18+ მომხმარებლებისთვისაა','ეს ნაწილი შენთვის დახურულია. კურსელების სხვა ფუნქციები ჩვეულებრივ მუშაობს.')}</div>`;return}
+ if(!isAdult()){view.innerHTML=`<div class="view-pad">${empty('გაცნობა მხოლოდ 18+ მომხმარებლებისთვისაა','ეს ნაწილი შენთვის დახურულია. Peera-ს სხვა ფუნქციები ჩვეულებრივ მუშაობს.')}</div>`;return}
  if(!ME.dating){datingSetup();return}
  view.innerHTML=`<div class="seg" role="group" aria-label="გაცნობის რეჟიმი">${[['swipe','სვაიპი'],['likes','მოსწონხარ'],['matches','წყვილები']].map(([k,l])=>`<button data-a="dmode" data-m="${k}" aria-pressed="${S.dmode===k}">${l}${k==='likes'?' <span class="badge" id="lkc" hidden></span>':''}</button>`).join('')}</div><div id="dateb">${skel(1)}</div>
  <div class="dfoot"><button class="trb" data-a="datesettings">${ic('gear')}გაცნობის პროფილი</button></div>`;

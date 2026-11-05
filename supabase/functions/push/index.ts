@@ -31,7 +31,7 @@ function text(kind: string, name: string, ref: Record<string, string>): string {
     case "comment_like": return `${name} · მოიწონა შენი კომენტარი`;
     case "repost": return `${name} · ${String(ref.quote) === "true" ? "გააზიარა შენი პოსტი თავისი სიტყვით" : "გააზიარა შენი პოსტი"}`;
     case "promo": return `${ref.text ?? ""}`;
-    case "admin_msg": return `კურსელების გუნდი: ${ref.text ?? ""}`;
+    case "admin_msg": return `Peera-ს გუნდი: ${ref.text ?? ""}`;
     case "admin_coins": return `${Number(ref.coins) > 0 ? "+" : ""}${ref.coins ?? ""} მონეტა · ${ref.note ?? ""}`;
     case "story_mention": return `${name} მოგნიშნა თავის ისტორიაზე`;
     case "recipe_cook": return `${name} · შენი კონსპექტით ისწავლა 📚`;
@@ -74,7 +74,7 @@ function text(kind: string, name: string, ref: Record<string, string>): string {
     case "nameday": return `${ref.label ?? "ანგელოზის დღე"}: ${name}${Number(ref.n) > 1 ? ` და კიდევ ${Number(ref.n) - 1} მეგობარი` : ""} · მიულოცე!`;
     case "birthday": return `დაბადების დღე: ${name}${Number(ref.n) > 1 ? ` და კიდევ ${Number(ref.n) - 1} მეგობარი` : ""} · მიულოცე! 🎉`;
     case "nameday_me": return `გილოცავ ანგელოზის დღეს! ${ref.label ?? ""}`;
-    case "birthday_me": return "კურსელები გილოცავს დაბადების დღეს! 🎉";
+    case "birthday_me": return "Peera გილოცავს დაბადების დღეს! 🎉";
     case "kin_req": return `${name} გთავაზობს ოჯახის ხეში დაკავშირებას`;
     case "kin_ok": return `${name} დაადასტურა ნათესაობა`;
     case "help_new": return `${ref.kind === "blood" ? "🩸 საჭიროა დონორი" + (ref.blood ? " " + ref.blood : "") : ref.kind === "volunteer" ? "🤝 საჭიროა მოხალისე" : "🐾 " + (ref.kind === "found_pet" ? "ნაპოვნია" : "დაიკარგა")} · ${ref.title ?? ""} · ${ref.region ?? ""}`;
@@ -125,13 +125,13 @@ Deno.serve(async (req) => {
     // muted categories and quiet hours: the notification stays in the app, only the push is skipped
     const { data: allowed, error: pe } = await sb.rpc("push_allowed", { p_user: n.user_id, p_kind: n.kind });
     if (!pe && allowed === false) return new Response("quiet");
-    let name = "კურსელები";
+    let name = "Peera";
     if (n.actor) {
       const { data: a } = await sb.from("profiles").select("name").eq("id", n.actor).maybeSingle();
       if (a?.name) name = a.name;
     }
     const ref = (n.ref ?? {}) as Record<string, string>;
-    const payload = JSON.stringify({ title: "კურსელები", body: text(n.kind, name, ref), url: route(n.kind, ref), tag: `${n.kind}-${ref.conv ?? ref.post ?? n.id}` });
+    const payload = JSON.stringify({ title: "Peera", body: text(n.kind, name, ref), url: route(n.kind, ref), tag: `${n.kind}-${ref.conv ?? ref.post ?? n.id}` });
     const { data: subs } = await sb.from("push_subs").select("id,endpoint,p256dh,auth").eq("user_id", n.user_id);
     await Promise.all((subs ?? []).map(async (s) => {
       try {

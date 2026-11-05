@@ -44,7 +44,7 @@ A.jobapply=async t=>{const id=+t.dataset.id;let cv=null;try{cv=await q(sb.from('
 A.appst=async t=>{try{await q(sb.from('job_applications').update({status:t.dataset.s}).eq('job_id',+t.dataset.j).eq('user_id',t.dataset.u));toast(t.dataset.s==='invited'?'კანდიდატს ეცნობა':'შენახულია');openJob(+t.dataset.j)}catch(e){toast(errMsg(e))}};
 A.jobtoggle=async t=>{try{await q(sb.from('jobs').update({status:t.dataset.s}).eq('id',+t.dataset.id));openJob(+t.dataset.id)}catch(e){toast(errMsg(e))}};
 A.jobdel=t=>{const id=+t.dataset.id;confirmSheet('ვაკანსიის წაშლა','ვაკანსია და განაცხადები წაიშლება.','წაშლა',async()=>{await q(sb.from('jobs').delete().eq('id',id));openPage('jobs')},true)};
-A.jobshare=t=>shareLink(location.origin+'/#job-'+t.dataset.id,'ვაკანსია კურსელებში');
+A.jobshare=t=>shareLink(location.origin+'/#job-'+t.dataset.id,'ვაკანსია Peera-ზე');
 A.viewcv=async t=>{const u=t.dataset.u;try{const cv=await q(sb.from('cvs').select('*').eq('user_id',u).maybeSingle());if(t.dataset.j)sb.from('job_applications').update({status:'seen'}).eq('job_id',+t.dataset.j).eq('user_id',u).eq('status','new').then(()=>{});sheet(head('CV · '+esc(pname(u)))+`<div class="ph-body">${cv?cvHTML(cv,u):'<p class="muted">კანდიდატს CV არ აქვს შევსებული.</p>'}</div>`)}catch(e){toast(errMsg(e))}};
 PG.myjobs={r(){view.innerHTML=pgHead('ჩემი ვაკანსიები')+`<div id="mjb">${skel(2)}</div>`;
  Promise.all([q(sb.from('jobs').select('id,poster,title,company,city,job_type,category,salary_from,salary_to,status,created_at').eq('poster',ME.id).order('created_at',{ascending:false})),q(sb.from('job_applications').select('job_id,status,created_at').eq('user_id',ME.id).order('created_at',{ascending:false}))]).then(async([mine,apps])=>{
