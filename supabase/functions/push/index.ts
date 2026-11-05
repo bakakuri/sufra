@@ -18,8 +18,13 @@ async function config() {
 // the "good idea" reaction is stored as 🍷 and shown as a light bulb
 const emo = (e: string | undefined, d: string) => e === "🍷" ? "💡" : (e ?? d);
 
+const DK: Record<string, string> = { exam: "🎓 გამოცდა", midterm: "📝 შუალედური", quiz: "❓ ქვიზი", task: "✏️ დავალება", project: "📁 პროექტი" };
+
 function text(kind: string, name: string, ref: Record<string, string>): string {
   switch (kind) {
+    case "lesson_soon": return `მალე იწყება: ${ref.title ?? ""}${ref.starts ? " · " + ref.starts : ""}${ref.place ? " · " + ref.place : ""}`;
+    case "deadline_soon": return `${ref.when === "today" ? "დღეს" : "ხვალ"}: ${DK[ref.kind] ?? ""} · ${ref.title ?? ""}`;
+    case "study_deadline": return `${name} დაამატა ${DK[ref.kind] ?? ""} ჯგუფში „${ref.gname ?? ""}“: ${ref.title ?? ""}`;
     case "react": return `${name} · ${emo(ref.emoji, "👍")} შენს პოსტზე`;
     case "comment": return `${name} · ახალი კომენტარი: ${ref.text ?? ""}`;
     case "comment_reply": return `${name} გიპასუხა: ${ref.text ?? ""}`;
@@ -82,6 +87,8 @@ function text(kind: string, name: string, ref: Record<string, string>): string {
 
 function route(kind: string, ref: Record<string, string>): string {
   if (kind === "message" && ref.conv) return `/#chat-${ref.conv}`;
+  if (kind === "lesson_soon") return "/#schedule";
+  if (kind === "deadline_soon" || kind === "study_deadline") return "/#exams";
   if (kind === "repost" && ref.post) return `/#post-${String(ref.quote) === "true" && ref.by ? ref.by : ref.post}`;
   if ((kind === "react" || kind === "comment" || kind === "comment_reply" || kind === "comment_like") && ref.post) return `/#post-${ref.post}`;
   if ((kind === "mention" || kind === "grade_plus") && ref.post) return `/#post-${ref.post}`;

@@ -35,6 +35,33 @@ async function kuPut(kind,row){
   return id?q(sb.from(kind).update(r).eq('id',id).select().single()):q(sb.from(kind).insert(r).select().single())}
  const L=store.get(kuKey(kind),[])||[];if(row.id){const i=L.findIndex(x=>x.id===row.id);if(i>=0)L[i]=row;else L.push(row)}else{row.id=Date.now()+Math.floor(Math.random()*999);L.push(row)}store.set(kuKey(kind),L);return row}
 async function kuDel(kind,id){if(KUR.db[kind]){await q(sb.from(kind).delete().eq('id',id));return}store.set(kuKey(kind),(store.get(kuKey(kind),[])||[]).filter(x=>x.id!==id))}
+/* my groups: for "who is it for" when adding, and the label on a row that came from a group.
+   A class or course shares its timetable with every member; elsewhere only the group's admins may */
+async function kuGroups(force){if(KUR.groups&&!force)return KUR.groups;if(KUR.db.lessons===false&&KUR.db.deadlines===false)return KUR.groups=[];
+ try{const mine=await q(sb.from('group_members').select('group_id,role').eq('user_id',ME.id).limit(300)),ids=mine.map(x=>x.group_id),role=new Map(mine.map(x=>[x.group_id,x.role]));
+  const gs=ids.length?await q(sb.from('groups').select('id,name,kind,owner').in('id',ids)):[],rank=k=>({class:0,course:1}[k]??2);
+  KUR.groups=gs.map(g=>{const adm=g.owner===ME.id||role.get(g.id)==='admin';return {id:g.id,name:g.name,kind:g.kind,admin:adm,share:['class','course'].includes(g.kind)||adm}}).sort((a,b)=>rank(a.kind)-rank(b.kind)||String(a.name).localeCompare(String(b.name),'ka'))}catch(e){KUR.groups=[]}
+ return KUR.groups}
+const kuGName=id=>{const g=(KUR.groups||[]).find(x=>x.id===+id);return g?g.name:'ჯგუფი'};
+const kuGTag=id=>id?`<span class="kugtag">${ic('users')}${esc(kuGName(id))}</span>`:'';
+const kuMine=x=>!x.owner||x.owner===ME.id;
+const gfOk=x=>!KUR.gf||(KUR.gf==='me'?!x.group_id:+x.group_id===+KUR.gf);
+/* the chips "all · mine · each group" above the timetable and the deadlines, shown once a group has something there */
+function kuGF(L){const el=$('#kugf');if(!el)return;const gids=[...new Set(L.filter(x=>x.group_id).map(x=>+x.group_id))];if(!gids.length){el.hidden=true;if(KUR.gf&&KUR.gf!=='me')KUR.gf='';return}
+ if(KUR.gf&&KUR.gf!=='me'&&!gids.includes(+KUR.gf))KUR.gf='';el.hidden=false;
+ el.innerHTML=[['','ყველა'],['me','ჩემი'],...gids.map(g=>[String(g),kuGName(g)])].map(([v,n])=>`<button data-a="kugf" data-v="${v}" aria-pressed="${String(KUR.gf||'')===v}">${v&&v!=='me'?ic('users'):''}${esc(n)}</button>`).join('')}
+A.kugf=t=>{KUR.gf=t.dataset.v;$$('#kugf button').forEach(b=>b.setAttribute('aria-pressed',String(b===t)));kuAfter()};
+/* someone else's lesson or deadline on a group timetable: what it is and who added it; the group's admin may remove it */
+async function kuInfo(kind,x){const isL=kind==='lessons';try{await loadProfiles([x.owner])}catch(e){}const g=(KUR.groups||[]).find(y=>y.id===+x.group_id),k=isL?null:dkOf(x.kind);
+ sheet(head(isL?'ჯგუფის ლექცია':'ჯგუფის ვადა')+`<div class="ph-body kuinfo"><h3>${isL?'':k[2]+' '}${esc(x.title)}</h3>
+  <p class="sub">${isL?`${KDAYL[x.day-1]}, ${hm(x.starts)}–${hm(x.ends)} · ${lkName(x.kind)}${x.place?' · '+esc(x.place):''}${x.teacher?' · '+esc(x.teacher):''}${x.weeks&&x.weeks!=='all'?` · ${x.weeks==='odd'?'კენტ კვირებში':'ლუწ კვირებში'}`:''}`:`${k[1]}${x.subject?' · '+esc(x.subject):''} · ${fdate(x.due_at)} · ${dueTxt(x.due_at)[0]}`}</p>
+  ${!isL&&x.notes?`<p class="kunotes">${esc(x.notes)}</p>`:''}
+  <p>${kuGTag(x.group_id)}</p><p class="hint">დაამატა <button class="hash" data-a="user" data-u="${x.owner}">${esc(pname(x.owner))}</button>. შეცვლა მხოლოდ მას შეუძლია${g&&g.admin?', წაშლა კი ჯგუფის ადმინსაც':''}.</p></div>
+  ${g&&g.admin?`<div class="ph-foot"><span class="sp"></span><button class="btn ghost danger" id="ki_del">${ic('trash')}ჯგუფიდან წაშლა</button></div>`:''}`);
+ const del=$('#ki_del');if(del)del.onclick=()=>confirmSheet('წაშლა',`„${esc(x.title)}“ ჯგუფის ${isL?'ცხრილიდან':'ვადებიდან'} წაიშლება ყველასთვის.`,'წაშლა',async()=>{try{await kuDel(kind,x.id);toast('წაიშალა');kuAfter()}catch(e){toast(errMsg(e))}},true)}
+/* the "who is it for" choice in the add and edit sheets */
+const kuForHTML=(gs,cur)=>gs.length?`<label class="fld">ვისთვის<select id="ku_for"><option value="">მხოლოდ ჩემთვის</option>${gs.map(g=>`<option value="${g.id}"${+cur===g.id?' selected':''}>${esc(g.name)}</option>`).join('')}</select><small class="hint">ჯგუფს თუ აირჩევ, ყველა წევრი დაინახავს და შეხსენებასაც მიიღებს.</small></label>`:'';
+const kuForVal=()=>{const s=$('#ku_for');return s&&s.value?+s.value:null};
 const kuLocalNote=kind=>KUR.db[kind]===false?`<p class="hint kuhint">${ic('lock')}ჯერჯერობით ეს ამ ტელეფონზე ინახება და მხოლოდ შენ ხედავ.</p>`:'';
 
 /* ---------- the study tab ---------- */
@@ -43,7 +70,7 @@ R.study=()=>{view.innerHTML=`<div class="view-pad kuhub"><div class="kuhero"><di
  <div class="kugrid">${[['schedule','cal','ლექციების ცხრილი','კვირის ცხრილი',250],['exams','clock','გამოცდები და დავალებები','ვადები და შეხსენებები',20],['notes','book','კონსპექტები','ჩანაწერები და ფოტოები',160],['classmates','school','კლასელები და კურსელები','სკოლა და უნივერსიტეტი',200],['rooms','video','სასწავლო ოთახები','ვიდეო-შეხვედრა',280],['tips','help','სასწავლო რჩევები','როგორ ვისწავლოთ',40]].map(([p,i,t,s,h])=>`<button class="kutile" data-a="page" data-p="${p}" style="--h:${h}"><span class="kuti">${ic(i)}</span><b>${t}</b><small>${s}</small></button>`).join('')}</div>
  <section class="kucard" id="kudue"></section><section class="kucard" id="kuedu"></section></div>`;kuHub()};
 async function kuHub(){const now=new Date(),d=kuDay(now),m=now.getHours()*60+now.getMinutes();let L=[],D=[],E=[];
- try{[L,D,E]=await Promise.all([kuList('lessons'),kuList('deadlines'),kuEduOf(ME.id)])}catch(e){}
+ try{[L,D,E]=await Promise.all([kuList('lessons'),kuList('deadlines'),kuEduOf(ME.id),kuGroups()])}catch(e){}
  const done=await kuDone();if(S.tab!=='study'||S.page)return;
  const today=L.filter(l=>+l.day===d&&weekOk(l,now)).sort((a,b)=>mins(a.starts)-mins(b.starts)),cur=today.find(l=>mins(l.starts)<=m&&mins(l.ends)>m),next=today.find(l=>mins(l.starts)>m);
  const el=$('#kunow');if(el)el.innerHTML=!L.length?`<div class="kuempty"><b>დაამატე ლექციების ცხრილი</b><p>ყოველ დილით აქ გამოჩნდება, რა გელოდება დღეს.</p><button class="btn sm" data-a="lessonnew">${ic('plus')}ლექციის დამატება</button></div>`
@@ -59,16 +86,16 @@ A.kuadd=()=>{navMark('kuadd',A.kuadd);sheet(head('რა დავამატ�
 const LKIND=[['lecture','ლექცია'],['seminar','სემინარი'],['lab','ლაბორატორია'],['lesson','გაკვეთილი'],['other','სხვა']];
 const LHUES=[250,200,160,20,330,45];
 const lkName=k=>(LKIND.find(x=>x[0]===k)||LKIND[0])[1];
-function lessonRow(l,big){return `<button class="kurow lrow${big?' big':''}" data-a="lessonedit" data-id="${l.id}" style="--h:${+l.hue||250}"><span class="ltime"><b>${hm(l.starts)}</b><small>${hm(l.ends)}</small></span><span class="grow"><b>${esc(l.title)}</b><span class="sub">${[lkName(l.kind),l.place,l.teacher].filter(Boolean).map(esc).join(' · ')}${l.weeks&&l.weeks!=='all'?` · ${l.weeks==='odd'?'კენტ კვირებში':'ლუწ კვირებში'}`:''}</span></span></button>`}
+function lessonRow(l,big){return `<button class="kurow lrow${big?' big':''}" data-a="lessonedit" data-id="${l.id}" style="--h:${+l.hue||250}"><span class="ltime"><b>${hm(l.starts)}</b><small>${hm(l.ends)}</small></span><span class="grow"><b>${esc(l.title)}</b><span class="sub">${[lkName(l.kind),l.place,l.teacher].filter(Boolean).map(esc).join(' · ')}${l.weeks&&l.weeks!=='all'?` · ${l.weeks==='odd'?'კენტ კვირებში':'ლუწ კვირებში'}`:''}</span>${kuGTag(l.group_id)}</span></button>`}
 PG.schedule={r(day){const d=+day>=1&&+day<=7?+day:(KUR.sday||kuDay());KUR.sday=d;
- view.innerHTML=pgHead('ლექციების ცხრილი',`<button class="btn sm" data-a="lessonnew">${ic('plus')}ახალი</button>`)+`<div class="seg kudays" role="group" aria-label="კვირის დღე">${KDAYS.map((x,i)=>`<button data-a="sday" data-d="${i+1}" aria-pressed="${i+1===d}"${i+1===kuDay()?' class="today"':''}>${x}</button>`).join('')}</div><div id="schb">${skel(3)}</div>`;kuSched()}};
+ view.innerHTML=pgHead('ლექციების ცხრილი',`<button class="btn sm" data-a="lessonnew">${ic('plus')}ახალი</button>`)+`<div class="seg kudays" role="group" aria-label="კვირის დღე">${KDAYS.map((x,i)=>`<button data-a="sday" data-d="${i+1}" aria-pressed="${i+1===d}"${i+1===kuDay()?' class="today"':''}>${x}</button>`).join('')}</div><div class="chipsbar kugf" id="kugf" role="group" aria-label="ვისი ცხრილი" hidden></div><div id="schb">${skel(3)}</div>`;KUR.groups=null;kuSched()}};
 A.sday=t=>{KUR.sday=+t.dataset.d;$$('[data-a="sday"]').forEach(b=>b.setAttribute('aria-pressed',String(b===t)));kuSched()};
-async function kuSched(){const el=$('#schb');if(!el)return;let L=[];try{L=await kuList('lessons')}catch(e){el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e));return}if(!el.isConnected)return;KUR.cache.lessons=L;
- const d=KUR.sday,list=L.filter(l=>+l.day===d).sort((a,b)=>mins(a.starts)-mins(b.starts));
+async function kuSched(){const el=$('#schb');if(!el)return;let L=[];try{[L]=await Promise.all([kuList('lessons'),kuGroups()])}catch(e){el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e));return}if(!el.isConnected)return;KUR.cache.lessons=L;kuGF(L);
+ const d=KUR.sday,list=L.filter(l=>+l.day===d&&gfOk(l)).sort((a,b)=>mins(a.starts)-mins(b.starts));
  el.innerHTML=kuLocalNote('lessons')+(list.length?`<div class="kulist">${list.map(l=>lessonRow(l)).join('')}</div>`:empty(`${KDAYL[d-1]}ს ლექცია არ გაქვს`,L.length?'სხვა დღეს აირჩიე ან დაამატე ახალი.':'დაამატე პირველი ლექცია: საგანი, დრო, აუდიტორია.',`<button class="btn" data-a="lessonnew">${ic('plus')}ლექციის დამატება</button>`))+(L.length?`<p class="hint">სულ ${L.length} ${L.length===1?'ლექცია':'ლექცია'} კვირაში</p>`:'')}
 A.lessonnew=()=>lessonSheet(null);
-A.lessonedit=t=>{const id=+t.dataset.id;const l=(KUR.cache.lessons||[]).find(x=>x.id===id);if(l)lessonSheet(l);else kuList('lessons').then(L=>{KUR.cache.lessons=L;const x=L.find(y=>y.id===id);if(x)lessonSheet(x)})};
-function lessonSheet(l){const ed=!!l;l=l||{kind:'lecture',day:KUR.sday||kuDay(),starts:'10:00',ends:'11:30',weeks:'all',hue:250,title:'',place:'',teacher:''};const days=new Set([+l.day]);let kind=l.kind,weeks=l.weeks||'all',hue=+l.hue||250;
+A.lessonedit=t=>{const id=+t.dataset.id,open=l=>kuMine(l)?lessonSheet(l):kuInfo('lessons',l);const l=(KUR.cache.lessons||[]).find(x=>x.id===id);if(l)open(l);else kuList('lessons').then(L=>{KUR.cache.lessons=L;const x=L.find(y=>y.id===id);if(x)open(x)})};
+async function lessonSheet(l){const ed=!!l;const gs=(await kuGroups()).filter(g=>g.share||(l&&+l.group_id===g.id));l=l||{kind:'lecture',day:KUR.sday||kuDay(),starts:'10:00',ends:'11:30',weeks:'all',hue:250,title:'',place:'',teacher:''};const days=new Set([+l.day]);let kind=l.kind,weeks=l.weeks||'all',hue=+l.hue||250;
  sheet(head(ed?'ლექციის რედაქტირება':'ახალი ლექცია')+`<form class="ph-body" id="lsf">
   <label class="fld">საგანი<input id="ls_t" maxlength="80" required value="${esc(l.title)}" placeholder="მაგ. მაკროეკონომიკა"></label>
   <div class="fld">ტიპი<div class="chips pick6" id="ls_k">${LKIND.map(([k,n])=>`<button type="button" data-k="${k}" aria-pressed="${k===kind}">${n}</button>`).join('')}</div></div>
@@ -77,7 +104,7 @@ function lessonSheet(l){const ed=!!l;l=l||{kind:'lecture',day:KUR.sday||kuDay(),
   <label class="fld">აუდიტორია ან ოთახი<input id="ls_p" maxlength="60" value="${esc(l.place||'')}" placeholder="მაგ. II კორპუსი, 312"></label>
   <label class="fld">ლექტორი ან მასწავლებელი<input id="ls_te" maxlength="60" value="${esc(l.teacher||'')}" placeholder="მაგ. ნ. ბერიძე"></label>
   <div class="fld">რომელ კვირებში<div class="seg flat" id="ls_w" style="margin:0">${[['all','ყოველ კვირა'],['odd','კენტში'],['even','ლუწში']].map(([k,n])=>`<button type="button" data-w="${k}" aria-pressed="${k===weeks}">${n}</button>`).join('')}</div></div>
-  <div class="fld">ფერი<div class="kuhues" id="ls_h">${LHUES.map(h=>`<button type="button" data-h="${h}" style="--h:${h}" aria-label="ფერი" aria-pressed="${h===hue}"></button>`).join('')}</div></div></form>
+  <div class="fld">ფერი<div class="kuhues" id="ls_h">${LHUES.map(h=>`<button type="button" data-h="${h}" style="--h:${h}" aria-label="ფერი" aria-pressed="${h===hue}"></button>`).join('')}</div></div>${kuForHTML(gs,l.group_id)}</form>
   <div class="ph-foot">${ed?`<button class="btn ghost danger" id="ls_del">${ic('trash')}წაშლა</button>`:''}<span class="sp"></span><button class="btn" id="ls_ok">${ic('check')}შენახვა</button></div>`);
  const tog=(sel,attr,fn)=>$$(sel+' button').forEach(b=>b.onclick=()=>fn(b));
  tog('#ls_k','k',b=>{kind=b.dataset.k;$$('#ls_k button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))});
@@ -87,8 +114,8 @@ function lessonSheet(l){const ed=!!l;l=l||{kind:'lecture',day:KUR.sday||kuDay(),
  $('#lsf').onsubmit=e=>{e.preventDefault();$('#ls_ok').click()};
  if(ed)$('#ls_del').onclick=()=>confirmSheet('ლექციის წაშლა',`„${esc(l.title)}“ ცხრილიდან წაიშლება.`,'წაშლა',async()=>{try{await kuDel('lessons',l.id);toast('წაიშალა');kuAfter()}catch(e){toast(errMsg(e))}},true);
  $('#ls_ok').onclick=async()=>{const title=$('#ls_t').value.trim(),s=$('#ls_s').value,en=$('#ls_e').value;if(!title){toast('ჩაწერე საგანი');$('#ls_t').focus();return}if(!s||!en||mins(en)<=mins(s)){toast('დასრულების დრო დაწყებაზე გვიან უნდა იყოს');return}
-  const base={title,kind,starts:s,ends:en,place:$('#ls_p').value.trim(),teacher:$('#ls_te').value.trim(),weeks,hue};const b=$('#ls_ok');b.disabled=true;
-  try{if(ed)await kuPut('lessons',Object.assign({},l,base,{day:[...days][0]}));else for(const d of [...days].sort())await kuPut('lessons',Object.assign({day:d},base));closeSheet();toast(ed?'შენახულია':days.size>1?`დაემატა ${days.size} დღეს`:'დაემატა ცხრილში');kuAfter()}catch(e){b.disabled=false;toast(errMsg(e))}}}
+  const base={title,kind,starts:s,ends:en,place:$('#ls_p').value.trim(),teacher:$('#ls_te').value.trim(),weeks,hue};if(KUR.db.lessons)base.group_id=kuForVal();const b=$('#ls_ok');b.disabled=true;
+  try{if(ed)await kuPut('lessons',Object.assign({},l,base,{day:[...days][0]}));else for(const d of [...days].sort())await kuPut('lessons',Object.assign({day:d},base));closeSheet();toast(ed?'შენახულია':days.size>1?`${base.group_id?'ჯგუფის ცხრილში ':''}დაემატა ${days.size} დღეს`:base.group_id?'დაემატა ჯგუფის ცხრილში':'დაემატა ცხრილში');kuAfter()}catch(e){b.disabled=false;toast(errMsg(e))}}}
 function kuAfter(){if(S.page&&S.page.id==='schedule')kuSched();else if(S.page&&S.page.id==='exams')kuExams();else if(!S.page&&S.tab==='study')kuHub()}
 
 /* ---------- exams and assignments ---------- */
@@ -97,11 +124,11 @@ const dkOf=k=>DKIND.find(x=>x[0]===k)||DKIND[3];
 async function kuDone(){if(KUR.db.deadlines){try{const r=await q(sb.from('deadline_done').select('deadline_id'));return new Set(r.map(x=>x.deadline_id))}catch(e){return new Set()}}return new Set(store.get(kuKey('done'),[])||[])}
 function dueTxt(iso){const d=new Date(iso),now=new Date(),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate()),days=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-t0)/864e5),tm=`${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
  if(d<now)return['ვადა გავიდა','late'];if(days===0)return[`დღეს ${tm}`,'soon'];if(days===1)return[`ხვალ ${tm}`,'soon'];if(days<7)return[`${days} დღეში`,'week'];return[`${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}`,'']}
-function dlRow(x,done){const k=dkOf(x.kind),[w,c]=dueTxt(x.due_at);return `<div class="kurow dlrow${done?' done':''}"><button class="dlchk" data-a="dldone" data-id="${x.id}" aria-label="${done?'შესრულებულია':'შესრულებულად მონიშვნა'}" aria-pressed="${!!done}">${ic('check')}</button><button class="grow dlmain" data-a="dledit" data-id="${x.id}"><span class="dlemo" aria-hidden="true">${k[2]}</span><span class="grow"><b>${esc(x.title)}</b><span class="sub">${k[1]}${x.subject?' · '+esc(x.subject):''} · ${fdate(x.due_at)}</span></span><span class="dlwhen ${done?'':c}">${done?'შესრულდა':w}</span></button></div>`}
-PG.exams={r(){view.innerHTML=pgHead('გამოცდები და დავალებები',`<button class="btn sm" data-a="deadlinenew">${ic('plus')}ახალი</button>`)+`<div class="seg" role="group" aria-label="რომელი"><button data-a="dlseg" data-k="up" aria-pressed="${KUR.dseg!=='done'}">მომავალი</button><button data-a="dlseg" data-k="done" aria-pressed="${KUR.dseg==='done'}">შესრულებული</button></div><div id="dlb">${skel(3)}</div>`;kuExams()}};
+function dlRow(x,done){const k=dkOf(x.kind),[w,c]=dueTxt(x.due_at);return `<div class="kurow dlrow${done?' done':''}"><button class="dlchk" data-a="dldone" data-id="${x.id}" aria-label="${done?'შესრულებულია':'შესრულებულად მონიშვნა'}" aria-pressed="${!!done}">${ic('check')}</button><button class="grow dlmain" data-a="dledit" data-id="${x.id}"><span class="dlemo" aria-hidden="true">${k[2]}</span><span class="grow"><b>${esc(x.title)}</b><span class="sub">${k[1]}${x.subject?' · '+esc(x.subject):''} · ${fdate(x.due_at)}</span>${kuGTag(x.group_id)}</span><span class="dlwhen ${done?'':c}">${done?'შესრულდა':w}</span></button></div>`}
+PG.exams={r(){view.innerHTML=pgHead('გამოცდები და დავალებები',`<button class="btn sm" data-a="deadlinenew">${ic('plus')}ახალი</button>`)+`<div class="seg" role="group" aria-label="რომელი"><button data-a="dlseg" data-k="up" aria-pressed="${KUR.dseg!=='done'}">მომავალი</button><button data-a="dlseg" data-k="done" aria-pressed="${KUR.dseg==='done'}">შესრულებული</button></div><div class="chipsbar kugf" id="kugf" role="group" aria-label="ვისი ვადები" hidden></div><div id="dlb">${skel(3)}</div>`;KUR.groups=null;kuExams()}};
 A.dlseg=t=>{KUR.dseg=t.dataset.k;$$('[data-a="dlseg"]').forEach(b=>b.setAttribute('aria-pressed',String(b===t)));kuExams()};
-async function kuExams(){const el=$('#dlb');if(!el)return;let D=[];try{D=await kuList('deadlines')}catch(e){el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e));return}const done=await kuDone();if(!el.isConnected)return;KUR.cache.deadlines=D;KUR.cache.done=done;
- D.sort((a,b)=>new Date(a.due_at)-new Date(b.due_at));const now=Date.now();
+async function kuExams(){const el=$('#dlb');if(!el)return;let D=[];try{[D]=await Promise.all([kuList('deadlines'),kuGroups()])}catch(e){el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e));return}const done=await kuDone();if(!el.isConnected)return;KUR.cache.deadlines=D;KUR.cache.done=done;kuGF(D);
+ D=D.filter(gfOk);D.sort((a,b)=>new Date(a.due_at)-new Date(b.due_at));const now=Date.now();
  if(KUR.dseg==='done'){const L=D.filter(x=>done.has(x.id)).reverse();el.innerHTML=kuLocalNote('deadlines')+(L.length?`<div class="kulist">${L.map(x=>dlRow(x,true)).join('')}</div>`:empty('ჯერ არაფერი შეგისრულებია','მონიშნე დავალება შესრულებულად და აქ გადმოვა.'));return}
  const open=D.filter(x=>!done.has(x.id)),late=open.filter(x=>+new Date(x.due_at)<now),week=open.filter(x=>+new Date(x.due_at)>=now&&+new Date(x.due_at)<now+7*864e5),later=open.filter(x=>+new Date(x.due_at)>=now+7*864e5);
  const sec=(t,L)=>L.length?`<h3 class="sec2">${t}</h3><div class="kulist">${L.map(x=>dlRow(x,false)).join('')}</div>`:'';
@@ -110,22 +137,23 @@ A.dldone=async t=>{const id=+t.dataset.id,on=t.getAttribute('aria-pressed')!=='t
  try{if(KUR.db.deadlines){if(on)await q(sb.from('deadline_done').insert({deadline_id:id}));else await q(sb.from('deadline_done').delete().eq('deadline_id',id).eq('user_id',ME.id))}
   else{const s=new Set(store.get(kuKey('done'),[])||[]);if(on)s.add(id);else s.delete(id);store.set(kuKey('done'),[...s])}if(on){burst(t);toast('ყოჩაღ! შესრულდა ✓')}setTimeout(kuAfter,on?500:0)}catch(e){toast(errMsg(e))}};
 A.deadlinenew=()=>dlSheet(null);
-A.dledit=t=>{const id=+t.dataset.id,x=(KUR.cache.deadlines||[]).find(y=>y.id===id);if(x)dlSheet(x);else kuList('deadlines').then(D=>{KUR.cache.deadlines=D;const y=D.find(z=>z.id===id);if(y)dlSheet(y)})};
+A.dledit=t=>{const id=+t.dataset.id,open=x=>kuMine(x)?dlSheet(x):kuInfo('deadlines',x),x=(KUR.cache.deadlines||[]).find(y=>y.id===id);if(x)open(x);else kuList('deadlines').then(D=>{KUR.cache.deadlines=D;const y=D.find(z=>z.id===id);if(y)open(y)})};
 async function dlSheet(x){const ed=!!x;const tm=new Date(Date.now()+3*864e5);tm.setHours(10,0,0,0);x=x||{kind:'exam',title:'',subject:'',due_at:tm.toISOString(),notes:''};let kind=x.kind;const d=new Date(x.due_at);
- let subs=[];try{subs=[...new Set((KUR.cache.lessons||await kuList('lessons')).map(l=>l.title))].slice(0,30)}catch(e){}
+ let subs=[];try{subs=[...new Set((KUR.cache.lessons||await kuList('lessons')).map(l=>l.title))].slice(0,30)}catch(e){}const gs=(await kuGroups()).filter(g=>g.share||+x.group_id===g.id);
  sheet(head(ed?'რედაქტირება':'გამოცდა ან დავალება')+`<form class="ph-body" id="dlf">
   <div class="chips pick6" id="dl_k">${DKIND.map(([k,n,e])=>`<button type="button" data-k="${k}" aria-pressed="${k===kind}">${e} ${n}</button>`).join('')}</div>
   <label class="fld">სათაური<input id="dl_t" maxlength="120" required value="${esc(x.title)}" placeholder="მაგ. შუალედური: თავები 1–4"></label>
   <label class="fld">საგანი<input id="dl_s" maxlength="80" list="dl_sl" value="${esc(x.subject||'')}" placeholder="მაგ. მაკროეკონომიკა"><datalist id="dl_sl">${subs.map(s=>`<option value="${esc(s)}">`).join('')}</datalist></label>
   <div class="row2"><label class="fld grow">თარიღი<input type="date" id="dl_d" required value="${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}"></label><label class="fld grow">დრო<input type="time" id="dl_h" required value="${pad2(d.getHours())}:${pad2(d.getMinutes())}"></label></div>
-  <label class="fld">შენიშვნა<textarea id="dl_n" maxlength="1000" rows="3" placeholder="რა უნდა გავიმეორო, რა წავიღო…">${esc(x.notes||'')}</textarea></label></form>
+  <label class="fld">შენიშვნა<textarea id="dl_n" maxlength="1000" rows="3" placeholder="რა უნდა გავიმეორო, რა წავიღო…">${esc(x.notes||'')}</textarea></label>${kuForHTML(gs,x.group_id)}</form>
   <div class="ph-foot">${ed?`<button class="btn ghost danger" id="dl_del">${ic('trash')}წაშლა</button>`:''}<span class="sp"></span><button class="btn" id="dl_ok">${ic('check')}შენახვა</button></div>`);
  $$('#dl_k button').forEach(b=>b.onclick=()=>{kind=b.dataset.k;$$('#dl_k button').forEach(z=>z.setAttribute('aria-pressed',String(z===b)))});
  $('#dlf').onsubmit=e=>{e.preventDefault();$('#dl_ok').click()};
  if(ed)$('#dl_del').onclick=()=>confirmSheet('წაშლა',`„${esc(x.title)}“ წაიშლება.`,'წაშლა',async()=>{try{await kuDel('deadlines',x.id);toast('წაიშალა');kuAfter()}catch(e){toast(errMsg(e))}},true);
  $('#dl_ok').onclick=async()=>{const title=$('#dl_t').value.trim(),dd=$('#dl_d').value,hh=$('#dl_h').value||'10:00';if(!title){toast('ჩაწერე სათაური');$('#dl_t').focus();return}if(!dd){toast('აირჩიე თარიღი');return}
   const due=new Date(dd+'T'+hh);if(isNaN(+due)){toast('თარიღი ვერ წავიკითხე');return}const b=$('#dl_ok');b.disabled=true;
-  try{await kuPut('deadlines',Object.assign({},x,{kind,title,subject:$('#dl_s').value.trim(),due_at:due.toISOString(),notes:$('#dl_n').value.trim()}));closeSheet();toast(ed?'შენახულია':'დაემატა');kuAfter()}catch(e){b.disabled=false;toast(errMsg(e))}}}
+  const row=Object.assign({},x,{kind,title,subject:$('#dl_s').value.trim(),due_at:due.toISOString(),notes:$('#dl_n').value.trim()});if(KUR.db.deadlines)row.group_id=kuForVal();
+  try{await kuPut('deadlines',row);closeSheet();toast(ed?'შენახულია':row.group_id?'დაემატა, ჯგუფის წევრებს ეცნობებათ':'დაემატა');kuAfter()}catch(e){b.disabled=false;toast(errMsg(e))}}}
 
 /* ---------- notes and study tips: posts with a tag, gathered in one place ---------- */
 const SUBJ=['მათემატიკა','ფიზიკა','ქიმია','ბიოლოგია','ისტორია','ქართული','ინგლისური','ეკონომიკა','სამართალი','პროგრამირება','მედიცინა','ფსიქოლოგია'];
@@ -190,7 +218,7 @@ function eduSheet(i){const E=(KUR.cache.edu||[]).slice(),e=i>=0?Object.assign({}
  $('#ed_ok').onclick=()=>{read();if(e.n.length<2){toast(e.k==='uni'?'ჩაწერე უნივერსიტეტი':'ჩაწერე სკოლა');return}const y=k=>e[k]===''||/^\d{4}$/.test(String(e[k]));if(!y('y0')||!y('y1')){toast('წელი ოთხი ციფრით ჩაწერე');return}
   const o={k:e.k,n:e.n.slice(0,80)};if(e.c)o.c=e.c.slice(0,40);if(e.f)o.f=e.f.slice(0,50);if(e.y0)o.y0=+e.y0;if(e.y1)o.y1=+e.y1;if(e.cls)o.cls=e.cls.slice(0,4);o.key=eduKey(o);
   if(i>=0)E[i]=o;else E.push(o);save(E)}}
-A.edugroups=async()=>{try{const ids=await q(sb.rpc('join_edu_groups'));toast(ids&&ids.length?`ჯგუფები: ${ids.length}`:'ჯგუფები ვერ შეიქმნა');openPage('groups')}catch(e){toast(kuMissing(e)?'ჯგუფები ბაზის განახლების შემდეგ ჩაირთვება':errMsg(e))}};
+A.edugroups=async()=>{try{const ids=await q(sb.rpc('join_edu_groups'));KUR.groups=null;toast(ids&&ids.length?`ჯგუფები: ${ids.length}`:'ჯგუფები ვერ შეიქმნა');openPage('groups')}catch(e){toast(kuMissing(e)?'ჯგუფები ბაზის განახლების შემდეგ ჩაირთვება':errMsg(e))}};
 PG.classmates={r(){view.innerHTML=pgHead('კლასელები და კურსელები')+`<div id="cmb">${skel(4)}</div>`;kuMates()}};
 async function kuMates(){const el=$('#cmb');if(!el)return;const E=await kuEduOf(ME.id);if(!el.isConnected)return;
  if(!E.length){el.innerHTML=empty('ჯერ სკოლა არ მიგითითებია','დაამატე სკოლა ან უნივერსიტეტი და გიპოვით, ვინ სწავლობდა შენთან ერთად.',`<button class="btn" data-a="page" data-p="edu">${ic('plus')}განათლების დამატება</button>`);return}
