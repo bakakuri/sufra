@@ -314,4 +314,4 @@ function logRow(r){const d=r.detail||{},who=r.actor?pname(r.actor):'სისტ
  else if(r.action==='settings')obj=tg==='banner'?'ბანერი':tg==='features'?'განყოფილებები':tg;
  else if(r.action.startsWith('promo'))obj=d.title?`„${String(d.title).slice(0,50)}“`:'';
  else if(isUid(tg))obj=d.name||pname(tg);
- return `<div class="row lgrow">${r.actor?av(r.actor,36):'<span class="av" style="--s:36px;--h:330" aria-hidden="true">ს</span>'}<span class="grow"><span><b>${esc(who)}</b> ${esc(what)}${obj?': '+esc(obj):''}</span><span class="sub">${ago(r.created_at)}</span></span></div>`}
+ return `<div class="row lgrow">${r.actor?av(r.actor,36):kAv(36)}<span class="grow"><span><b>${esc(who)}</b> ${esc(what)}${obj?': '+esc(obj):''}</span><span class="sub">${ago(r.created_at)}</span></span></div>`}

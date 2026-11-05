@@ -39,7 +39,7 @@ async function loadPromos(force){if(!force&&Date.now()-PROMOS.at<120000)return P
  try{const rows=(await q(sb.from('promos').select(PSEL).order('created_at',{ascending:false}).limit(30))).filter(p=>promoLive(p)&&!promoHidden(p.id));PROMOS={at:Date.now(),post:rows.filter(p=>p.kind==='post'),story:rows.filter(p=>p.kind==='story')}}catch(e){}return PROMOS}
 const promoById=id=>[...PROMOS.post,...PROMOS.story,...(typeof ADM!=='undefined'&&ADM.promos||[])].find(p=>p.id===id);
 function promoSeen(id){if(PROMO_HIT.has(id))return;PROMO_HIT.add(id);sb.rpc('promo_hit',{p_promo:id,p_click:false}).then(()=>{},()=>{})}
-const promoAv=(p,s)=>avAny({n:p.brand,u:p.brand_url,h:330},s);
+const promoAv=(p,s)=>!p.brand_url&&/^\s*(კურსელები)?\s*$/.test(p.brand||'')?kAv(s):avAny({n:p.brand,u:p.brand_url,h:330},s);
 function promoHTML(p){const ar=p.w>0&&p.h>0?boxRatio({w:p.w,h:p.h}):1;
  return `<article class="post pc promo" data-promo="${p.id}"><div class="pchead"><span class="pwho">${promoAv(p,38)}</span><span class="pwt"><span class="pwn"><b>${esc(p.brand)}</b><span class="ptag ad">რეკლამა</span></span><span class="pwtime">სპონსორი</span></span><button class="ibtn sm" data-a="promomore" data-id="${p.id}" aria-label="მეტი">${ic('more')}</button></div>
   ${p.title?`<h3 class="prt">${esc(p.title)}</h3>`:''}${p.body?`<div class="pdesc"><div class="txt">${tx(p.body)}</div></div>`:''}

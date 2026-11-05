@@ -1,6 +1,5 @@
 -- კურსელები: schools and universities on the profile, class and course groups,
 -- the lecture timetable, exams and assignments, and files (PDF, Word, PowerPoint) on posts for notes.
--- Not applied until the owner says so ("დაამატე ბაზაში").
 
 -- ============ 1. education on the profile ============
 -- up to 8 places: {k:'school'|'uni', n:name, c:city, key:normalised key, y0:from, y1:to, cls:class letter, f:faculty}
@@ -92,6 +91,9 @@ create policy "edit own lesson" on public.lessons for update to authenticated
   using (owner = (select auth.uid())) with check (owner = (select auth.uid()) and (group_id is null or public.is_group_member(group_id)));
 create policy "remove lesson" on public.lessons for delete to authenticated
   using (owner = (select auth.uid()) or (group_id is not null and public.is_group_admin(group_id)));
+revoke all on public.lessons from anon;
+revoke update on public.lessons from authenticated;
+grant update (group_id, day, starts, ends, title, kind, place, teacher, weeks, hue) on public.lessons to authenticated;
 
 -- ============ 4. exams and assignments ============
 create table if not exists public.deadlines (
@@ -116,6 +118,9 @@ create policy "edit own deadline" on public.deadlines for update to authenticate
   using (owner = (select auth.uid())) with check (owner = (select auth.uid()) and (group_id is null or public.is_group_member(group_id)));
 create policy "remove deadline" on public.deadlines for delete to authenticated
   using (owner = (select auth.uid()) or (group_id is not null and public.is_group_admin(group_id)));
+revoke all on public.deadlines from anon;
+revoke update on public.deadlines from authenticated;
+grant update (group_id, kind, title, subject, due_at, notes) on public.deadlines to authenticated;
 
 -- what each person has finished, so a shared assignment can be ticked off by everyone on their own
 create table if not exists public.deadline_done (
@@ -128,6 +133,8 @@ alter table public.deadline_done enable row level security;
 create policy "own done marks" on public.deadline_done for select to authenticated using (user_id = (select auth.uid()));
 create policy "mark done" on public.deadline_done for insert to authenticated with check (user_id = (select auth.uid()));
 create policy "unmark done" on public.deadline_done for delete to authenticated using (user_id = (select auth.uid()));
+revoke all on public.deadline_done from anon;
+revoke update on public.deadline_done from authenticated;
 
 -- ============ 5. files on posts (notes as PDF, Word, PowerPoint, text) ============
 update storage.buckets set allowed_mime_types = array(select distinct x from unnest(allowed_mime_types || array[

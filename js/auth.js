@@ -9,7 +9,7 @@ function authErr(e){const m=String(e?.message||e||'');
  if(/invalid.*email|Unable to validate email/i.test(m))return 'ელფოსტის მისამართი არასწორია';
  return errMsg(e)}
 function authShell(inner){const el=$('#auth');el.hidden=false;const b=$('#boot');if(b)b.remove();
- el.innerHTML=`<div class="auth-in"><div class="auth-brand"><span class="logo big">კურსელები</span><p>კლასელები, კურსელები და მეგობრები ერთ ადგილას.</p></div><div class="auth-card">${inner}</div>
+ el.innerHTML=`<div class="auth-in"><div class="auth-brand"><span class="logo big">${kLogo()}</span><p>კლასელები, კურსელები და მეგობრები ერთ ადგილას.</p></div><div class="auth-card">${inner}</div>
  <p class="auth-foot"><button class="trb" data-a="rules">საზოგადოების წესები</button><span>·</span><button class="trb" data-a="privacy">კონფიდენციალურობა</button></p></div>`}
 function showAuth(mode='in'){
  if(mode==='reset'){authShell(`<h2>პაროლის აღდგენა</h2><p class="note">შეიყვანე ელფოსტა და გამოგიგზავნით ბმულს ახალი პაროლისთვის.</p><form class="form0" id="af"><label class="fld">ელფოსტა<input id="a_e" type="email" autocomplete="email" required></label><p class="aerr" id="aerr" role="alert"></p><button class="btn wide">ბმულის გაგზავნა</button></form><button class="trb" data-a="authmode" data-m="in">შესვლაზე დაბრუნება</button>`);

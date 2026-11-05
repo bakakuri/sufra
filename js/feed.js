@@ -196,7 +196,7 @@ async function postCardImage(p){const W=1080,H=1920,c=document.createElement('ca
  x.textAlign='left';x.textBaseline='alphabetic';x.fillStyle='#1d1420';x.font=`700 38px ${font}`;x.fillText(String(u.name||'').slice(0,26),cx+144,ay+34);x.fillStyle='#7a6d78';x.font=`400 30px ${font}`;x.fillText(p.page?'არხი კურსელებში':'პოსტი კურსელებში',cx+144,ay+74);
  let yy=cy+150;if(img){x.save();rr(cx+24,yy,cw-48,ih,28);x.clip();const sc=Math.max((cw-48)/img.width,ih/img.height),dw=img.width*sc,dh=img.height*sc;x.drawImage(img,cx+24+((cw-48)-dw)/2,yy+(ih-dh)/2,dw,dh);x.restore();yy+=ih+20}
  if(lines.length){x.fillStyle='#2a2030';x.font=`500 42px ${font}`;lines.forEach((l,i)=>x.fillText(l,cx+48,yy+48+i*60))}
- x.fillStyle='rgba(255,255,255,.82)';x.font=`600 34px ${font}`;x.textAlign='center';x.fillText('კურსელები',W/2,H-140);
+ x.fillStyle='rgba(255,255,255,.86)';x.font=`700 36px ${font}`;x.textAlign='left';{const tw=x.measureText('კურსელები').width,ms=58,gx=Math.round(W/2-(ms+14+tw)/2);kDraw(x,gx,H-140-12-ms/2-2,ms);x.fillText('კურსელები',gx+ms+14,H-140)}
  return new Promise((res,rej)=>{try{c.toBlob(b=>b?res(b):rej(new Error('სურათი ვერ შეიქმნა')),'image/jpeg',.9)}catch(e){rej(e)}})}
 A.storypost=async t=>{const id=pidOf(t),p=POSTS.get(id);if(!p)return;closeSheet();toast('ისტორია მზადდება…');
  try{const b=await postCardImage(p);const url=await uploadBlob(b,'jpg');await q(sb.from('stories').insert({author:ME.id,media_url:url,media_type:'image',audience:'all',post_id:id}));toast('დაემატა შენს ისტორიაში');if($('#stories'))loadStories()}catch(e){toast(errMsg(e))}};

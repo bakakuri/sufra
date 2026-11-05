@@ -1,16 +1,22 @@
 /* shell: top bar, tabs, create button, realtime, deep links, install, back button */
-const TABS=[['home','მთავარი','home'],['study','სწავლა','book'],['clips','კლიპები','clips'],['games','თამაშები','dice'],['me','პროფილი','user']];
-const SVC=[['schedule','cal','ლექციების ცხრილი'],['exams','clock','გამოცდები და დავალებები'],['notes','book','კონსპექტები'],['classmates','school','კლასელები და კურსელები'],['tips','help','სასწავლო რჩევები'],['rooms','video','სასწავლო ოთახი'],['rooms','mic','დისკუსია','birja'],['rooms','live','ლაივი','live'],['groups','users','ჯგუფები'],['friends','users','მეგობრები'],['events','cal','შეხვედრები'],['jobs','school','ვაკანსიები და CV'],['pages','mega','არხები და გვერდები'],['albums','image','ალბომები'],['market','store','ბაზრობა'],['places','map','ადგილები'],['sport','trophy','მატჩის ოთახი'],['help','help','დახმარება'],['rides','pin','ერთად წავიდეთ'],['date','heart','გაცნობა'],['namedays','cal','სახელის დღეები'],['tree','tree','ოჯახის ხე'],['calendar','gift','კალენდარი'],['tour','trophy','ტურნირი'],['saved','bookmark','შენახული'],['storyarch','archive','ისტორიების არქივი'],['drafts','clock','დრაფტები'],['coins','coin','მონეტები'],['verify','shield','ვერიფიკაცია'],['settings','gear','პარამეტრები']];
+const TABS=[['home','მთავარი','home'],['study','სწავლა','book'],['date','გაცნობა','heart'],['clips','კლიპები','clips'],['games','თამაშები','dice'],['me','პროფილი','user']];
+const SVC=[['schedule','cal','ლექციების ცხრილი'],['exams','clock','გამოცდები და დავალებები'],['notes','book','კონსპექტები'],['classmates','school','კლასელები და კურსელები'],['tips','help','სასწავლო რჩევები'],['rooms','video','სასწავლო ოთახი'],['rooms','mic','დისკუსია','birja'],['rooms','live','ლაივი','live'],['groups','users','ჯგუფები'],['friends','users','მეგობრები'],['events','cal','შეხვედრები'],['jobs','school','ვაკანსიები და CV'],['pages','mega','არხები და გვერდები'],['albums','image','ალბომები'],['market','store','ბაზრობა'],['places','map','ადგილები'],['sport','trophy','მატჩის ოთახი'],['help','help','დახმარება'],['rides','pin','ერთად წავიდეთ'],['namedays','cal','სახელის დღეები'],['tree','tree','ოჯახის ხე'],['calendar','gift','კალენდარი'],['tour','trophy','ტურნირი'],['saved','bookmark','შენახული'],['storyarch','archive','ისტორიების არქივი'],['drafts','clock','დრაფტები'],['coins','coin','მონეტები'],['verify','shield','ვერიფიკაცია'],['settings','gear','პარამეტრები']];
 const today=()=>new Date().toISOString().slice(0,10);
 
-function renderTop(){if(!ME)return;$('#top').innerHTML=`<button class="logo" data-a="home" aria-label="კურსელები, მთავარზე დაბრუნება">კურსელები</button><span class="sp"></span>
+function renderTop(){if(!ME)return;$('#top').innerHTML=`<button class="logo" data-a="home" aria-label="კურსელები, მთავარზე დაბრუნება">${kLogo()}</button><span class="sp"></span>
  <button class="coinchip${ME.last_bonus===today()?'':' bonus'}" data-a="page" data-p="coins" aria-label="მონეტები">${ic('coin')}<span id="coinv">${ME.coins??0}</span></button>
  <span class="hicons"><button class="ibtn" data-a="search" aria-label="ძიება">${ic('search')}</button>
  <button class="ibtn" data-a="chats" aria-label="მიმოწერა">${ic('msg')}<span class="dot" id="dm" hidden></span></button>
  <button class="ibtn" data-a="notifs" aria-label="შეტყობინებები">${ic('bell')}<span class="dot" id="dn" hidden></span></button>
  <button class="ibtn" data-a="page" data-p="friends" aria-label="მეგობრები">${ic('users')}<span class="dot" id="df" hidden></span></button>
  <button class="ibtn" data-a="guests" aria-label="სტუმრები">${ic('eye')}<span class="dot" id="dg" hidden></span></button>
- <button class="ibtn" data-a="menu" aria-label="სერვისები">${ic('grid')}</button></span>`;renderBadges()}
+ <button class="ibtn" data-a="menu" aria-label="სერვისები">${ic('grid')}</button></span>`;renderBadges();fitTop()}
+/* the header keeps every button on narrow phones: the name under the logo gets smaller, then only the mark stays */
+let TOPRO=null;
+function fitTop(){const t=$('#top');if(!t)return;const run=()=>{t.classList.remove('lsm','ltight');if(t.scrollWidth<=t.clientWidth+1)return;t.classList.add('lsm');if(t.scrollWidth<=t.clientWidth+1)return;t.classList.remove('lsm');t.classList.add('ltight')};run();
+ if(!TOPRO&&window.ResizeObserver){let f=0;TOPRO=new ResizeObserver(()=>{if(!f)f=requestAnimationFrame(()=>{f=0;run()})});}
+ if(TOPRO){TOPRO.disconnect();TOPRO.observe(t);$$('#top .coinchip,#top .hicons').forEach(e=>TOPRO.observe(e))}
+ if(document.fonts&&!fitTop.f){fitTop.f=1;document.fonts.ready.then(()=>fitTop())}}
 const visTabs=()=>TABS.filter(t=>typeof tabOk!=='function'||tabOk(t[0]));
 function renderTabs(){const v=visTabs(),el=$('#tabs');el.style.setProperty('--tn',v.length);el.innerHTML='<span class="tabind" aria-hidden="true"></span>'+v.map(([k,l,i])=>`<button class="tab" data-tab="${k}" aria-current="${k===S.tab}">${ic(i)}<span>${l}</span><i class="tdot" hidden></i></button>`).join('')}
 function renderBadges(){const set=(id,n)=>{const d=$('#'+id);if(!d)return;const was=d.hidden?0:parseInt(d.textContent,10)||0;d.hidden=!n;d.textContent=n>99?'99+':String(n);if(n>was)pop(d)};
@@ -60,7 +66,7 @@ A.cgchat=()=>A.newgroupchat();
 const WIDE=matchMedia('(min-width:1000px)');
 function renderSide(){const on=WIDE.matches&&!!ME;document.body.classList.toggle('wide',on);if(!on){$('#sidel')?.remove();$('#sider')?.remove();return}
  let L=$('#sidel');if(!L){L=document.createElement('aside');L.id='sidel';L.className='side-l';L.setAttribute('aria-label','ნავიგაცია');document.body.appendChild(L)}
- L.innerHTML=`<button class="logo" data-a="home" aria-label="კურსელები">კურსელები</button><nav class="snavs">${visTabs().map(([k,l,i])=>`<button class="snav" data-tab2="${k}">${ic(i)}<span>${l}</span></button>`).join('')}
+ L.innerHTML=`<button class="logo" data-a="home" aria-label="კურსელები">${kLogo()}</button><nav class="snavs">${visTabs().map(([k,l,i])=>`<button class="snav" data-tab2="${k}">${ic(i)}<span>${l}</span></button>`).join('')}
   <button class="snav" data-a="chats">${ic('msg')}<span>მიმოწერა</span><i class="sdot" id="dm2" hidden></i></button><button class="snav" data-a="notifs">${ic('bell')}<span>შეტყობინებები</span><i class="sdot" id="dn2" hidden></i></button>
   <span class="snavsep"></span>${SVC.filter(x=>pageOk(x[0])).slice(0,8).map(([p,i,l,a])=>`<button class="snav sm" data-a="${R[p]&&!PG[p]?'tabgo':'page'}" data-p="${p}"${a?` data-arg="${a}"`:''}>${ic(i)}<span>${l}</span></button>`).join('')}<button class="snav sm" data-a="menu">${ic('grid')}<span>ყველა სერვისი</span></button></nav>
   <button class="btn wide" data-a="create">${ic('plus')}შექმნა</button><button class="smine" data-tab2="me">${av('me',40)}<span class="grow"><b>${esc(ME.name)}</b><small>${ME.username?'@'+esc(ME.username):'პროფილი'}</small></span></button>`;
@@ -85,7 +91,7 @@ setInterval(()=>{if(document.body.classList.contains('wide')&&!document.hidden)l
 function banner(html,onTap){const b=$('#inapp');b.innerHTML=html;b.hidden=false;b.onclick=()=>{b.hidden=true;onTap&&onTap()};anim(b,[{opacity:0,transform:'translateY(-120%)'},{opacity:1,transform:'none'}],{duration:420,easing:SPRING});clearTimeout(banner.t);banner.t=setTimeout(()=>{b.hidden=true},4500)}
 function listenNotes(){sb.channel('notes-'+ME.id).on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications',filter:'user_id=eq.'+ME.id},({new:n})=>onNote(n)).subscribe()}
 async function onNote(n){const r=n.ref||{};if(n.actor)try{await loadProfiles([n.actor])}catch(e){}
- const who=n.actor?`${av(n.actor,36)}<span class="grow"><b>${esc(pname(n.actor))}</b>`:'<span class="grow">';
+ const who=n.actor?`${av(n.actor,36)}<span class="grow"><b>${esc(pname(n.actor))}</b>`:kAv(36)+'<span class="grow">';
  if(n.kind==='message'){if(S.openConv===r.conv)return;S.unreadMsgs++;renderBadges();banner(`${who}<span>${esc(r.text||'ახალი შეტყობინება')}</span></span>`,()=>openChat(+r.conv));return}
  if(n.kind==='friend_req'&&n.actor){PENDING_IN.add(n.actor);if(S.page?.id==='friends')rp()}else if(n.kind==='friend_ok'&&n.actor){FRIENDS.add(n.actor);PENDING_OUT.delete(n.actor)}else if(n.kind==='verified'){ME.verified=true}
  S.unreadNotes++;renderBadges();

@@ -17,8 +17,19 @@ const mins=t=>{const[a,b]=hm(t).split(':').map(Number);return a*60+(b||0)};
 
 /* ---------- storage: the database when the table is there, otherwise this phone ---------- */
 async function kuList(kind){
- if(KUR.db[kind]!==false){try{const rows=await q(sb.from(kind).select('*').limit(500));KUR.db[kind]=true;return rows}catch(e){if(!kuMissing(e))throw e;KUR.db[kind]=false}}
+ if(KUR.db[kind]!==false){try{const rows=await q(sb.from(kind).select('*').limit(500));KUR.db[kind]=true;return (store.get(kuKey(kind),[])||[]).length?kuLift(kind,rows):rows}catch(e){if(!kuMissing(e))throw e;KUR.db[kind]=false}}
  return (store.get(kuKey(kind),[])||[]).slice()}
+/* what was kept on this phone before the tables existed moves into the database once, finished marks included;
+   the phone copy is emptied before the first await so two lists opening together cannot copy it twice */
+async function kuLift(kind,rows){const L=store.get(kuKey(kind),[])||[];store.set(kuKey(kind),[]);
+ const done=new Set(store.get(kuKey('done'),[])||[]),left=[],out=[];
+ for(const x of L){const r=Object.assign({},x),old=r.id;delete r.id;delete r.owner;delete r.created_at;
+  try{const n=await q(sb.from(kind).insert(r).select().single());out.push(n);
+   if(kind==='deadlines'&&done.has(old)){done.delete(old);try{await q(sb.from('deadline_done').insert({deadline_id:n.id}))}catch(e){}}}
+  catch(e){if(!/check|violates|invalid/i.test(String(e&&e.message||'')))left.push(x)}}
+ if(left.length)store.set(kuKey(kind),left.concat(store.get(kuKey(kind),[])||[]));
+ if(kind==='deadlines')store.set(kuKey('done'),[...done]);
+ return rows.concat(out)}
 async function kuPut(kind,row){
  if(KUR.db[kind]){const r=Object.assign({},row),id=r.id;delete r.id;delete r.owner;delete r.created_at;
   return id?q(sb.from(kind).update(r).eq('id',id).select().single()):q(sb.from(kind).insert(r).select().single())}
@@ -151,7 +162,9 @@ function eduKey(e){if(e.k==='uni'){const u=UNIS.find(x=>x[1]===e.n||x[2]===e.n||
 const eduChip=e=>`<span class="pchip">${ic(e.k==='uni'?'school':'book')}${esc(e.k==='uni'?uniShort(e):e.n)}${e.k==='uni'&&e.f?' · '+esc(e.f):''}${e.y1||e.y0?' · '+(e.k==='uni'?(e.y0||'')+(e.y1?'–'+e.y1:''):e.y1):''}${e.cls?' „'+esc(e.cls)+'“':''}</span>`;
 async function kuEduOf(uid){if(!uid)return[];const local=()=>uid===ME.id?(store.get(kuKey('edu'),[])||[]):[];
  if(KUR.db.edu===false)return local();
- try{const r=await q(sb.from('profiles').select('id,edu').eq('id',uid).maybeSingle());KUR.db.edu=true;return Array.isArray(r&&r.edu)?r.edu:[]}catch(e){if(!kuMissing(e))return local();KUR.db.edu=false;return local()}}
+ try{const r=await q(sb.from('profiles').select('id,edu').eq('id',uid).maybeSingle());KUR.db.edu=true;const E=Array.isArray(r&&r.edu)?r.edu:[];
+  if(uid===ME.id&&!E.length){const L=local();if(L.length){store.set(kuKey('edu'),[]);kuEduSave(L).catch(()=>store.set(kuKey('edu'),L));return L}}
+  return E}catch(e){if(!kuMissing(e))return local();KUR.db.edu=false;return local()}}
 async function kuEduSave(list){list=list.slice(0,8);if(KUR.db.edu!==false){try{await q(sb.from('profiles').update({edu:list}).eq('id',ME.id));KUR.db.edu=true;return true}catch(e){if(!kuMissing(e))throw e;KUR.db.edu=false}}store.set(kuKey('edu'),list);return false}
 PG.edu={r(){view.innerHTML=pgHead('ჩემი განათლება',`<button class="btn sm" data-a="eduadd">${ic('plus')}დამატება</button>`)+`<p class="hint" style="padding:12px 16px 0">სკოლა და უნივერსიტეტი, სადაც სწავლობ ან სწავლობდი. ამით გიპოვით კლასელებსა და კურსელებს და შეგიყვანთ კლასისა და კურსის ჯგუფებში.</p><div id="edub">${skel(2)}</div>`;kuEduPage()}};
 async function kuEduPage(){const el=$('#edub');if(!el)return;const E=await kuEduOf(ME.id);if(!el.isConnected)return;KUR.cache.edu=E;

@@ -20,11 +20,14 @@ textarea{resize:vertical}
 
 /* boot + auth */
 #boot{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:var(--bg);z-index:90}
-#boot .logo{font-size:56px}
+#boot .logo{font-size:40px;flex-direction:column;gap:14px}
+#boot .kmk{width:2.4em;height:2.4em;animation:kpop .8s var(--ease-spring) both}
+@keyframes kpop{0%{transform:scale(.6);opacity:0}100%{transform:none;opacity:1}}
 #auth{position:fixed;inset:0;overflow-y:auto;z-index:40;background:radial-gradient(120% 60% at 50% -10%,color-mix(in srgb,var(--wine) 22%,var(--bg)),var(--bg) 70%)}
 .auth-in{min-height:100%;max-width:440px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 40px) 18px calc(env(safe-area-inset-bottom,0px) + 24px);display:flex;flex-direction:column;gap:22px;justify-content:center}
 .auth-brand{text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center}
-.logo.big{font-size:64px}
+.logo.big{font-size:46px;flex-direction:column;gap:12px}
+.logo.big .kmk{width:2.2em;height:2.2em;animation:kpop .8s var(--ease-spring) both}
 .auth-brand p{color:var(--muted);font-size:15px;max-width:30ch}
 .auth-card{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:20px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px;animation:popin .5s var(--ease-out)}
 .auth-card h2{font-size:22px}
@@ -480,7 +483,7 @@ body.wide #toast{bottom:28px}
 .side-l,.side-r{height:100dvh;overflow-y:auto;scrollbar-width:thin;padding:16px 0}
 .side-l{order:0;flex:0 0 236px;display:flex;flex-direction:column;gap:12px}
 .side-r{order:2;flex:0 0 320px;display:flex;flex-direction:column;gap:12px}
-.side-l .logo{font-size:34px;padding:4px 12px;align-self:flex-start}
+.side-l .logo{font-size:27px;padding:4px 12px;align-self:flex-start}
 .snavs{display:flex;flex-direction:column;gap:2px}
 .snav{display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:999px;font-size:16px;font-weight:600;position:relative}
 .snav svg{width:24px;height:24px}
@@ -1281,6 +1284,7 @@ html.hc .note,html.hc .sub,html.hc small,html.hc .muted,html.hc .hint{color:var(
 
 /* header: search, chats, notifications, friends, visitors, services in one row */
 header.top .hicons{display:flex;align-items:center;flex:none}
+header.top .logo{flex:none}header.top.lsm .logo{gap:.16em}header.top.lsm .lw{font-size:.8em}header.top.ltight .lw{display:none}header.top.ltight .kmk{width:1.32em;height:1.32em}
 header.top .hicons .ibtn{width:38px;height:40px;border-radius:12px}
 header.top .hicons .dot{top:4px;right:0;min-width:15px;height:15px;font-size:9.5px;padding:0 3px;box-shadow:0 0 0 2px var(--surface)}
 @media (max-width:430px){header.top .hicons .ibtn{width:35px}header.top .hicons .ibtn svg{width:21px;height:21px}header.top .logo{font-size:27px}header.top .coinchip{padding:0 8px 0 5px;gap:4px}}
