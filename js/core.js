@@ -124,7 +124,11 @@ let LIVE_T=null;function stopMedia(){if(LIVE_T){clearInterval(LIVE_T);LIVE_T=nul
 const siteLang=()=>ME?.lang||'ka';
 const TXT=[],TXI=new Map(),TR=new Map();
 function txId(t){let i=TXI.get(t);if(i==null){i=TXT.push(t)-1;TXI.set(t,i)}return i}
-const linkify=s=>esc(s).replace(/(^|\s)#([A-Za-z0-9_ა-ჿ]{2,40})/g,(m,a,t)=>`${a}<button class="hash" data-a="tag" data-t="${t.toLowerCase()}">#${t}</button>`).replace(/(^|\s)@([a-z0-9_.]{3,24})/g,(m,a,u)=>`${a}<button class="hash" data-a="uname" data-u="${u}">@${u}</button>`).replace(/https?:\/\/[^\s<]+/g,u=>`<a href="${u}" target="_blank" rel="noopener nofollow ugc">${u}</a>`);
+const linkify=s=>esc(s).replace(/(^|\s)#([A-Za-z0-9_ა-ჿ]{2,40})/g,(m,a,t)=>`${a}<button class="hash" data-a="tag" data-t="${t.toLowerCase()}">#${t}</button>`).replace(/(^|\s)@([a-z0-9_.]{3,24})/g,(m,a,u)=>`${a}<button class="hash" data-a="uname" data-u="${u}">@${u}</button>`).replace(/https?:\/\/[^\s<]+/g,u=>{const h=ownHash(u);return h?`<a href="${u}" data-a="ilink" data-h="${h}">${u}</a>`:`<a href="${u}" target="_blank" rel="noopener nofollow ugc">${u}</a>`});
+/* a link to the site itself (the new address, the old one, or wherever it runs) opens inside the app */
+const OWNH=/^(www\.)?peera\.my$|^sufra-phi\.vercel\.app$/i;
+function ownHash(u){try{const x=new URL(String(u).replace(/&amp;/g,'&'));return (OWNH.test(x.hostname)||x.host===location.host)&&/^#[a-z]+(-[^\s"'<>()]+)?$/.test(x.hash)?x.hash:''}catch(e){return ''}}
+A.ilink=t=>{if(!route(t.dataset.h))window.open(t.href,'_blank','noopener')};
 function tx(t,mode='post'){t=String(t||'');if(!t.trim())return '';const L=detect(t);
  if(L===siteLang())return mode==='bubble'?`<div class="bubble">${linkify(t)}</div>`:mode==='inline'?`<span>${linkify(t)}</span>`:`<p class="txt">${linkify(t)}</p>`;
  const i=txId(t),lab=L==='ka-lat'?'ქართულ ასოებზე გადაყვანა':'თარგმნა · '+(LANGS[L]||LANGS.xx).n;
