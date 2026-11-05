@@ -1,9 +1,9 @@
 /* shell: top bar, tabs, create button, realtime, deep links, install, back button */
 const TABS=[['home','მთავარი','home'],['clips','კლიპები','clips'],['date','გაცნობა','heart'],['games','თამაშები','dice'],['me','პროფილი','user']];
-const SVC=[['rooms','wine','ვირტუალური სუფრა'],['rooms','mic','ბირჟა','birja'],['rooms','live','ლაივი','live'],['places','map','ადგილები'],['sport','trophy','მატჩის ოთახი'],['help','help','დახმარება'],['rides','pin','ერთად წავიდეთ'],['jobs','school','ვაკანსიები და CV'],['friends','users','მეგობრები'],['groups','users','ჯგუფები'],['pages','mega','არხები და გვერდები'],['events','cal','ღონისძიებები'],['albums','image','ალბომები'],['market','store','ბაზრობა'],['toasts','book','სადღეგრძელოები'],['recipes','pot','სამზარეულო'],['namedays','cal','სახელის დღეები'],['tree','tree','ოჯახის ხე'],['calendar','gift','კალენდარი'],['tour','trophy','ტურნირი'],['saved','bookmark','შენახული'],['storyarch','archive','ისტორიების არქივი'],['drafts','clock','დრაფტები'],['coins','coin','მონეტები'],['verify','shield','ვერიფიკაცია'],['settings','gear','პარამეტრები']];
+const SVC=[['rooms','video','სასწავლო ოთახი'],['rooms','mic','დისკუსია','birja'],['rooms','live','ლაივი','live'],['groups','users','ჯგუფები'],['friends','users','მეგობრები'],['events','cal','შეხვედრები'],['jobs','school','ვაკანსიები და CV'],['pages','mega','არხები და გვერდები'],['albums','image','ალბომები'],['market','store','ბაზრობა'],['places','map','ადგილები'],['sport','trophy','მატჩის ოთახი'],['help','help','დახმარება'],['rides','pin','ერთად წავიდეთ'],['namedays','cal','სახელის დღეები'],['tree','tree','ოჯახის ხე'],['calendar','gift','კალენდარი'],['tour','trophy','ტურნირი'],['saved','bookmark','შენახული'],['storyarch','archive','ისტორიების არქივი'],['drafts','clock','დრაფტები'],['coins','coin','მონეტები'],['verify','shield','ვერიფიკაცია'],['settings','gear','პარამეტრები']];
 const today=()=>new Date().toISOString().slice(0,10);
 
-function renderTop(){if(!ME)return;$('#top').innerHTML=`<button class="logo" data-a="home" aria-label="სუფრა, მთავარზე დაბრუნება">სუფრა</button><span class="sp"></span>
+function renderTop(){if(!ME)return;$('#top').innerHTML=`<button class="logo" data-a="home" aria-label="კურსელები, მთავარზე დაბრუნება">კურსელები</button><span class="sp"></span>
  <button class="coinchip${ME.last_bonus===today()?'':' bonus'}" data-a="page" data-p="coins" aria-label="მონეტები">${ic('coin')}<span id="coinv">${ME.coins??0}</span></button>
  <span class="hicons"><button class="ibtn" data-a="search" aria-label="ძიება">${ic('search')}</button>
  <button class="ibtn" data-a="chats" aria-label="მიმოწერა">${ic('msg')}<span class="dot" id="dm" hidden></span></button>
@@ -16,7 +16,7 @@ function renderTabs(){const v=visTabs(),el=$('#tabs');el.style.setProperty('--tn
 function renderBadges(){const set=(id,n)=>{const d=$('#'+id);if(!d)return;const was=d.hidden?0:parseInt(d.textContent,10)||0;d.hidden=!n;d.textContent=n>99?'99+':String(n);if(n>was)pop(d)};
  set('dn',S.unreadNotes);set('dm',S.unreadMsgs);set('dn2',S.unreadNotes);set('dm2',S.unreadMsgs);set('df',typeof PENDING_IN!=='undefined'?PENDING_IN.size:0);set('dg',S.newGuests||0);
  const me=$('.tab[data-tab="me"] .tdot');if(me)me.hidden=!(typeof PENDING_IN!=='undefined'&&PENDING_IN.size);
- const tot=(S.unreadNotes||0)+(S.unreadMsgs||0);document.title=tot?`(${tot}) სუფრა`:'სუფრა';
+ const tot=(S.unreadNotes||0)+(S.unreadMsgs||0);document.title=tot?`(${tot}) კურსელები`:'კურსელები';
  try{if(tot&&navigator.setAppBadge)navigator.setAppBadge(tot);else if(navigator.clearAppBadge)navigator.clearAppBadge()}catch(e){}}
 
 /* tabs and pages */
@@ -34,7 +34,7 @@ A.home=()=>{if(S.tab==='home'&&!S.page){view.scrollTo({top:0,behavior:RM()?'auto
 A.menu=()=>{navMark('menu',A.menu);const svc=SVC.filter(x=>pageOk(x[0]));if(isStaff())svc.push(['admin','shield','ადმინ პანელი']);
  const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
  sheet(head('სერვისები')+`<div class="svc">${svc.map(([p,i,l,a])=>`<button data-a="page" data-p="${p}"${a?` data-arg="${a}"`:''}>${ic(i)}${l}</button>`).join('')}${standalone?'':`<button data-a="install">${ic('download')}აპად დაყენება</button>`}<button data-a="rules">${ic('flag')}წესები</button></div>`,'short')};
-const CREATE=[['cpost','edit','პოსტი','ტექსტი, ფოტო, ჰეშთეგი'],['crecipe','pot','რეცეპტი','შენი კერძი ნაბიჯ-ნაბიჯ'],['croom','wine','სუფრის გაშლა','ვიდეო, თამადა, სადღეგრძელოები'],['cbirja','mic','ბირჟა','ხმოვანი ოთახი თემაზე'],['cphoto','image','ფოტო','ფილტრით და ჭრით'],['cclip','clips','კლიპი','მოკლე ვერტიკალური ვიდეო'],['cpoll','poll','გამოკითხვა','მეგობრების აზრი'],['cstory','story','ისტორია','ქრება 24 საათში'],['cevent','cal','ღონისძიება','სუფრა, შეხვედრა, ქორწილი'],['clisting','store','განცხადება','გაყიდე ან გააჩუქე'],['cgroup','users','ჯგუფი','საერთო ინტერესით'],['cpage','mega','არხი ან გვერდი','ბიზნესი და რეკლამა'],['cgchat','msg','ჯგუფური ჩატი','რამდენიმე მეგობართან'],['clive','live','ლაივი','პირდაპირი ეთერი'],['cplace','map','ადგილი','რესტორანი, მარანი, სასტუმრო'],['chelp','help','დახმარების თხოვნა','სისხლი, ცხოველი, მოხალისე'],['ctoast','book','სადღეგრძელო','თამადის წიგნისთვის'],['cride','pin','მგზავრობა','ადგილები მანქანაში'],['cjob','school','ვაკანსია','მოძებნე თანამშრომელი']];
+const CREATE=[['cpost','edit','პოსტი','ტექსტი, ფოტო, ჰეშთეგი'],['croom','video','სასწავლო ოთახი','ვიდეო-შეხვედრა კურსელებთან'],['cbirja','mic','დისკუსია','ხმოვანი ოთახი თემაზე'],['cphoto','image','ფოტო','ფილტრით და ჭრით'],['cclip','clips','კლიპი','მოკლე ვერტიკალური ვიდეო'],['cpoll','poll','გამოკითხვა','მეგობრების აზრი'],['cstory','story','ისტორია','ქრება 24 საათში'],['cevent','cal','შეხვედრა','ლექცია, ექსკურსია, წვეულება'],['clisting','store','განცხადება','გაყიდე ან გააჩუქე'],['cgroup','users','ჯგუფი','საერთო ინტერესით'],['cpage','mega','არხი ან გვერდი','ბიზნესი და რეკლამა'],['cgchat','msg','ჯგუფური ჩატი','რამდენიმე მეგობართან'],['clive','live','ლაივი','პირდაპირი ეთერი'],['cplace','map','ადგილი','კაფე, ბიბლიოთეკა, სივრცე'],['chelp','help','დახმარების თხოვნა','სისხლი, ცხოველი, მოხალისე'],['cride','pin','მგზავრობა','ადგილები მანქანაში'],['cjob','school','ვაკანსია','მოძებნე თანამშრომელი']];
 A.create=()=>(navMark('create',A.create),sheet(head('შექმნა')+`<div class="createg">${CREATE.filter(x=>createOk(x[0])).map(([a,i,l,s])=>`<button data-a="${a}"><span class="cgi">${ic(i)}</span><b>${l}</b><small>${s}</small></button>`).join('')}</div>`,'short'));
 A.cpost=()=>compose();
 A.crecipe=()=>{closeSheet();A.recipenew()};
@@ -60,7 +60,7 @@ A.cgchat=()=>A.newgroupchat();
 const WIDE=matchMedia('(min-width:1000px)');
 function renderSide(){const on=WIDE.matches&&!!ME;document.body.classList.toggle('wide',on);if(!on){$('#sidel')?.remove();$('#sider')?.remove();return}
  let L=$('#sidel');if(!L){L=document.createElement('aside');L.id='sidel';L.className='side-l';L.setAttribute('aria-label','ნავიგაცია');document.body.appendChild(L)}
- L.innerHTML=`<button class="logo" data-a="home" aria-label="სუფრა">სუფრა</button><nav class="snavs">${visTabs().map(([k,l,i])=>`<button class="snav" data-tab2="${k}">${ic(i)}<span>${l}</span></button>`).join('')}
+ L.innerHTML=`<button class="logo" data-a="home" aria-label="კურსელები">კურსელები</button><nav class="snavs">${visTabs().map(([k,l,i])=>`<button class="snav" data-tab2="${k}">${ic(i)}<span>${l}</span></button>`).join('')}
   <button class="snav" data-a="chats">${ic('msg')}<span>მიმოწერა</span><i class="sdot" id="dm2" hidden></i></button><button class="snav" data-a="notifs">${ic('bell')}<span>შეტყობინებები</span><i class="sdot" id="dn2" hidden></i></button>
   <span class="snavsep"></span>${SVC.filter(x=>pageOk(x[0])).slice(0,8).map(([p,i,l,a])=>`<button class="snav sm" data-a="page" data-p="${p}"${a?` data-arg="${a}"`:''}>${ic(i)}<span>${l}</span></button>`).join('')}<button class="snav sm" data-a="menu">${ic('grid')}<span>ყველა სერვისი</span></button></nav>
   <button class="btn wide" data-a="create">${ic('plus')}შექმნა</button><button class="smine" data-tab2="me">${av('me',40)}<span class="grow"><b>${esc(ME.name)}</b><small>${ME.username?'@'+esc(ME.username):'პროფილი'}</small></span></button>`;
@@ -68,7 +68,7 @@ function renderSide(){const on=WIDE.matches&&!!ME;document.body.classList.toggle
  markSide();renderBadges()}
 function markSide(){$$('#sidel [data-tab2]').forEach(b=>b.setAttribute('aria-current',String(!S.page&&b.dataset.tab2===S.tab)))}
 async function loadSideR(){const el=$('#sider');if(!el)return;
- el.innerHTML=`<form class="ssearch" id="ssf" role="search">${ic('search')}<input id="ssq" type="search" placeholder="ძიება სუფრაზე" aria-label="ძიება"></form><section class="scard" id="sr_live"></section><section class="scard" id="sr_tr"></section><section class="scard" id="sr_sg"></section><section class="scard" id="sr_bd"></section><p class="sfoot"><button class="trb" data-a="rules">წესები</button> · <button class="trb" data-a="privacy">კონფიდენციალურობა</button> · სუფრა ${new Date().getFullYear()}</p>`;
+ el.innerHTML=`<form class="ssearch" id="ssf" role="search">${ic('search')}<input id="ssq" type="search" placeholder="ძიება კურსელებში" aria-label="ძიება"></form><section class="scard" id="sr_live"></section><section class="scard" id="sr_tr"></section><section class="scard" id="sr_sg"></section><section class="scard" id="sr_bd"></section><p class="sfoot"><button class="trb" data-a="rules">წესები</button> · <button class="trb" data-a="privacy">კონფიდენციალურობა</button> · კურსელები ${new Date().getFullYear()}</p>`;
  $('#ssf').onsubmit=e=>{e.preventDefault();openPage('search',$('#ssq').value.trim())};
  try{const[t,sg,rooms]=await Promise.all([rpc('trending_tags',{p_limit:8}),rpc('friend_suggestions',{p_limit:5}),q(sb.from('rooms').select('id,kind,title,host').eq('live',true).gt('created_at',new Date(Date.now()-12*36e5).toISOString()).order('created_at',{ascending:false}).limit(4))]);
   sg.forEach(p=>PC.set(p.id,Object.assign(PC.get(p.id)||{},p)));await loadProfiles(rooms.map(r=>r.host));
@@ -94,7 +94,7 @@ async function onNote(n){const r=n.ref||{};if(n.actor)try{await loadProfiles([n.
 /* presence: last seen */
 function touchSeen(){if(!ME||document.hidden||ME.privacy?.online===false)return;sb.from('profiles').update({last_seen:new Date().toISOString()}).eq('id',ME.id).then(()=>{})}
 
-/* deep links: #post-12, #user-<id>, #chat-3, #group-5, #pagev-2, #event-7, #tag-ღვინო, #notifications, #date */
+/* deep links: #post-12, #user-<id>, #chat-3, #group-5, #pagev-2, #event-7, #tag-ლექცია, #notifications, #date */
 function route(h){h=String(h||'');if(!h||h==='#'||h.includes('='))return false;let id,arg;
  try{const m=decodeURIComponent(h).match(/^#([a-z]+)(?:-(.+))?$/);if(!m)return false;[,id,arg]=m}catch(e){return false}
  const base=()=>{if(!view.childElementCount)go('home')};
@@ -110,7 +110,7 @@ function route(h){h=String(h||'');if(!h||h==='#'||h.includes('='))return false;l
 function registerSW(){if(!('serviceWorker'in navigator))return;navigator.serviceWorker.register('/sw.js').catch(()=>{});
  navigator.serviceWorker.addEventListener('message',e=>{const d=e.data||{};if(d.type==='open'&&d.url){const u=new URL(d.url,location.origin);route(u.hash)}})}
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();S.installEvt=e});
-window.addEventListener('appinstalled',()=>{S.installEvt=null;toast('სუფრა დაყენდა 🎉')});
+window.addEventListener('appinstalled',()=>{S.installEvt=null;toast('კურსელები ტელეფონზე დაყენდა 🎉')});
 window.addEventListener('offline',()=>toast('ინტერნეტი გაითიშა'));
 window.addEventListener('online',()=>{toast('კავშირი აღდგა');if(ME)countUnread()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ME){countUnread();touchSeen()}});

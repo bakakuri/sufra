@@ -9,7 +9,7 @@ function authErr(e){const m=String(e?.message||e||'');
  if(/invalid.*email|Unable to validate email/i.test(m))return 'ელფოსტის მისამართი არასწორია';
  return errMsg(e)}
 function authShell(inner){const el=$('#auth');el.hidden=false;const b=$('#boot');if(b)b.remove();
- el.innerHTML=`<div class="auth-in"><div class="auth-brand"><span class="logo big">სუფრა</span><p>მეგობრები, კლიპები, გაცნობა და ნარდი ერთ სუფრასთან.</p></div><div class="auth-card">${inner}</div>
+ el.innerHTML=`<div class="auth-in"><div class="auth-brand"><span class="logo big">კურსელები</span><p>კლასელები, კურსელები და მეგობრები ერთ ადგილას.</p></div><div class="auth-card">${inner}</div>
  <p class="auth-foot"><button class="trb" data-a="rules">საზოგადოების წესები</button><span>·</span><button class="trb" data-a="privacy">კონფიდენციალურობა</button></p></div>`}
 function showAuth(mode='in'){
  if(mode==='reset'){authShell(`<h2>პაროლის აღდგენა</h2><p class="note">შეიყვანე ელფოსტა და გამოგიგზავნით ბმულს ახალი პაროლისთვის.</p><form class="form0" id="af"><label class="fld">ელფოსტა<input id="a_e" type="email" autocomplete="email" required></label><p class="aerr" id="aerr" role="alert"></p><button class="btn wide">ბმულის გაგზავნა</button></form><button class="trb" data-a="authmode" data-m="in">შესვლაზე დაბრუნება</button>`);
@@ -33,7 +33,7 @@ function showAuth(mode='in'){
 A.authmode=t=>showAuth(t.dataset.m);
 function showOnboarding(){
  const max=new Date();max.setFullYear(max.getFullYear()-13);const mx=max.toISOString().slice(0,10);
- authShell(`<h2>მოგესალმები სუფრაზე!</h2><p class="note">რამდენიმე დეტალი და მზად ხარ. დაბადების თარიღი სხვებს არ უჩანთ: საჭიროა ასაკის შესამოწმებლად (გაცნობა მხოლოდ 18+).</p>
+ authShell(`<h2>მოგესალმები კურსელებში!</h2><p class="note">რამდენიმე დეტალი და მზად ხარ. დაბადების თარიღი სხვებს არ უჩანთ: საჭიროა ასაკის შესამოწმებლად (გაცნობა მხოლოდ 18+).</p>
  <form class="form0" id="of"><label class="fld">სახელი და გვარი<input id="o_n" maxlength="60" required value="${esc(ME.name||'')}"></label>
  <label class="fld">მომხმარებლის სახელი (არასავალდებულო)<input id="o_u" maxlength="24" pattern="[a-z0-9_.]{3,24}" placeholder="მაგ. nino.beridze" autocapitalize="none" spellcheck="false"></label>
  <label class="fld">დაბადების თარიღი<input id="o_b" type="date" max="${mx}" min="1900-01-01" required></label>

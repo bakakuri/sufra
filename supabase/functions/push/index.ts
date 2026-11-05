@@ -15,23 +15,26 @@ async function config() {
   return cfg!;
 }
 
+// the "good idea" reaction is stored as 🍷 and shown as a light bulb
+const emo = (e: string | undefined, d: string) => e === "🍷" ? "💡" : (e ?? d);
+
 function text(kind: string, name: string, ref: Record<string, string>): string {
   switch (kind) {
-    case "react": return `${name} · ${ref.emoji ?? "👍"} შენს პოსტზე`;
+    case "react": return `${name} · ${emo(ref.emoji, "👍")} შენს პოსტზე`;
     case "comment": return `${name} · ახალი კომენტარი: ${ref.text ?? ""}`;
     case "comment_reply": return `${name} გიპასუხა: ${ref.text ?? ""}`;
     case "comment_like": return `${name} · მოიწონა შენი კომენტარი`;
     case "repost": return `${name} · ${String(ref.quote) === "true" ? "გააზიარა შენი პოსტი თავისი სიტყვით" : "გააზიარა შენი პოსტი"}`;
     case "promo": return `${ref.text ?? ""}`;
-    case "admin_msg": return `სუფრის გუნდი: ${ref.text ?? ""}`;
+    case "admin_msg": return `კურსელების გუნდი: ${ref.text ?? ""}`;
     case "admin_coins": return `${Number(ref.coins) > 0 ? "+" : ""}${ref.coins ?? ""} მონეტა · ${ref.note ?? ""}`;
     case "story_mention": return `${name} მოგნიშნა თავის ისტორიაზე`;
-    case "recipe_cook": return `${name} · შენი რეცეპტით მოამზადა კერძი 🍲`;
+    case "recipe_cook": return `${name} · შენი კონსპექტით ისწავლა 📚`;
     case "jk_invite": return `${name} გეპატიჟება ჯოკერზე 🃏`;
     case "grade_plus": return `${name} · შენს ფოტოს „5+“ დაუწერა${Number(ref.coins) > 0 ? ` (+${ref.coins} მონეტა)` : ""}`;
     case "mention": return `${name} მოგიხსენია${ref.comment ? " კომენტარში" : ""}: ${ref.text ?? ""}`;
-    case "msg_react": return `${name} · ${ref.emoji ?? "❤️"} შენს მესიჯზე`;
-    case "story_react": return `${name} · ${ref.emoji ?? "❤️"} შენს ისტორიაზე`;
+    case "msg_react": return `${name} · ${emo(ref.emoji, "❤️")} შენს მესიჯზე`;
+    case "story_react": return `${name} · ${emo(ref.emoji, "❤️")} შენს ისტორიაზე`;
     case "event_invite": return `${name} გეპატიჟება: ${ref.title ?? ""}`;
     case "event_soon": return `მალე იწყება: ${ref.title ?? ""}`;
     case "album_invite": return `${name} დაგამატა ალბომში „${ref.title ?? ""}“`;
@@ -52,7 +55,7 @@ function text(kind: string, name: string, ref: Record<string, string>): string {
     case "verify_rejected": return "ვერიფიკაცია ვერ დადასტურდა. სცადე ახალი სელფით";
     case "ad_ok": return "შენი რეკლამა დამტკიცდა და უკვე ჩანს";
     case "ad_rejected": return "რეკლამა არ დამტკიცდა, მონეტები დაგიბრუნდა";
-    case "room_invite": return `${name} გეპატიჟება ${ref.kind === "birja" ? "ბირჟაზე" : ref.kind === "live" ? "ლაივზე" : "სუფრაზე"}: ${ref.title ?? ""}`;
+    case "room_invite": return `${name} გეპატიჟება ${ref.kind === "birja" ? "დისკუსიაზე" : ref.kind === "live" ? "ლაივზე" : "სასწავლო ოთახში"}: ${ref.title ?? ""}`;
     case "bet_won": return `მოიგე ${ref.coins ?? ""} მონეტა · ${ref.match ?? ""} ${ref.score ?? ""}`;
     case "bet_lost": return `${ref.match ?? ""} ${ref.score ?? ""} · პროგნოზი არ გამართლდა`;
     case "bet_refund": return `${ref.match ?? ""} · მონეტები დაგიბრუნდა`;
@@ -66,7 +69,7 @@ function text(kind: string, name: string, ref: Record<string, string>): string {
     case "nameday": return `${ref.label ?? "ანგელოზის დღე"}: ${name}${Number(ref.n) > 1 ? ` და კიდევ ${Number(ref.n) - 1} მეგობარი` : ""} · მიულოცე!`;
     case "birthday": return `დაბადების დღე: ${name}${Number(ref.n) > 1 ? ` და კიდევ ${Number(ref.n) - 1} მეგობარი` : ""} · მიულოცე! 🎉`;
     case "nameday_me": return `გილოცავ ანგელოზის დღეს! ${ref.label ?? ""}`;
-    case "birthday_me": return "სუფრა გილოცავს დაბადების დღეს! 🎉";
+    case "birthday_me": return "კურსელები გილოცავს დაბადების დღეს! 🎉";
     case "kin_req": return `${name} გთავაზობს ოჯახის ხეში დაკავშირებას`;
     case "kin_ok": return `${name} დაადასტურა ნათესაობა`;
     case "help_new": return `${ref.kind === "blood" ? "🩸 საჭიროა დონორი" + (ref.blood ? " " + ref.blood : "") : ref.kind === "volunteer" ? "🤝 საჭიროა მოხალისე" : "🐾 " + (ref.kind === "found_pet" ? "ნაპოვნია" : "დაიკარგა")} · ${ref.title ?? ""} · ${ref.region ?? ""}`;
@@ -115,13 +118,13 @@ Deno.serve(async (req) => {
     // muted categories and quiet hours: the notification stays in the app, only the push is skipped
     const { data: allowed, error: pe } = await sb.rpc("push_allowed", { p_user: n.user_id, p_kind: n.kind });
     if (!pe && allowed === false) return new Response("quiet");
-    let name = "სუფრა";
+    let name = "კურსელები";
     if (n.actor) {
       const { data: a } = await sb.from("profiles").select("name").eq("id", n.actor).maybeSingle();
       if (a?.name) name = a.name;
     }
     const ref = (n.ref ?? {}) as Record<string, string>;
-    const payload = JSON.stringify({ title: "სუფრა", body: text(n.kind, name, ref), url: route(n.kind, ref), tag: `${n.kind}-${ref.conv ?? ref.post ?? n.id}` });
+    const payload = JSON.stringify({ title: "კურსელები", body: text(n.kind, name, ref), url: route(n.kind, ref), tag: `${n.kind}-${ref.conv ?? ref.post ?? n.id}` });
     const { data: subs } = await sb.from("push_subs").select("id,endpoint,p256dh,auth").eq("user_id", n.user_id);
     await Promise.all((subs ?? []).map(async (s) => {
       try {

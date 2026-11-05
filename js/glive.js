@@ -21,7 +21,7 @@ for(const G of[CH,CK,NR]){const r=G.render;G.render=function(...a){const x=r.app
 {const lb=A.lobby;A.lobby=function(...a){gLiveStop(false);return lb.apply(this,a)}}
 
 /* ---------- comments over the board ---------- */
-const GCMT=['ბრავო!','ვაჰ!','ფრთხილად!','კარგი სვლაა','ეგ რა იყო?','გაუმარჯოს!'];
+const GCMT=['ბრავო!','ვაჰ!','ფრთხილად!','კარგი სვლაა','ეგ რა იყო?','ყოჩაღ!'];
 function gCmtShow(d,mine){if(!d||typeof d.t!=='string')return;const t=d.t.trim().slice(0,120),n=String(d.n||'').slice(0,40);if(!t)return;if(!mine&&d.from===ME.id)return;
  let L=$('#gcmt');if(!L){L=document.createElement('div');L.id='gcmt';L.setAttribute('aria-live','polite');document.body.appendChild(L)}
  const el=document.createElement('div');el.className='gcm'+(mine?' me':'');el.innerHTML=`<b>${esc(n.split(' ')[0])}</b> ${esc(t)}`;L.appendChild(el);while(L.children.length>4)L.firstChild.remove();

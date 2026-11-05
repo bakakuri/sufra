@@ -40,7 +40,7 @@ async function saveNd(md,label){if(md){const[m,d]=md.split('-').map(Number);if(d
  try{await q(sb.from('profiles').update({nameday:md,nameday_label:label||''}).eq('id',ME.id));ME.nameday=md;ME.nameday_label=label||'';if(S.ndLayer){closeLayer();S.ndLayer=false}else closeSheet();toast('შენახულია. მეგობრებს ამ დღეს შევახსენებთ');if(S.page?.id==='namedays')drawNamedays()}catch(e){toast(errMsg(e))}}
 
 /* greeting cards, sent as a chat message */
-const CARD_KINDS=[['n','ანგელოზის დღე'],['b','დაბადების დღე'],['g','გაუმარჯოს']];
+const CARD_KINDS=[['n','ანგელოზის დღე'],['b','დაბადების დღე'],['g','გილოცავ']];
 const CARDS=[
  ['nd1','n','გილოცავ ანგელოზის დღეს!','cross'],['nd2','n','ანგელოზი გფარავდეს!','stars'],
  ['bd1','b','გილოცავ დაბადების დღეს!','confetti'],['bd2','b','ბედნიერ დაბადების დღეს!','balloons'],

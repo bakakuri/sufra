@@ -129,7 +129,7 @@ A.jkoagain=()=>{if(joIsHost()&&JO.st&&JO.st.phase==='over'){clearTimeout(JO.tm);
 A.jkonew=async()=>{try{const r=await q(sb.from('jk_tables').insert({host:ME.id,len:'quick',seats:[ME.id,null,null,null]}).select('id').single());openPage('jktable',r.id)}catch(e){toast(errMsg(e))}};
 A.jkolen=async t=>{if(!joIsHost()||JO.t.status!=='wait')return;const len=t.dataset.m==='full'?'full':'quick';JO.t.len=len;joDraw();try{await q(sb.from('jk_tables').update({len,updated_at:new Date().toISOString()}).eq('id',JO.id))}catch(e){toast(errMsg(e))}};
 A.jkoinvite=()=>{if(!JO.t)return;friendPicker('მოწვევა ჯოკერზე','მოწვევა',async sel=>{const n=await rpc('jk_invite',{p_table:JO.id,p_users:sel});closeSheet();toast(n?`მოწვევა გაეგზავნა: ${n}`:'მოწვევა ვერ გაიგზავნა')},new Set(JO.t.seats.filter(Boolean)))};
-A.jkoshare=()=>{if(JO.id)shareLink(location.origin+'/#jktable-'+JO.id,'ჯოკერი სუფრაზე: შემოდი, ერთი ადგილი გელოდება')};
+A.jkoshare=()=>{if(JO.id)shareLink(location.origin+'/#jktable-'+JO.id,'ჯოკერი კურსელებში: შემოდი, ერთი ადგილი გელოდება')};
 A.jkojoin=async()=>{try{const seat=await rpc('jk_join',{p_table:JO.id});JO.seat=seat;if(JO.t)JO.t.seats[seat]=ME.id;joDraw()}catch(e){toast(e&&String(e.message||'').includes('album_full')?'მაგიდა უკვე სავსეა':errMsg(e))}};
 A.jkoleave=async()=>{try{await rpc('jk_leave',{p_table:JO.id});if(JO.t&&JO.seat>=0)JO.t.seats[JO.seat]=null;JO.seat=-1;joDraw()}catch(e){toast(errMsg(e))}};
 A.jkostart=async()=>{if(!joIsHost()||JO.t.status!=='wait')return;

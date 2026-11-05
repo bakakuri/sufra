@@ -1,5 +1,5 @@
 /* places on a map: restaurants, wineries, guesthouses and sights, with reviews and check-ins */
-const PKINDS=[['restaurant','რესტორანი','🍽'],['cafe','კაფე','☕'],['bar','ბარი','🍸'],['winery','მარანი','🍷'],['hotel','სასტუმრო','🏨'],['guesthouse','საოჯახო სასტუმრო','🏡'],['sight','ღირსშესანიშნაობა','🏛'],['nature','ბუნება','⛰'],['shop','მაღაზია','🛍'],['other','სხვა','📍']];
+const PKINDS=[['restaurant','რესტორანი','🍽'],['cafe','კაფე','☕'],['bar','ბარი','🍸'],['winery','ბიბლიოთეკა','📚'],['hotel','სასტუმრო','🏨'],['guesthouse','საოჯახო სასტუმრო','🏡'],['sight','ღირსშესანიშნაობა','🏛'],['nature','ბუნება','⛰'],['shop','მაღაზია','🛍'],['other','სხვა','📍']];
 const pk=k=>PKINDS.find(x=>x[0]===k)||PKINDS[9];
 const TBILISI=[41.7151,44.8271];
 const fmtKm=k=>k==null?'':k<1?Math.round(k*1000)+' მ':(k<10?k.toFixed(1):Math.round(k))+' კმ';
@@ -20,7 +20,7 @@ function getGeo(ask){return new Promise(res=>{if(S.geo)return res(S.geo);if(!nav
  if(ask)return go();try{navigator.permissions.query({name:'geolocation'}).then(st=>st.state==='granted'?go():res(null)).catch(()=>res(null))}catch(e){res(null)}})}
 
 PG.places={r(){S.pq=S.pq||{kind:'',text:'',view:'map'};const f=S.pq;
- view.innerHTML=pgHead('ადგილები',`<button class="btn sm" data-a="page" data-p="placenew">${ic('plus')}დამატება</button>`)+`<form class="search" id="plsf" role="search"><input class="field" id="plq" type="search" placeholder="ხინკალი, მარანი, სასტუმრო, ქალაქი" value="${esc(f.text)}" aria-label="ადგილის ძიება" autocomplete="off"><button type="button" class="ibtn" data-a="plnear" aria-label="ჩემთან ახლოს">${ic('locate')}</button></form>
+ view.innerHTML=pgHead('ადგილები',`<button class="btn sm" data-a="page" data-p="placenew">${ic('plus')}დამატება</button>`)+`<form class="search" id="plsf" role="search"><input class="field" id="plq" type="search" placeholder="კაფე, ბიბლიოთეკა, სასტუმრო, ქალაქი" value="${esc(f.text)}" aria-label="ადგილის ძიება" autocomplete="off"><button type="button" class="ibtn" data-a="plnear" aria-label="ჩემთან ახლოს">${ic('locate')}</button></form>
  <div class="chipsbar" role="group" aria-label="ტიპი"><button data-a="plkind" data-k="" aria-pressed="${!f.kind}">ყველა</button>${PKINDS.map(([k,l,e])=>`<button data-a="plkind" data-k="${k}" aria-pressed="${f.kind===k}">${e} ${l}</button>`).join('')}</div>
  <div class="seg" role="group" aria-label="ხედი" style="margin-top:0">${[['map','რუკა'],['list','სია']].map(([k,l])=>`<button data-a="plview" data-k="${k}" aria-pressed="${f.view===k}">${l}</button>`).join('')}</div>
  <div class="plmapw" id="plmapw"${f.view==='map'?'':' hidden'}><div id="plmap" class="plmap"></div><div id="plpeek" class="plpeek" hidden></div></div><div id="pll"></div>`;
@@ -39,7 +39,7 @@ async function loadPlaces(){const el=$('#pll');if(!el)return;const f=S.pq,map=S.
  if(!map)el.innerHTML=skel(3);
  try{const rows=await rpc('places_near',{p_lat:c[0],p_lng:c[1],p_km:km,p_kind:f.kind||null,p_q:clean(f.text)||null,p_limit:map?150:60});if(tok!==S.pltok||!el.isConnected)return;
   if(map){S.plmk.clearLayers();rows.forEach(p=>L.marker([p.lat,p.lng],{icon:pinIcon(p),title:p.name}).on('click',ev=>{L.DomEvent.stopPropagation(ev);peekPlace(p)}).addTo(S.plmk))}
-  el.innerHTML=rows.length?`<h3 class="sec2">${map?'ამ ხედზე':'ახლოს'} · ${rows.length}</h3><div class="pllist">${rows.slice(0,map?30:60).map(spotCard).join('')}</div>`:empty(f.text?'ვერაფერი ვიპოვე':'აქ ადგილები ჯერ არ დაუმატებიათ',f.text?'სცადე სხვა სიტყვა ან გადაიტანე რუკა.':'დაამატე შენი საყვარელი რესტორანი, მარანი ან სასტუმრო სახლი.',`<button class="btn" data-a="page" data-p="placenew">${ic('plus')}ადგილის დამატება</button>`);if(!map)staggerIn($$('.plcard',el).slice(0,8))}
+  el.innerHTML=rows.length?`<h3 class="sec2">${map?'ამ ხედზე':'ახლოს'} · ${rows.length}</h3><div class="pllist">${rows.slice(0,map?30:60).map(spotCard).join('')}</div>`:empty(f.text?'ვერაფერი ვიპოვე':'აქ ადგილები ჯერ არ დაუმატებიათ',f.text?'სცადე სხვა სიტყვა ან გადაიტანე რუკა.':'დაამატე შენი საყვარელი კაფე, ბიბლიოთეკა ან სასწავლო სივრცე.',`<button class="btn" data-a="page" data-p="placenew">${ic('plus')}ადგილის დამატება</button>`);if(!map)staggerIn($$('.plcard',el).slice(0,8))}
  catch(e){el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))}}
 const spotCard=p=>`<button class="plcard" data-a="page" data-p="place" data-arg="${p.id}">${p.photo&&!ECO()?`<img src="${esc(p.photo)}" alt="" loading="lazy">`:`<span class="plico">${pk(p.kind)[2]}</span>`}<span class="grow"><b>${esc(p.name)}</b><span class="sub">${pk(p.kind)[1]}${p.city?' · '+esc(p.city):''}${p.km!=null?' · '+fmtKm(p.km):''}</span>${ratingTag(p)}</span></button>`;
 function peekPlace(p){const el=$('#plpeek');if(!el)return;el.hidden=false;el.innerHTML=spotCard(p)+`<button class="ibtn sm" data-a="plpeekx" aria-label="დახურვა">${ic('x')}</button>`}
@@ -85,7 +85,7 @@ A.review=async()=>{const p=S.place;if(!p)return;let mine=null;try{mine=await q(s
 
 /* add or edit a place */
 PG.placenew={async r(id){const edit=id?await q(sb.from('places').select('*').eq('id',+id).maybeSingle()).catch(()=>null):null;const p=edit||{};
- view.innerHTML=pgHead(edit?'ადგილის რედაქტირება':'ახალი ადგილი')+`<form class="form" id="pnf"><label class="fld">სახელი<input id="pn_n" maxlength="80" required value="${esc(p.name||'')}" placeholder="მაგ. ხინკლის სახლი, ღვინის მარანი"></label>
+ view.innerHTML=pgHead(edit?'ადგილის რედაქტირება':'ახალი ადგილი')+`<form class="form" id="pnf"><label class="fld">სახელი<input id="pn_n" maxlength="80" required value="${esc(p.name||'')}" placeholder="მაგ. ეროვნული ბიბლიოთეკა, კაფე კამპუსთან"></label>
  <label class="fld">ტიპი<select id="pn_k">${PKINDS.map(([k,l,e])=>`<option value="${k}"${p.kind===k?' selected':''}>${e} ${l}</option>`).join('')}</select></label>
  <div class="frow"><label class="fld">რეგიონი<select id="pn_r"><option value="">—</option>${REGIONS.map(r=>`<option${(edit?p.region:ME.home_region)===r?' selected':''}>${r}</option>`).join('')}</select></label><label class="fld">ქალაქი ან სოფელი<input id="pn_c" maxlength="60" list="pncities" value="${esc(p.city||ME.city||'')}"></label></div><datalist id="pncities">${CITIES.map(c=>`<option value="${c}">`).join('')}</datalist>
  <label class="fld">მისამართი<input id="pn_a" maxlength="120" value="${esc(p.address||'')}" placeholder="ქუჩა, ნომერი"></label>

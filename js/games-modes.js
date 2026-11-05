@@ -150,7 +150,7 @@ function gModesHTML(){const n=Object.keys(cState().done).length,nx=cNext(),dd=ty
   <button class="gmode" data-a="sprint"><span class="gmi">${ic('timer')}</span><b>ამოცანების სპრინტი</b><small>სამი წუთი${typeof SPR!=='undefined'&&SPR.best?` · რეკორდი ${SPR.best}`:', რამდენ მატს იპოვი'}</small></button>
   <button class="gmode" data-a="page" data-p="corrs"><span class="gmi">${ic('msg')}</span><b>მიმოწერით</b><small>სვლა, როცა გცალია</small></button>
   <button class="gmode" data-a="page" data-p="cups"><span class="gmi">${ic('crown')}</span><b>თასები და დუელები</b><small>თასი მეგობრებთან, ჯგუფი ჯგუფის წინააღმდეგ</small></button>
-  <button class="gmode" data-a="gtablepick"><span class="gmi">${ic('wine')}</span><b>მეგობრების მაგიდა</b><small>ჯოკერი, დომინო ან ლოტო, ხმოვანი საუბრით</small></button></div></section>`}
+  <button class="gmode" data-a="gtablepick"><span class="gmi">${ic('users')}</span><b>მეგობრების მაგიდა</b><small>ჯოკერი, დომინო ან ლოტო, ხმოვანი საუბრით</small></button></div></section>`}
 A.gtablepick=()=>sheet(head('მეგობრების მაგიდა')+`<div class="jchoice"><button data-a="jkonew">${ic('cards')} ჯოკერი</button><button data-a="dmonew">${ic('domino')} დომინო</button><button data-a="lotnew">${ic('grid')} ლოტო</button></div><p class="note">მაგიდას შენ გაშლი და მეგობრებს მოიწვევ. ცარიელ ადგილებზე ბოტები ჩაჯდებიან, მაგიდასთან კი მიკროფონით შეგიძლიათ ისაუბროთ.</p>`,'short');
 
 /* ---------- time on the clock ----------

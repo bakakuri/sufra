@@ -1,23 +1,24 @@
 
-/* Layout: one phone-width app column, centered. Fixed top bar, one scrolling view, bottom tab bar. Games sit on wood and felt. */
+/* Layout: one phone-width app column, centered. Fixed top bar, one scrolling view, bottom tab bar. Games sit on wood and felt.
+   colours: a cool, clean base with one indigo accent (the variable keeps its old name, --wine) and amber for highlights */
 :root{
-  --bg:#F4F2F7; --surface:#FFFFFF; --sunk:#ECE8F1; --ink:#1D1724; --muted:#6C6377; --line:#E1DBE8;
-  --wine:#A8164A; --wine-soft:#F7DCE6; --vine:#2C7A55; --gold:#C98A12; --on-accent:#FFFFFF; --on-gold:#1A1205;
+  --bg:#F5F6FA; --surface:#FFFFFF; --sunk:#EDEFF5; --ink:#141726; --muted:#636A7F; --line:#E2E5EE;
+  --wine:#4F46E5; --wine-soft:#E8E7FD; --vine:#0F9F76; --gold:#E08A00; --on-accent:#FFFFFF; --on-gold:#1A1205;
   --like:#2FBF80; --nope:#E5484D; --super:#3E8EF7;
   --felt:#1E5A40; --felt-2:#123B29; --wood:#6B4022; --wood-2:#4E2C14; --pt-a:#E6CFA6; --pt-b:#9B3346;
   --man-w:#E9DFCC; --man-b:#3A2620; --clip-bg:#0B090D; --clip-ink:#FFFFFF;
-  --shadow:0 1px 2px rgb(30 20 40/.06),0 8px 24px rgb(30 20 40/.09);
-  --f-display:"Noto Serif Georgian","Sylfaen",Georgia,serif;
+  --shadow:0 1px 2px rgb(20 24 48/.05),0 8px 24px rgb(20 24 48/.08);
+  --f-display:"Noto Sans Georgian","Sylfaen",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-body:"Noto Sans Georgian","Sylfaen",system-ui,-apple-system,"Segoe UI",sans-serif;
   --r:14px;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0F0D12;--surface:#19161E;--sunk:#24202B;--ink:#F2EDF6;--muted:#A69DB0;--line:#2E2836;
-  --wine:#EC5A88;--wine-soft:#3A1826;--vine:#55C08C;--gold:#EDB54A;--on-accent:#1A0710;
+  --bg:#0C0E14;--surface:#151821;--sunk:#1E2230;--ink:#EEF0F7;--muted:#9AA1B5;--line:#272C3B;
+  --wine:#8D86FF;--wine-soft:#25244A;--vine:#3CCB9A;--gold:#F5B544;--on-accent:#0D0B26;
   --shadow:0 1px 2px rgb(0 0 0/.3),0 8px 24px rgb(0 0 0/.4);color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0F0D12;--surface:#19161E;--sunk:#24202B;--ink:#F2EDF6;--muted:#A69DB0;--line:#2E2836;
-  --wine:#EC5A88;--wine-soft:#3A1826;--vine:#55C08C;--gold:#EDB54A;--on-accent:#1A0710;
+  --bg:#0C0E14;--surface:#151821;--sunk:#1E2230;--ink:#EEF0F7;--muted:#9AA1B5;--line:#272C3B;
+  --wine:#8D86FF;--wine-soft:#25244A;--vine:#3CCB9A;--gold:#F5B544;--on-accent:#0D0B26;
   --shadow:0 1px 2px rgb(0 0 0/.3),0 8px 24px rgb(0 0 0/.4);color-scheme:dark}
 *,*::before,*::after{box-sizing:border-box}
 html,body{height:100%}
@@ -31,7 +32,7 @@ h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.1
 #app{height:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;background:var(--bg)}
 @media (min-width:600px){#app{border-inline:1px solid var(--line)}}
 header.top{display:flex;align-items:center;gap:4px;padding:8px 8px 8px 16px;background:var(--surface);border-bottom:1px solid var(--line);flex:none}
-.logo{font-family:var(--f-display);font-weight:900;font-stretch:62.5%;font-size:30px;line-height:1;color:var(--wine);letter-spacing:.01em}
+.logo{font-family:var(--f-display);font-weight:800;font-stretch:75%;font-size:30px;line-height:1;color:var(--wine);letter-spacing:-.01em}
 .ibtn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;position:relative;flex:none}
 .ibtn:hover{background:var(--sunk)}
 .ibtn svg{width:22px;height:22px}

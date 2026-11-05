@@ -130,7 +130,7 @@ A.dmonew=async()=>{closeSheet();try{const id=await dmoNew();openPage('dmtable',i
 /* friends are asked in a message, with a button that brings them to the table */
 A.dmoinvite=()=>{if(!DMO.t)return;const id=DMO.id;friendPicker('მოწვევა დომინოზე','მოწვევა',async sel=>{let n=0;for(const u of[...sel].slice(0,10)){try{const c=await rpc('start_dm',{other:u});await q(sb.from('messages').insert({conv_id:c,sender:ME.id,body:'🎲 დომინო: მაგიდა გავშალე, შემოდი!',media:{game:{gt:'domino',tbl:id}}}));n++}catch(e){}}
  closeSheet();toast(n?`მოწვევა გაეგზავნა: ${n}`:'მოწვევა ვერ გაიგზავნა')},new Set(DMO.t.seats.filter(Boolean)))};
-A.dmoshare=()=>{if(DMO.id)shareLink(location.origin+'/#dmtable-'+DMO.id,'დომინო სუფრაზე: შემოდი, ერთი ადგილი გელოდება')};
+A.dmoshare=()=>{if(DMO.id)shareLink(location.origin+'/#dmtable-'+DMO.id,'დომინო კურსელებში: შემოდი, ერთი ადგილი გელოდება')};
 A.dmojoin=async()=>{try{const seat=await rpc('jk_join',{p_table:DMO.id});DMO.seat=seat;if(DMO.t)DMO.t.seats[seat]=ME.id;dmoDraw()}catch(e){toast(e&&String(e.message||'').includes('album_full')?'მაგიდა უკვე სავსეა':errMsg(e))}};
 A.dmoleave=async()=>{try{await rpc('jk_leave',{p_table:DMO.id});if(DMO.t&&DMO.seat>=0)DMO.t.seats[DMO.seat]=null;DMO.seat=-1;dmoDraw()}catch(e){toast(errMsg(e))}};
 /* the host moves the guests round the table, so a friend can be a partner or an opponent */

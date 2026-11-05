@@ -118,7 +118,7 @@ const cupAct=(fn,args,ok)=>async t=>{t.disabled=true;try{await rpc(fn,args(t));i
 A.cupjoin=cupAct('cup_join',t=>({p_cup:+t.dataset.id,p_team:t.dataset.t||null}),'შეუერთდი');
 A.cupleave=cupAct('cup_leave',t=>({p_cup:+t.dataset.id}),'თასი დატოვე');
 A.cupstart=t=>{const v=CUP.v;if(!v)return;const n=v.pl.length;confirmSheet('დაწყება?',v.c.kind==='duel'?'წყვილები შეერთების რიგით დადგება. ახალი მოთამაშე ვეღარ შეუერთდება.':`${n} მოთამაშე. ცარიელი ადგილები თავისუფალ გასვლად ჩაითვლება.`,'დაწყება',async()=>{await cupAct('cup_start',()=>({p_cup:v.c.id}),'დაიწყო!')(t)})};
-A.cupshare=t=>{const v=CUP.v,c=v&&v.c;if(!c)return;shareLink(location.origin+'/#cup-'+c.id,`🏆 ${c.name} · ${cupGame(c.game).n} სუფრაზე`)};
+A.cupshare=t=>{const v=CUP.v,c=v&&v.c;if(!c)return;shareLink(location.origin+'/#cup-'+c.id,`🏆 ${c.name} · ${cupGame(c.game).n} კურსელებში`)};
 
 /* ---------- playing a match: a challenge with the cup's match on it ---------- */
 A.cupplay=async t=>{const v=CUP.v,m=v&&v.mt.find(x=>x.id===+t.dataset.m);if(!m||m.status!=='wait')return;const o=m.p1===ME.id?m.p2:m.p1,c=v.c;

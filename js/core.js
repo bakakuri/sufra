@@ -1,4 +1,4 @@
-/* სუფრა · core: client, helpers, state, sheets, pages, translation, media */
+/* კურსელები · core: client, helpers, state, sheets, pages, translation, media */
 const SUPA_URL='https://iasospzhhdedpilykpiu.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlhc29zcHpoaGRlZHBpbHlrcGl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzMzk3NzIsImV4cCI6MjEwNzkxNTc3Mn0.iHnk-s1ePtNWJrn0Md3svxbNa2vhUTATNxuS3VPUfhI';
 const sb=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
@@ -13,7 +13,7 @@ const WDAYS=['კვირა','ორშაბათი','სამშაბა
 function ago(ts){const d=(Date.now()-new Date(ts).getTime())/1000;if(d<60)return 'ახლა';if(d<3600)return Math.floor(d/60)+' წთ';if(d<86400)return Math.floor(d/3600)+' სთ';if(d<604800)return Math.floor(d/86400)+' დღე';const t=new Date(ts);return t.getDate()+' '+MONTHS[t.getMonth()].slice(0,3)}
 function fdate(ts){const t=new Date(ts);return `${WDAYS[t.getDay()]}, ${t.getDate()} ${MONTHS[t.getMonth()]}, ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`}
 function toast(t){const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2800)}
-const ERR={rate_limit:'ძალიან ხშირად წერ. ცოტა ხანში სცადე',spam_duplicate:'ერთი და იგივე ტექსტი ბევრგან სპამს ჰგავს, ამიტომ შეჩერდა',spam_links:'ახალი ანგარიში ბმულებს ჯერ შეზღუდულად აზიარებს. სცადე მოგვიანებით',album_full:'ალბომში მაქსიმუმ 1000 ფოტოა',bad_role:'ამ როლის მინიჭება შეუძლებელია',not_enough_coins:'მონეტები არ გყოფნის',already_claimed:'დღევანდელი ბონუსი უკვე აიღე',adults_only:'ეს ნაწილი მხოლოდ 18+ მომხმარებლებისთვისაა',dating_off:'ჯერ ჩართე გაცნობის პროფილი',blocked:'ეს მომხმარებელი დაბლოკილია',dm_friends_only:'ამ ადამიანს მხოლოდ მეგობრები წერენ',not_allowed:'ეს მოქმედება ახლა შეუძლებელია',too_young:'სუფრაზე რეგისტრაცია 13 წლიდანაა შესაძლებელი',staff_only:'მხოლოდ მოდერატორებისთვის',post_must_belong_to_your_page:'რეკლამა მხოლოდ შენი გვერდის პოსტზე შეიძლება'};
+const ERR={rate_limit:'ძალიან ხშირად წერ. ცოტა ხანში სცადე',spam_duplicate:'ერთი და იგივე ტექსტი ბევრგან სპამს ჰგავს, ამიტომ შეჩერდა',spam_links:'ახალი ანგარიში ბმულებს ჯერ შეზღუდულად აზიარებს. სცადე მოგვიანებით',album_full:'ალბომში მაქსიმუმ 1000 ფოტოა',bad_role:'ამ როლის მინიჭება შეუძლებელია',not_enough_coins:'მონეტები არ გყოფნის',already_claimed:'დღევანდელი ბონუსი უკვე აიღე',adults_only:'ეს ნაწილი მხოლოდ 18+ მომხმარებლებისთვისაა',dating_off:'ჯერ ჩართე გაცნობის პროფილი',blocked:'ეს მომხმარებელი დაბლოკილია',dm_friends_only:'ამ ადამიანს მხოლოდ მეგობრები წერენ',not_allowed:'ეს მოქმედება ახლა შეუძლებელია',too_young:'კურსელებში რეგისტრაცია 13 წლიდანაა შესაძლებელი',staff_only:'მხოლოდ მოდერატორებისთვის',post_must_belong_to_your_page:'რეკლამა მხოლოდ შენი გვერდის პოსტზე შეიძლება'};
 function errMsg(e){const m=String(e?.message||e||'');for(const k in ERR)if(m.includes(k))return ERR[k];if(/row-level security|permission denied/i.test(m))return 'ამის უფლება არ გაქვს';if(/duplicate key/i.test(m))return 'ეს უკვე არსებობს';if(/Failed to fetch|NetworkError/i.test(m))return 'ინტერნეტთან კავშირი არ არის';return 'შეცდომა: '+m.slice(0,120)}
 async function q(p){const r=await p;if(r.error)throw r.error;return r.data}
 async function rpc(fn,args){return q(sb.rpc(fn,args||{}))}
@@ -228,6 +228,6 @@ const safeHref=u=>/^https?:\/\//i.test(String(u||''))?String(u):'#';
 function linkCard(l,cls=''){if(!l||!l.url)return '';const img=l.image&&!ECO()?`<img src="${esc(l.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:'';
  return `<a class="lcard2 ${cls}" href="${esc(safeHref(l.url))}" target="_blank" rel="noopener nofollow ugc">${img}<span class="lc-t"><small>${esc(l.site||'')}</small><b>${esc(l.title||l.url)}</b>${l.description?`<em>${esc(l.description)}</em>`:''}</span></a>`}
 
-/* the kantsi (drinking horn) reaction, stored as 🍷 */
-const KANTSI='<svg class="kantsi" viewBox="0 0 32 32" aria-label="ყანწი" role="img"><path d="M5 9c5 1 14 1 22-3-1 7-5 15-12 19-2 1-4 1-5-1-2-4-3-9-5-15z" fill="#C98A12"/><path d="M5 9c5 1 14 1 22-3" fill="none" stroke="#7A4B07" stroke-width="1.6" stroke-linecap="round"/><path d="M7 12c4 .6 11 .3 18-2.6" fill="none" stroke="#FFE3A3" stroke-width="1.2" opacity=".8"/><path d="M10 24c1 2 3 2 5 1" fill="none" stroke="#7A4B07" stroke-width="1.4" stroke-linecap="round"/><path d="M8 8.6c4 .5 11 .4 17-2.4l1 1c-6 3.2-13 3.4-18 2.6z" fill="#A8164A"/></svg>';
-const rg=e=>e==='🍷'?KANTSI:e;
+/* the "good idea" reaction. it is stored as 🍷 (the reaction lists in the database were made with it) and shown as a light bulb */
+const IDEA='💡';
+const rg=e=>e==='🍷'?IDEA:e;

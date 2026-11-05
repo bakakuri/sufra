@@ -43,7 +43,7 @@ const gUnsave=id=>store.set(GSV+id,null);
 /* starting a game from a page or another tab is one step: the tab change rides along with the game's own step,
    so back closes the game and lands where the person pressed play */
 function gToTab(){if(!S.page&&S.tab==='games')return;NAV.busy++;try{go('games')}finally{NAV.busy--}}
-function startGame(id,ctx,sv){const G=GAME[id],fresh=!S.game;if(fresh&&(!ctx||ctx.mode!=='watch')&&GAMES.some(g=>g.id===id))store.set('glast',id);S.game=id;const bc=['nardi','shashi','chess'].includes(id)&&typeof botChar==='function'?botChar(id):null;G.ctx=Object.assign({mode:'bot',side:1,names:{1:ME.name,'-1':bc?bc.n:'სუფრა ბოტი'},avs:{1:'me','-1':bc?botAv(bc):BOT},seq:0,gk:id},ctx||{});
+function startGame(id,ctx,sv){const G=GAME[id],fresh=!S.game;if(fresh&&(!ctx||ctx.mode!=='watch')&&GAMES.some(g=>g.id===id))store.set('glast',id);S.game=id;const bc=['nardi','shashi','chess'].includes(id)&&typeof botChar==='function'?botChar(id):null;G.ctx=Object.assign({mode:'bot',side:1,names:{1:ME.name,'-1':bc?bc.n:'კურსელების ბოტი'},avs:{1:'me','-1':bc?botAv(bc):BOT},seq:0,gk:id},ctx||{});
  if(G.ctx.mode==='bot'&&!(ctx&&'tc' in ctx)&&typeof gTcOf==='function')G.ctx.tc=gTcOf(id);if(G.ctx.tc)clkInit(G.ctx);
  G.resHide=0;G.resSnd=0;G.wasMine=false;G.start();if(sv){try{G.restore?G.restore(sv.s):G.load(sv.s);castResume(sv.cast);if(G.ctx.gk==='chess'&&G.st){G.mv=[];G.ps=G.st;G.full=false}}catch(e){gUnsave(id)}}view.scrollTop=0;if(fresh){fsEnter();g3Intro(id)}G.render();if(G.kick)G.kick();if(fresh)navOpen('game')}
 const isPlayer=c=>['bot','online','tour','puzzle','career','learn','local'].includes(c.mode);
@@ -314,7 +314,7 @@ A.grules=()=>{const id=gCur(),rules=id==='joker'?JK_RULES:GRULES[id]||'';sheet(h
 
 /* ---------- at the table: reactions, a rematch, sharing a win ---------- */
 /* a quick word to the table. it pops up over the player's plate; where the players sit at a 3D table, the character makes the gesture too */
-const GRX=[['👏','ბრავო!','nod'],['😂','ჰა-ჰა','laugh'],['😮','ვაა!','wow'],['🍷','გაგიმარჯოს!','cheer'],['😤','ეჰ…','shake'],['🤝','კარგი თამაში','nod']];
+const GRX=[['👏','ბრავო!','nod'],['😂','ჰა-ჰა','laugh'],['😮','ვაა!','wow'],['🎉','ყოჩაღ!','cheer'],['😤','ეჰ…','shake'],['🤝','კარგი თამაში','nod']];
 const gRxCan=()=>{if(S.page&&S.page.id==='jktable')return JO.seat>=0&&!!JO.st;if(S.page&&S.page.id==='dmtable')return DMO.seat>=0&&!!DMO.st;if(S.page&&S.page.id==='lotable')return LOT.seat>=0&&!!LOT.st;const G=GAME[S.game],c=G&&G.ctx;return !!c&&isPlayer(c)&&!c.finished&&c.mode!=='puzzle'&&c.mode!=='local'};
 A.grx=()=>{if(!gRxCan()){toast(S.page?'რეაქცია მაგიდასთან მსხდომებს შეუძლიათ':'პარტია დასრულდა');return}
  sheet(head('რეაქცია')+`<div class="grx">${GRX.map((r,i)=>`<button data-a="grxs" data-i="${i}"><span aria-hidden="true">${r[0]}</span><small>${r[1]}</small></button>`).join('')}</div>`,'short')};
@@ -353,7 +353,7 @@ async function gWinPic(id,title,sub){const S2=1080,cv=document.createElement('ca
  x.fillStyle='rgba(255,247,234,.85)';fit(sub,S2-144,42,600);x.fillText(sub,72,S2-112);
  const d=new Date(),MN=['იანვარი','თებერვალი','მარტი','აპრილი','მაისი','ივნისი','ივლისი','აგვისტო','სექტემბერი','ოქტომბერი','ნოემბერი','დეკემბერი'];
  x.fillStyle='rgba(255,247,234,.55)';x.font=`600 30px ${FS}`;x.fillText(`${d.getDate()} ${MN[d.getMonth()]}, ${d.getFullYear()}`,72,S2-56);
- x.font=`800 34px ${FS}`;const bw=x.measureText('სუფრა').width+44;x.fillStyle='rgba(10,6,4,.55)';x.beginPath();x.roundRect?x.roundRect(S2-bw-48,48,bw,62,31):x.rect(S2-bw-48,48,bw,62);x.fill();x.fillStyle='#FFF7EA';x.fillText('სუფრა',S2-bw-26,91);
+ x.font=`800 34px ${FS}`;const bw=x.measureText('კურსელები').width+44;x.fillStyle='rgba(10,6,4,.55)';x.beginPath();x.roundRect?x.roundRect(S2-bw-48,48,bw,62,31):x.rect(S2-bw-48,48,bw,62);x.fill();x.fillStyle='#FFF7EA';x.fillText('კურსელები',S2-bw-26,91);
  return await new Promise(r=>cv.toBlob(r,'image/jpeg',.88))}
 A.gshare=async t=>{const id=t.dataset.g||gCur(),g=GAMES.find(x=>x.id===id);if(!g)return;const sub=String(t.dataset.sub||'').slice(0,80);
  t.disabled=true;let pic=null;try{pic=await gWinPic(id,g.n,sub)}catch(e){}t.disabled=false;
@@ -497,23 +497,23 @@ A.gcplay=()=>{closeSheet();go('games')};
 function gAmbSync(){if(typeof gAmb!=='function')return;const sc=typeof G3D!=='undefined'&&G3D.sc;const inGame=S.tab==='games'&&(S.game||S.page&&['jktable','dmtable'].includes(S.page.id))&&g3Want();if(!inGame||!sc||!sc.envK||!G3D.cv||!G3D.cv.isConnected){gAmbStop();return}gAmb(sc.envK,sc.envT,sc.host==='jko'?'joker':sc.host,sc.wx&&sc.wx.k)}
 A.gambt=t=>{GAMB.on=!GAMB.on;store.set('gamb',GAMB.on);gSwFlip(t,GAMB.on);if(GAMB.on)gAmbSync();else gAmbStop()};
 {const sm=stopMedia;stopMedia=function(){sm();if(typeof gAmbStop==='function')gAmbStop()}}
-/* a win is toasted the old way: two drinking horns, silver at the rim, swing in and touch; a drop of wine flies up and it is said aloud */
+/* a win: two party poppers, gold at the rim, swing in and touch; confetti flies up and it is said aloud */
 let GWFX=-1e9;
 function gWinFx(big){const now=performance.now();if(now-GWFX<3500)return;GWFX=now;$$('.ghorn').forEach(e=>e.remove());
- const horn=(id)=>`<defs><linearGradient id="hb${id}" x1="0" y1="1" x2=".6" y2="0"><stop offset="0" stop-color="#2b1a10"/><stop offset=".55" stop-color="#6b4422"/><stop offset="1" stop-color="#a8713c"/></linearGradient>
-  <linearGradient id="hs${id}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8d949c"/><stop offset=".45" stop-color="#f4f6f8"/><stop offset="1" stop-color="#7b828a"/></linearGradient>
+ const horn=(id)=>`<defs><linearGradient id="hb${id}" x1="0" y1="1" x2=".6" y2="0"><stop offset="0" stop-color="#2E2A8F"/><stop offset=".55" stop-color="#5B54F0"/><stop offset="1" stop-color="#A5A0FF"/></linearGradient>
+  <linearGradient id="hs${id}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#D97706"/><stop offset=".45" stop-color="#FDE68A"/><stop offset="1" stop-color="#B45309"/></linearGradient>
   <clipPath id="hc${id}"><path d="M0 0C-16-38-2-92 28-118L68-104C40-82 20-44 7 2Z"/></clipPath></defs>
   <path d="M0 0C-16-38-2-92 28-118L68-104C40-82 20-44 7 2Z" fill="url(#hb${id})"/>
-  <path d="M5-12C-4-44 8-86 33-109" stroke="#e0b07a" stroke-opacity=".4" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M5-12C-4-44 8-86 33-109" stroke="#E0E7FF" stroke-opacity=".5" stroke-width="3" fill="none" stroke-linecap="round"/>
   <g clip-path="url(#hc${id})"><path d="M14.1-120.7L80.6-97.5L77.6-89L11.2-112.2Z" fill="url(#hs${id})"/><path d="M-14-71L52-56L51-51L-15-66Z" fill="url(#hs${id})" opacity=".9"/></g>
-  <ellipse cx="48" cy="-111" rx="21.5" ry="6.2" transform="rotate(19.3 48 -111)" fill="url(#hs${id})"/><ellipse cx="48" cy="-111" rx="17.5" ry="4.2" transform="rotate(19.3 48 -111)" fill="#5e0d22"/>
+  <ellipse cx="48" cy="-111" rx="21.5" ry="6.2" transform="rotate(19.3 48 -111)" fill="url(#hs${id})"/><ellipse cx="48" cy="-111" rx="17.5" ry="4.2" transform="rotate(19.3 48 -111)" fill="#FFF7D6"/>
   <circle cx="3" cy="1" r="4.2" fill="url(#hs${id})"/>`;
  const el=document.createElement('div');el.className='ghorn'+(RM()?' still':'')+(big?' big':'');el.setAttribute('aria-hidden','true');
  el.innerHTML=`<svg viewBox="0 0 240 190"><g class="hglow"><circle cx="120" cy="44" r="40" fill="url(#hglw)"/></g><defs><radialGradient id="hglw"><stop offset="0" stop-color="#ffd98a" stop-opacity=".75"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient></defs>
   <g transform="translate(50 162)"><g class="hl">${horn('l')}</g></g><g transform="translate(190 162) scale(-1 1)"><g class="hr">${horn('r')}</g></g>
   <g transform="translate(120 44)"><g class="hspark"><path d="M0-15L3-3L15 0L3 3L0 15L-3 3L-15 0L-3-3Z" fill="#fff4cc"/></g></g>
-  <g class="hdrops" transform="translate(120 44)">${[[-14,-26],[-4,-34],[8,-30],[16,-20]].map(([dx,dy],i)=>`<circle class="hd" style="--dx:${dx}px;--dy:${dy}px;--dl:${i*40}ms" r="${2.6-i*.3}" fill="#8e1433"/>`).join('')}</g></svg>
-  <b>გაუმარჯოს!</b>`;
+  <g class="hdrops" transform="translate(120 44)">${[[-14,-26],[-4,-34],[8,-30],[16,-20]].map(([dx,dy],i)=>`<circle class="hd" style="--dx:${dx}px;--dy:${dy}px;--dl:${i*40}ms" r="${2.6-i*.3}" fill="${['#F472B6','#FBBF24','#34D399','#60A5FA'][i]}"/>`).join('')}</g></svg>
+  <b>ყოჩაღ!</b>`;
  document.body.appendChild(el);setTimeout(()=>{if(typeof gSnd==='function')gSnd('horn')},RM()?150:1150);gBuzz&&gBuzz([0,0,14]);setTimeout(()=>el.remove(),RM()?1900:2700)}
 /* ---------- a clip of the win: the closing shot is recorded with the result written on it, and it can go to the feed ----------
    only when you won (or anyone won on a phone two people share); nothing is kept unless you share it */
@@ -528,7 +528,7 @@ function gClipStart(G,sc,I){const c=G&&G.ctx,r=G&&G.res?G.res():(G===GAME.domino
  G3D.rec=(s,now)=>{x.drawImage(s,0,0,W,H);const a=Math.max(0,Math.min(1,(now-I.t0-500)/700));if(!a)return;x.save();x.globalAlpha=a;
   const gr=x.createLinearGradient(0,H*.62,0,H);gr.addColorStop(0,'rgba(10,6,4,0)');gr.addColorStop(1,'rgba(10,6,4,.82)');x.fillStyle=gr;x.fillRect(0,H*.62,W,H*.38);
   x.fillStyle='#F4BC4C';x.font=`800 ${5.2*u}px ${FS}`;x.fillText(g.n,6*u,H-17*u);x.fillStyle='#FFF7EA';x.font=`800 ${11*u}px ${FS}`;x.fillText(big,5.5*u,H-6*u);
-  x.font=`800 ${4.2*u}px ${FS}`;x.fillStyle='rgba(255,247,234,.8)';const t='სუფრა',tw=x.measureText(t).width;x.fillText(t,W-tw-5*u,7*u);x.restore()};
+  x.font=`800 ${4.2*u}px ${FS}`;x.fillStyle='rgba(255,247,234,.8)';const t='კურსელები',tw=x.measureText(t).width;x.fillText(t,W-tw-5*u,7*u);x.restore()};
  rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
  rec.onstop=()=>{if(G3D.rec)G3D.rec=null;const b=new Blob(chunks,{type:mt.split(';')[0]});if(b.size>1500&&G.ctx===c){c.clip=b;if(S.game===(c.gk||S.game)&&G.render)G.render()}};
  try{rec.start(250)}catch(e){G3D.rec=null;return null}

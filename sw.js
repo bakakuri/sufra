@@ -1,5 +1,5 @@
-/* სუფრა service worker: app shell offline, fonts cache, web push */
-const V='202611051313';
+/* კურსელები service worker: app shell offline, fonts cache, web push */
+const V='202611051343';
 const SHELL='sufra-shell-'+V,RUNTIME='sufra-rt-1';
 const ASSETS=['/','/manifest.webmanifest','/icons/icon-192.png','/icons/icon-512.png','/icons/badge-96.png',
  '/css/base.css?v='+V,'/css/app.css?v='+V,
@@ -15,7 +15,7 @@ self.addEventListener('fetch',e=>{const r=e.request;if(r.method!=='GET')return;c
  /* everything else (Supabase API, storage, realtime) goes straight to the network */});
 
 self.addEventListener('push',e=>{let d={};try{d=e.data?e.data.json():{}}catch(x){d={body:e.data&&e.data.text()}}
- const title=d.title||'სუფრა',url=d.url||'/';
+ const title=d.title||'კურსელები',url=d.url||'/';
  e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{
   /* if the app is open and visible, the in-app banner already shows it */
   if(list.some(c=>c.visibilityState==='visible'&&c.focused))return;
