@@ -56,6 +56,25 @@ const gTag0=c=>c.corr?'<span class="gtag">მიმოწერით</span>':c.
 const gTop=(t,c,back='lobby')=>`<div class="gtop"><button class="ibtn gb" data-a="${back}" aria-label="თამაშიდან გასვლა">${ic('back')}</button><h2>${t}</h2>${c?gTag(c):''}<span class="sp"></span>${gTools()}</div>`;
 /* the game screen: the board fills the screen, the players and controls float over it */
 function gShellParts(o){const w=g3Want()&&!o.center;return{w,html:`${w?`<div class="gstage">${o.stage||''}</div>`:''}<div class="ghud top">${o.top||''}</div><div class="gmid">${o.center||(w?'':o.mid||'')}</div><div class="ghud bot">${o.bot||''}</div>${o.res||''}`}}
+/* the game screen is patched in place, not built anew: what did not change stays as it is (the 3D canvas among it),
+   so a move costs the few nodes that changed instead of a whole new screen to style and lay out. a different game, or anything
+   else on the screen, is still drawn from scratch */
+const GSCR={set html(h){gPaint(h)}};
+function gPaint(h){const cur=view.firstElementChild;if(!cur||view.childNodes.length!==1||!cur.classList.contains('gx')){view.innerHTML=h;return}
+ const t=document.createElement('template');t.innerHTML=h;const nu=t.content.firstElementChild;
+ if(!nu||t.content.childNodes.length!==1||!nu.classList.contains('gx')||nu.getAttribute('data-g')!==cur.getAttribute('data-g')){view.innerHTML=h;return}
+ try{gMorph(cur,nu)}catch(e){view.innerHTML=h}}
+const gKeep=n=>(typeof G3D!=='undefined'&&n===G3D.cv)||(n.nodeType===1&&n.hasAttribute('data-keep'));
+const gSame=(a,b)=>a.nodeType===b.nodeType&&a.nodeName===b.nodeName&&(a.nodeType!==1||(a.id===b.id&&a.getAttribute('data-k')===b.getAttribute('data-k')));
+function gMorph(a,b){if(a.nodeType!==1){if(a.nodeValue!==b.nodeValue)a.nodeValue=b.nodeValue;return}
+ const ba=b.attributes,aa=a.attributes;for(let i=aa.length-1;i>=0;i--){const n=aa[i].name;if(!b.hasAttribute(n)&&!(n==='style'&&a._g3p))a.removeAttribute(n)}
+ for(let i=0;i<ba.length;i++){const x=ba[i];if(a.getAttribute(x.name)!==x.value)a.setAttribute(x.name,x.value)}
+ gKids(a,b)}
+function gKids(a,b){let ac=a.firstChild,bc=b.firstChild;
+ while(bc){const nb=bc.nextSibling;while(ac&&gKeep(ac))ac=ac.nextSibling;if(ac&&gSame(ac,bc)){const na=ac.nextSibling;gMorph(ac,bc);ac=na}else a.insertBefore(bc,ac);bc=nb}
+ while(ac){const na=ac.nextSibling;if(!gKeep(ac))a.removeChild(ac);ac=na}}
+/* the same for a box whose contents are drawn again (the online tables) */
+function gPatch(el,h){if(!el.firstChild){el.innerHTML=h;return}const t=document.createElement('div');t.innerHTML=h;try{gKids(el,t)}catch(e){el.innerHTML=h}}
 function gShell(id,o){const P=gShellParts(o);return `<div class="view-pad game gx${P.w?' is3d':''}${P.w&&['joker','durak','bura'].includes(id)?' lux':''}" data-g="${id}">${P.html}</div>`}
 /* a player's plate. while it is their move a gold ring turns around the avatar; an opponent who is thinking shows three dots */
 const plThink='<span class="think" aria-label="ფიქრობს"><i></i><i></i><i></i></span>';
@@ -77,7 +96,7 @@ function clkTick(){const G=S.game&&GAME[S.game],c=G&&G.ctx,k=c&&c.clk;if(!k||c.f
 function gview(id,title,board,status,extra='',plx=null,topx=''){if(S.tab!=='games'||S.game!==id||S.page)return;const G=GAME[id],c=G.ctx,ts=G.turnSide?G.turnSide():null,mine=!!(G.mine&&G.mine());gTurnSnd(G,mine);
  /* with the opponent sitting across a 3D board, their plate floats over their head instead of in the top bar */
  const op=g3Want()&&gPplOn()&&['chess','shashi','nardi'].includes(id),oppl=plCard(c,-c.side,ts===-c.side,plx);
- view.innerHTML=gShell(id,{stage:op?board+`<div class="g3op">${oppl}</div>`:board,mid:board,top:gTop(title,c)+(op?`<div class="oppt">${oppl}</div>`:oppl)+topx,bot:plCard(c,c.side,ts===c.side,plx)+`<div class="status${mine?' mine':''}" role="status">${status}</div>${extra}`,res:gResHTML(G)});gSaveLater(G)}
+ GSCR.html=gShell(id,{stage:op?board+`<div class="g3op">${oppl}</div>`:board,mid:board,top:gTop(title,c)+(op?`<div class="oppt">${oppl}</div>`:oppl)+topx,bot:plCard(c,c.side,ts===c.side,plx)+`<div class="status${mine?' mine':''}" role="status">${status}</div>${extra}`,res:gResHTML(G)});gSaveLater(G)}
 /* a chime when the turn comes to you */
 function gTurnSnd(G,mine){if(mine&&!G.wasMine&&typeof gSnd==='function'){gSnd('turn');gBuzz(12)}G.wasMine=mine}
 /* the end of a game: a card over the board with the result and what to do next */
@@ -190,7 +209,7 @@ function gShelf(){const last=store.get('glast',null),f=GAMES.find(g=>g.id===last
  return `<div class="gs-shelf"><button class="gs-post big" data-a="play" data-g="${f.id}" style="--ac:${f.ac}" aria-label="${f.n}. ${f.d}">${gPic(f,1)}${gSaved(f.id)?'<small class="gs-last">გააგრძელე პარტია</small>':last===f.id?'<small class="gs-last">ბოლოს ითამაშე</small>':''}<span class="gs-body"><b class="gs-name">${f.n}</b><span class="gs-desc">${f.d}</span><span class="gs-cta"><span class="btn gold">${ic('play')}ითამაშე</span>${gMeta(f)}</span></span></button>`
  +GAMES.filter(g=>g!==f).map(g=>`<button class="gs-post" data-a="play" data-g="${g.id}" style="--ac:${g.ac}" aria-label="${g.n}. ${g.d}">${gPic(g)}${gSaved(g.id)?'<small class="gs-last">გააგრძელე</small>':''}<span class="gs-body"><b class="gs-name">${g.n}</b>${gMeta(g)}</span></button>`).join('')+`</div>`}
 function gLobbyLive(){const lv=$('#glive');if(lv){const n=gLiveList().length;lv.hidden=!n;if(n)lv.lastChild.innerHTML=gLiveHTML()}const o=$('#gonl');if(o){o.hidden=!S.online.size;o.lastChild.textContent=S.online.size+' ონლაინ'}$$('.gs-post[data-g]').forEach(b=>{const g=GAMES.find(x=>x.id===b.dataset.g),m=g&&b.querySelector('.gs-meta');if(m)m.outerHTML=gMeta(g)})}
-R.games=()=>{if(S.game&&GAME[S.game])return GAME[S.game].render();
+R.games=()=>{if(S.game&&GAME[S.game])return GAME[S.game].render();g3Warm();
  const tour=S.tour?(tourMy()?'შენი შემდეგი მატჩი გელოდება':'ნახე, როგორ დასრულდა'):'კვირის ტურნირი 8 მოთამაშეზე. რეგისტრაცია უფასოა';
  view.innerHTML=`<div class="view-pad gs-page"><header class="gs-head"><h2>სამაგიდო თამაშები</h2><div class="gs-chips"><span class="live" id="gonl"${S.online.size?'':' hidden'}><i></i>${S.online.size} ონლაინ</span><span class="gs-rt" id="gmyr">${gMyRtHTML()}</span><button class="gs-lk" data-a="glook">${ic('user')}პერსონაჟი</button></div></header>
  ${gShelf()}
@@ -211,6 +230,10 @@ const g3Pref=()=>{const v=store.get('g3d',null);return v===null?!ECO():!!v};
 const g3Can=()=>!G3W.fail&&!!window.WebGLRenderingContext;
 const g3Want=()=>g3Pref()&&g3Can();
 function g3On(){if(!g3Want())return false;if(G3W.ready)return true;g3Load();return false}
+/* while the games list is open, the 3D engine is fetched and its programs compiled when the phone has nothing else to do,
+   so the first game opens without that wait */
+function g3Warm(){if(G3W.p||G3W.warmT||!g3Want()||(typeof ECO==='function'&&ECO()))return;G3W.warmT=setTimeout(()=>{G3W.warmT=0;if(S.tab!=='games'||S.game||G3W.p)return;
+ const go=()=>{if(S.tab==='games'&&!G3W.p)g3Load()};if(window.requestIdleCallback)window.requestIdleCallback(go,{timeout:5000});else go()},1500)}
 function g3Load(){if(G3W.p)return G3W.p;const v=(($('script[src*="/js/core.js"]')||{}).src||'').split('v=')[1]||'';
  const one=f=>new Promise((res,rej)=>{const s=document.createElement('script');s.src=`/js/${f}.js${v?'?v='+v:''}`;s.onload=res;s.onerror=rej;document.head.appendChild(s)});
  G3W.p=one('g3d').then(()=>one('g3d-art')).then(()=>one('g3d-games')).then(()=>{G3W.ready=typeof g3Init==='function'&&g3Init();if(!G3W.ready)G3W.fail=true;g3Redraw()},()=>{G3W.fail=true;G3W.p=null;g3Redraw()});return G3W.p}

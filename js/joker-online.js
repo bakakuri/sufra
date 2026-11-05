@@ -184,7 +184,7 @@ function joDraw(){const el=$('#jko');if(!el||!JO.t||!joHere(JO.id))return;const 
   res=gResBox(JO,{title:win?'მოიგე!':'თამაში დასრულდა',sub:win?'ყველაზე მეტი ქულა შენ დააგროვე':'გაიმარჯვა: '+w.map(p=>esc(joName(p))).join(', '),kind:win?'win':'lose',more:`<div class="gendt">${order.map(p=>`<span><b>${esc(joShort(p))}</b>${s.score[p]}</span>`).join('')}</div>`,
    again:host?'<button class="btn gold" data-a="jkoagain">ახალი პარტია</button>':'',share:win?gShareBtn('joker','მეგობრებთან, '+s.score[me]+' ქულით'):'',leave:'<button class="btn ghost" data-a="back">მაგიდიდან გასვლა</button>'})}
  const Pp=gShellParts({stage,mid:stage,top:gTop('ჯოკერი ონლაინ',null,'back')+info+jMiniHTML(s.hist,s.score||[0,0,0,0],[0,1,2,3].map(joShort),s.phase==='handover','jkosheet'),bot:`${mine}<div class="status${turn?' mine':''}" role="status">${joStatus()}</div>${panel}`,res});
- el.className='view-pad game jko gx'+(Pp.w?' is3d lux':'');el.innerHTML=Pp.html;g3After('jko')}
+ el.className='view-pad game jko gx'+(Pp.w?' is3d lux':'');gPatch(el,Pp.html);g3After('jko')}
 A.jkolast=()=>{jLastOpen(JO.lastT,p=>p===JO.seat?'შენ':joShort(p),JO.seat>=0?JO.seat:0)};
 A.jkosheet=()=>{const s=JO.st;jSheetOpen(s&&s.hist,(s&&s.score)||[0,0,0,0],[0,1,2,3].map(joShort))};
 /* the result counts once per person per table, like a game against the computer */

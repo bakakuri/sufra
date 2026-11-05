@@ -64,7 +64,7 @@ const LOTO=GAME.loto={title:'ლოტო',
  save(){return null},
  render(){if(S.tab!=='games'||S.game!=='loto'||S.page)return;const top=gTop('ლოტო',null);
   if(this.phase==='setup'){const o=lotoOpt(),sp=lotoSpeed(),seg=(a,v,cur,t)=>`<button data-a="${a}" data-v="${v}" aria-pressed="${String(v)===String(cur)}">${t}</button>`;
-   view.innerHTML=gShell('loto',{top,center:`<section class="setupc lset"><h3>ლოტო</h3><p class="note">მეწამულ ტომარაში 90 კასრია. წამყვანი თითოს ამოიღებს და ხმამაღლა იტყვის, შენ კი ბილეთზე მონიშნავ. ვინც პირველი შეავსებს ${o.mode==='full'?'მთელ ბილეთს':'ერთ ხაზს'}, ის იგებს. სამი ბოტი შენთან ერთად თამაშობს.</p>
+   GSCR.html=gShell('loto',{top,center:`<section class="setupc lset"><h3>ლოტო</h3><p class="note">მეწამულ ტომარაში 90 კასრია. წამყვანი თითოს ამოიღებს და ხმამაღლა იტყვის, შენ კი ბილეთზე მონიშნავ. ვინც პირველი შეავსებს ${o.mode==='full'?'მთელ ბილეთს':'ერთ ხაზს'}, ის იგებს. სამი ბოტი შენთან ერთად თამაშობს.</p>
     <b class="lsh">ბილეთები</b><div class="seg">${[1,2,3].map(n=>seg('lotoset','n:'+n,'n:'+o.n,n)).join('')}</div>
     <b class="lsh">რა იგებს</b><div class="seg">${seg('lotoset','mode:row','mode:'+o.mode,'ერთი ხაზი')}${seg('lotoset','mode:full','mode:'+o.mode,'მთელი ბილეთი')}</div>
     <b class="lsh">სისწრაფე</b><div class="seg">${seg('lotoset','sp:slow','sp:'+sp,'ნელა')}${seg('lotoset','sp:mid','sp:'+sp,'საშუალოდ')}${seg('lotoset','sp:fast','sp:'+sp,'სწრაფად')}</div>
@@ -79,7 +79,7 @@ const LOTO=GAME.loto={title:'ლოტო',
   let res='';if(this.phase==='over'){const w=this.win,me=w&&w.p===0;res=gResBox(this,{title:!w?'ტომარა დაცარიელდა':me?'ლოტო! მოიგე!':esc(this.nm(w.p))+'მ მოიგო',sub:w?`${this.drawn.length} რიცხვზე, ${mode==='full'?'მთელი ბილეთი':'ერთი ხაზი'}`:'არავინ შეავსო',kind:me?'win':'lose',
    more:`<div class="gendt">${[0,1,2,3].map(p=>`<span><b>${esc(p?this.nm(p):'შენ')}</b>${this.score[p]}</span>`).join('')}</div>`,again:'<button class="btn gold" data-a="lotoagain">კიდევ ერთი</button>',share:me?gShareBtn('loto',`${this.drawn.length} რიცხვზე`):''})}
   const claim=this.phase==='play'&&meDone>=0&&!this.opt.auto;
-  view.innerHTML=gShell('loto',{top:top+info,center:`<div class="lroom">${lotoBarrelHTML(this.cur,this.drawn)}<div class="lpls">${ppl}</div><div class="ltixs">${tixH}</div></div>`,
+  GSCR.html=gShell('loto',{top:top+info,center:`<div class="lroom">${lotoBarrelHTML(this.cur,this.drawn)}<div class="lpls">${ppl}</div><div class="ltixs">${tixH}</div></div>`,
    bot:`<div class="jkacts lacts">${claim?`<button class="btn gold lclaim" data-a="lotoclaim" data-t="${meDone}">ლოტო!</button>`:''}${this.phase==='play'?`<button class="btn ghost sm" data-a="lotopause">${ic(this.paused?'play':'pause')}${this.paused?'გაგრძელება':'პაუზა'}</button>`:''}</div>`,res})}};
 A.lotoset=t=>{const[k,v]=String(t.dataset.v).split(':'),o=lotoOpt();if(k==='n')o.n=+v;if(k==='mode')o.mode=v;if(k==='sp'){store.set('lotosp',v);LOTO.render();return}store.set('lotoopt',o);LOTO.render()};
 A.lotoauto=t=>{const o=lotoOpt();o.auto=!!t.checked;store.set('lotoopt',o)};
@@ -179,4 +179,4 @@ function lotDraw(){const el=$('#lot');if(!el||!LOT.t||!lotHere(LOT.id))return;co
  const P=gShellParts({top:gTop('ლოტო ონლაინ',null,'back')+info,center:`<div class="lroom">${lotoBarrelHTML(cur,D)}<div class="lpls">${ppl}</div><div class="ltixs">${me>=0?tixH:'<p class="note">შენ უყურებ. ბილეთები მოთამაშეებს აქვთ.</p>'}</div></div>`,
   bot:`<div class="jkacts lacts">${done&&!s.win&&!lotoOpt().auto?`<button class="btn gold lclaim" data-a="lotclaim" data-t="${done.i}">ლოტო!</button>`:''}</div>`,res});
  if(done&&!s.win&&lotoOpt().auto&&!LOT.autoC){LOT.autoC=1;setTimeout(()=>{LOT.autoC=0;lotClaim(done.i)},400)}
- el.className='view-pad game lot gx';el.dataset.g='loto';el.innerHTML=P.html}
+ el.className='view-pad game lot gx';el.dataset.g='loto';gPatch(el,P.html)}

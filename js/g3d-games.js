@@ -4,7 +4,7 @@ const G3S={},G3B={},G3U={};
 const GOLD=lin('#F4BC4C'),GOLDS=lin('#FFD27A'),RED=lin('#FF5A5F'),INK=lin('#20140c'),PALE=lin('#FFF4D6'),MINT=lin('#7CF0B4');
 function g3Show(id){const el=$('.g3',view);if(!el)return;const k=id==='jko'||id==='durak'||id==='bura'?'joker':id==='dmo'?'domino':id,pl=gPlaceOf(k),key=k==='joker'&&jkRoom()==='room'?'joker:room':pl&&pl!==GPDEF[k]?k+':'+pl:k,sc=G3S[key]||(G3S[key]=G3B[k]());sc.host=id;
  const want=G3D.intro||G3W.intro,intro=want===id;if(intro){G3D.intro=null;G3W.intro=null}
- if(!g3Mount(el,sc))return;if(sc.envK)envApply(sc);if(typeof gAmb==='function')gAmb(sc.envK||null,sc.envT,k,sc.wx&&sc.wx.k);try{G3U[id](sc)}catch(e){try{console.warn('3D sync',e)}catch(x){}}if(intro)g3StartIntro(sc);g3Insets(sc);g3Draw(sc,performance.now());g3Labels(sc);g3Need()}
+ if(!g3Mount(el,sc))return;if(sc.envK)envApply(sc);if(typeof gAmb==='function')gAmb(sc.envK||null,sc.envT,k,sc.wx&&sc.wx.k);try{G3U[id](sc)}catch(e){try{console.warn('3D sync',e)}catch(x){}}if(intro)g3StartIntro(sc);G3D.lgen=(G3D.lgen||0)+1;g3Insets(sc);g3Need()}
 const snd=(k,v)=>{if(typeof gSnd==='function')gSnd(k,v)};
 /* a piece that lands knocks on the wood and leaves a ring; one put in a tray knocks softly */
 const woodLand=y=>(o,sc)=>{const soft=(o.s.length?o.s[0]:o.s)<.9;snd(soft?'soft':'wood',soft?.7:1);if(!soft)g3Ripple(sc,[o.p[0],y+.006,o.p[2]],1.1)};

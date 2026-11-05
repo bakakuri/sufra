@@ -73,7 +73,7 @@ const EG=GAME.egg={title:'კვერცხის ჭახუნი',
    again:`<button class="btn gold" data-a="eggagain">კიდევ ერთხელ</button>`,share:me&&!this.local?gShareBtn('egg',this.wins+' მოგებული კვერცხი'):''})}
   const opp=!this.local?`<div class="pl"><span class="plav">${avAny(c.avs[-1],34)}</span><span class="pln"><b>${esc(this.nm(-1))}</b><span class="muted">${BLV[bLvl('egg')].n}</span></span></div>`:'';
   const stage=g3?`<div class="g3 g3-egg${G3W.ready?'':' loading'}">${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div><div class="g3sr">${stage2d}</div>`:'';
-  view.innerHTML=gShell('egg',{stage,mid:stage2d,top:top+info+opp,bot:`<div class="status${(this.phase==='duel'&&(this.stage==='aim'&&(this.local||this.turn===1)||this.stage==='brace'))||this.phase==='pick'?' mine':''}" role="status">${this.status()}</div>${panel}`,res});
+  GSCR.html=gShell('egg',{stage,mid:stage2d,top:top+info+opp,bot:`<div class="status${(this.phase==='duel'&&(this.stage==='aim'&&(this.local||this.turn===1)||this.stage==='brace'))||this.phase==='pick'?' mine':''}" role="status">${this.status()}</div>${panel}`,res});
   g3After('egg')}};
 A.eggk=t=>EG.knock(+t.dataset.i);
 A.eggtake=()=>EG.take();

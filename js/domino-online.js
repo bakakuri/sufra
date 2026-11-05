@@ -188,7 +188,7 @@ function dmoDraw(){const el=$('#dmo');if(!el||!DMO.t||!dmoHere(DMO.id))return;co
   :`<div class="pl"><span class="muted">შენ უყურებ. ქვები მხოლოდ მოთამაშეებს უჩანთ.</span></div>`;
  const st=dmoStatus()+(turn&&g3&&DMO.sel==null&&s.root?' · შეეხე ქვას ან გადაათრიე':'');
  const Pp=gShellParts({stage,mid:stage,top:gTop('დომინო ონლაინ',null,'back')+info,bot:`${mine}<div class="status${turn?' mine':''}" role="status">${st}</div>${panel}`,res});
- el.className='view-pad game dmo gx'+(Pp.w?' is3d':'');el.dataset.g='domino';el.innerHTML=Pp.html;g3After('dmo')}
+ el.className='view-pad game dmo gx'+(Pp.w?' is3d':'');el.dataset.g='domino';gPatch(el,Pp.html);g3After('dmo')}
 /* the result counts once per person per game, like a game against the computer */
 function dmoResult(){const s=DMO.st;if(s&&s.phase!=='over')DMO.res=false;if(!s||s.phase!=='over'||DMO.seat<0||DMO.res)return;DMO.res=true;const k='dmores-'+DMO.id+'-'+s.dn;
  try{if(localStorage.getItem(k))return;localStorage.setItem(k,'1')}catch(e){}
