@@ -53,7 +53,7 @@ A.chelp=()=>openPage('helpnew',undefined,['help']);
 A.ctoast=()=>A.newtoast();
 A.cjob=()=>openPage('jobnew',undefined,['jobs']);
 A.cphoto=async()=>{await compose();$('#c_img')?.click()};
-A.cclip=()=>compose({clip:true});
+A.cclip=()=>newClip();
 A.cpoll=async()=>{await compose();$('#c_poll')?.click()};
 A.cstory=()=>A.addstory();
 A.cevent=()=>openPage('evnew',undefined,S.page?[S.page.id,S.page.arg]:null);

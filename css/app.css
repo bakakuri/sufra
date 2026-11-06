@@ -2722,3 +2722,42 @@ button.srow:active{background:var(--sunk)}
 /* on someone else's profile the friend button takes what it needs, "write" stays short */
 .pro2row.oth .btn:first-child{flex:1 1 auto}
 .pro2row.oth .btn+.btn{flex:0 0 auto}
+/* preparing a video: the video itself, what it is, two choices */
+.vprep{display:flex;flex-direction:column;gap:12px}
+.vpview{position:relative;border-radius:16px;overflow:hidden;background:#000;display:grid;place-items:center;min-height:160px}
+.vpview video{width:100%;max-height:min(42vh,420px);object-fit:contain;display:block;background:#000}
+.vpwait{position:absolute;inset:0;display:grid;place-items:center;background:rgb(0 0 0/.35);color:#fff}
+.vpwait[hidden]{display:none}
+.vpinfo{display:flex;flex-wrap:wrap;gap:6px}
+.vpinfo:empty{display:none}
+.vpinfo span{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:var(--sunk);font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums}
+.vpinfo svg{width:14px;height:14px;color:var(--wine)}
+.vpnote{margin:0;padding:10px 12px;border-radius:12px;background:var(--sunk);background:color-mix(in srgb,var(--gold) 15%,transparent);font-size:13px;line-height:1.45}
+.vpopts{display:flex;flex-direction:column;gap:8px}
+.vpopts[hidden]{display:none}
+.vpopt{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:16px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;transition:border-color .15s,background .15s}
+.vpopt[aria-checked="true"]{border-color:var(--wine);background:var(--wine-soft);background:color-mix(in srgb,var(--wine) 7%,var(--surface))}
+.vpopt.off{opacity:.62;cursor:default}
+.vpr{width:20px;height:20px;border-radius:50%;border:2px solid var(--muted);flex:none;margin-top:2px;display:grid;place-items:center}
+.vpopt[aria-checked="true"] .vpr{border-color:var(--wine)}
+.vpopt[aria-checked="true"] .vpr::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--wine)}
+.vpopt .grow{display:flex;flex-direction:column;gap:3px;min-width:0}
+.vpopt b{font-size:15px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.vpopt b em{font-style:normal;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--wine-soft);color:var(--wine)}
+.vpopt small{color:var(--muted);font-size:12.5px;line-height:1.4}
+.vpopt .vpwhy{color:var(--nope)}
+.vpq{margin-top:6px;width:100%}
+.vpq button{font-size:12.5px}
+.vpprog p{margin:4px 0 0;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.vpprog[hidden]{display:none}
+.vpload{margin:0;color:var(--muted);font-size:14px;padding:8px 2px}
+/* a new clip: the clip as it will look beside its description */
+.clipc{display:grid;grid-template-columns:minmax(0,40%) 1fr;gap:14px;align-items:start;max-width:520px}
+.ccv{position:relative;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#000}
+.ccv video{width:100%;height:100%;object-fit:cover;display:block}
+.ccsnd{position:absolute;right:8px;bottom:8px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgb(0 0 0/.5);color:#fff}
+.ccsnd svg{width:17px;height:17px}
+.ccside{display:flex;flex-direction:column;gap:10px;min-width:0}
+.ccinf{margin:0;font-size:13px;color:var(--muted);line-height:1.4}
+.ccside .btn{align-self:flex-start}
+@media (max-width:420px){.clipc{gap:12px}}

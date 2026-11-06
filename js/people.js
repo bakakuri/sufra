@@ -176,7 +176,7 @@ A.addstory=async()=>{S.storyAud=S.storyAud||'all';sheet(head('ახალი �
 async function postStory(blob,type,extra){try{toast('იტვირთება…');const url=await uploadBlob(blob,type==='video'?extOf(blob):'jpg');await q(sb.from('stories').insert(Object.assign({author:ME.id,media_url:url,media_type:type,audience:S.storyAud==='close'?'close':'all'},extra||{})));closeSheet();toast('ისტორია გამოქვეყნდა');loadStories()}catch(e){toast(errMsg(e))}}
 A.staud=t=>{S.storyAud=t.dataset.v;$$('[data-a="staud"]').forEach(b=>b.setAttribute('aria-pressed',String(b===t)))};
 A.storyimg=async()=>{const b=await pickImage({ratios:['916','orig'],ratio:'916',max:1440,title:'ისტორიის ფოტო'});if(b)storyCompose(b,'image')};
-A.storyvid=async()=>{const v=await pickVideo();if(v)storyCompose(v,'video')};
+A.storyvid=async()=>{const v=await pickVideo({title:'ისტორიის ვიდეო'});if(v)storyCompose(v,'video')};
 let SV=null;
 A.story=t=>openStory(+t.dataset.i,0);
 /* the viewer plays the story ring, or a highlight when one is given */
@@ -292,9 +292,12 @@ function clipWire(el){if(CLIP.io)CLIP.io.disconnect();CLIP.cur=null;
  $$('.clip[data-pid]',el).forEach(c=>{const v=$('video',c),ok=()=>{clearTimeout(c._bt);c.classList.remove('buf')};
   v.addEventListener('loadedmetadata',()=>c.classList.toggle('land',v.videoWidth>v.videoHeight*1.05));
   v.addEventListener('waiting',()=>{clearTimeout(c._bt);c._bt=setTimeout(()=>{if(!v.paused)c.classList.add('buf')},350)});
-  v.addEventListener('playing',()=>{ok();c.classList.add('started');clipProg()});v.addEventListener('canplay',ok);v.addEventListener('pause',ok);
+  v.addEventListener('playing',()=>{ok();c.classList.add('started');clipProg();clipFrames(c,v)});v.addEventListener('canplay',ok);v.addEventListener('pause',ok);
   v.addEventListener('error',()=>{ok();c.classList.add('bad');c.classList.remove('paused');const m=$('.cerr',c);if(m)m.hidden=false});
   CLIP.io.observe(c)})}
+/* a clip that plays its sound but never shows a picture (an upload that lost its frames) says so instead of staying black */
+function clipFrames(c,v){if(c._fchk||!v.requestVideoFrameCallback)return;c._fchk=1;let seen=false;v.requestVideoFrameCallback(()=>{seen=true});const t0=v.currentTime;
+ setTimeout(()=>{if(seen||!c.isConnected||v.paused||v.currentTime-t0<1.2)return;c.classList.add('bad');try{v.pause()}catch(e){}const m=$('.cerr',c);if(m){m.hidden=false;$('b',m).textContent='ამ კლიპს გამოსახულება არ აქვს';$('small',m).textContent='ვიდეო სურათის გარეშე აიტვირთა. ავტორმა თავიდან უნდა ატვირთოს'}},2600)}
 function clipOn(c){if(CLIP.cur&&CLIP.cur!==c)clipOff(CLIP.cur);CLIP.cur=c;const v=$('video',c);if(!v)return;
  /* this one and the next start loading, so a swipe lands on a clip that is ready */
  if(!ECO()){if(v.preload==='none')v.preload='auto';const n=c.nextElementSibling&&$('video',c.nextElementSibling);if(n&&n.preload==='none')n.preload='auto'}
@@ -312,7 +315,27 @@ A.ctap=t=>{const c=t.closest('.clip'),v=c&&$('video',c);if(!v)return;const now=D
 document.addEventListener('visibilitychange',()=>{const c=CLIP.cur;if(!c||!c.isConnected)return;const v=$('video',c);if(!v)return;if(document.hidden)v.pause();else if(!c._held&&!(ECO()&&!c._go))clipPlay(c)});
 A.clike=async t=>{const id=pidOf(t),s=STAT.get(id)||blankStat(id),on=s.my_reaction==='❤️';await setReaction(id,on?null:'❤️');const now=STAT.get(id);t.classList.toggle('on',!on);t.innerHTML=`${ic('heart',!on?'currentColor':'')}<span>${fmt(rTotal(now))}</span>`;if(!on){pop($('svg',t));burst(t,'#FF5A6E')}};
 A.unmute=t=>{const c=t.closest('.clip'),v=c&&$('video',c);if(!v)return;S.clipSound=!S.clipSound;v.muted=!S.clipSound;$$('.clip',view).forEach(clipSnd);if(!v.muted&&v.paused&&CLIP.cur===c&&!c._held&&!(ECO()&&!c._go))clipPlay(c)};
-A.newclip=()=>compose({clip:true});
+/* a new clip: pick the video (the preparing screen shows what it is and makes it lighter), then one short screen:
+   the clip as it will look, a description, and one button; the upload shows how far it got */
+async function newClip(){const f=await pickVideo({title:'კლიპის ვიდეო'});if(f)clipCompose(f)}
+A.newclip=()=>newClip();
+function clipInfo(f){return [mbOf(f.size)+' მბ',f._dur?tOf(f._dur):'',f._how&&f._how!=='orig'?'შეკუმშული · '+VQ[f._how].p:'ორიგინალი'+(f._w?' · '+vSharp(f._w,f._h):'')].filter(Boolean).join(' · ')}
+function clipCompose(f){let file=f,url=URL.createObjectURL(f),busy=false;
+ sheet(`<div class="ph-head"><button class="ibtn" data-a="close" aria-label="დახურვა">${ic('x')}</button><h2>ახალი კლიპი</h2><span class="sp"></span></div>
+  <div class="ph-body clipc"><div class="ccv"><video id="cc_v" src="${url}" muted playsinline autoplay loop></video><button type="button" class="ccsnd" id="cc_snd" aria-label="ხმის ჩართვა">${ic('voloff')}</button></div>
+   <div class="ccside"><p class="ccinf" id="cc_inf">${clipInfo(f)}</p><button type="button" class="btn sm ghost" id="cc_swap">${ic('repost')}სხვა ვიდეო</button>
+   <label class="fld">აღწერა<textarea id="cc_t" rows="3" maxlength="2000" placeholder="რაზეა კლიპი? #ჰეშთეგები, @მეგობარი"></textarea></label>
+   <div class="vpprog" id="cc_p" hidden><div class="vcbar"><i id="cc_b"></i></div><p id="cc_pt"></p></div></div></div>
+  <div class="ph-foot"><span class="note" id="cc_n">0/2000</span><span class="sp"></span><button class="btn" id="cc_go">${ic('send')}გამოქვეყნება</button></div>`,'',()=>{const v=$('#cc_v');if(v){try{v.pause()}catch(e){}}setTimeout(()=>URL.revokeObjectURL(url),1500)});
+ const v=$('#cc_v'),ta=$('#cc_t');if(typeof mentionable==='function')mentionable(ta);ta.oninput=()=>{$('#cc_n').textContent=`${ta.value.length}/2000`};
+ $('#cc_snd').onclick=()=>{v.muted=!v.muted;$('#cc_snd').innerHTML=ic(v.muted?'voloff':'vol');$('#cc_snd').setAttribute('aria-label',v.muted?'ხმის ჩართვა':'ხმის გამორთვა');if(v.paused)v.play().catch(()=>{})};
+ $('#cc_swap').onclick=async()=>{if(busy)return;const g=await pickVideo({title:'კლიპის ვიდეო'});if(!g||!v.isConnected)return;URL.revokeObjectURL(url);file=g;url=URL.createObjectURL(g);v.src=url;v.play().catch(()=>{});$('#cc_inf').textContent=clipInfo(g)};
+ $('#cc_go').onclick=async()=>{if(busy)return;busy=true;const b=$('#cc_go'),pb=$('#cc_p');b.disabled=true;$('#cc_swap').disabled=true;pb.hidden=false;
+  const say=(x,t)=>{const i=$('#cc_b'),p=$('#cc_pt');if(i)i.style.width=Math.round(x*100)+'%';if(p)p.textContent=t};say(0,'იტვირთება… 0%');
+  try{const m=await uploadMedia(file,'video',x=>say(x*.96,`იტვირთება… ${Math.round(x*100)}% · ${mbOf(file.size*x)} / ${mbOf(file.size)} მბ`));say(.98,'ქვეყნდება…');
+   await q(sb.from('posts').insert({author:ME.id,body:ta.value.trim(),media:[m],is_clip:true}));say(1,'გამოქვეყნდა');
+   closeSheet();toast('კლიპი გამოქვეყნდა');if(S.tab==='clips'&&!S.page)R.clips();else go('clips')}
+  catch(e){toast(errMsg(e));busy=false;b.disabled=false;$('#cc_swap').disabled=false;pb.hidden=true}}}
 
 /* close friends for stories */
 PG.close={r(){view.innerHTML=pgHead('ახლო მეგობრები')+`<p class="hint" style="padding:12px 16px 0">„ახლო მეგობრებისთვის“ გამოქვეყნებულ ისტორიას მხოლოდ ესენი ნახავენ. მათ არ ეცნობებათ, რომ სიაში არიან.</p><div id="clb">${skel(3)}</div>`;loadClose()}};
