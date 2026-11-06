@@ -2676,14 +2676,6 @@ body:not(.wide) .pchips.prow::-webkit-scrollbar{display:none}
 .pchips.prow .pchip{flex:none;white-space:nowrap}
 .pcam.ic{width:38px;height:38px;padding:0;justify-content:center;border-radius:50%}
 .pcam.ic svg{width:18px;height:18px}
-.pspace{margin:12px 12px 0;border-radius:18px;background:var(--surface);border:1px solid var(--line);overflow:hidden}
-.pspace .ptiles{padding:14px 4px 12px}
-.pverify{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);transition:background .15s}
-.pverify:active{background:var(--sunk)}
-.pverify>svg{width:22px;height:22px;flex:none;color:var(--super)}
-.pverify .grow{display:flex;flex-direction:column;min-width:0}
-.pverify b{font-size:14.5px}
-.pverify small{color:var(--muted);font-size:12.5px;line-height:1.35}
 /* settings: short groups in cards, each row says what is set now */
 .sets{display:flex;flex-direction:column;gap:18px;width:100%;max-width:640px;margin:0 auto;padding:14px 16px 32px}
 .sgrp>h3{font-size:13px;font-weight:700;color:var(--muted);margin:0 6px 6px}
@@ -2761,3 +2753,81 @@ button.srow:active{background:var(--sunk)}
 .ccinf{margin:0;font-size:13px;color:var(--muted);line-height:1.4}
 .ccside .btn{align-self:flex-start}
 @media (max-width:420px){.clipc{gap:12px}}
+/* my space: one row of shortcuts under the numbers, sideways on a phone */
+.pspace{display:flex;gap:8px;overflow-x:auto;margin:6px -16px 0;padding:4px 16px 6px;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent)}
+.pspace::-webkit-scrollbar{display:none}
+body.wide .pspace{flex-wrap:wrap;margin:6px 0 0;padding:4px 0 2px;-webkit-mask-image:none;mask-image:none}
+.psp{position:relative;flex:none;display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 14px 0 6px;border-radius:999px;background:var(--sunk);font-size:13.5px;font-weight:600;white-space:nowrap;transition:transform .15s,background .15s}
+.psp:active{transform:scale(.96)}
+@media (hover:hover){.psp:hover{background:var(--line)}}
+.pspi{--c:var(--wine);width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none;color:var(--c);background:var(--surface);background:color-mix(in srgb,var(--c) 16%,var(--surface))}
+.pspi svg{width:17px;height:17px}
+.psp em{font-style:normal;font-size:12px;font-weight:700;color:var(--muted)}
+.psp em:empty{display:none}
+.psp .badge{position:absolute;top:-3px;right:4px}
+/* the hardest badge, next to the username */
+.pmu{display:inline-flex;align-items:center;gap:5px}
+.ptopb{display:inline-flex;vertical-align:middle}
+.ptopb:empty{display:none}
+.pro2m>.ptopb{margin-right:6px}
+.pbadge{display:inline-grid;place-items:center;border-radius:50%;transition:transform .2s}
+.pbadge:active{transform:scale(.88)}
+/* medals: bronze, silver, gold, diamond; locked ones are grey */
+.medal{--s:22px;--m1:#F6CCA6;--m2:#B5693D;--m3:#7A3E1F;position:relative;width:var(--s);height:var(--s);border-radius:50%;display:inline-grid;place-items:center;flex:none;overflow:hidden;
+ background:radial-gradient(circle at 30% 24%,rgb(255 255 255/.8),transparent 42%),linear-gradient(150deg,var(--m1),var(--m2) 68%,var(--m3));
+ box-shadow:inset 0 0 0 max(1.5px,calc(var(--s)*.065)) rgb(255 255 255/.5),inset 0 calc(var(--s)*-.08) calc(var(--s)*.14) rgb(0 0 0/.22),0 1px 3px rgb(0 0 0/.28)}
+.medal::before{content:"";position:absolute;inset:calc(var(--s)*.13);border-radius:50%;border:max(1px,calc(var(--s)*.028)) dashed rgb(255 255 255/.5)}
+.medal i{position:relative;font-style:normal;font-size:calc(var(--s)*.5);line-height:1;filter:drop-shadow(0 1px 1px rgb(0 0 0/.25))}
+.medal.t2{--m1:#FFFFFF;--m2:#B3BCCB;--m3:#6E7889}
+.medal.t3{--m1:#FFF3B0;--m2:#F2B705;--m3:#A86A00}
+.medal.t4{--m1:#E6FCFF;--m2:#93A9FF;--m3:#6A3FE0}
+.medal.t3::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 38%,rgb(255 255 255/.6) 50%,transparent 62%);background-size:250% 100%;animation:medalshine 4.5s ease-in-out infinite}
+.medal.t4::after{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 68%,rgb(255 255 255/.9) 80%,transparent 92%);-webkit-mask:radial-gradient(circle,transparent 56%,#000 60%);mask:radial-gradient(circle,transparent 56%,#000 60%);animation:medalspin 3.6s linear infinite}
+@keyframes medalspin{to{transform:rotate(360deg)}}
+@keyframes medalshine{0%,55%{background-position:120% 0}100%{background-position:-120% 0}}
+@media (prefers-reduced-motion:reduce){.medal::after{animation:none}}
+.medal.lock{filter:grayscale(1);opacity:.4}
+.medal.lock::after{display:none}
+.mrib{position:relative;display:inline-grid;place-items:center;padding-top:22px;flex:none}
+.mrib::before,.mrib::after{content:"";position:absolute;top:0;width:20px;height:36px;background:var(--rb,#4F46E5);clip-path:polygon(0 0,100% 0,100% 100%,50% 80%,0 100%)}
+.mrib::before{left:calc(50% - 21px);transform:rotate(14deg);transform-origin:top center}
+.mrib::after{right:calc(50% - 21px);transform:rotate(-14deg);transform-origin:top center;filter:brightness(.82)}
+.mrib .medal{z-index:1}
+.mrib.t1{--rb:#2F7DD1}.mrib.t2{--rb:#4F46E5}.mrib.t3{--rb:#E5484D}.mrib.t4{--rb:#0F9F76}
+/* the badges sheet */
+.bdgsheet{display:flex;flex-direction:column;gap:14px}
+.bdgtop{--tc:#B5693D;display:flex;align-items:center;gap:18px;padding:12px 18px 16px;border-radius:18px;background:var(--sunk);background:linear-gradient(135deg,color-mix(in srgb,var(--tc) 16%,var(--surface)),var(--surface));border:1px solid var(--line)}
+.bdgtop .grow{display:flex;flex-direction:column;gap:3px;min-width:0}
+.bdgtop small{color:var(--muted);font-size:12.5px}
+.bdgtop b{font-size:19px;line-height:1.25}
+.tierl{align-self:flex-start;font-size:11.5px;font-weight:800;padding:2px 10px;border-radius:999px;color:#fff;background:var(--tc)}
+.t1{--tc:#B5693D}.t2{--tc:#7D879A}.t3{--tc:#C98A00}.t4{--tc:#6A3FE0}
+.bdgprog span{font-size:13px;color:var(--muted)}
+.bdgprog b{color:var(--ink)}
+.bdgtier{display:flex;align-items:center;gap:8px;font-size:15px;margin:4px 2px -6px}
+.bdgtier em{font-style:normal;margin-left:auto;font-size:12.5px;color:var(--muted)}
+.tierdot{width:10px;height:10px;border-radius:50%;background:var(--tc)}
+.bdgsheet .bdggrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.bdgsheet .bdgc{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 6px 10px;border-radius:16px;background:var(--sunk);text-align:center}
+.bdgsheet .bdgc.on{background:var(--surface);box-shadow:var(--shadow)}
+.bdgsheet .bdgc .medal{margin-bottom:4px}
+.bdgsheet .bdgc b{font-size:13px;line-height:1.25}
+.bdgsheet .bdgc small{font-size:11.5px;color:var(--muted);line-height:1.3}
+.bdgsheet .bdgc em{font-style:normal;font-size:11.5px;font-weight:700;color:var(--gold);display:inline-flex;align-items:center;gap:3px}
+.bdgsheet .bdgc em svg{width:13px;height:13px}
+@media (max-width:359px){.bdgsheet .bdggrid{grid-template-columns:repeat(2,1fr)}}
+/* stories: one place, by kind */
+.archtabs{display:flex;gap:6px;overflow-x:auto;padding:10px 16px 6px;scrollbar-width:none}
+.archtabs::-webkit-scrollbar{display:none}
+.archtabs button{flex:none;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:999px;background:var(--sunk);font-size:13.5px;font-weight:600;color:var(--muted);transition:background .15s,color .15s}
+.archtabs button svg{width:16px;height:16px}
+.archtabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.archtabs em{font-style:normal;font-size:12px;opacity:.75}
+.archtabs em:empty{display:none}
+.archnote{display:flex;gap:8px;align-items:flex-start;margin:6px 16px 4px;color:var(--muted);font-size:13px;line-height:1.45}
+.archnote svg{width:16px;height:16px;flex:none;margin-top:2px}
+.argrid.sq .art{aspect-ratio:1}
+.arv{position:absolute;right:6px;bottom:6px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:rgb(0 0 0/.45);color:#fff}
+.arv svg{width:12px;height:12px}
+.ard.tm{left:auto;right:6px;background:rgb(0 0 0/.55);color:#fff;font-size:11.5px}
+.argh{text-align:left}
