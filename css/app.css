@@ -911,18 +911,13 @@ body.wide .pvframe{border-radius:16px;overflow:hidden}
 .pchips{display:flex;flex-wrap:wrap;gap:6px}
 .pchip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:var(--sunk);font-size:12.5px;font-weight:600;color:var(--ink)}
 .pchip svg{width:14px;height:14px;color:var(--wine)}
-.stats2{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
-.stats2 button{display:flex;flex-direction:column;align-items:center;padding:10px 4px;border-radius:14px;background:var(--sunk);text-align:center}
+.stats2{display:grid;grid-template-columns:repeat(4,1fr);margin-top:6px;border-radius:16px;background:var(--sunk);overflow:hidden}
+.stats2 button{display:flex;flex-direction:column;align-items:center;padding:10px 4px;text-align:center;transition:background .15s}
+.stats2 button+button{box-shadow:inset 1px 0 var(--line)}
+.stats2 button:active{background:var(--line)}
 .stats2 b{font-size:18px;font-variant-numeric:tabular-nums;line-height:1.2}
 .stats2 span{font-size:11.5px;color:var(--muted)}
-.pbanners{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;padding:12px 16px 0}
-.pbanner{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:var(--surface);border:1px solid var(--line);text-align:left}
-.pbanner>svg:first-child{width:22px;height:22px;color:var(--wine);flex:none}
-.pbanner.adm>svg:first-child{color:var(--gold)}
-.pbanner>svg:last-child{width:16px;height:16px;transform:rotate(180deg);color:var(--muted);flex:none}
-.pbanner .grow{display:flex;flex-direction:column}
-.pbanner small{color:var(--muted);font-size:12px}
-.ptiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 4px;padding:14px 10px 8px}
+.ptiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 4px;padding:14px 6px 12px}
 .ptiles button{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11.5px;font-weight:600;text-align:center;line-height:1.2}
 .pti{position:relative;width:50px;height:50px;border-radius:16px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;transition:transform .15s}
 .ptiles button:active .pti{transform:scale(.94)}
@@ -2666,10 +2661,64 @@ html.c4 .card[data-s="♦"],html.c4 .suits button[data-s="d"]{color:#1A55C4}
 .kumates .row .sub{display:block;color:var(--muted);font-size:12.5px}
 .edurow .eduic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--wine-soft);color:var(--wine);flex:none}
 .edurow .eduic svg{width:20px;height:20px}
-.pedu{margin-top:2px}
+.pedu:not([hidden]){display:contents}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .kutile{background:linear-gradient(150deg,hsl(var(--h) 30% 16%),hsl(var(--h) 35% 12%));border-color:hsl(var(--h) 30% 22%)}}
 :root[data-theme="dark"] .kutile{background:linear-gradient(150deg,hsl(var(--h) 30% 16%),hsl(var(--h) 35% 12%));border-color:hsl(var(--h) 30% 22%)}
 .kusafe{display:flex;gap:8px;align-items:flex-start;background:var(--wine-soft);color:var(--ink);padding:10px 12px;border-radius:12px;margin:6px 0 8px}.kusafe svg{width:18px;height:18px;flex:none;color:var(--wine);margin-top:1px}
 .aderr{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 16px}.aderr summary{cursor:pointer;list-style:none;display:flex;flex-direction:column;gap:2px}.aderr summary::-webkit-details-marker{display:none}.aderr summary b{word-break:break-word}.aderr .sub{color:var(--muted);font-size:12.5px}.aderr pre{white-space:pre-wrap;word-break:break-all;font-size:11.5px;line-height:1.45;background:var(--sunk);padding:8px 10px;border-radius:8px;max-height:240px;overflow:auto;margin:8px 0}
 .gstar{display:flex;align-items:center;gap:10px;margin:0 16px 12px;padding:10px 12px;border-radius:14px;background:var(--wine-soft);font-size:14px}.gstar>svg{width:20px;height:20px;color:var(--gold);flex:none}.gstar .grow{line-height:1.45}.gstar .hash{font-size:inherit}
 .vcbox p{margin:0 0 10px;line-height:1.5}.vcbar{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden;margin:6px 0 4px}.vcbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--wine),color-mix(in srgb,var(--wine) 60%,var(--gold)));border-radius:inherit;transition:width .3s linear}
+
+/* profile: the chips stay on one line on a phone and scroll sideways; the camera on the cover is a round button; "my space" is one card */
+.pchips.prow:not(:has(>:not([hidden]))){display:none}
+body:not(.wide) .pchips.prow{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:2px 16px;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+body:not(.wide) .pchips.prow::-webkit-scrollbar{display:none}
+.pchips.prow .pchip{flex:none;white-space:nowrap}
+.pcam.ic{width:38px;height:38px;padding:0;justify-content:center;border-radius:50%}
+.pcam.ic svg{width:18px;height:18px}
+.pspace{margin:12px 12px 0;border-radius:18px;background:var(--surface);border:1px solid var(--line);overflow:hidden}
+.pspace .ptiles{padding:14px 4px 12px}
+.pverify{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);transition:background .15s}
+.pverify:active{background:var(--sunk)}
+.pverify>svg{width:22px;height:22px;flex:none;color:var(--super)}
+.pverify .grow{display:flex;flex-direction:column;min-width:0}
+.pverify b{font-size:14.5px}
+.pverify small{color:var(--muted);font-size:12.5px;line-height:1.35}
+/* settings: short groups in cards, each row says what is set now */
+.sets{display:flex;flex-direction:column;gap:18px;width:100%;max-width:640px;margin:0 auto;padding:14px 16px 32px}
+.sgrp>h3{font-size:13px;font-weight:700;color:var(--muted);margin:0 6px 6px}
+.sbox{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.srow{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:10px 14px;text-align:left;font-size:15px;line-height:1.35}
+.sbox>.srow+.srow,.sbox .srow+.srow{border-top:1px solid var(--line)}
+.srow .grow{display:flex;flex-direction:column;gap:2px;min-width:0}
+.srow .grow>span{font-weight:600}
+.srow small{color:var(--muted);font-size:12.5px;line-height:1.4}
+button.srow{transition:background .15s}
+button.srow:active{background:var(--sunk)}
+@media (hover:hover){button.srow:hover,.setme:hover,.pverify:hover{background:var(--sunk)}}
+.srow.wrap{flex-wrap:wrap}
+.srow.wrap .seg{width:100%}
+.sic{--c:var(--wine);width:36px;height:36px;border-radius:11px;display:grid;place-items:center;flex:none;color:var(--c);background:var(--sunk);background:color-mix(in srgb,var(--c) 14%,transparent)}
+.sic svg{width:19px;height:19px}
+.chev{flex:none;display:grid;place-items:center;color:var(--muted);margin-left:auto}
+.chev svg{width:16px;height:16px;transform:rotate(180deg)}
+.setme{display:flex;align-items:center;gap:14px;width:100%;padding:14px;border-radius:18px;background:var(--surface);border:1px solid var(--line);text-align:left;transition:background .15s}
+.setme:active{background:var(--sunk)}
+.setme .grow{display:flex;flex-direction:column;min-width:0}
+.setme b{font-size:17px;display:flex;align-items:center;gap:4px;line-height:1.3}
+.setme small{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.setme em{font-style:normal;color:var(--wine);font-size:13.5px;font-weight:700;margin-top:3px}
+.sdel{align-self:center;display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;color:var(--nope);font-size:13.5px;font-weight:600}
+.sdel svg{width:16px;height:16px}
+.sdel:active{background:var(--sunk)}
+.snote{color:var(--muted);font-size:12.5px;line-height:1.45;margin:-10px 8px 0}
+.sempty{padding:16px 14px;color:var(--muted);font-size:14px}
+.nqhours{padding:0 14px 12px}
+.nqhours .note{margin-top:6px}
+.sets>.kusafe{margin:0}
+/* on a narrow phone (or with bigger text) the three profile buttons keep their words: the icons go, the two buttons share the width */
+.pro2{container-type:inline-size}
+@container (max-width:400px){.pro2row .btn svg{display:none}.pro2row .btn:first-child{flex-grow:1}.pro2row .btn{padding:0 8px;font-size:13.5px}}
+/* on someone else's profile the friend button takes what it needs, "write" stays short */
+.pro2row.oth .btn:first-child{flex:1 1 auto}
+.pro2row.oth .btn+.btn{flex:0 0 auto}

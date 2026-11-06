@@ -59,4 +59,9 @@ async function afterLogin(){if(AFTER)return;AFTER=true;
  if(!ME.onboarded){showOnboarding();return}
  $('#auth').hidden=true;$('#boot')?.remove();enterApp()}
 sb.auth.onAuthStateChange((ev)=>{if(ev==='PASSWORD_RECOVERY'){AFTER=false;showAuth('newpass')}else if(ev==='SIGNED_OUT'&&ME){ME=null;location.reload()}});
-async function bootAuth(){const{data:{session}}=await sb.auth.getSession();if(location.hash.includes('type=recovery'))return;if(!session){if(!navigator.onLine&&bootOffline())return;showAuth('in');return}afterLogin()}
+/* a link from an email that was already used or is too old comes back with an error in the address: say so in words, and clear it */
+function linkErr(){const h=location.hash||'';if(!/(^#|&)error(_code)?=/.test(h))return '';let p;try{p=new URLSearchParams(h.slice(1))}catch(e){return ''}
+ try{history.replaceState(history.state,'',location.pathname+location.search)}catch(e){}
+ return p.get('error_code')==='otp_expired'||/expired|invalid/i.test(p.get('error_description')||'')?'ეს ბმული უკვე გამოყენებულია ან ვადა გაუვიდა. მოითხოვე ახალი.':'ბმული ვერ გაიხსნა. სცადე ხელახლა.'}
+async function bootAuth(){const{data:{session}}=await sb.auth.getSession();if(location.hash.includes('type=recovery'))return;const le=linkErr();
+ if(!session){if(!navigator.onLine&&bootOffline())return;showAuth('in');if(le){const e=$('#aerr');if(e)e.textContent=le}return}afterLogin();if(le)toast(le)}

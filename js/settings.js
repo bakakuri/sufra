@@ -1,44 +1,52 @@
 /* settings, coins, verification, push, install, rules, privacy, export, delete */
 function setCoins(n){if(!ME||n==null||isNaN(n))return;const c=$('#coinv');const old=ME.coins||0;ME.coins=n;if(c){animNum(c,old,n);const ch=c.closest('.coinchip');ch.classList.remove('bump');void ch.offsetWidth;ch.classList.add('bump')}}
-const sw=(k,label,sub)=>`<div class="setrow"><div class="grow"><span>${label}</span>${sub?`<small>${sub}</small>`:''}</div><button class="switch" role="switch" aria-checked="${!!ME.privacy?.[k]}" data-a="tog" data-k="${k}" aria-label="${label}"></button></div>`;
-const segSet=(k,label,opts)=>`<div class="setrow" style="flex-wrap:wrap"><div class="grow"><span>${label}</span></div><div class="seg flat" role="group" aria-label="${label}" style="width:100%">${opts.map(([v,l])=>`<button data-a="pset" data-k="${k}" data-v="${v}" aria-pressed="${(ME.privacy?.[k]||'all')===v}">${l}</button>`).join('')}</div></div>`;
-const SITE_LANGS=['ka','en','ru','de','tr','uk','hy','az'];
-PG.settings={r(){const push=store.get('push',false);view.innerHTML=pgHead('პარამეტრები')+`<div class="form" style="gap:0">
- <h3 class="sec" style="margin:4px 0">ანგარიში</h3>
- <button class="setrow" data-a="editprofile">${ic('edit')}<div class="grow"><span>პროფილის რედაქტირება</span><small>სახელი, ფოტო, ბიო, ქალაქი</small></div></button>
- <button class="setrow" data-a="page" data-p="verify">${ic('shield')}<div class="grow"><span>ვერიფიკაცია</span><small>${ME.verified?'დადასტურებულია':'ლურჯი ნიშანი სელფით'}</small></div></button>
- <button class="setrow" data-a="page" data-p="coins">${ic('coin')}<div class="grow"><span>მონეტები</span><small>ბალანსი: ${ME.coins??0}</small></div></button>
- <button class="setrow" data-a="page" data-p="saved">${ic('bookmark')}<div class="grow"><span>შენახული პოსტები</span></div></button>
- ${isAdult()?`<button class="setrow" data-a="datesettings">${ic('heart')}<div class="grow"><span>გაცნობის პროფილი</span><small>${ME.dating?'ჩართულია':'გამორთულია'}</small></div></button>`:''}
- <h3 class="sec" style="margin:18px 0 4px">შეტყობინებები და აპი</h3>
- <div class="setrow"><div class="grow"><span>Push შეტყობინებები</span><small>მოწონებები, კომენტარები, მესიჯები, ზარები, როცა აპი დახურულია</small></div><button class="switch" role="switch" aria-checked="${push}" data-a="pushtog" aria-label="Push შეტყობინებები"></button></div>
- <button class="setrow" data-a="page" data-p="notifset">${ic('bell')}<div class="grow"><span>რა შეტყობინებები მივიღო</span><small>${notifSummary()}</small></div></button>
- <div class="setrow"><div class="grow"><span>ეკონომიური რეჟიმი</span><small>სუსტი ინტერნეტისთვის: ფოტო და ვიდეო იტვირთება შეხებით, კლიპები თავისით არ ირთვება, ატვირთვა უფრო მსუბუქია</small></div><button class="switch" role="switch" aria-checked="${!!S.eco}" data-a="ecotog" aria-label="ეკონომიური რეჟიმი"></button></div>
- <div class="setrow"><div class="grow"><span>ვიდეოს ავტოჩართვა</span><small>ფიდზე ვიდეო თავისით ირთვება უხმოდ, როცა ეკრანზე გამოჩნდება</small></div><button class="switch" role="switch" aria-checked="${store.get('vauto',true)!==false}" data-a="vautotog" aria-label="ვიდეოს ავტოჩართვა"></button></div>
- <button class="setrow" data-a="page" data-p="close">${ic('star')}<div class="grow"><span>ახლო მეგობრები</span><small>ვინ ნახავს „ახლო მეგობრების“ ისტორიებს</small></div></button>
- <button class="setrow" data-a="install">${ic('download')}<div class="grow"><span>ტელეფონზე დაყენება</span><small>Peera აპივით მთავარ ეკრანზე</small></div></button>
- <h3 class="sec" style="margin:18px 0 4px">მხედველობა და კითხვა</h3>
- <div class="setrow" style="flex-wrap:wrap"><div class="grow"><span>ტექსტის ზომა</span><small>ზრდის ყველაფერს: ტექსტს, ღილაკებს, ფოტოებს</small></div><div class="seg flat" role="group" aria-label="ტექსტის ზომა" style="width:100%">${[[1,'ჩვეულებრივი'],[1.1,'დიდი'],[1.2,'უფრო დიდი']].map(([v,l])=>`<button data-a="a11yz" data-v="${v}" aria-pressed="${A11Y().z===v}" style="font-size:${13*v}px">${l}</button>`).join('')}</div></div>
- <div class="setrow"><div class="grow"><span>მაღალი კონტრასტი</span><small>უფრო მუქი ტექსტი და მკაფიო საზღვრები</small></div><button class="switch" role="switch" aria-checked="${!!A11Y().hc}" data-a="a11yhc" aria-label="მაღალი კონტრასტი"></button></div>
- <p class="note" style="margin:6px 0 0">პოსტის ხმამაღლა მოსასმენად: პოსტთან „…“ → „მოსმენა“.</p>
- <h3 class="sec" style="margin:18px 0 4px">საიტის ენა</h3><p class="note" style="margin-bottom:4px">თარგმნის ღილაკი ტექსტს ამ ენაზე თარგმნის. სხვა ენები მალე დაემატება.</p><div class="langs">${SITE_LANGS.map(k=>`<button data-a="setlang" data-l="${k}"${k==='ka'?'':' disabled'}><span>${LANGS[k].own}${k!=='ka'?' · მალე':''}</span><span class="radio${siteLang()===k?' on':''}"></span></button>`).join('')}</div>
- <h3 class="sec" style="margin:18px 0 4px">კონფიდენციალურობა</h3>
+/* settings: one short page of groups. Each group opens its own page, so one back comes straight back here */
+const chev=()=>`<span class="chev" aria-hidden="true">${ic('back')}</span>`;
+const sIc=(i,c)=>`<span class="sic"${c?` style="--c:${c}"`:''}>${ic(i)}</span>`;
+const sLink=(a,i,c,label,sub,extra='')=>`<button class="srow" data-a="${a}"${extra}>${sIc(i,c)}<span class="grow"><span>${label}</span>${sub?`<small>${sub}</small>`:''}</span>${chev()}</button>`;
+const sPage=(p,i,c,label,sub)=>sLink('page',i,c,label,sub,` data-p="${p}"`);
+const sSwitch=(a,k,label,sub,on)=>`<div class="srow"><span class="grow"><span>${label}</span>${sub?`<small>${sub}</small>`:''}</span><button class="switch" role="switch" aria-checked="${!!on}" data-a="${a}"${k?` data-k="${k}"`:''} aria-label="${label}"></button></div>`;
+const sw=(k,label,sub)=>sSwitch('tog',k,label,sub,!!ME.privacy?.[k]);
+const segSet=(k,label,opts)=>`<div class="srow wrap"><span class="grow"><span>${label}</span></span><div class="seg flat" role="group" aria-label="${label}">${opts.map(([v,l])=>`<button data-a="pset" data-k="${k}" data-v="${v}" aria-pressed="${(ME.privacy?.[k]||'all')===v}">${l}</button>`).join('')}</div></div>`;
+const sGroup=(t,body)=>`<section class="sgrp">${t?`<h3>${t}</h3>`:''}<div class="sbox">${body}</div></section>`;
+const ZL={1:'ჩვეულებრივი','1.1':'დიდი','1.2':'უფრო დიდი'};
+function notifShort(push){const n=notifCfg(),off=NCATS.filter(c=>n.off[c[0]]).length;return [push?'Push ჩართულია':'Push გამორთულია',off?`${off} ტიპი გამორთულია`:'',n.quiet.on?'ღამით ჩუმად':''].filter(Boolean).join(' · ')}
+function privSummary(){const p=ME.privacy||{};return [p.online===false?'ონლაინ სტატუსი დამალულია':'ონლაინ სტატუსი ჩანს',p.dm==='friends'?'მოგწერენ მეგობრები':'მოგწერს ყველა',BLOCKED.size?`${BLOCKED.size} დაბლოკილი`:''].filter(Boolean).join(' · ')}
+function appSummary(){const a=A11Y();return ['ტექსტი: '+(ZL[a.z]||ZL[1]),S.eco?'ეკონომიური რეჟიმი':'',a.hc?'მაღალი კონტრასტი':''].filter(Boolean).join(' · ')}
+PG.settings={r(){const p=ME,push=store.get('push',false);view.innerHTML=pgHead('პარამეტრები')+`<div class="sets">
+ <button class="setme" data-a="editprofile">${av('me',56)}<span class="grow"><b>${esc(p.name)}${vb(p)}</b><small>${[p.username?'@'+esc(p.username):'',esc(S.email||'')].filter(Boolean).join(' · ')}</small><em>პროფილის რედაქტირება</em></span>${chev()}</button>
+ ${sGroup('ანგარიში',sPage('verify','shield','var(--super)','ვერიფიკაცია',p.verified?'დადასტურებულია ✓':'მიიღე ლურჯი ნიშანი ერთი სელფით')
+  +sPage('edu','school','var(--vine)','განათლება','სკოლა, კლასი, უნივერსიტეტი, კურსი')
+  +sPage('coins','coin','var(--gold)','მონეტები','ბალანსი: '+(p.coins??0))
+  +(isAdult()?sLink('datesettings','heart','var(--nope)','გაცნობის პროფილი',p.dating?'ჩართულია':'გამორთულია'):''))}
+ ${sGroup('პარამეტრები',sPage('notifset','bell','var(--wine)','შეტყობინებები',notifShort(push))
+  +sPage('setprivacy','lock','var(--vine)','კონფიდენციალურობა',privSummary())
+  +sPage('setapp','eye','var(--super)','ეკრანი და აპი',appSummary()))}
+ ${isStaff()?sGroup('',sPage('admin','shield','var(--gold)','ადმინ პანელი','საჩივრები, ვერიფიკაცია, რეკლამა')):''}
+ ${sGroup('წესები და მონაცემები',sLink('rules','flag','var(--muted)','საზოგადოების წესები')+sLink('privacy','lock','var(--muted)','კონფიდენციალურობის პოლიტიკა')+sLink('exportdata','download','var(--muted)','ჩემი მონაცემების ჩამოტვირთვა','ყველაფერი ერთ ფაილში'))}
+ ${sGroup('',`<button class="srow" data-a="signout">${sIc('logout','var(--nope)')}<span class="grow"><span>გასვლა</span>${S.email?`<small>${esc(S.email)}</small>`:''}</span></button>`)}
+ <button class="sdel" data-a="delaccount">${ic('trash')}ანგარიშის წაშლა</button></div>`}};
+PG.setprivacy={r(){const pr=ME.privacy||{};view.innerHTML=pgHead('კონფიდენციალურობა')+`<div class="sets">
  ${ME.birthday&&!isAdult()?`<p class="hint kusafe">${ic('lock')}<span>18 წლამდე ხარ, ამიტომ დაცვა ჩართულია: უცნობ ზრდასრულებს არ შეუძლიათ მოგწერონ, მეგობრობა გთხოვონ, საჩუქარი გამოგიგზავნონ ან ძებნაში გიპოვონ. შენთან კავშირი აქვთ მეგობრებს, ოჯახის წევრებს და კლასელებს ან კურსელებს.</span></p>`:''}
- ${sw('online','ონლაინ სტატუსის ჩვენება','გამორთვისას სხვები ვერ ნახავენ, რომ ონლაინ ხარ')}
- ${sw('guest','უხილავი სტუმარი','სხვის პროფილს ისე ნახავ, რომ მის სტუმრებში არ გამოჩნდე')}
- <div class="setrow"><div class="grow"><span>„ნანახია“ და „წერს…“</span><small>გამორთვისას სხვები ვერ ნახავენ, რომ წაიკითხე ან წერ. შენც ვერ დაინახავ მათსას</small></div><button class="switch" role="switch" aria-checked="${ME.privacy?.read!==false}" data-a="readtog" aria-label="ნანახია და წერს"></button></div>
- ${segSet('dm','ვინ მომწეროს',[['all','ყველამ'],['friends','მეგობრებმა']])}
- ${segSet('chal','ვინ გამომიწვიოს თამაშში',[['all','ყველამ'],['friends','მეგობრებმა'],['none','არავინ']])}
- <h3 class="sec" style="margin:18px 0 4px">დაბლოკილები</h3><div id="blk">${BLOCKED.size?'':'<p class="note">არავინ.</p>'}</div>
- <h3 class="sec" style="margin:18px 0 4px">წესები და მონაცემები</h3>
- <button class="setrow" data-a="rules">${ic('flag')}<div class="grow"><span>საზოგადოების წესები</span></div></button>
- <button class="setrow" data-a="privacy">${ic('lock')}<div class="grow"><span>კონფიდენციალურობის პოლიტიკა</span></div></button>
- <button class="setrow" data-a="exportdata">${ic('download')}<div class="grow"><span>ჩემი მონაცემების ჩამოტვირთვა</span><small>JSON ფაილი</small></div></button>
- <button class="setrow" data-a="signout">${ic('logout')}<div class="grow"><span>გასვლა</span><small>${esc(S.email||'')}</small></div></button>
- <button class="setrow warnbtn" data-a="delaccount">${ic('trash')}<div class="grow"><span>ანგარიშის წაშლა</span><small>სამუდამოდ წაიშლება პროფილი, პოსტები და ფაილები</small></div></button></div>`;
- if(BLOCKED.size)loadProfiles([...BLOCKED]).then(()=>{const el=$('#blk');if(el)el.innerHTML=[...BLOCKED].map(id=>`<div class="setrow">${av(id,36)}<div class="grow"><span>${esc(pname(id))}</span></div><button class="btn sm ghost" data-a="unblock" data-u="${id}">განბლოკვა</button></div>`).join('')})}};
+ ${sGroup('ვინ რას ხედავს',sSwitch('onlinetog','','ონლაინ სტატუსი','სხვები ხედავენ, როცა ონლაინ ხარ',pr.online!==false)
+  +sSwitch('readtog','','„ნანახია“ და „წერს…“','გამორთვისას სხვები ვერ ნახავენ, რომ წაიკითხე ან წერ. შენც ვერ დაინახავ მათსას',pr.read!==false)
+  +sw('guest','უხილავი სტუმარი','სხვის პროფილს ისე ნახავ, რომ მის სტუმრებში არ გამოჩნდე'))}
+ ${sGroup('ვინ დამიკავშირდეს',segSet('dm','ვინ მომწეროს',[['all','ყველამ'],['friends','მეგობრებმა']])+segSet('chal','ვინ გამომიწვიოს თამაშში',[['all','ყველამ'],['friends','მეგობრებმა'],['none','არავინ']]))}
+ ${sGroup('ისტორიები',sPage('close','star','var(--gold)','ახლო მეგობრები','ვინ ნახავს „ახლო მეგობრების“ ისტორიებს'))}
+ ${sGroup('დაბლოკილები',`<div id="blk">${BLOCKED.size?'<p class="sempty">იტვირთება…</p>':'<p class="sempty">დაბლოკილი არავინ გყავს.</p>'}</div>`)}</div>`;
+ if(BLOCKED.size)loadProfiles([...BLOCKED]).then(()=>{const el=$('#blk');if(el)el.innerHTML=[...BLOCKED].map(id=>`<div class="srow">${av(id,36)}<span class="grow"><span>${esc(pname(id))}</span></span><button class="btn sm ghost" data-a="unblock" data-u="${id}">განბლოკვა</button></div>`).join('')})}};
+PG.setapp={r(){const a=A11Y();view.innerHTML=pgHead('ეკრანი და აპი')+`<div class="sets">
+ ${sGroup('კითხვა',`<div class="srow wrap"><span class="grow"><span>ტექსტის ზომა</span><small>ზრდის ყველაფერს: ტექსტს, ღილაკებს, ფოტოებს</small></span><div class="seg flat" role="group" aria-label="ტექსტის ზომა">${[[1,'ჩვეულებრივი'],[1.1,'დიდი'],[1.2,'უფრო დიდი']].map(([v,l])=>`<button data-a="a11yz" data-v="${v}" aria-pressed="${+a.z===v}" style="font-size:${13*v}px">${l}</button>`).join('')}</div></div>`
+  +sSwitch('a11yhc','','მაღალი კონტრასტი','უფრო მუქი ტექსტი და მკაფიო საზღვრები',!!a.hc))}
+ <p class="snote">პოსტის ხმამაღლა მოსასმენად: პოსტთან „…“ → „მოსმენა“.</p>
+ ${sGroup('ინტერნეტი და ვიდეო',sSwitch('ecotog','','ეკონომიური რეჟიმი','სუსტი ინტერნეტისთვის: ფოტო და ვიდეო შეხებით იტვირთება, კლიპები თავისით არ ირთვება, ატვირთვა უფრო მსუბუქია',!!S.eco)
+  +sSwitch('vautotog','','ვიდეოს ავტოჩართვა','ფიდზე ვიდეო უხმოდ ირთვება, როცა ეკრანზე გამოჩნდება',store.get('vauto',true)!==false))}
+ ${sGroup('აპი',sLink('install','download','var(--wine)','ტელეფონზე დაყენება','Peera აპივით მთავარ ეკრანზე')
+  +`<div class="srow">${sIc('globe','var(--super)')}<span class="grow"><span>ენა: ქართული</span><small>თარგმნის ღილაკი სხვა ენაზე დაწერილს ქართულად თარგმნის. სხვა ენები მალე დაემატება</small></span></div>`)}</div>`}};
 async function savePrivacy(){try{await q(sb.from('profiles').update({privacy:ME.privacy}).eq('id',ME.id))}catch(e){toast(errMsg(e))}}
 A.tog=t=>{const k=t.dataset.k;ME.privacy=Object.assign({},ME.privacy,{[k]:!ME.privacy?.[k]});t.setAttribute('aria-checked',String(!!ME.privacy[k]));savePrivacy();if(k==='online')netPresence()};
+/* the online status is shown unless it was switched off, so the switch starts on */
+A.onlinetog=t=>{const on=ME.privacy?.online===false;ME.privacy=Object.assign({},ME.privacy,{online:on});t.setAttribute('aria-checked',String(on));savePrivacy();netPresence();toast(on?'ონლაინ სტატუსი ჩანს':'ონლაინ სტატუსი დამალულია')};
 A.readtog=t=>{const on=ME.privacy?.read===false;ME.privacy=Object.assign({},ME.privacy,{read:on});t.setAttribute('aria-checked',String(on));savePrivacy();toast(on?'„ნანახია“ ჩაირთო':'„ნანახია“ გამოირთო')};
 /* notification settings: categories and quiet hours */
 /* bigger text and high contrast, kept on this device */
@@ -53,19 +61,17 @@ function notifSummary(){const n=notifCfg(),off=NCATS.filter(c=>n.off[c[0]]).leng
 async function saveNotif(n){const tz=(()=>{try{const z=Intl.DateTimeFormat().resolvedOptions().timeZone;return /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/.test(z||'')?z:'Asia/Tbilisi'}catch(e){return 'Asia/Tbilisi'}})();
  n.quiet.tz=tz;ME.notif=n;try{await q(sb.from('profiles').update({notif:n}).eq('id',ME.id))}catch(e){toast(errMsg(e))}}
 const hourOpts=v=>Array.from({length:24},(_,h)=>`<option value="${h}"${+v===h?' selected':''}>${String(h).padStart(2,'0')}:00</option>`).join('');
-PG.notifset={r(){const n=notifCfg();view.innerHTML=pgHead('შეტყობინებები')+`<div class="form" style="gap:0">
- <p class="note" style="margin:0 0 8px">გამორთული ტიპის შეტყობინება აღარ მოვა: არც შეტყობინებების სიაში, არც ტელეფონზე. სისტემური შეტყობინებები (ვერიფიკაცია, რეკლამა, დახმარების პასუხები) ყოველთვის მოდის.</p>
- ${NCATS.filter(c=>c[0]!=='dating'||isAdult()).map(([k,i,l,sub])=>`<div class="setrow"><span class="nsic">${ic(i)}</span><div class="grow"><span>${l}</span>${sub?`<small>${sub}</small>`:''}</div><button class="switch" role="switch" aria-checked="${!n.off[k]}" data-a="ncat" data-k="${k}" aria-label="${l}"></button></div>`).join('')}
- <h3 class="sec" style="margin:18px 0 4px">ღამის საათები</h3>
- <div class="setrow"><span class="nsic">${ic('clock')}</span><div class="grow"><span>არ შემაწუხო</span><small>ამ საათებში ტელეფონზე push არ მოვა. შეტყობინებები მაინც შეგროვდება და დილით ნახავ</small></div><button class="switch" role="switch" aria-checked="${!!n.quiet.on}" data-a="nquiet" aria-label="ღამის საათები"></button></div>
- <div class="frow nqhours" id="nqh"${n.quiet.on?'':' hidden'}><label class="fld">დან<select id="nq_f">${hourOpts(n.quiet.from)}</select></label><label class="fld">მდე<select id="nq_t">${hourOpts(n.quiet.to)}</select></label></div>
- <p class="note" id="nqs" style="margin-top:6px"${n.quiet.on?'':' hidden'}></p></div>`;
+PG.notifset={r(){const n=notifCfg(),push=store.get('push',false);view.innerHTML=pgHead('შეტყობინებები')+`<div class="sets">
+ ${sGroup('ტელეფონზე',sSwitch('pushtog','','Push შეტყობინებები','მოწონებები, კომენტარები, მესიჯები, ზარები, როცა აპი დახურულია',push))}
+ ${sGroup('ღამის საათები',`<div class="srow">${sIc('clock')}<span class="grow"><span>არ შემაწუხო</span><small>ამ საათებში ტელეფონზე push არ მოვა. შეტყობინებები მაინც შეგროვდება და დილით ნახავ</small></span><button class="switch" role="switch" aria-checked="${!!n.quiet.on}" data-a="nquiet" aria-label="ღამის საათები"></button></div>
+  <div class="nqhours" id="nqh"${n.quiet.on?'':' hidden'}><div class="frow"><label class="fld">დან<select id="nq_f">${hourOpts(n.quiet.from)}</select></label><label class="fld">მდე<select id="nq_t">${hourOpts(n.quiet.to)}</select></label></div><p class="note" id="nqs"${n.quiet.on?'':' hidden'}></p></div>`)}
+ ${sGroup('რა შეტყობინებები მივიღო',NCATS.filter(c=>c[0]!=='dating'||isAdult()).map(([k,i,l,sub])=>`<div class="srow">${sIc(i)}<span class="grow"><span>${l}</span>${sub?`<small>${sub}</small>`:''}</span><button class="switch" role="switch" aria-checked="${!n.off[k]}" data-a="ncat" data-k="${k}" aria-label="${l}"></button></div>`).join(''))}
+ <p class="snote">გამორთული ტიპის შეტყობინება აღარ მოვა: არც შეტყობინებების სიაში, არც ტელეფონზე. სისტემური შეტყობინებები (ვერიფიკაცია, რეკლამა, დახმარების პასუხები) ყოველთვის მოდის.</p></div>`;
  const qs=()=>{const c=notifCfg(),el=$('#nqs');if(el)el.textContent=+c.quiet.from===+c.quiet.to?'დასაწყისი და დასასრული ერთნაირია, ამიტომ არაფერი ჩუმდება.':`ყოველდღე ${String(c.quiet.from).padStart(2,'0')}:00-დან ${String(c.quiet.to).padStart(2,'0')}:00-მდე push ჩუმადაა.`};qs();
  const hs=()=>{const c=notifCfg();c.quiet.from=+$('#nq_f').value;c.quiet.to=+$('#nq_t').value;saveNotif(c).then(qs);qs()};$('#nq_f').onchange=hs;$('#nq_t').onchange=hs}};
 A.ncat=t=>{const c=notifCfg(),k=t.dataset.k,on=!!c.off[k];if(on)delete c.off[k];else c.off[k]=true;t.setAttribute('aria-checked',String(on));saveNotif(c)};
 A.nquiet=t=>{const c=notifCfg();c.quiet.on=!c.quiet.on;t.setAttribute('aria-checked',String(c.quiet.on));$('#nqh').hidden=!c.quiet.on;$('#nqs').hidden=!c.quiet.on;saveNotif(c).then(()=>{const el=$('#nqs');if(el&&c.quiet.on)el.textContent=`ყოველდღე ${String(c.quiet.from).padStart(2,'0')}:00-დან ${String(c.quiet.to).padStart(2,'0')}:00-მდე push ჩუმადაა.`})};
 A.pset=t=>{ME.privacy=Object.assign({},ME.privacy,{[t.dataset.k]:t.dataset.v});$$(`[data-a="pset"][data-k="${t.dataset.k}"]`).forEach(b=>b.setAttribute('aria-pressed',String(b===t)));savePrivacy()};
-A.setlang=()=>{};
 A.vautotog=t=>{const on=store.get('vauto',true)===false;store.set('vauto',on);t.setAttribute('aria-checked',String(on));if(!on)$$('.pmi video').forEach(v=>{try{v.pause()}catch(e){}});toast(on?'ვიდეო თავისით ჩაირთვება':'ვიდეო ჩაირთვება შეხებით')};
 A.ecotog=t=>{S.eco=!S.eco;store.set('eco',S.eco);document.documentElement.classList.toggle('eco',S.eco);t.setAttribute('aria-checked',String(S.eco));toast(S.eco?'ეკონომიური რეჟიმი ჩართულია':'ეკონომიური რეჟიმი გამორთულია')};
 const urlB64=s=>{const p='='.repeat((4-s.length%4)%4),b=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...b].map(c=>c.charCodeAt(0)))};
@@ -97,7 +103,7 @@ PG.verify={async r(){view.innerHTML=pgHead('ვერიფიკაცია')+
  let blob=null;const sfi=$('#sfi');if(sfi)sfi.onclick=async()=>{const f=await pickFile('image/*',{capture:'user'});if(!f)return;blob=await shrink(f,1200);const im=$('#sfp');im.src=URL.createObjectURL(blob);im.hidden=false;$('#sfs').disabled=false};
  const sfs=$('#sfs');if(sfs)sfs.onclick=async()=>{sfs.disabled=true;sfs.textContent='იგზავნება…';try{const path=await uploadBlob(blob,'jpg','verify');await q(sb.from('verification_requests').insert({user_id:ME.id,selfie_url:path}));toast('გაიგზავნა');rp()}catch(e){toast(errMsg(e));sfs.disabled=false;sfs.textContent='გაგზავნა'}}}};
 A.exportdata=async()=>{toast('ვამზადებ ფაილს…');try{const[me,posts,comments,listings,events,friends,coins,gifts]=await Promise.all([rpc('my_profile'),q(sb.from('posts').select('id,body,media,poll,tags,created_at').eq('author',ME.id)),q(sb.from('comments').select('id,post_id,body,created_at').eq('author',ME.id)),q(sb.from('listings').select('*').eq('seller',ME.id)),q(sb.from('events').select('*').eq('host',ME.id)),q(sb.from('friendships').select('*').or(`requester.eq.${ME.id},addressee.eq.${ME.id}`)),q(sb.from('coin_log').select('*').eq('user_id',ME.id)),q(sb.from('gifts').select('*').or(`sender.eq.${ME.id},recipient.eq.${ME.id}`))]);
- const blob=new Blob([JSON.stringify({exported_at:new Date().toISOString(),profile:me,posts,comments,listings,events,friendships:friends,coin_log:coins,gifts},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sufra-data.json';document.body.appendChild(a);a.click();a.remove()}catch(e){toast(errMsg(e))}};
+ const blob=new Blob([JSON.stringify({exported_at:new Date().toISOString(),profile:me,posts,comments,listings,events,friendships:friends,coin_log:coins,gifts},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='peera-data.json';document.body.appendChild(a);a.click();a.remove()}catch(e){toast(errMsg(e))}};
 A.delaccount=()=>{sheet(head('ანგარიშის წაშლა')+`<div class="ph-body"><p>წაიშლება შენი პროფილი, პოსტები, კომენტარები, მესიჯები, განცხადებები და ატვირთული ფაილები. ამას ვეღარ დააბრუნებ.</p><label class="fld">დასადასტურებლად ჩაწერე: წაშლა<input id="delc" autocomplete="off"></label></div><div class="ph-foot"><button class="btn ghost" data-a="close">გაუქმება</button><span class="sp"></span><button class="btn danger" id="delok" disabled>სამუდამოდ წაშლა</button></div>`,'short');
  $('#delc').oninput=e=>{$('#delok').disabled=e.target.value.trim()!=='წაშლა'};$('#delok').onclick=async()=>{$('#delok').disabled=true;try{const{data,error}=await sb.functions.invoke('account',{body:{action:'delete'}});if(error||!data?.ok)throw error||new Error(data?.error||'failed');await sb.auth.signOut().catch(()=>{});toast('ანგარიში წაიშალა');setTimeout(()=>location.reload(),1200)}catch(e){toast(errMsg(e));$('#delok').disabled=false}}};
 const RULES=`<h3>ვინ შეიძლება იყოს Peera-ზე</h3><p>რეგისტრაცია 13 წლიდანაა შესაძლებელი. გაცნობის ნაწილი მხოლოდ 18 წელს გადაცილებულებისთვისაა. ერთი ადამიანი, ერთი ნამდვილი ანგარიში.</p>

@@ -239,7 +239,7 @@ async function kuMates(){const el=$('#cmb');if(!el)return;const E=await kuEduOf(
  catch(e){el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))}}
 /* the education chips on a profile, filled in after the profile is drawn */
 async function kuProfileEdu(uid){const el=document.getElementById('pedu');if(!el)return;const E=await kuEduOf(uid);if(!el.isConnected||el.dataset.u!==String(uid))return;
- el.innerHTML=E.length?`<div class="pchips">${E.map(eduChip).join('')}</div>`:(uid===ME.id?`<button class="pchip" data-a="page" data-p="edu">${ic('plus')}სკოლა ან უნივერსიტეტი</button>`:'');el.hidden=!el.innerHTML}
+ el.innerHTML=E.length?E.map(eduChip).join(''):(uid===ME.id?`<button class="pchip" data-a="page" data-p="edu">${ic('plus')}სკოლა ან უნივერსიტეტი</button>`:'');el.hidden=!el.innerHTML}
 
 /* menu entries that are tabs (dating moved from the tab bar into the menu), and the create menu's study entries */
 A.tabgo=t=>go(t.dataset.p);
