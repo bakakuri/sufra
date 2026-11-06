@@ -2833,3 +2833,10 @@ body.wide .pspace{flex-wrap:wrap;margin:6px 0 0;padding:4px 0 2px;-webkit-mask-i
 .arv svg{width:12px;height:12px}
 .ard.tm{left:auto;right:6px;background:rgb(0 0 0/.55);color:#fff;font-size:11.5px}
 .argh{text-align:left}
+/* a photo or video post reads as one card: the author, the text (three lines, then "more"), the photo, the buttons */
+.pmw .pdesc{padding:0 14px 10px;font-size:15px;line-height:1.5}
+.pmw .pdesc .txt{margin:0}
+.pmw .pmore2{display:inline-block;margin-top:2px;color:var(--wine)}
+.pmw .pmpoll{padding:0 12px 10px}
+.pmw .pmpoll .poll{margin:0}
+.pmw .pmtop+.pmmedia{border-top:0}

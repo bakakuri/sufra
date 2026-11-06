@@ -38,8 +38,8 @@ function actsHTML(p,s){const m=s.my_reaction;
  <span class="rsum" aria-hidden="true">${rTop(s)}</span><button class="act" data-a="pmore" aria-label="მეტი მოქმედება">${ic('more')}</button></div>`}
 /* the caption folds when it is long and opens with "სრულად" */
 function descHTML(p,lines){const b=String(p.body||'');if(!b.trim())return '';const long=b.length>(lines>3?320:110)||(b.match(/\n/g)||[]).length>=lines;
- return `<div class="pdesc${long?' clamp':''}" style="--l:${lines}">${tx(b)}${long?'<button class="pmore2" data-a="pmore2">სრულად</button>':''}</div>`}
-A.pmore2=t=>{const d=t.closest('.pdesc');if(!d)return;const open=!d.classList.contains('open');d.classList.toggle('open',open);t.textContent=open?'მოკლედ':'სრულად'};
+ return `<div class="pdesc${long?' clamp':''}" style="--l:${lines}">${tx(b)}${long?'<button class="pmore2" data-a="pmore2">მეტი</button>':''}</div>`}
+A.pmore2=t=>{const d=t.closest('.pdesc');if(!d)return;const open=!d.classList.contains('open');d.classList.toggle('open',open);t.textContent=open?'მოკლედ':'მეტი'};
 function mediaTile(m,i,p){const alt=p.body?esc(String(p.body).slice(0,80)):'';
  return `<button class="pmi" data-a="pmtap" data-pid="${p.id}" data-i="${i}" aria-label="${m.type==='video'?'ვიდეოს გახსნა':'ფოტოს გახსნა'}">${m.type==='video'?`<video src="${esc(m.url)}${mPoster(m)?'':'#t=0.1'}"${mPoster(m)?` poster="${esc(mPoster(m))}" preload="none"`:' preload="metadata"'} muted playsinline loop disablepictureinpicture disableremoteplayback></video><span class="pmplay">${ic('play','currentColor')}</span><span class="pmdur" aria-hidden="true"></span>`:`<img src="${esc(mMd(m))}" alt="${alt}" loading="lazy" decoding="async"${m.w&&m.h?` width="${+m.w|0}" height="${+m.h|0}"`:''}>`}</button>`}
 /* a plain repost shows the original under a "shared" line; a quote is the sharer's own post with the original as a card */
@@ -54,11 +54,12 @@ function postHTML(p){if(p.repost_of&&!String(p.body||'').trim()){const o=POSTS.g
  if(media.length&&!(ECO()&&!p._eco)){const n=media.length;
   return `<article class="${cls} pm" data-id="${p.id}"><div class="pmw${n>1?' multi':''}">
    <div class="pmtop">${whoHTML(p,u,pg)}${n>1?`<span class="pmcount" aria-hidden="true"><b>1</b>/${n}</span>`:''}</div>
+   ${descHTML(p,3)}${pollBlock(p,s)?`<div class="pmpoll">${pollBlock(p,s)}</div>`:''}
    <div class="pmmedia" style="--ar:${boxRatio(media[0])}"${media[0]&&+media[0].w>0&&+media[0].h>0?'':' data-fit'}><div class="pmtrack">${media.map((m,i)=>mediaTile(m,i,p)).join('')}</div>${media.some(m=>m.type==='video')?fvSndHTML():''}
    ${n>1?`<button class="pmnav prev" data-a="pmnav" data-d="-1" aria-label="წინა">${ic('back')}</button><button class="pmnav next" data-a="pmnav" data-d="1" aria-label="შემდეგი">${ic('back')}</button>`:''}
    <span class="burst">${ic('heart','currentColor')}</span></div>
    <div class="pmbot">${n>1?`<div class="pmdots" aria-hidden="true">${media.map((_,i)=>`<i${i?'':' class="on"'}></i>`).join('')}</div>`:''}${gradeHTML(p,s)}${actsHTML(p,s)}</div></div>
-   ${descHTML(p,2)}${pollBlock(p,s)}</article>`}
+   </article>`}
  return `<article class="${cls} pc" data-id="${p.id}"><div class="pchead">${whoHTML(p,u,pg)}</div>
   ${media.length?`<button class="ecoimg" data-a="ecopost" data-pid="${p.id}">${ic(media.some(x=>x.type==='video')?'clips':'image')}<span>${media.length>1?media.length+' ფაილი':media[0].type==='video'?'ვიდეო':'ფოტო'} · დააჭირე ჩასატვირთად</span></button>`:''}
   ${descHTML(p,6)}${p.repost_of?quoteHTML(POSTS.get(p.repost_of)):''}${p.link&&!media.length&&!p.repost_of?linkCard(p.link):''}${pollBlock(p,s)}${gradeHTML(p,s)}${actsHTML(p,s)}</article>`}
