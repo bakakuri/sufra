@@ -1,7 +1,8 @@
 /* shell: top bar, tabs, create button, realtime, deep links, install, back button */
 const TABS=[['home','მთავარი','home'],['study','სწავლა','book'],['date','გაცნობა','heart'],['clips','კლიპები','clips'],['games','თამაშები','dice'],['me','პროფილი','user']];
 const SVC=[['schedule','cal','ლექციების ცხრილი'],['exams','clock','გამოცდები და დავალებები'],['notes','book','კონსპექტები'],['classmates','school','კლასელები და კურსელები'],['tips','help','სასწავლო რჩევები'],['rooms','video','სასწავლო ოთახი'],['rooms','mic','დისკუსია','birja'],['rooms','live','ლაივი','live'],['groups','users','ჯგუფები'],['friends','users','მეგობრები'],['events','cal','შეხვედრები'],['jobs','school','ვაკანსიები და CV'],['pages','mega','არხები და გვერდები'],['albums','image','ალბომები'],['market','store','ბაზრობა'],['places','map','ადგილები'],['sport','trophy','მატჩის ოთახი'],['help','help','დახმარება'],['rides','pin','ერთად წავიდეთ'],['namedays','cal','სახელის დღეები'],['tree','tree','ოჯახის ხე'],['calendar','gift','კალენდარი'],['tour','trophy','ტურნირი'],['saved','bookmark','შენახული'],['storyarch','archive','ისტორიების არქივი'],['drafts','clock','დრაფტები'],['coins','coin','მონეტები'],['verify','shield','ვერიფიკაცია'],['settings','gear','პარამეტრები']];
-const today=()=>new Date().toISOString().slice(0,10);
+/* the day in Georgia (UTC+4 all year): the daily bonus turns over at midnight in Tbilisi */
+const today=()=>new Date(Date.now()+4*36e5).toISOString().slice(0,10);
 
 function renderTop(){if(!ME)return;$('#top').innerHTML=`<button class="logo" data-a="home" aria-label="Peera, მთავარზე დაბრუნება">${kLogo()}</button><span class="sp"></span>
  <button class="coinchip${ME.last_bonus===today()?'':' bonus'}" data-a="page" data-p="coins" aria-label="მონეტები">${ic('coin')}<span id="coinv">${ME.coins??0}</span></button>
@@ -146,7 +147,7 @@ async function enterApp(){if(ENTERED)return;ENTERED=true;
  {const pj=store.get('pendjoin',null);if(pj&&!ME.offline&&!/^#join-/.test(location.hash))setTimeout(()=>joinByLink(+pj),400)}renderBadges();
  if(ME.offline){toast('ინტერნეტი არ არის. ბოტებთან თამაში მაინც მუშაობს');return}
  if(ME.banned)toast('შენი ანგარიში შეზღუდულია: პოსტები და შეტყობინებები დროებით გამორთულია');
- try{netInit()}catch(e){}try{listenCalls()}catch(e){}try{listenNotes()}catch(e){}
+ try{netInit()}catch(e){}try{listenCalls()}catch(e){}try{listenNotes()}catch(e){}try{coinsInit()}catch(e){}
  loadAppSettings();countUnread();touchSeen();setInterval(touchSeen,120000);registerSW();loadTagFollows();setTimeout(()=>checkBadges(),6000);
  if(store.get('fsw',null)===ME.id){store.set('fsw',null);setTimeout(()=>firstSteps(ME.avatar_url?1:0),700)}}
 bootAuth().catch(e=>{if(netDown(e)&&bootOffline())return;toast(errMsg(e));showAuth('in')});

@@ -47,7 +47,7 @@ A.signout=async()=>{await sb.auth.signOut();location.hash='';location.reload()};
 let AFTER=false;
 /* without internet the app still opens, on the games tab: games against the computer need nothing from the server.
    a few plain profile fields are kept on the phone for that; back online, the page reloads by itself */
-const ME_OFF='me_off',ME_KEEP=['id','name','username','hue','avatar_url','coins','rating','home_region','look','lang','verified'];
+const ME_OFF='me_off',ME_KEEP=['id','name','username','hue','avatar_url','coins','coins_cash','rating','home_region','look','lang','verified'];
 function meKeep(){try{if(ME&&ME.id&&!ME.offline){const o={};for(const k of ME_KEEP)if(ME[k]!==undefined)o[k]=ME[k];store.set(ME_OFF,o)}}catch(e){}}
 const netDown=e=>!navigator.onLine||/failed to fetch|networkerror|load failed|network request failed|fetch failed/i.test(String(e&&(e.message||e)));
 function bootOffline(){const c=store.get(ME_OFF,null);if(!c||!c.id||ME)return false;ME=Object.assign({},c,{onboarded:true,offline:true});AFTER=true;$('#auth').hidden=true;$('#boot')?.remove();enterApp();
