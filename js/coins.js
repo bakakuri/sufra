@@ -55,7 +55,8 @@ function drawCoins(){const el=$('#cnb');if(!el||!CN.my)return;const m=CN.my,rate
  el.innerHTML=`<section class="balance cbal"><span>შენი ბალანსი</span><b id="cbal">${nf(all)}</b>
   <div class="cparts"><div><small>ლარად გასატანი</small><b>${nf(cash)}</b><small>≈ ${cgel(cash,rate)} ₾</small></div><div><small>სახარჯი</small><b>${nf(bon)}</b><small>საჩუქრები, სტილები</small></div></div>
   <div class="cout"><div class="cbar" role="progressbar" aria-label="გატანამდე" aria-valuemin="0" aria-valuemax="${min}" aria-valuenow="${Math.min(cash,min)}"><i style="width:${Math.min(100,cash/min*100)}%"></i></div>
-  <small>${cash>=min?`გასატანად მზადაა ${nf(cash)} მონეტა. გატანის ფორმა მალე დაემატება.`:`ლარად გასატანად საჭიროა ${nf(min)} მონეტა (${cgel(min,rate)} ₾). დაგრჩა ${nf(min-cash)}.`}</small></div></section>
+  <small>${cash>=min?`გასატანად მზადაა ${nf(cash)} მონეტა (${cgel(Math.floor(cash/100)*100,rate)} ₾).`:`ლარად გასატანად საჭიროა ${nf(min)} მონეტა (${cgel(min,rate)} ₾). დაგრჩა ${nf(min-cash)}.`}</small>
+  <button class="btn cout-go${cash>=min?'':' dim'}" data-a="page" data-p="payout">${ic('card')}ლარად გატანა</button></div></section><div id="cpend"></div>
  <section class="cpromo${m.promo?' on':''}"><span class="cpico">${m.promo?'🎉':ic('clock')}</span><div><b>${m.promo?'აქცია მიმდინარეობს':'აქცია ახლა არ მიდის'}</b>
   <span>${m.promo?`აქტივობით მიღებული მონეტები ლარად გასატანი ხდება: ${nf(rate)} მონეტა = 1 ₾.${until?` ბოლო დღე: ${cDate(until)} (დარჩა ${left} დღე).`:''}`:'მონეტები მაინც გროვდება და იხარჯება საჩუქრებზე და სტილებზე. ლარად გასატანი ხდება მხოლოდ აქციის დროს მიღებული მონეტები.'}</span></div></section>
  <section class="cday"><div class="cdays" aria-label="7 დღე ზედიზედ: ${filled} დღე">${[1,2,3,4,5,6,7].map(i=>`<span class="${i<=filled?'on':''}${i===next?' next':''}${i===7?' big':''}">${i===7?'+15':'+5'}</span>`).join('')}</div>
@@ -65,7 +66,7 @@ function drawCoins(){const el=$('#cnb');if(!el||!CN.my)return;const m=CN.my,rate
  <h3 class="sec2">როგორ გამოიმუშავო</h3><p class="note" style="padding:0 16px 8px">თითქმის ყველა გვერდზე. წაშლილი ან დამალული პოსტის, კომენტარის და სხვა მონეტები 24 საათში უკან ბრუნდება.</p>
  <div class="crules">${groups.map(grp).join('')}</div>
  <h3 class="sec2">ისტორია</h3><div class="hist" id="chist">${skel(1)}</div>`;
- coinHist()}
+ coinHist();coinPend()}
 async function coinHist(){let rows=[];try{rows=await q(sb.from('coin_log').select('amount,label,created_at,cash,n').eq('user_id',ME.id).order('created_at',{ascending:false}).limit(40))}catch(e){}
  const el=$('#chist');if(!el)return;
  el.innerHTML=rows.map(r=>`<div><span>${esc(r.label)}${r.n>1?` <small class="cn">×${r.n}</small>`:''} <small class="muted">${ago(r.created_at)}</small>${r.cash?` <small class="ccash">${r.cash>0?'+':''}${nf(r.cash)} გასატანი</small>`:''}</span><span class="${r.amount>0?'plus':'minus'}">${r.amount>0?'+':''}${nf(r.amount)}</span></div>`).join('')||'<p class="muted">ჯერ ცარიელია.</p>'}
@@ -134,3 +135,72 @@ A.adcsw=t=>t.setAttribute('aria-checked',String(t.getAttribute('aria-checked')!=
 A.adcrule=async t=>{const r=t.closest('.adrule'),v=f=>Math.floor(+r.querySelector(`[data-f="${f}"]`).value);
  try{await rpc('admin_coin_rule',{p_action:r.dataset.k,p_amount:v('amount'),p_day_cap:v('cap'),p_active:r.querySelector('.switch').getAttribute('aria-checked')==='true'});CN.rules=null;toast('შენახულია')}catch(e){toast(errMsg(e))}};
 A.adcmax=async()=>{const n=Math.floor(+$('#acp_max').value);try{await rpc('admin_coin_max',{p_max:n});toast('შენახულია');adminTab()}catch(e){toast(errMsg(e))}};
+
+/* ---------- paying out in lari: by hand, after the admin checks the request ---------- */
+const POST_L={pending:['მოლოდინში','clock'],paid:['გადახდილია','check'],rejected:['უარყოფილია','x'],cancelled:['გაუქმებულია','x']};
+/* a Georgian IBAN: GE, 2 check digits, 2 letters of the bank, 16 digits; the check digits must add up (mod 97), as on the server */
+const ibanClean=s=>String(s||'').replace(/\s+/g,'').toUpperCase();
+function ibanOk(s){s=ibanClean(s);if(!/^GE\d{2}[A-Z]{2}\d{16}$/.test(s))return false;const r=s.slice(4)+s.slice(0,4);let m=0;
+ for(const ch of r){m=/[A-Z]/.test(ch)?(m*100+ch.charCodeAt(0)-55)%97:(m*10+ +ch)%97}return m===1}
+const ibanFmt=s=>ibanClean(s).replace(/(.{4})/g,'$1 ').trim();
+const ibanMask=s=>{const c=ibanClean(s);return c.slice(0,4)+' •••• '+c.slice(-4)};
+const gelF=n=>Number(n||0).toFixed(2);
+PG.payout={r(){view.innerHTML=pgHead('ლარად გატანა')+`<div id="pob">${skel(3)}</div>`;loadPayout()}};
+async function loadPayout(){let d;try{d=await rpc('my_payouts')}catch(e){const el=$('#pob');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',esc(errMsg(e)),'<button class="btn" data-a="poretry">თავიდან</button>');return}
+ const el=$('#pob');if(!el||!d)return;const rate=d.rate||10000,min=d.min_out||10000,cash=d.cash||0,list=d.list||[],open=list.find(x=>x.status==='pending'),last=list[0];
+ const max=Math.floor(cash/100)*100,left=Math.max(0,30-(d.age_days||0));
+ const reqs=[[d.adult,'18 წელი ან მეტი','დაბადების თარიღით პროფილში.',''],
+  [d.verified,'ვერიფიცირებული პროფილი','ლურჯი ნიშანი: სელფი მოდერატორთან.',`<button class="btn sm" data-a="page" data-p="verify">ვერიფიკაცია</button>`],
+  [d.old_enough,'Peera-ზე 30 დღე მაინც',d.old_enough?'':`დარჩა ${left} დღე.`,''],
+  [cash>=min,`მინიმუმ ${nf(min)} გასატანი მონეტა`,cash>=min?'':`დაგრჩა ${nf(min-cash)}.`,'']];
+ const ready=reqs.every(r=>r[0])&&!open&&d.not_banned!==false;
+ el.innerHTML=`<section class="balance pobal"><span>ლარად გასატანი</span><b>${nf(cash)}</b><span>≈ ${gelF(cash/rate)} ₾ · ${nf(rate)} მონეტა = 1 ₾</span></section>
+ ${open?`<section class="pocard open"><div class="pohead"><span class="postat s-pending">${ic('clock')}მოლოდინში</span><small>${ago(open.created_at)}</small></div>
+  <b class="pogel">${gelF(open.gel)} ₾</b><span class="sub">${nf(open.coins)} მონეტა · ${esc(open.holder)} · ${ibanMask(open.iban)}</span>
+  <p class="note">განაცხადს ადმინისტრატორი ამოწმებს და თანხას ხელით გადმორიცხავს. სანამ ელოდება, შეგიძლია გააუქმო და მონეტები დაგიბრუნდება.</p>
+  <button class="btn ghost sm" data-a="pocancel" data-id="${open.id}">${ic('x')}განაცხადის გაუქმება</button></section>`:''}
+ ${open&&reqs.every(r=>r[0])?'':`<section class="poreq"><h3>პირობები</h3>${reqs.map(([ok,t,h,b])=>`<div class="poreqr${ok?' ok':''}"><span class="pochk">${ic(ok?'check':'x')}</span><span class="grow"><b>${t}</b>${h&&!ok?`<small>${h}</small>`:''}</span>${!ok&&b?b:''}</div>`).join('')}</section>`}
+ ${ready?`<form class="form pof" id="pof" novalidate><h3 class="sec2" style="padding:0">განაცხადი</h3>
+  <label class="fld">რამდენი მონეტა<div class="poamt"><input class="field" id="po_n" type="number" inputmode="numeric" min="${min}" max="${max}" step="100" value="${max}"><button type="button" class="btn sm ghost" id="po_all">ყველა</button></div><small id="po_g" class="pohint"></small></label>
+  <label class="fld">IBAN<input class="field" id="po_i" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="34" placeholder="GE00 XX00 0000 0000 0000 00" value="${esc(last?ibanFmt(last.iban):'')}"><small id="po_ih" class="pohint">ქართული ბანკის ანგარიში, 22 სიმბოლო.</small></label>
+  <label class="fld">მფლობელის სახელი და გვარი<input class="field" id="po_h" maxlength="80" autocomplete="name" placeholder="ისე, როგორც ბანკშია" value="${esc(last?last.holder:'')}"></label>
+  <p class="note">მონეტები განაცხადისთანავე ჩამოგეჭრება და განაცხადს დაელოდება. თანხას ადმინისტრატორი ხელით გადმორიცხავს. თუ უარი ითქვა, მიზეზს შეტყობინებაში მიიღებ და მონეტები დაგიბრუნდება.</p>
+  <button class="btn" id="po_go">${ic('send')}გატანის მოთხოვნა</button></form>`:''}
+ ${list.length?`<h3 class="sec2">ჩემი განაცხადები</h3><div class="list polist">${list.map(x=>`<div class="row"><span class="postat s-${x.status}">${ic(POST_L[x.status][1])}</span><span class="grow"><b>${gelF(x.gel)} ₾ · ${nf(x.coins)}</b><span class="sub">${POST_L[x.status][0]} · ${ago(x.decided_at||x.created_at)}${x.note&&x.status==='rejected'?' · '+esc(x.note):''}</span></span></div>`).join('')}</div>`:''}`;
+ const f=$('#pof');if(!f)return;const n=$('#po_n'),g=$('#po_g'),ib=$('#po_i'),ih=$('#po_ih');
+ const upd=()=>{const v=Math.floor(+n.value||0);g.textContent=v>=min&&v<=max&&v%100===0?`= ${gelF(v/rate)} ₾`:v%100?'მრგვალი რიცხვი, 100-ის ჯერადი':`${nf(min)}-დან ${nf(max)}-მდე`;g.classList.toggle('bad',!(v>=min&&v<=max&&v%100===0))};
+ const iupd=()=>{const c=ibanClean(ib.value);ih.classList.toggle('bad',c.length>=22&&!ibanOk(c));ih.textContent=!c?'ქართული ბანკის ანგარიში, 22 სიმბოლო.':ibanOk(c)?'IBAN სწორია':c.length<22?`${c.length}/22`:'IBAN არასწორია: შეამოწმე ციფრები'};
+ n.oninput=upd;ib.oninput=iupd;ib.onblur=()=>{if(ibanOk(ib.value))ib.value=ibanFmt(ib.value)};$('#po_all').onclick=()=>{n.value=max;upd()};upd();iupd();
+ f.onsubmit=e=>{e.preventDefault();const v=Math.floor(+n.value||0),iban=ibanClean(ib.value),h=$('#po_h').value.trim().replace(/\s+/g,' ');
+  if(!(v>=min&&v<=max&&v%100===0)){toast(`ჩაწერე ${nf(min)}-დან ${nf(max)}-მდე, 100-ის ჯერადი`);n.focus();return}
+  if(!ibanOk(iban)){toast('IBAN არასწორია');ib.focus();return}if(h.length<3){toast('ჩაწერე სახელი და გვარი');$('#po_h').focus();return}
+  confirmSheet('გატანის დადასტურება',`${gelF(v/rate)} ₾ (${nf(v)} მონეტა) ჩაირიცხება ანგარიშზე ${esc(ibanFmt(iban))}, ${esc(h)}-ის სახელზე. მონეტები ახლავე ჩამოგეჭრება.`,'მოთხოვნა',async()=>{
+   const r=await rpc('request_payout',{p_coins:v,p_iban:iban,p_holder:h});if(r&&r.coins!=null)setCoins(r.coins);toast('განაცხადი გაიგზავნა');loadPayout()})}}
+A.poretry=()=>loadPayout();
+A.pocancel=t=>confirmSheet('განაცხადის გაუქმება','მონეტები ბალანსზე დაგიბრუნდება.','გაუქმება',async()=>{const c=await rpc('cancel_payout',{p_id:+t.dataset.id});if(c!=null)setCoins(c);toast('განაცხადი გაუქმდა');loadPayout()},true);
+/* the coin page shows a request that waits */
+async function coinPend(){const el=$('#cpend');if(!el)return;let r=null;try{r=await q(sb.from('payouts').select('coins,gel,created_at').eq('status','pending').limit(1).maybeSingle())}catch(e){}
+ if(!r||!$('#cpend'))return;el.innerHTML=`<button class="cpend" data-a="page" data-p="payout">${ic('clock')}<span class="grow"><b>გატანა მოლოდინში: ${gelF(r.gel)} ₾</b><small>${nf(r.coins)} მონეტა · ${ago(r.created_at)}</small></span>${ic('back')}</button>`}
+
+/* ---------- admin: the requests, what helps decide, paid or rejected ---------- */
+async function admPayouts(el){ADM.pst=ADM.pst||'pending';const d=await rpc('admin_payouts',{p_status:ADM.pst});await loadProfiles((d.list||[]).map(x=>x.u));if(!el.isConnected)return;
+ const T=(v,l)=>`<div class="adtile"><b>${v}</b><span>${l}</span></div>`,days=t=>Math.floor((Date.now()-new Date(t))/864e5);
+ el.innerHTML=`<div class="adstats">${T(nf(d.pending_n),'მოლოდინში')}${T(gelF(d.pending_gel)+' ₾','მოლოდინში, ლარი')}${T(gelF(d.month_paid)+' ₾','გადახდილი ამ თვეში')}${T(+d.budget?gelF(d.budget)+' ₾':'—','თვის ბიუჯეტი')}</div>
+ <div class="chipsbar adtabs" role="group" aria-label="სტატუსი">${['pending','paid','rejected','cancelled'].map(k=>`<button data-a="adpost" data-k="${k}" aria-pressed="${ADM.pst===k}">${POST_L[k][0]}${k==='pending'&&d.pending_n?` <span class="badge">${d.pending_n}</span>`:''}</button>`).join('')}</div>
+ ${(d.list||[]).length?`<div class="polist2">${d.list.map(x=>`<article class="pocard adpo" data-id="${x.id}"><div class="pohead"><button class="pouser" data-a="user" data-u="${x.u}">${av(x.u,36)}<span class="grow"><b>${esc(x.name||pname(x.u))}${x.verified?` <i class="vbs">${ic('check')}</i>`:''}</b><small>@${esc(x.username||'')} · Peera-ზე ${days(x.joined)} დღე</small></span></button><small>${ago(x.created_at)}</small></div>
+  <b class="pogel">${gelF(x.gel)} ₾</b><span class="sub">${nf(x.coins)} მონეტა</span>
+  <div class="pocopy"><span class="grow"><small>IBAN</small><code>${esc(ibanFmt(x.iban))}</code></span><button class="ibtn sm" data-a="adpocopy" data-v="${esc(x.iban)}" aria-label="IBAN-ის კოპირება">${ic('copy')}</button></div>
+  <div class="pocopy"><span class="grow"><small>მფლობელი</small><b>${esc(x.holder)}</b></span><button class="ibtn sm" data-a="adpocopy" data-v="${esc(x.holder)}" aria-label="სახელის კოპირება">${ic('copy')}</button></div>
+  <p class="pofacts">30 დღეში გასატანი: აქტივობით ${nf(x.act30)}, საჩუქრებით ${nf(x.gift30)} · ადრე გატანილი ${gelF(x.paid_before)} ₾ · ახლა ბალანსზე ${nf(x.cash_now)}</p>
+  ${x.status==='pending'?`<div class="adquick"><button class="btn" data-a="adpopaid" data-id="${x.id}" data-g="${gelF(x.gel)}">${ic('check')}გადახდილია</button><button class="btn ghost" data-a="adporej" data-id="${x.id}">${ic('x')}უარყოფა</button></div>`
+   :`<p class="pofacts"><span class="postat s-${x.status}">${ic(POST_L[x.status][1])}${POST_L[x.status][0]}</span> ${x.decided_at?ago(x.decided_at):''}${x.note?' · '+esc(x.note):''}</p>`}</article>`).join('')}</div>`
+  :empty(ADM.pst==='pending'?'მოლოდინში არაფერია':'აქ ჯერ არაფერია','')}
+ <section class="tourcard adsite"><h3>თვის ბიუჯეტი</h3><p class="note">რამდენ ლარს გადაიხდი თვეში მაქსიმუმ. როცა თვის განაცხადები ამას მიაღწევს, ახალი განაცხადი თვის ბოლომდე ვეღარ გაიგზავნება. 0 ნიშნავს, რომ ლიმიტი არ არის.</p>
+  <div class="frow"><label class="fld">ლარი თვეში<input id="apo_b" type="number" inputmode="decimal" min="0" step="1" value="${+d.budget||0}"></label><button class="btn" data-a="adpobud" style="align-self:flex-end">${ic('check')}შენახვა</button></div></section>`}
+A.adpost=t=>{ADM.pst=t.dataset.k;adminTab()};
+A.adpocopy=async t=>{try{await navigator.clipboard.writeText(t.dataset.v);toast('დაკოპირდა')}catch(e){toast(t.dataset.v)}};
+A.adpopaid=t=>{const id=+t.dataset.id;sheet(head(`გადახდილია: ${t.dataset.g} ₾`)+`<form class="ph-body form" id="apof"><label class="fld">გადარიცხვის ნომერი ან შენიშვნა (არასავალდებულო)<input id="apo_n" maxlength="200" placeholder="მაგ. TBC 123456"></label><p class="note">მომხმარებელი მიიღებს შეტყობინებას, რომ თანხა გადაირიცხა.</p><button class="btn">${ic('check')}დადასტურება</button></form>`,'short');
+ $('#apof').onsubmit=async e=>{e.preventDefault();try{await rpc('admin_payout_decide',{p_id:id,p_status:'paid',p_note:$('#apo_n').value.trim()||null});closeSheet();toast('მონიშნულია გადახდილად');refreshStats();adminTab()}catch(err){toast(errMsg(err))}}};
+A.adporej=t=>{const id=+t.dataset.id;sheet(head('გატანის უარყოფა')+`<form class="ph-body form" id="apor"><label class="fld">მიზეზი (მომხმარებელი ნახავს)<textarea id="apo_r" maxlength="200" rows="3" placeholder="მაგ. IBAN სხვის სახელზეა"></textarea></label><p class="note">მონეტები მომხმარებელს გასატან ბალანსზე დაუბრუნდება.</p><button class="btn danger">${ic('x')}უარყოფა</button></form>`,'short');
+ $('#apor').onsubmit=async e=>{e.preventDefault();const r=$('#apo_r').value.trim();if(r.length<3){toast('დაწერე მიზეზი');return}try{await rpc('admin_payout_decide',{p_id:id,p_status:'rejected',p_note:r});closeSheet();toast('უარყოფილია, მონეტები დაბრუნდა');refreshStats();adminTab()}catch(err){toast(errMsg(err))}}};
+A.adpobud=async()=>{const v=Math.max(0,+$('#apo_b').value||0);try{await rpc('admin_coin_budget',{p_gel:v});toast('შენახულია');adminTab()}catch(e){toast(errMsg(e))}};

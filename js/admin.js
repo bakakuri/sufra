@@ -1,7 +1,7 @@
 /* admin panel: overview, reports, all content, users and coins, verification, sponsored posts and stories, notifications to everyone, site settings, pages, words, the log */
 Object.assign(ERR,{admin_only:'ეს მხოლოდ ადმინისტრატორს შეუძლია',cannot_ban_admin:'ადმინისტრატორს ვერ შეზღუდავ',cannot_demote_self:'საკუთარ თავს როლს ვერ ჩამოართმევ',not_pending:'ეს რეკლამა უკვე განხილულია',bad_type:'ამ ტიპის შინაარსს ასე ვერ დამალავ',staff_only:'ეს მხოლოდ გუნდს შეუძლია'});
 const ADM={tab:'overview',rst:'open',uf:'new',st:{},ct:'post',cq:'',ch:false,pt:'mine',promos:[]};
-const ATABS=[['overview','მიმოხილვა',null,0],['reports','საჩივრები','open_reports',0],['content','კონტენტი',null,0],['users','მომხმარებლები',null,0],['verify','ვერიფიკაცია','pending_verifications',0],['promo','რეკლამა','pending_ads',0],['coins','აქცია',null,1],['notify','შეტყობინებები',null,1],['site','საიტი',null,1],['pages','გვერდები',null,0],['words','სიტყვები',null,0],['errors','შეცდომები',null,0],['log','ჟურნალი',null,0]];
+const ATABS=[['overview','მიმოხილვა',null,0],['reports','საჩივრები','open_reports',0],['content','კონტენტი',null,0],['users','მომხმარებლები',null,0],['verify','ვერიფიკაცია','pending_verifications',0],['promo','რეკლამა','pending_ads',0],['coins','აქცია',null,1],['payouts','გატანები','pending_payouts',1],['notify','შეტყობინებები',null,1],['site','საიტი',null,1],['pages','გვერდები',null,0],['words','სიტყვები',null,0],['errors','შეცდომები',null,0],['log','ჟურნალი',null,0]];
 const atabs=()=>ATABS.filter(t=>!t[3]||ME.role==='admin');
 const TTYPE={post:'პოსტი',comment:'კომენტარი',user:'პროფილი',listing:'განცხადება',message:'შეტყობინება',page:'გვერდი',story:'ისტორია',event:'ღონისძიება',job:'ვაკანსია',ride:'მგზავრობა',room:'ოთახი',fixture:'მატჩი',place:'ადგილი',review:'შეფასება',toast:'სადღეგრძელო',help:'დახმარების თხოვნა'};
 const ROLE_L={user:'მომხმარებელი',moderator:'მოდერატორი',admin:'ადმინისტრატორი'};
@@ -23,7 +23,7 @@ async function admErrors(el){const rows=await q(sb.from('client_errors').select(
 ${esc(g.r.stack||'')}
 ვერსია ${esc(g.r.ver||'?')}</pre>${ME.role==='admin'?`<button class="btn sm ghost" data-a="aderrdel" data-i="${i}">${ic('check')}მოგვარდა, წაშლა</button>`:''}</details>`).join(''):empty('შეცდომები არ არის','როცა ვინმეს ტელეფონზე რამე გაფუჭდება, აქ გამოჩნდება.'))}
 A.aderrdel=async t=>{const g=(ADM.errs||[])[+t.dataset.i];if(!g)return;try{await q(sb.from('client_errors').delete().eq('msg',g.r.msg).eq('src',g.r.src));toast('წაიშალა');adminTab()}catch(e){toast(errMsg(e))}};
-function adminTab(){const el=$('#adb');if(!el)return;el.innerHTML=skel(3);({overview:admOverview,reports:admReports,content:admContent,users:admUsers,verify:admVerify,promo:admPromo,coins:admCoins,ads:admAds,notify:admNotify,site:admSite,pages:admPages,words:admWords,errors:admErrors,log:admLog})[ADM.tab](el).catch(e=>{if(el.isConnected)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e),'<button class="btn" data-a="adreload">თავიდან ცდა</button>')})}
+function adminTab(){const el=$('#adb');if(!el)return;el.innerHTML=skel(3);({overview:admOverview,reports:admReports,content:admContent,users:admUsers,verify:admVerify,promo:admPromo,coins:admCoins,payouts:admPayouts,ads:admAds,notify:admNotify,site:admSite,pages:admPages,words:admWords,errors:admErrors,log:admLog})[ADM.tab](el).catch(e=>{if(el.isConnected)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e),'<button class="btn" data-a="adreload">თავიდან ცდა</button>')})}
 A.adreload=()=>adminTab();
 
 /* reports: grouped by target, with a preview and one-tap actions */
@@ -307,7 +307,7 @@ A.adfeat=async t=>{const on=t.getAttribute('aria-checked')!=='true';t.setAttribu
  try{await q(sb.from('app_settings').upsert({key:'features',value:{off}},{onConflict:'key'}));APPSET.features={off};applyAppSettings();const l=(FEATS.find(f=>f[0]===t.dataset.k)||[])[1];toast(`${l}: ${on?'ჩართულია':'გამორთულია ყველასთვის'}`)}catch(e){t.setAttribute('aria-checked',String(!on));toast(errMsg(e))}};
 
 /* ---------- the log: who from the team did what ---------- */
-const LOG_L={ban:'შეზღუდა',unban:'შეზღუდვა მოუხსნა',role:'როლი შეცვალა',verify:'ვერიფიკაცია დაუდასტურა',unverify:'ვერიფიკაცია მოუხსნა',hide:'დამალა',unhide:'ისევ გამოაჩინა',delete:'წაშალა',coins:'მონეტები',message:'მისწერა გუნდის სახელით',broadcast:'შეტყობინება გაგზავნა',settings:'შეცვალა საიტის პარამეტრები',promo_new:'შექმნა რეკლამა',promo_on:'გაუშვა რეკლამა',promo_off:'დააპაუზა რეკლამა',promo_del:'წაშალა რეკლამა',coin_rule:'შეცვალა მონეტის წესი'};
+const LOG_L={ban:'შეზღუდა',unban:'შეზღუდვა მოუხსნა',role:'როლი შეცვალა',verify:'ვერიფიკაცია დაუდასტურა',unverify:'ვერიფიკაცია მოუხსნა',hide:'დამალა',unhide:'ისევ გამოაჩინა',delete:'წაშალა',coins:'მონეტები',message:'მისწერა გუნდის სახელით',broadcast:'შეტყობინება გაგზავნა',settings:'შეცვალა საიტის პარამეტრები',promo_new:'შექმნა რეკლამა',promo_on:'გაუშვა რეკლამა',promo_off:'დააპაუზა რეკლამა',promo_del:'წაშალა რეკლამა',coin_rule:'შეცვალა მონეტის წესი',payout_paid:'გადაიხადა გატანა',payout_rejected:'უარყო გატანა'};
 const LOG_T={posts:'პოსტი',comments:'კომენტარი',stories:'ისტორია',groups:'ჯგუფი',pages:'გვერდი',events:'ღონისძიება',listings:'განცხადება',recipes:'რეცეპტი',jobs:'ვაკანსია',places:'ადგილი',toasts:'სადღეგრძელო',help_requests:'დახმარება',albums:'ალბომი',rides:'მგზავრობა'};
 const isUid=x=>/^[0-9a-f-]{36}$/.test(String(x||''));
 async function admLog(el){const rows=await q(sb.from('admin_log').select('id,actor,action,target,detail,created_at').order('created_at',{ascending:false}).limit(100));
@@ -321,6 +321,7 @@ function logRow(r){const d=r.detail||{},who=r.actor?pname(r.actor):'სისტ
  else if(r.action==='broadcast')obj=`„${String(d.text||'').slice(0,60)}“ · ${d.sent||0} ადამიანს`;
  else if(r.action==='role')obj=`${d.name||pname(tg)} · ${ROLE_L[d.from]||d.from} → ${ROLE_L[d.to]||d.to}`;
  else if(r.action==='settings')obj=tg==='banner'?'ბანერი':tg==='features'?'განყოფილებები':tg==='coins'?`მონეტების აქცია${d.on?': ჩართულია '+(d.until?String(d.until).slice(0,10)+'-მდე':''):': გამორთულია'}`:tg;
+ else if(r.action.startsWith('payout_'))obj=`${pname(tg)} · ${Number(d.gel||0).toFixed(2)} ₾${d.note?' · '+d.note:''}`;
  else if(r.action==='coin_rule')obj=`${tg} · ${d.amount} მონეტა${d.day_cap?', დღეში '+d.day_cap:''}${d.active===false?' · გამორთულია':''}`;
  else if(r.action.startsWith('promo'))obj=d.title?`„${String(d.title).slice(0,50)}“`:'';
  else if(isUid(tg))obj=d.name||pname(tg);

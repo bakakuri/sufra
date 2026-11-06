@@ -2954,3 +2954,56 @@ body.wide .pspace{flex-wrap:wrap;margin:6px 0 0;padding:4px 0 2px;-webkit-mask-i
 .pmw.gt4{box-shadow:0 6px 26px rgb(224 138 0/.28)}
 @keyframes pgshine{from{background-position:0% 50%}to{background-position:300% 50%}}
 @media (prefers-reduced-motion:reduce){.pgcrown,.pmw.gt3 .pmmedia::after,.pvframe.gt3::after,.pmw.gt4 .pmmedia::after,.pvframe.gt4::after{animation:none}}
+
+/* ---------- paying out in lari ---------- */
+.cout-go{align-self:flex-start;background:var(--ink);color:var(--surface);margin-top:2px}
+.cout-go.dim{background:color-mix(in srgb,currentColor 16%,transparent);color:inherit}
+.cpend{display:flex;align-items:center;gap:10px;width:calc(100% - 32px);margin:0 16px 12px;padding:12px 14px;border-radius:16px;background:var(--surface);border:1px solid color-mix(in srgb,var(--gold) 45%,var(--line));text-align:left;color:inherit}
+.cpend>svg{width:20px;height:20px;color:var(--gold);flex:none}
+.cpend>svg:last-child{transform:scaleX(-1);color:var(--muted);width:18px;height:18px}
+.cpend .grow{display:flex;flex-direction:column;gap:1px}
+.cpend small{font-size:12px;color:var(--muted)}
+.pobal b{font-size:36px}
+.pobal span{font-size:13px;font-weight:600;opacity:.9}
+.pocard{margin:0 16px 12px;padding:14px;border-radius:16px;background:var(--surface);border:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.pocard.open{border-color:color-mix(in srgb,var(--gold) 45%,var(--line));background:linear-gradient(120deg,color-mix(in srgb,var(--gold) 12%,var(--surface)),var(--surface))}
+.pocard .note{margin:4px 0}
+.pocard .btn{align-self:flex-start}
+.pohead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pohead>small{color:var(--muted);font-size:12px;white-space:nowrap}
+.pogel{font-size:28px;font-family:var(--f-display);font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
+.postat{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.postat svg{width:14px;height:14px}
+.polist .postat{width:34px;height:34px;padding:0;justify-content:center;flex:none}
+.polist .postat svg{width:18px;height:18px}
+.postat.s-pending{background:color-mix(in srgb,var(--gold) 18%,var(--sunk));color:color-mix(in srgb,var(--gold) 80%,var(--ink))}
+.postat.s-paid{background:color-mix(in srgb,var(--vine) 16%,var(--sunk));color:var(--vine)}
+.postat.s-rejected{background:color-mix(in srgb,var(--nope) 14%,var(--sunk));color:var(--nope)}
+.poreq{margin:0 16px 12px;padding:6px 14px;border-radius:16px;background:var(--surface);border:1px solid var(--line)}
+.poreq h3{font-size:14px;margin:8px 0 2px}
+.poreqr{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.poreqr:last-child{border-bottom:0}
+.poreqr .grow{display:flex;flex-direction:column;gap:1px;min-width:0}
+.poreqr b{font-size:14px;font-weight:600}
+.poreqr small{font-size:12px;color:var(--muted)}
+.pochk{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--nope) 14%,var(--sunk));color:var(--nope)}
+.pochk svg{width:15px;height:15px}
+.poreqr.ok .pochk{background:color-mix(in srgb,var(--vine) 16%,var(--sunk));color:var(--vine)}
+.pof{padding:4px 16px 16px}
+.poamt{display:flex;gap:8px;align-items:center}
+.poamt .field{flex:1}
+.pohint{font-size:12px;color:var(--muted);font-weight:500}
+.pohint.bad{color:var(--nope)}
+#po_i{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.5px}
+.polist2{display:flex;flex-direction:column}
+.adpo .pouser{display:flex;align-items:center;gap:10px;text-align:left;min-width:0;color:inherit}
+.adpo .pouser .grow{display:flex;flex-direction:column;gap:1px;min-width:0}
+.adpo .pouser small{font-size:12px;color:var(--muted)}
+.vbs{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--super);color:#fff;vertical-align:-2px}
+.vbs svg{width:10px;height:10px}
+.pocopy{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:var(--sunk)}
+.pocopy .grow{display:flex;flex-direction:column;gap:1px;min-width:0}
+.pocopy small{font-size:11px;color:var(--muted)}
+.pocopy code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pofacts{margin:2px 0 0;font-size:12.5px;color:var(--muted);line-height:1.45}
+.adpo .adquick{padding:6px 0 0}
