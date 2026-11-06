@@ -75,37 +75,44 @@ A.bonus=async t=>{t.disabled=true;try{const r=await rpc('daily_bonus'),b=r&&type
 A.cretry=()=>PG.coins.r();
 A.cngo=t=>{const k=(CPAGE[t.dataset.k]||[])[2];if(!k)return;if(k==='chat')return A.chats();if(['home','clips','games','me'].includes(k))return go(k);openPage(k)};
 
-/* ---------- gifts on photos: the photo shows what it got, the dearest gift picks its frame ---------- */
+/* ---------- gifts on photos: each photo shows what it got, the dearest gift on it picks its ring ---------- */
 const GCOST=e=>(GIFTS.find(g=>g[0]===e)||[0,0,0])[2];
 /* 1 bouquet and up: a warm glow · 2 cup: gold · 3 diamond: a moving shine · 4 crown: gold that moves, and the crown on the photo */
 const GTIERS=[[25000,4,'გვირგვინის ჩარჩო'],[10000,3,'ბრილიანტის ჩარჩო'],[5000,2,'ოქროს ჩარჩო'],[500,1,'თბილი ნათება']];
 const giftTier=v=>(GTIERS.find(t=>(v||0)>=t[0])||[0,0])[1];
-const giftTierCls=p=>{const t=giftTier(p.gift_top);return t?` gt gt${t}`:''};
-function giftChip(p){const g=p.gifts||{},ks=Object.keys(g).filter(k=>g[k]>0).sort((a,b)=>GCOST(b)-GCOST(a));if(!ks.length)return '';
- const n=ks.reduce((a,k)=>a+g[k],0);
- return `${giftTier(p.gift_top)===4?'<span class="pgcrown" aria-hidden="true">👑</span>':''}<button class="pgchip" data-a="pgifts" data-pid="${p.id}" aria-label="საჩუქრები: ${n}">${ks.slice(0,3).map(k=>`<span>${k}${g[k]>1?`<i>${g[k]}</i>`:''}</span>`).join('')}${ks.length>3?`<em>+${ks.slice(3).reduce((a,k)=>a+g[k],0)}</em>`:''}</button>`}
-/* after a gift: every copy of the post on screen (feed, profile, viewer) gets the new frame and gifts */
+/* posts.gifts is { "photo index": { gift: count } }; an older flat { gift: count } belongs to the first photo */
+function giftsAt(p,i){const g=p.gifts||{},flat=Object.values(g).some(v=>typeof v==='number');return (flat?(i===0?g:{}):g[String(i)])||{}}
+const giftTop=(p,i)=>Object.keys(giftsAt(p,i)).reduce((a,k)=>Math.max(a,GCOST(k)),0);
+const giftTierCls=(p,i)=>{const t=giftTier(giftTop(p,i||0));return t?` gt gt${t}`:''};
+/* what a photo got: on the card it is part of the photo (the photo itself is the button), in the viewer it opens who gave what */
+function giftBadge(p,i,btn){const g=giftsAt(p,i),ks=Object.keys(g).filter(k=>g[k]>0).sort((a,b)=>GCOST(b)-GCOST(a));if(!ks.length)return '';
+ const n=ks.reduce((a,k)=>a+g[k],0),inner=`${ks.slice(0,3).map(k=>`<span>${k}${g[k]>1?`<i>${g[k]}</i>`:''}</span>`).join('')}${ks.length>3?`<em>+${ks.slice(3).reduce((a,k)=>a+g[k],0)}</em>`:''}`;
+ return `${giftTier(giftTop(p,i))===4?'<span class="pgcrown" aria-hidden="true">👑</span>':''}${btn?`<button class="pgchip" data-a="pgifts" data-pid="${p.id}" data-i="${i}" aria-label="საჩუქრები: ${n}">${inner}</button>`:`<span class="pgchip" aria-label="საჩუქრები: ${n}">${inner}</span>`}`}
+/* the small gift box on someone else's photo post: it gives to the photo on screen */
+const giftBox=p=>p.author!==ME.id&&pmedia(p).some(x=>x.type==='image')?`<button class="pgbox" data-a="pgift" data-pid="${p.id}" aria-label="საჩუქრის ჩუქება"><span aria-hidden="true">🎁</span></button>`:'';
+/* after a gift: every copy of the post on screen (feed, profile, viewer) gets the new gifts and ring on that photo */
 function giftPaint(id){const p=POSTS.get(id);if(!p)return;
- const paint=(box,media)=>{if(!box||!media)return;box.className=box.className.replace(/\s?gt\d?\b/g,'')+giftTierCls(p);$$('.pgchip,.pgcrown',media).forEach(x=>x.remove());media.insertAdjacentHTML('beforeend',giftChip(p))};
- $$(`.post[data-id="${id}"]`).forEach(a=>paint($('.pmw',a),$('.pmmedia',a)));
- const pv=$(`#pv [data-pv="${id}"] .pvframe`);if(pv)paint(pv,pv)}
-A.pgift=t=>{const id=pidOf(t),p=POSTS.get(id);if(!p)return;const who=esc(String(pname(p.author)).split(' ')[0]);let pick=null;
- sheet(head('საჩუქარი ფოტოს')+`<div class="pgs"><p class="hint">${who} საჩუქრის ნახევარს მიიღებს მონეტებად. ძვირფასი საჩუქარი ფოტოს ჩარჩოს უცვლის.</p>
-  <div class="gifts pggrid" role="radiogroup" aria-label="საჩუქარი">${GIFTS.map(g=>`<button type="button" class="gift${g[2]>(ME.coins||0)?' poor':''}" role="radio" aria-checked="false" data-g="${g[0]}" aria-label="${g[1]}, ${g[2]} მონეტა">${g[0]}<small>${g[1]}</small><b>${nf(g[2])}</b></button>`).join('')}</div>
-  <p class="pgtier" id="pg_tier"></p>
-  <div class="pgfoot"><span>ბალანსი<b>${nf(ME.coins)}</b></span><button class="btn" id="pg_go" disabled>აირჩიე საჩუქარი</button></div></div>`,'short');
- const go=$('#pg_go'),tier=$('#pg_tier');
+ const paint=(tile,i,btn)=>{if(!tile)return;tile.className=tile.className.replace(/\s?gt\d?\b/g,'')+giftTierCls(p,i);$$('.pgchip,.pgcrown',tile).forEach(x=>x.remove());tile.insertAdjacentHTML('beforeend',giftBadge(p,i,btn))};
+ $$(`.post[data-id="${id}"] .pmi`).forEach(t=>{if($('img',t))paint(t,+t.dataset.i,false)});
+ $$(`#pv [data-pv="${id}"] .pvs`).forEach((t,i)=>{if($('img',t))paint(t,i,true)})}
+const slideOf=t=>{const tr=t.closest('.pmmedia,.pvframe')?.querySelector('.pmtrack,.pvtrack');return tr?Math.round(tr.scrollLeft/(tr.clientWidth||1)):0};
+A.pgift=t=>{const id=pidOf(t),p=POSTS.get(id);if(!p)return;const media=pmedia(p),idx=Math.min(slideOf(t),media.length-1),m=media[idx];
+ if(!m||m.type!=='image'){toast('საჩუქარი მხოლოდ ფოტოს შეიძლება');return}
+ const who=esc(String(pname(p.author)).split(' ')[0]);let pick=null;
+ sheet(head('საჩუქარი ფოტოს')+`<div class="pgs"><div class="pgfor"><img src="${esc(mSm(m))}" alt=""><span><b>${media.length>1?`${idx+1}-ე ფოტო · `:''}${who}</b><small>საჩუქარი ამ ფოტოზე გამოჩნდება. ${who} ნახევარს მიიღებს მონეტებად.</small></span></div>
+  ${GCATS.map(([c,l])=>`<h4 class="pgcat">${l}</h4><div class="gifts pggrid" role="radiogroup" aria-label="${l}">${GIFTS.filter(g=>g[3]===c).map(g=>`<button type="button" class="gift${g[2]>(ME.coins||0)?' poor':''}" role="radio" aria-checked="false" data-g="${g[0]}" aria-label="${g[1]}, ${g[2]} მონეტა">${g[0]}<small>${g[1]}</small><b>${nf(g[2])}</b></button>`).join('')}</div>`).join('')}
+  <div class="pgfoot"><span>ბალანსი<b>${nf(ME.coins)}</b><em class="pgtier" id="pg_tier"></em></span><button class="btn" id="pg_go" disabled>აირჩიე საჩუქარი</button></div></div>`,'short');
+ const go=$('#pg_go'),tier=$('#pg_tier'),now=giftTier(giftTop(p,idx));
  $$('.pggrid .gift').forEach(b=>b.onclick=()=>{pick=b.dataset.g;$$('.pggrid .gift').forEach(x=>x.setAttribute('aria-checked',String(x===b)));const c=GCOST(pick),short=c-(ME.coins||0),tr=GTIERS.find(x=>c>=x[0]);
-  go.disabled=short>0;go.textContent=short>0?`აკლია ${nf(short)} მონეტა`:`გაგზავნა: ${pick} · ${nf(c)}`;
-  tier.textContent=tr&&giftTier(p.gift_top)<tr[1]?`ფოტოს ექნება ${tr[2]}.`:''});
+  go.disabled=short>0;go.textContent=short>0?`აკლია ${nf(short)} მონეტა`:`ჩუქება: ${pick} · ${nf(c)}`;tier.textContent=tr&&now<tr[1]?`ფოტოს ექნება ${tr[2]}`:''});
  go.onclick=async()=>{if(!pick)return;go.disabled=true;const c=GCOST(pick);
-  try{const r=await rpc('post_gift',{p_post:id,p_emoji:pick});if(r){setCoins(r.coins);p.gifts=r.gifts||p.gifts;p.gift_top=r.gift_top||p.gift_top}closeSheet();giftPaint(id);toast(`${pick} გაიგზავნა`);if(c>=1000)confetti()}
+  try{const r=await rpc('post_gift',{p_post:id,p_emoji:pick,p_idx:idx});if(r){setCoins(r.coins);p.gifts=r.gifts||p.gifts;p.gift_top=r.gift_top||p.gift_top}closeSheet();giftPaint(id);toast(`${pick} გაიჩუქა`);if(c>=1000)confetti()}
   catch(e){go.disabled=false;toast(errMsg(e));if(/not_enough/.test(e.message||''))go.textContent='მონეტები არ გყოფნის'}}};
-A.pgifts=async t=>{const id=pidOf(t),p=POSTS.get(id);const mine=p&&p.author===ME.id;
+A.pgifts=async t=>{const id=pidOf(t),p=POSTS.get(id),only=t.dataset.i!=null?+t.dataset.i:null;const mine=p&&p.author===ME.id,many=p&&pmedia(p).length>1;
  sheet(head(mine?'შენი ფოტოს საჩუქრები':'ფოტოს საჩუქრები')+`<div id="pgl">${skel(2)}</div>`,'short');
- try{const rows=await rpc('post_gifts',{p_post:id})||[];await loadProfiles(rows.map(r=>r.u));const el=$('#pgl');if(!el)return;
+ try{let rows=await rpc('post_gifts',{p_post:id})||[];if(only!=null)rows=rows.filter(r=>(r.i||0)===only);await loadProfiles(rows.map(r=>r.u));const el=$('#pgl');if(!el)return;
   const sum=rows.reduce((a,r)=>a+(r.c||0),0);
-  el.innerHTML=rows.length?`<p class="hint" style="padding:12px 16px 0">${rows.length} საჩუქარი · ${nf(sum)} მონეტის${mine?` · შენ მიიღე ${nf(Math.floor(sum/2))}`:''}</p><div class="list">${rows.map(r=>`<button class="row" data-a="user" data-u="${r.u}">${av(r.u,36)}<span class="grow"><b>${esc(pname(r.u))}</b><span class="sub">${ago(r.at)}</span></span><span class="pgem">${r.e}</span></button>`).join('')}</div>`
+  el.innerHTML=rows.length?`<p class="hint" style="padding:12px 16px 0">${many&&only!=null?`${only+1}-ე ფოტო · `:''}${rows.length} საჩუქარი · ${nf(sum)} მონეტის${mine?` · შენ მიიღე ${nf(Math.floor(sum/2))}`:''}</p><div class="list">${rows.map(r=>`<button class="row" data-a="user" data-u="${r.u}">${av(r.u,36)}<span class="grow"><b>${esc(pname(r.u))}</b><span class="sub">${ago(r.at)}</span></span><span class="pgem">${r.e}</span></button>`).join('')}</div>`
    :empty('საჩუქრები ჯერ არ არის','')}
  catch(e){const el=$('#pgl');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',esc(errMsg(e)))}};
 
@@ -123,6 +130,8 @@ async function admCoins(el){const[s,rules]=await Promise.all([rpc('admin_coin_st
  ${(s.top||[]).length?`<h3 class="sec2">დღეს ყველაზე მეტი</h3><div class="list">${s.top.map(x=>`<button class="row" data-a="user" data-u="${x.u}">${av(x.u,32)}<span class="grow"><b>${esc(pname(x.u))}</b><span class="sub">${nf(x.c)} გასატანი</span></span><b>+${nf(x.n)}</b></button>`).join('')}</div>`:''}
  <section class="tourcard adsite"><h3>დღის მაქსიმუმი</h3><p class="note">ყველა აქტივობით ერთ ადამიანს დღეში მეტს ვერ გამოიმუშავებს. დღიური ბონუსი და ვერიფიკაცია ამაში არ ითვლება.</p>
   <div class="frow"><label class="fld">მონეტა დღეში<input id="acp_max" type="number" inputmode="numeric" min="10" max="5000" value="${c.daily_max||150}"></label><button class="btn" data-a="adcmax" style="align-self:flex-end">${ic('check')}შენახვა</button></div></section>
+ <section class="tourcard adsite"><h3>„5+“ ფოტოზე</h3><p class="note">რამდენი მონეტა ღირს „5+“-ის დაწერა. ნახევარი ფოტოს ავტორს ერგება. ერთ პოსტზე ერთხელ იხდის, შეფასების შეცვლა უფასოა. 0 = უფასო.</p>
+  <div class="frow"><label class="fld">მონეტა<input id="acp_plus" type="number" inputmode="numeric" min="0" max="100000" value="${c.plus_cost??50}"></label><button class="btn" data-a="adcplus" style="align-self:flex-end">${ic('check')}შენახვა</button></div></section>
  <h3 class="sec2">წესები</h3><p class="note" style="padding:0 16px 8px">„დღეში“: ამ აქტივობით დღეში მაქსიმუმ რამდენი მონეტა (0 = შეზღუდვის გარეშე, მხოლოდ დღის მაქსიმუმი).</p>
  <div class="adrules">${(rules||[]).map(r=>`<div class="adrule" data-k="${esc(r.action)}"><span class="grow"><b>${esc(r.label)}</b><small>${esc((CPAGE[r.page]||['ბონუსი'])[0])}${r.hint?' · '+esc(r.hint):''}${r.every_n>1?` · ყოველ ${r.every_n}-ზე`:''}${r.once?' · ერთხელ':''}</small></span>
   <label>მონეტა<input class="field sq" type="number" inputmode="numeric" min="0" max="1000" data-f="amount" value="${r.amount}"></label><label>დღეში<input class="field sq" type="number" inputmode="numeric" min="0" max="5000" data-f="cap" value="${r.day_cap}"></label>
@@ -134,6 +143,7 @@ A.adcpromo=t=>{const k=t.dataset.k,mo=+($('#acp_m')?.value||1);
 A.adcsw=t=>t.setAttribute('aria-checked',String(t.getAttribute('aria-checked')!=='true'));
 A.adcrule=async t=>{const r=t.closest('.adrule'),v=f=>Math.floor(+r.querySelector(`[data-f="${f}"]`).value);
  try{await rpc('admin_coin_rule',{p_action:r.dataset.k,p_amount:v('amount'),p_day_cap:v('cap'),p_active:r.querySelector('.switch').getAttribute('aria-checked')==='true'});CN.rules=null;toast('შენახულია')}catch(e){toast(errMsg(e))}};
+A.adcplus=async()=>{const n=Math.floor(+$('#acp_plus').value);if(!(n>=0&&n<=100000)){toast('ჩაწერე 0-დან 100 000-მდე');return}try{await rpc('admin_coin_plus',{p_cost:n});if(CN.my)CN.my.plus_cost=n;toast('შენახულია');adminTab()}catch(e){toast(errMsg(e))}};
 A.adcmax=async()=>{const n=Math.floor(+$('#acp_max').value);try{await rpc('admin_coin_max',{p_max:n});toast('შენახულია');adminTab()}catch(e){toast(errMsg(e))}};
 
 /* ---------- paying out in lari: by hand, after the admin checks the request ---------- */

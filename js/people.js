@@ -156,7 +156,12 @@ async function countUnread(){countGuests();try{const{count}=await sb.from('notif
 
 /* gifts, block, report */
 /* the same prices as the server's gift_cost; whoever receives a gift gets half */
-const GIFTS=[['☕','ყავა',50],['🌹','ვარდი',100],['📚','წიგნი',100],['🎓','დიპლომი',300],['💐','თაიგული',500],['🧸','დათუნია',800],['🎂','ტორტი',1000],['🏆','თასი',5000],['💎','ბრილიანტი',10000],['👑','გვირგვინი',25000]];
+const GIFTS=[['🌷','ტიტა',50,'fl'],['🌹','ვარდი',100,'fl'],['🌻','მზესუმზირა',150,'fl'],['🌸','საკურა',200,'fl'],['💐','თაიგული',500,'fl'],
+ ['☕','ყავა',50,'sw'],['🍫','შოკოლადი',80,'sw'],['🍦','ნაყინი',100,'sw'],['🍇','ყურძენი',120,'sw'],['🍰','ნამცხვარი',300,'sw'],['🎂','ტორტი',1000,'sw'],
+ ['❤️','გული',50,'lv'],['💌','წერილი',150,'lv'],['🧸','დათუნია',800,'lv'],['💍','ბეჭედი',7000,'lv'],
+ ['🎈','ბუშტი',60,'fe'],['📚','წიგნი',100,'fe'],['🎉','ზეიმი',200,'fe'],['⭐','ვარსკვლავი',250,'fe'],['🎓','დიპლომი',300,'fe'],['🎁','საჩუქარი',400,'fe'],
+ ['🏆','თასი',5000,'lx'],['🚗','მანქანა',8000,'lx'],['💎','ბრილიანტი',10000,'lx'],['🚀','რაკეტა',12000,'lx'],['🏰','ციხესიმაგრე',15000,'lx'],['🦄','ერთრქა',20000,'lx'],['👑','გვირგვინი',25000,'lx']];
+const GCATS=[['fl','ყვავილები'],['sw','ტკბილი'],['lv','გრძნობები'],['fe','ზეიმი და სწავლა'],['lx','ძვირფასი']];
 A.gift=t=>{const id=t.dataset.u;sheet(head('საჩუქარი · '+esc(pname(id)))+`<p class="hint" style="padding:12px 16px 0">ბალანსი: ${nf(ME.coins)} მონეტა. საჩუქრის ნახევარი მას ერიცხება.</p><div class="gifts">${GIFTS.map(g=>`<button class="gift${g[2]>(ME.coins||0)?' poor':''}" data-a="sendgift" data-u="${id}" data-g="${g[0]}" aria-label="${g[1]}, ${g[2]} მონეტა">${g[0]}<small>${g[1]}</small><b>${nf(g[2])}</b></button>`).join('')}</div>`,'short')};
 A.sendgift=async t=>{try{const bal=await rpc('send_gift',{p_to:t.dataset.u,p_emoji:t.dataset.g});setCoins(bal);closeSheet();toast(`${t.dataset.g} გაიგზავნა`);confetti()}catch(e){toast(errMsg(e));if(/not_enough/.test(e.message))openPage('coins')}};
 A.umore=t=>{const id=t.dataset.u;sheet(head(esc(pname(id)))+`<div class="reasons"><button data-a="gift" data-u="${id}">საჩუქრის გაგზავნა</button><button data-a="sharepro" data-u="${id}">პროფილის გაზიარება</button><button data-a="tree" data-u="${id}">ოჯახის ხე</button>${FRIENDS.has(id)?`<button data-a="kinadd" data-u="${id}">ნათესავად მონიშვნა</button>`:''}<button data-a="report" data-type="user" data-id="${id}" data-u="${id}">საჩივარი</button><button class="warnbtn" data-a="block" data-u="${id}">დაბლოკვა</button>${isStaff()?`<button class="warnbtn" data-a="ban" data-u="${id}">მოდერაცია: შეზღუდვა</button>`:''}</div>`,'short')};

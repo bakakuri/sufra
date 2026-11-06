@@ -29,19 +29,19 @@ function whoHTML(p,u,pg){const tags=`${p.grp?`<button class="ptag" data-a="group
 /* grading: only for photos, never for your own post (you still see the average) */
 function gradeHTML(p,s){if(!pmedia(p).some(x=>x.type==='image'))return '';const sum=s.grade_n?`<em>საშ. ${s.grade_avg} · ${s.grade_n}</em>`:'';
  if(p.author===ME.id)return sum?`<div class="grade mine"><span>შეფასება</span>${sum}</div>`:'';
- return `<div class="grade" role="group" aria-label="ფოტოს შეფასება"><span>შეფასება</span>${['1','2','3','4','5','5+'].map(x=>`<button data-a="grade" data-g="${x}" class="${x==='5+'?'plus':''}${s.my_grade===x?' on':''}">${x}</button>`).join('')}${sum}</div>`}
+ return `<div class="grade" role="group" aria-label="ფოტოს შეფასება"><span>შეფასება</span>${['1','2','3','4','5','5+'].map(x=>{const pay=x==='5+'&&s.my_grade!=='5+'&&plusCost()>0;return `<button data-a="grade" data-g="${x}" class="${x==='5+'?'plus':''}${s.my_grade===x?' on':''}"${pay?` aria-label="5+, ${plusCost()} მონეტა" title="${plusCost()} მონეტა"`:''}>${x}${pay?'<i class="g5coin" aria-hidden="true"></i>':''}</button>`}).join('')}${sum}</div>`}
 function actsHTML(p,s){const m=s.my_reaction;
  return `<div class="acts"><div class="rwrap"><button class="act${m?' on':''}" data-a="react" aria-label="რეაქცია">${m?`<span class="em">${rg(m)}</span>`:ic('heart')}<span>${rTotal(s)||''}</span></button></div>
  <button class="act" data-a="comments" aria-label="კომენტარები">${ic('comment')}<span>${s.comments||''}</span></button>
  <button class="act${RS.get(p.id)?.mine?' on':''}" data-a="share" aria-label="გაზიარება">${ic(RS.get(p.id)?.mine?'repost':'send')}<span>${RS.get(p.id)?.n||''}</span></button>
  <button class="act${s.saved?' on':''}" data-a="save" aria-label="${s.saved?'შენახულია':'შენახვა'}">${ic('bookmark',s.saved?'currentColor':'')}</button>
- ${p.author!==ME.id&&pmedia(p).some(x=>x.type==='image')?`<button class="act gft" data-a="pgift" aria-label="საჩუქრის გაგზავნა">${ic('gift')}</button>`:''}<span class="rsum" aria-hidden="true">${rTop(s)}</span><button class="act" data-a="pmore" aria-label="მეტი მოქმედება">${ic('more')}</button></div>`}
+ <span class="rsum" aria-hidden="true">${rTop(s)}</span><button class="act" data-a="pmore" aria-label="მეტი მოქმედება">${ic('more')}</button></div>`}
 /* the caption folds when it is long and opens with "სრულად" */
 function descHTML(p,lines){const b=String(p.body||'');if(!b.trim())return '';const long=b.length>(lines>3?320:110)||(b.match(/\n/g)||[]).length>=lines;
  return `<div class="pdesc${long?' clamp':''}" style="--l:${lines}">${tx(b)}${long?'<button class="pmore2" data-a="pmore2">მეტი</button>':''}</div>`}
 A.pmore2=t=>{const d=t.closest('.pdesc');if(!d)return;const open=!d.classList.contains('open');d.classList.toggle('open',open);t.textContent=open?'მოკლედ':'მეტი'};
 function mediaTile(m,i,p){const alt=p.body?esc(String(p.body).slice(0,80)):'';
- return `<button class="pmi" data-a="pmtap" data-pid="${p.id}" data-i="${i}" aria-label="${m.type==='video'?'ვიდეოს გახსნა':'ფოტოს გახსნა'}">${m.type==='video'?`<video src="${esc(m.url)}${mPoster(m)?'':'#t=0.1'}"${mPoster(m)?` poster="${esc(mPoster(m))}" preload="none"`:' preload="metadata"'} muted playsinline loop disablepictureinpicture disableremoteplayback></video><span class="pmplay">${ic('play','currentColor')}</span><span class="pmdur" aria-hidden="true"></span>`:`<img src="${esc(mMd(m))}" alt="${alt}" loading="lazy" decoding="async"${m.w&&m.h?` width="${+m.w|0}" height="${+m.h|0}"`:''}>`}</button>`}
+ return `<button class="pmi${m.type==='image'?giftTierCls(p,i):''}" data-a="pmtap" data-pid="${p.id}" data-i="${i}" aria-label="${m.type==='video'?'ვიდეოს გახსნა':'ფოტოს გახსნა'}">${m.type==='video'?`<video src="${esc(m.url)}${mPoster(m)?'':'#t=0.1'}"${mPoster(m)?` poster="${esc(mPoster(m))}" preload="none"`:' preload="metadata"'} muted playsinline loop disablepictureinpicture disableremoteplayback></video><span class="pmplay">${ic('play','currentColor')}</span><span class="pmdur" aria-hidden="true"></span>`:`<img src="${esc(mMd(m))}" alt="${alt}" loading="lazy" decoding="async"${m.w&&m.h?` width="${+m.w|0}" height="${+m.h|0}"`:''}>${giftBadge(p,i)}`}</button>`}
 /* a plain repost shows the original under a "shared" line; a quote is the sharer's own post with the original as a card */
 function quoteHTML(o,still){if(!o)return `<div class="qcard gone">${ic('repost')}ეს პოსტი აღარ არის ხელმისაწვდომი</div>`;const u=o.page?{name:o.page.name,hue:o.page.hue}:(o.ap||prof(o.author)),m=pmedia(o)[0];
  const tag=still?'div':'button';
@@ -52,12 +52,12 @@ function postHTML(p){if(p.repost_of&&!String(p.body||'').trim()){const o=POSTS.g
  const s=STAT.get(p.id)||blankStat(p.id),u=p.ap||prof(p.author),pg=p.page,media=pmedia(p);
  const cls=`post${p.hidden?' is-hidden':''}`;
  if(media.length&&!(ECO()&&!p._eco)){const n=media.length;
-  return `<article class="${cls} pm" data-id="${p.id}"><div class="pmw${n>1?' multi':''}${giftTierCls(p)}">
+  return `<article class="${cls} pm" data-id="${p.id}"><div class="pmw${n>1?' multi':''}">
    <div class="pmtop">${whoHTML(p,u,pg)}${n>1?`<span class="pmcount" aria-hidden="true"><b>1</b>/${n}</span>`:''}</div>
    ${descHTML(p,3)}${pollBlock(p,s)?`<div class="pmpoll">${pollBlock(p,s)}</div>`:''}
    <div class="pmmedia" style="--ar:${boxRatio(media[0])}"${media[0]&&+media[0].w>0&&+media[0].h>0?'':' data-fit'}><div class="pmtrack">${media.map((m,i)=>mediaTile(m,i,p)).join('')}</div>${media.some(m=>m.type==='video')?fvSndHTML():''}
    ${n>1?`<button class="pmnav prev" data-a="pmnav" data-d="-1" aria-label="წინა">${ic('back')}</button><button class="pmnav next" data-a="pmnav" data-d="1" aria-label="შემდეგი">${ic('back')}</button>`:''}
-   <span class="burst">${ic('heart','currentColor')}</span>${giftChip(p)}</div>
+   <span class="burst">${ic('heart','currentColor')}</span>${giftBox(p)}</div>
    <div class="pmbot">${n>1?`<div class="pmdots" aria-hidden="true">${media.map((_,i)=>`<i${i?'':' class="on"'}></i>`).join('')}</div>`:''}${gradeHTML(p,s)}${actsHTML(p,s)}</div></div>
    </article>`}
  return `<article class="${cls} pc" data-id="${p.id}"><div class="pchead">${whoHTML(p,u,pg)}</div>
@@ -114,7 +114,7 @@ function openPV(id,i=0){const p=POSTS.get(id);if(!p)return;PV={id,i};let el=$('#
  const s=STAT.get(id)||blankStat(id),u=p.ap||prof(p.author),media=pmedia(p),n=media.length;
  el.classList.remove('closing');el.hidden=false;navMark('pv',()=>openPV(id,PV&&PV.id===id?PV.i:i));navOpen('pv');
  el.innerHTML=`<div class="pvin" data-pv="${p.id}"><div class="pvtop">${whoHTML(p,u,p.page)}<button class="ibtn" data-a="pvclose" aria-label="დახურვა">${ic('x')}</button></div>
-  <div class="pvframe${n?'':' text'}${giftTierCls(p)}">${n?`<div class="pvtrack">${media.map(m=>`<div class="pvs">${m.type==='video'?`<video src="${esc(m.url)}"${mPoster(m)?` poster="${esc(mPoster(m))}"`:''} controls playsinline preload="metadata"></video>`:`<img src="${esc(m.url)}" alt="" decoding="async">`}</div>`).join('')}</div>${n>1?`<span class="pvcount"><b>${i+1}</b>/${n}</span><button class="pmnav prev" data-a="pmnav" data-d="-1" aria-label="წინა">${ic('back')}</button><button class="pmnav next" data-a="pmnav" data-d="1" aria-label="შემდეგი">${ic('back')}</button><div class="pvdots">${media.map((_,k)=>`<i${k===i?' class="on"':''}></i>`).join('')}</div>`:''}${giftChip(p)}`
+  <div class="pvframe${n?'':' text'}">${n?`<div class="pvtrack">${media.map((m,k)=>`<div class="pvs${m.type==='image'?giftTierCls(p,k):''}">${m.type==='video'?`<video src="${esc(m.url)}"${mPoster(m)?` poster="${esc(mPoster(m))}"`:''} controls playsinline preload="metadata"></video>`:`<img src="${esc(m.url)}" alt="" decoding="async">${giftBadge(p,k,true)}`}</div>`).join('')}</div>${n>1?`<span class="pvcount"><b>${i+1}</b>/${n}</span><button class="pmnav prev" data-a="pmnav" data-d="-1" aria-label="წინა">${ic('back')}</button><button class="pmnav next" data-a="pmnav" data-d="1" aria-label="შემდეგი">${ic('back')}</button><div class="pvdots">${media.map((_,k)=>`<i${k===i?' class="on"':''}></i>`).join('')}</div>`:''}${giftBox(p)}`
    :`<div class="pvtext" style="--h:${(u.hue??200)%360}">${tx(p.body)}</div>`}</div>
   <div class="pvbot">${gradeHTML(p,s)}${actsHTML(p,s)}</div>
   <div class="pvdesc">${n&&p.body?tx(p.body):''}${pollBlock(p,s)}${p.link&&!n?linkCard(p.link):''}<button class="btn sm ghost" data-a="comments">${ic('comment')}კომენტარები${s.comments?' · '+s.comments:''}</button></div></div>`;
@@ -145,13 +145,20 @@ A.ecopost=t=>{const p=POSTS.get(pidOf(t));if(p){p._eco=true;rerenderPost(p.id)}}
 A.dbl=t=>{const now=Date.now();if(now-(t._l||0)<330){t._l=0;const id=pidOf(t),b=$('.burst',t);if(b){b.classList.remove('go');void b.offsetWidth;b.classList.add('go')}const s=STAT.get(id);if(!s||s.my_reaction!=='❤️')setTimeout(()=>setReaction(id,'❤️'),500)}else t._l=now};
 const gval=x=>x==='5+'?6:+x;
 function refreshGrade(id){const p=POSTS.get(id);if(!p)return;const s=STAT.get(id)||blankStat(id),h=gradeHTML(p,s);$$(`.post[data-id="${id}"] .grade,[data-pv="${id}"] .grade`).forEach(el=>{el.outerHTML=h});$$(`.pgt[data-pid="${id}"] .pgg`).forEach(el=>{el.outerHTML=gridGrade(p,s)})}
+/* a 5+ costs coins (the admin sets how many, half goes to the author); the first time, it says so before paying */
+const plusCost=()=>Math.max(0,+(CN.my?.plus_cost??50)||0);
+function plusAsk(t){const c=plusCost();
+ sheet(head('„5+“ მონეტებით')+`<div class="ph-body plusq"><p>„5+“-ის დაწერა <b>${nf(c)} მონეტა</b> ღირს. ნახევარი ფოტოს ავტორს მიდის საჩუქრად.</p><p class="hint">ერთ პოსტზე ერთხელ იხდი: შეფასებას თუ შეცვლი და ისევ „5+“-ს დაწერ, აღარ ჩამოგეჭრება. 1-დან 5-მდე შეფასება ისევ უფასოა.</p>
+  <p class="hint">ბალანსი: <b>${nf(ME.coins)}</b> მონეტა</p><div class="row2"><button class="btn ghost" data-a="close">გაუქმება</button><button class="btn" id="plus_go"${(ME.coins||0)<c?' disabled':''}>${(ME.coins||0)<c?'მონეტები არ გყოფნის':`„5+“ · ${nf(c)} მონეტა`}</button></div></div>`,'short');
+ const b=$('#plus_go');if(b)b.onclick=()=>{store.set('plus5',1);closeSheet();A.grade(t)}}
 A.grade=async t=>{const id=pidOf(t),g=t.dataset.g,p=POSTS.get(id),s=STAT.get(id)||blankStat(id);if(p?.author===ME.id){toast('საკუთარ ფოტოს ვერ შეაფასებ');return}
- const prev=s.my_grade;if(prev===g)return;const old={my_grade:s.my_grade,grade_n:s.grade_n,grade_avg:s.grade_avg},n=s.grade_n||0,avg=+s.grade_avg||0;
+ const prev=s.my_grade;if(prev===g)return;
+ const pay=g==='5+'&&plusCost()>0;if(pay&&!store.get('plus5')){plusAsk(t);return}const old={my_grade:s.my_grade,grade_n:s.grade_n,grade_avg:s.grade_avg},n=s.grade_n||0,avg=+s.grade_avg||0;
  s.my_grade=g;s.grade_n=prev?n:n+1;s.grade_avg=Math.round((avg*n-(prev?gval(prev):0)+gval(g))/s.grade_n*10)/10;STAT.set(id,s);refreshGrade(id);
  const nb=$(`.post[data-id="${id}"] .grade button[data-g="${g}"],[data-pv="${id}"] .grade button[data-g="${g}"]`);if(nb)pop(nb);
  try{const paid=await rpc('grade_photo',{p_post:id,p_grade:g});
-  toast(prev?'შეფასება შეიცვალა':(g==='5+'?'„5+“ გაიგზავნა':'შეფასება გაიგზავნა')+(paid>0?` · ავტორს +${paid} მონეტა`:''))}
- catch(e){Object.assign(s,old);STAT.set(id,s);refreshGrade(id);toast(errMsg(e))}};
+  toast(prev?'შეფასება შეიცვალა':(g==='5+'?'„5+“ გაიგზავნა':'შეფასება გაიგზავნა')+(paid>0?` · ავტორს +${paid} მონეტა`:''));if(pay)coinCheck()}
+ catch(e){Object.assign(s,old);STAT.set(id,s);refreshGrade(id);toast(/not_enough_coins/.test(e.message||'')?`„5+“ ${nf(plusCost())} მონეტა ღირს: მონეტები არ გყოფნის`:errMsg(e))}};
 A.vote=async t=>{const id=pidOf(t),i=+t.dataset.i,s=STAT.get(id)||blankStat(id);if(s.my_vote!=null&&s.my_vote!==i){s.votes[s.my_vote]=Math.max(0,(s.votes[s.my_vote]||1)-1)}if(s.my_vote!==i)s.votes[i]=(s.votes[i]||0)+1;s.my_vote=i;STAT.set(id,s);rerenderPost(id);
  try{await q(sb.from('poll_votes').upsert({post_id:id,user_id:ME.id,opt:i},{onConflict:'post_id,user_id'}))}catch(e){toast(errMsg(e))}};
 A.save=async t=>{const id=pidOf(t),s=STAT.get(id)||blankStat(id);s.saved=!s.saved;STAT.set(id,s);rerenderPost(id);if(!s.saved)toast('შენახულიდან ამოიშალა');

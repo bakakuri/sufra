@@ -1388,7 +1388,7 @@ button.gbig>i svg{width:13px;height:13px}
 .stmsg .bubble{max-width:100%}
 
 /* sheets whose content is a grid or a form scroll inside the panel (the create sheet, gifts, matches) */
-.panel>.createg,.panel>.match,.panel>.gmenu,.panel>.jchoice,.panel>.gifts,.panel>.form{overflow-y:auto;min-height:0;flex:0 1 auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.panel>.createg,.panel>.match,.panel>.gmenu,.panel>.jchoice,.panel>.gifts,.panel>.pgs,.panel>.form{overflow-y:auto;min-height:0;flex:0 1 auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .panel>.createg{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));align-content:start}
 
 /* home: the services strip, small pictures of the pages */
@@ -2933,8 +2933,6 @@ body.wide .pspace{flex-wrap:wrap;margin:6px 0 0;padding:4px 0 2px;-webkit-mask-i
 .pgfoot>span{display:flex;flex-direction:column;font-size:11.5px;color:var(--muted);line-height:1.2}
 .pgfoot>span b{font-size:16px;color:var(--ink);font-variant-numeric:tabular-nums}
 .pgfoot .btn{flex:1}
-.act.gft{color:color-mix(in srgb,var(--gold) 85%,var(--muted))}
-.pmw .pmbot .act.gft{color:color-mix(in srgb,var(--gold) 85%,var(--muted))}
 .pgem{font-size:24px}
 .pgchip{position:absolute;left:10px;bottom:10px;z-index:3;display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 20px);padding:4px 10px 4px 8px;border-radius:999px;background:rgb(14 10 18/.55);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;font-size:16px;line-height:1.2;box-shadow:0 2px 10px rgb(0 0 0/.18)}
 .pgchip span{display:inline-flex;align-items:center;gap:1px}
@@ -2942,18 +2940,42 @@ body.wide .pspace{flex-wrap:wrap;margin:6px 0 0;padding:4px 0 2px;-webkit-mask-i
 .pgchip em{font-style:normal;font-size:11.5px;font-weight:800;opacity:.85}
 .pgcrown{position:absolute;top:8px;right:10px;z-index:3;font-size:26px;filter:drop-shadow(0 2px 4px rgb(0 0 0/.35));animation:pgfloat 3.2s ease-in-out infinite;pointer-events:none}
 @keyframes pgfloat{50%{transform:translateY(-3px) rotate(-6deg)}}
-/* the ring: drawn over the photo's edge, so it shows on any photo */
-.pmw.gt .pmmedia::after,.pvframe.gt::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;padding:var(--gw,3px);border-radius:inherit;background:var(--gr);background-size:300% 300%;
+/* the ring: drawn over the edge of the photo that got the gift, so it shows on any photo */
+.pmi.gt::after,.pvs.gt::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;padding:var(--gw,3px);background:var(--gr);background-size:300% 300%;
  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude}
 .gt1{--gw:2px;--gr:linear-gradient(135deg,rgb(255 196 90/.85),rgb(255 140 60/.55),rgb(255 220 150/.85))}
-.pmw.gt1 .pmmedia{box-shadow:inset 0 0 40px rgb(255 170 60/.22)}
+.pmi.gt1::before,.pvs.gt1::before{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 40px rgb(255 170 60/.22)}
 .gt2{--gw:3px;--gr:linear-gradient(135deg,#FFE7A3,#E08A00 35%,#FFF4CF 55%,#B86E00 80%,#FFD66B)}
 .gt3{--gw:4px;--gr:linear-gradient(120deg,#B9F2FF,#6E7BFF 25%,#E8FBFF 45%,#5AC8FA 65%,#C7A6FF 85%,#B9F2FF)}
 .gt4{--gw:5px;--gr:linear-gradient(120deg,#FFE7A3,#E08A00 20%,#8D1D5B 40%,#FFD66B 60%,#B86E00 80%,#FFF4CF)}
-.pmw.gt3 .pmmedia::after,.pvframe.gt3::after,.pmw.gt4 .pmmedia::after,.pvframe.gt4::after{animation:pgshine 6s linear infinite}
-.pmw.gt4{box-shadow:0 6px 26px rgb(224 138 0/.28)}
+.pmi.gt3::after,.pvs.gt3::after,.pmi.gt4::after,.pvs.gt4::after{animation:pgshine 6s linear infinite}
+.pmw:has(.pmi.gt4){box-shadow:0 6px 26px rgb(224 138 0/.28)}
 @keyframes pgshine{from{background-position:0% 50%}to{background-position:300% 50%}}
-@media (prefers-reduced-motion:reduce){.pgcrown,.pmw.gt3 .pmmedia::after,.pvframe.gt3::after,.pmw.gt4 .pmmedia::after,.pvframe.gt4::after{animation:none}}
+/* the gift box on the photo: bottom right, above the sound button while a video plays */
+.pgbox{position:absolute;right:10px;bottom:10px;z-index:4;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgb(14 10 18/.5);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 0 0 1.5px rgb(255 209 102/.7),0 2px 10px rgb(0 0 0/.22);font-size:19px;line-height:1;transition:transform .15s var(--ease-out)}
+.pgbox span{display:block;transform-origin:50% 80%;animation:pgnod 5s ease-in-out 1.2s infinite}
+.pgbox:active{transform:scale(.9)}
+@keyframes pgnod{0%,86%,100%{transform:none}90%{transform:rotate(-12deg) scale(1.08)}94%{transform:rotate(10deg) scale(1.08)}}
+.pmmedia.vact .pgbox{bottom:52px}
+.pvframe .pgbox{bottom:auto;top:10px;right:auto;left:10px}
+/* the sheet: which photo, then the gifts by kind */
+.pgfor{display:flex;align-items:center;gap:12px;margin:12px 16px 4px;padding:10px;border-radius:14px;background:var(--sunk)}
+.pgfor img{width:52px;height:52px;border-radius:10px;object-fit:cover;flex:none}
+.pgfor span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pgfor b{font-size:14px}
+.pgfor small{font-size:12px;color:var(--muted);line-height:1.35}
+.pgcat{margin:14px 16px 6px;font-size:12px;font-weight:800;letter-spacing:.02em;color:var(--muted)}
+.pgs .pggrid{padding:0 16px}
+.pgfoot{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--line);margin-top:10px}
+.pgfoot .pgtier{padding:0;min-height:0;font-style:normal;font-size:11.5px;max-width:150px}
+/* a 5+ that costs coins: a small coin on the button */
+.grade button{position:relative}
+.plusq{padding:14px 16px 18px}
+.plusq p{margin:0 0 10px;padding:0;line-height:1.5}
+.plusq .row2{justify-content:stretch;margin-top:14px}.plusq .row2 .btn{flex:1}
+.pgs .gifts .gift{min-height:84px;font-size:29px;padding:8px 2px}
+.g5coin{position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFF1B8,#F2B33D 55%,#B8790F);box-shadow:0 0 0 1.5px var(--surface)}
+@media (prefers-reduced-motion:reduce){.pgcrown,.pgbox span,.pmi.gt3::after,.pvs.gt3::after,.pmi.gt4::after,.pvs.gt4::after{animation:none}}
 
 /* ---------- paying out in lari ---------- */
 .cout-go{align-self:flex-start;background:var(--ink);color:var(--surface);margin-top:2px}
