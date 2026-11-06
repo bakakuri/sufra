@@ -1,5 +1,5 @@
 /* posts: loading, rendering, reactions, polls, comments, composer */
-const POSTSEL='id,author,body,media,poll,tags,group_id,page_id,is_clip,hidden,created_at,link,draft,publish_at,edited_at,repost_of,place_id,pending,ap:profiles!posts_author_fkey(id,name,username,avatar_url,hue,verified,is_business),page:pages!posts_page_id_fkey(id,name,hue,avatar_url,verified,kind),grp:groups!posts_group_id_fkey(id,name),pl:places!posts_place_id_fkey(id,name,kind,city)';
+const POSTSEL='id,author,body,media,poll,tags,group_id,page_id,is_clip,hidden,created_at,link,draft,publish_at,edited_at,repost_of,place_id,pending,gifts,gift_top,ap:profiles!posts_author_fkey(id,name,username,avatar_url,hue,verified,is_business),page:pages!posts_page_id_fkey(id,name,hue,avatar_url,verified,kind),grp:groups!posts_group_id_fkey(id,name),pl:places!posts_place_id_fkey(id,name,kind,city)';
 const POSTS=new Map(),STAT=new Map(),RS=new Map();
 const EMOJI=['👍','❤️','😂','😮','😢','😡','🍷'];
 const blankStat=id=>({post_id:id,reactions:{},my_reaction:null,comments:0,grade_avg:null,grade_n:0,my_grade:null,votes:{},my_vote:null,saved:false});
@@ -35,7 +35,7 @@ function actsHTML(p,s){const m=s.my_reaction;
  <button class="act" data-a="comments" aria-label="კომენტარები">${ic('comment')}<span>${s.comments||''}</span></button>
  <button class="act${RS.get(p.id)?.mine?' on':''}" data-a="share" aria-label="გაზიარება">${ic(RS.get(p.id)?.mine?'repost':'send')}<span>${RS.get(p.id)?.n||''}</span></button>
  <button class="act${s.saved?' on':''}" data-a="save" aria-label="${s.saved?'შენახულია':'შენახვა'}">${ic('bookmark',s.saved?'currentColor':'')}</button>
- <span class="rsum" aria-hidden="true">${rTop(s)}</span><button class="act" data-a="pmore" aria-label="მეტი მოქმედება">${ic('more')}</button></div>`}
+ ${p.author!==ME.id&&pmedia(p).some(x=>x.type==='image')?`<button class="act gft" data-a="pgift" aria-label="საჩუქრის გაგზავნა">${ic('gift')}</button>`:''}<span class="rsum" aria-hidden="true">${rTop(s)}</span><button class="act" data-a="pmore" aria-label="მეტი მოქმედება">${ic('more')}</button></div>`}
 /* the caption folds when it is long and opens with "სრულად" */
 function descHTML(p,lines){const b=String(p.body||'');if(!b.trim())return '';const long=b.length>(lines>3?320:110)||(b.match(/\n/g)||[]).length>=lines;
  return `<div class="pdesc${long?' clamp':''}" style="--l:${lines}">${tx(b)}${long?'<button class="pmore2" data-a="pmore2">მეტი</button>':''}</div>`}
@@ -52,12 +52,12 @@ function postHTML(p){if(p.repost_of&&!String(p.body||'').trim()){const o=POSTS.g
  const s=STAT.get(p.id)||blankStat(p.id),u=p.ap||prof(p.author),pg=p.page,media=pmedia(p);
  const cls=`post${p.hidden?' is-hidden':''}`;
  if(media.length&&!(ECO()&&!p._eco)){const n=media.length;
-  return `<article class="${cls} pm" data-id="${p.id}"><div class="pmw${n>1?' multi':''}">
+  return `<article class="${cls} pm" data-id="${p.id}"><div class="pmw${n>1?' multi':''}${giftTierCls(p)}">
    <div class="pmtop">${whoHTML(p,u,pg)}${n>1?`<span class="pmcount" aria-hidden="true"><b>1</b>/${n}</span>`:''}</div>
    ${descHTML(p,3)}${pollBlock(p,s)?`<div class="pmpoll">${pollBlock(p,s)}</div>`:''}
    <div class="pmmedia" style="--ar:${boxRatio(media[0])}"${media[0]&&+media[0].w>0&&+media[0].h>0?'':' data-fit'}><div class="pmtrack">${media.map((m,i)=>mediaTile(m,i,p)).join('')}</div>${media.some(m=>m.type==='video')?fvSndHTML():''}
    ${n>1?`<button class="pmnav prev" data-a="pmnav" data-d="-1" aria-label="წინა">${ic('back')}</button><button class="pmnav next" data-a="pmnav" data-d="1" aria-label="შემდეგი">${ic('back')}</button>`:''}
-   <span class="burst">${ic('heart','currentColor')}</span></div>
+   <span class="burst">${ic('heart','currentColor')}</span>${giftChip(p)}</div>
    <div class="pmbot">${n>1?`<div class="pmdots" aria-hidden="true">${media.map((_,i)=>`<i${i?'':' class="on"'}></i>`).join('')}</div>`:''}${gradeHTML(p,s)}${actsHTML(p,s)}</div></div>
    </article>`}
  return `<article class="${cls} pc" data-id="${p.id}"><div class="pchead">${whoHTML(p,u,pg)}</div>
@@ -114,7 +114,7 @@ function openPV(id,i=0){const p=POSTS.get(id);if(!p)return;PV={id,i};let el=$('#
  const s=STAT.get(id)||blankStat(id),u=p.ap||prof(p.author),media=pmedia(p),n=media.length;
  el.classList.remove('closing');el.hidden=false;navMark('pv',()=>openPV(id,PV&&PV.id===id?PV.i:i));navOpen('pv');
  el.innerHTML=`<div class="pvin" data-pv="${p.id}"><div class="pvtop">${whoHTML(p,u,p.page)}<button class="ibtn" data-a="pvclose" aria-label="დახურვა">${ic('x')}</button></div>
-  <div class="pvframe${n?'':' text'}">${n?`<div class="pvtrack">${media.map(m=>`<div class="pvs">${m.type==='video'?`<video src="${esc(m.url)}"${mPoster(m)?` poster="${esc(mPoster(m))}"`:''} controls playsinline preload="metadata"></video>`:`<img src="${esc(m.url)}" alt="" decoding="async">`}</div>`).join('')}</div>${n>1?`<span class="pvcount"><b>${i+1}</b>/${n}</span><button class="pmnav prev" data-a="pmnav" data-d="-1" aria-label="წინა">${ic('back')}</button><button class="pmnav next" data-a="pmnav" data-d="1" aria-label="შემდეგი">${ic('back')}</button><div class="pvdots">${media.map((_,k)=>`<i${k===i?' class="on"':''}></i>`).join('')}</div>`:''}`
+  <div class="pvframe${n?'':' text'}${giftTierCls(p)}">${n?`<div class="pvtrack">${media.map(m=>`<div class="pvs">${m.type==='video'?`<video src="${esc(m.url)}"${mPoster(m)?` poster="${esc(mPoster(m))}"`:''} controls playsinline preload="metadata"></video>`:`<img src="${esc(m.url)}" alt="" decoding="async">`}</div>`).join('')}</div>${n>1?`<span class="pvcount"><b>${i+1}</b>/${n}</span><button class="pmnav prev" data-a="pmnav" data-d="-1" aria-label="წინა">${ic('back')}</button><button class="pmnav next" data-a="pmnav" data-d="1" aria-label="შემდეგი">${ic('back')}</button><div class="pvdots">${media.map((_,k)=>`<i${k===i?' class="on"':''}></i>`).join('')}</div>`:''}${giftChip(p)}`
    :`<div class="pvtext" style="--h:${(u.hue??200)%360}">${tx(p.body)}</div>`}</div>
   <div class="pvbot">${gradeHTML(p,s)}${actsHTML(p,s)}</div>
   <div class="pvdesc">${n&&p.body?tx(p.body):''}${pollBlock(p,s)}${p.link&&!n?linkCard(p.link):''}<button class="btn sm ghost" data-a="comments">${ic('comment')}კომენტარები${s.comments?' · '+s.comments:''}</button></div></div>`;

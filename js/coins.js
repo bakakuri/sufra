@@ -74,6 +74,40 @@ A.bonus=async t=>{t.disabled=true;try{const r=await rpc('daily_bonus'),b=r&&type
 A.cretry=()=>PG.coins.r();
 A.cngo=t=>{const k=(CPAGE[t.dataset.k]||[])[2];if(!k)return;if(k==='chat')return A.chats();if(['home','clips','games','me'].includes(k))return go(k);openPage(k)};
 
+/* ---------- gifts on photos: the photo shows what it got, the dearest gift picks its frame ---------- */
+const GCOST=e=>(GIFTS.find(g=>g[0]===e)||[0,0,0])[2];
+/* 1 bouquet and up: a warm glow · 2 cup: gold · 3 diamond: a moving shine · 4 crown: gold that moves, and the crown on the photo */
+const GTIERS=[[25000,4,'გვირგვინის ჩარჩო'],[10000,3,'ბრილიანტის ჩარჩო'],[5000,2,'ოქროს ჩარჩო'],[500,1,'თბილი ნათება']];
+const giftTier=v=>(GTIERS.find(t=>(v||0)>=t[0])||[0,0])[1];
+const giftTierCls=p=>{const t=giftTier(p.gift_top);return t?` gt gt${t}`:''};
+function giftChip(p){const g=p.gifts||{},ks=Object.keys(g).filter(k=>g[k]>0).sort((a,b)=>GCOST(b)-GCOST(a));if(!ks.length)return '';
+ const n=ks.reduce((a,k)=>a+g[k],0);
+ return `${giftTier(p.gift_top)===4?'<span class="pgcrown" aria-hidden="true">👑</span>':''}<button class="pgchip" data-a="pgifts" data-pid="${p.id}" aria-label="საჩუქრები: ${n}">${ks.slice(0,3).map(k=>`<span>${k}${g[k]>1?`<i>${g[k]}</i>`:''}</span>`).join('')}${ks.length>3?`<em>+${ks.slice(3).reduce((a,k)=>a+g[k],0)}</em>`:''}</button>`}
+/* after a gift: every copy of the post on screen (feed, profile, viewer) gets the new frame and gifts */
+function giftPaint(id){const p=POSTS.get(id);if(!p)return;
+ const paint=(box,media)=>{if(!box||!media)return;box.className=box.className.replace(/\s?gt\d?\b/g,'')+giftTierCls(p);$$('.pgchip,.pgcrown',media).forEach(x=>x.remove());media.insertAdjacentHTML('beforeend',giftChip(p))};
+ $$(`.post[data-id="${id}"]`).forEach(a=>paint($('.pmw',a),$('.pmmedia',a)));
+ const pv=$(`#pv [data-pv="${id}"] .pvframe`);if(pv)paint(pv,pv)}
+A.pgift=t=>{const id=pidOf(t),p=POSTS.get(id);if(!p)return;const who=esc(String(pname(p.author)).split(' ')[0]);let pick=null;
+ sheet(head('საჩუქარი ფოტოს')+`<div class="pgs"><p class="hint">${who} საჩუქრის ნახევარს მიიღებს მონეტებად. ძვირფასი საჩუქარი ფოტოს ჩარჩოს უცვლის.</p>
+  <div class="gifts pggrid" role="radiogroup" aria-label="საჩუქარი">${GIFTS.map(g=>`<button type="button" class="gift${g[2]>(ME.coins||0)?' poor':''}" role="radio" aria-checked="false" data-g="${g[0]}" aria-label="${g[1]}, ${g[2]} მონეტა">${g[0]}<small>${g[1]}</small><b>${nf(g[2])}</b></button>`).join('')}</div>
+  <p class="pgtier" id="pg_tier"></p>
+  <div class="pgfoot"><span>ბალანსი<b>${nf(ME.coins)}</b></span><button class="btn" id="pg_go" disabled>აირჩიე საჩუქარი</button></div></div>`,'short');
+ const go=$('#pg_go'),tier=$('#pg_tier');
+ $$('.pggrid .gift').forEach(b=>b.onclick=()=>{pick=b.dataset.g;$$('.pggrid .gift').forEach(x=>x.setAttribute('aria-checked',String(x===b)));const c=GCOST(pick),short=c-(ME.coins||0),tr=GTIERS.find(x=>c>=x[0]);
+  go.disabled=short>0;go.textContent=short>0?`აკლია ${nf(short)} მონეტა`:`გაგზავნა: ${pick} · ${nf(c)}`;
+  tier.textContent=tr&&giftTier(p.gift_top)<tr[1]?`ფოტოს ექნება ${tr[2]}.`:''});
+ go.onclick=async()=>{if(!pick)return;go.disabled=true;const c=GCOST(pick);
+  try{const r=await rpc('post_gift',{p_post:id,p_emoji:pick});if(r){setCoins(r.coins);p.gifts=r.gifts||p.gifts;p.gift_top=r.gift_top||p.gift_top}closeSheet();giftPaint(id);toast(`${pick} გაიგზავნა`);if(c>=1000)confetti()}
+  catch(e){go.disabled=false;toast(errMsg(e));if(/not_enough/.test(e.message||''))go.textContent='მონეტები არ გყოფნის'}}};
+A.pgifts=async t=>{const id=pidOf(t),p=POSTS.get(id);const mine=p&&p.author===ME.id;
+ sheet(head(mine?'შენი ფოტოს საჩუქრები':'ფოტოს საჩუქრები')+`<div id="pgl">${skel(2)}</div>`,'short');
+ try{const rows=await rpc('post_gifts',{p_post:id})||[];await loadProfiles(rows.map(r=>r.u));const el=$('#pgl');if(!el)return;
+  const sum=rows.reduce((a,r)=>a+(r.c||0),0);
+  el.innerHTML=rows.length?`<p class="hint" style="padding:12px 16px 0">${rows.length} საჩუქარი · ${nf(sum)} მონეტის${mine?` · შენ მიიღე ${nf(Math.floor(sum/2))}`:''}</p><div class="list">${rows.map(r=>`<button class="row" data-a="user" data-u="${r.u}">${av(r.u,36)}<span class="grow"><b>${esc(pname(r.u))}</b><span class="sub">${ago(r.at)}</span></span><span class="pgem">${r.e}</span></button>`).join('')}</div>`
+   :empty('საჩუქრები ჯერ არ არის','')}
+ catch(e){const el=$('#pgl');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',esc(errMsg(e)))}};
+
 /* ---------- admin: the promotion, what is owed in lari, the daily maximum, every rule ---------- */
 async function admCoins(el){const[s,rules]=await Promise.all([rpc('admin_coin_stats'),q(sb.from('coin_rules').select('*').order('pos'))]);
  await loadProfiles((s.top||[]).map(x=>x.u));if(!el.isConnected)return;
