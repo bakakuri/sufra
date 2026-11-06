@@ -53,7 +53,7 @@ function drawCoins(){const el=$('#cnb');if(!el||!CN.my)return;const m=CN.my,rate
   return `<details class="crgrp"${i<2?' open':''}><summary>${ic(icn)}<b>${esc(t)}</b><span class="crsum">${e?`<em>+${e}</em> დღეს`:`${cap?'+'+cap+'-მდე':''}`}</span></summary><div class="crlist">${g.rs.map(row).join('')}
    <button class="btn sm ghost crgo" data-a="cngo" data-k="${g.k}">${esc(t)}: გადასვლა</button></div></details>`};
  el.innerHTML=`<section class="balance cbal"><span>შენი ბალანსი</span><b id="cbal">${nf(all)}</b>
-  <div class="cparts"><div><small>ლარად გასატანი</small><b>${nf(cash)}</b><small>≈ ${cgel(cash,rate)} ₾</small></div><div><small>სახარჯი</small><b>${nf(bon)}</b><small>საჩუქრები, სტილები</small></div></div>
+  <div class="cparts"><div><small>ლარად გასატანი</small><b>${nf(cash)}</b><small>≈ ${cgel(cash,rate)} ₾</small></div><div><small>სახარჯი</small><b>${nf(bon)}</b><small>საჩუქრები, მაღაზია</small></div></div>
   <div class="cout"><div class="cbar" role="progressbar" aria-label="გატანამდე" aria-valuemin="0" aria-valuemax="${min}" aria-valuenow="${Math.min(cash,min)}"><i style="width:${Math.min(100,cash/min*100)}%"></i></div>
   <small>${cash>=min?`გასატანად მზადაა ${nf(cash)} მონეტა (${cgel(Math.floor(cash/100)*100,rate)} ₾).`:`ლარად გასატანად საჭიროა ${nf(min)} მონეტა (${cgel(min,rate)} ₾). დაგრჩა ${nf(min-cash)}.`}</small>
   <button class="btn cout-go${cash>=min?'':' dim'}" data-a="page" data-p="payout">${ic('card')}ლარად გატანა</button></div></section><div id="cpend"></div>
