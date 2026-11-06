@@ -1402,18 +1402,20 @@ button.gbig>i svg{width:13px;height:13px}
 @media (hover:hover) and (pointer:fine){.svarr{display:grid}}
 .svtrack{display:flex;gap:10px;overflow-x:auto;padding:2px 16px 4px;scroll-snap-type:x mandatory;scroll-padding:0 16px;scrollbar-width:none;overscroll-behavior-x:contain}
 .svtrack::-webkit-scrollbar{display:none}
-.svcard{flex:0 0 136px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:stretch;text-align:left;border-radius:18px;overflow:hidden;background:var(--sunk);border:1px solid var(--line);transition:transform .2s var(--ease-out)}
+.svcard{position:relative;flex:0 0 152px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:stretch;text-align:left;border-radius:20px;overflow:hidden;background:var(--surface);border:1px solid var(--line);box-shadow:0 1px 2px rgb(20 24 48/.04),0 6px 18px rgb(20 24 48/.06);transition:transform .25s var(--ease-out),box-shadow .25s}
 .svcard:active{transform:scale(.97)}
-.svart{position:relative;height:78px;overflow:hidden;background:linear-gradient(140deg,hsl(var(--h) 74% 60%),hsl(calc(var(--h) + 34) 68% 40%));display:flex;align-items:flex-end;padding:10px}
-.svart::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 18% 12%,rgb(255 255 255/.32),transparent 46%)}
-.svbig{position:absolute;right:-14px;bottom:-16px;color:#fff;opacity:.2;transform:rotate(-12deg)}
-.svbig svg{width:78px;height:78px;stroke-width:1.4}
-.svico{position:relative;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:rgb(255 255 255/.94);color:hsl(var(--h) 62% 38%);box-shadow:0 3px 10px rgb(0 0 0/.16)}
-.svico svg{width:21px;height:21px}
+@media (hover:hover){.svcard:hover{transform:translateY(-3px);box-shadow:0 2px 4px rgb(20 24 48/.06),0 14px 28px rgb(20 24 48/.12)}}
+.svart{position:relative;height:96px;overflow:hidden;background:linear-gradient(140deg,var(--g1),var(--g2));display:grid;place-items:center}
+.svart::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 12% 0%,rgb(255 255 255/.34),transparent 55%),radial-gradient(80% 70% at 100% 100%,rgb(0 0 0/.16),transparent 60%);pointer-events:none}
+.svart svg{position:relative;width:100%;height:100%;display:block;transition:transform .5s var(--ease-out)}
+@media (hover:hover){.svcard:hover .svart svg{transform:scale(1.05)}}
+.svart text{font-family:var(--f-display)}
+.svico{position:relative;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:rgb(255 255 255/.94);color:var(--g1)}
+.svico svg{width:22px;height:22px}
 .svlive{position:absolute;top:8px;left:8px;max-width:calc(100% - 16px);height:20px;padding:0 8px;border-radius:999px;background:rgb(0 0 0/.42);color:#fff;font-style:normal;font-size:11px;font-weight:700;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .svlive.red::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#FF4D6D;margin-right:5px;vertical-align:1px;animation:pulse 1.4s ease-in-out infinite}
-.svcard b{font-size:14px;line-height:1.25;padding:9px 11px 0}
-.svcard small{font-size:11.5px;line-height:1.35;color:var(--muted);margin:2px 11px 11px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;height:calc(2 * 1.35em)}
+.svcard b{font-size:14.5px;line-height:1.25;padding:10px 12px 0;font-weight:800;font-stretch:92%}
+.svcard small{font-size:12px;line-height:1.35;color:var(--muted);margin:3px 12px 12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;height:calc(2 * 1.35em)}
 @media (prefers-reduced-motion:reduce){.svlive.red::before{animation:none}}
 
 /* photos are never cropped and nothing lies on top of them: the author row above, the photo in its own shape
