@@ -50,7 +50,7 @@ A.qrscan=async()=>{const BD=window.BarcodeDetector;
  let alive=true;const det=new BD({formats:['qr_code']});
  layer(lhead('QR-ის სკანირება')+`<div class="ph-body qrscan"><div class="qrcam"><video id="qrv" playsinline muted autoplay></video><i class="qrframe"></i></div><p class="note" style="text-align:center">მიუშვირე კამერა მეგობრის QR კოდს</p></div>`,()=>{alive=false;stream.getTracks().forEach(x=>x.stop())});
  const v=$('#qrv');v.srcObject=stream;let warned=0;
- const tick=async()=>{if(!alive)return;try{const r=await det.detect(v),raw=r&&r[0]&&r[0].rawValue;if(raw){const m=String(raw).match(/#user-([0-9a-f-]{36})/);if(m){closeLayer();closeSheet(true);openPage('user',m[1]);return}if(Date.now()-warned>3000){warned=Date.now();toast('ეს Peera-ს QR კოდი არ არის')}}}catch(e){}setTimeout(tick,350)};
+ const tick=async()=>{if(!alive)return;try{const r=await det.detect(v),raw=r&&r[0]&&r[0].rawValue;if(raw){const m=String(raw).match(/#user-([0-9a-f-]{36})/);if(m){closeLayer();closeSheet(true);openPage('user',m[1]);return}const oh=typeof ownHash==='function'?ownHash(String(raw)):'';if(oh){closeLayer();closeSheet(true);route(oh);return}if(Date.now()-warned>3000){warned=Date.now();toast('ეს Peera-ს QR კოდი არ არის')}}}catch(e){}setTimeout(tick,350)};
  v.onloadeddata=tick};
 
 /* ---------- badges: earned on the server, each with a few coins ---------- */

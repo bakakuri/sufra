@@ -13,7 +13,7 @@ const WDAYS=['კვირა','ორშაბათი','სამშაბა
 function ago(ts){const d=(Date.now()-new Date(ts).getTime())/1000;if(d<60)return 'ახლა';if(d<3600)return Math.floor(d/60)+' წთ';if(d<86400)return Math.floor(d/3600)+' სთ';if(d<604800)return Math.floor(d/86400)+' დღე';const t=new Date(ts);return t.getDate()+' '+MONTHS[t.getMonth()].slice(0,3)}
 function fdate(ts){const t=new Date(ts);return `${WDAYS[t.getDay()]}, ${t.getDate()} ${MONTHS[t.getMonth()]}, ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`}
 function toast(t){const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2800)}
-const ERR={rate_limit:'ძალიან ხშირად წერ. ცოტა ხანში სცადე',spam_duplicate:'ერთი და იგივე ტექსტი ბევრგან სპამს ჰგავს, ამიტომ შეჩერდა',spam_links:'ახალი ანგარიში ბმულებს ჯერ შეზღუდულად აზიარებს. სცადე მოგვიანებით',album_full:'ალბომში მაქსიმუმ 1000 ფოტოა',bad_role:'ამ როლის მინიჭება შეუძლებელია',not_enough_coins:'მონეტები არ გყოფნის',already_claimed:'დღევანდელი ბონუსი უკვე აიღე',adults_only:'ეს ნაწილი მხოლოდ 18+ მომხმარებლებისთვისაა',dating_off:'ჯერ ჩართე გაცნობის პროფილი',blocked:'ეს მომხმარებელი დაბლოკილია',dm_friends_only:'ამ ადამიანს მხოლოდ მეგობრები წერენ',minor_protected:'ამ ადამიანს ახლა ვერ დაუკავშირდები: მას მხოლოდ მეგობრები, ოჯახი და კლასელები ან კურსელები სწერენ',not_allowed:'ეს მოქმედება ახლა შეუძლებელია',too_young:'Peera-ზე რეგისტრაცია 13 წლიდანაა შესაძლებელი',staff_only:'მხოლოდ მოდერატორებისთვის',post_must_belong_to_your_page:'რეკლამა მხოლოდ შენი გვერდის პოსტზე შეიძლება'};
+const ERR={too_new:'სტაროსტა რეგისტრაციიდან 3 დღის შემდეგ შეგიძლია გახდე',starosta_full:'ამ ჯგუფს უკვე ორი სტაროსტა ჰყავს',not_member:'ჯერ ჯგუფში გაწევრიანდი',rate_limit:'ძალიან ხშირად წერ. ცოტა ხანში სცადე',spam_duplicate:'ერთი და იგივე ტექსტი ბევრგან სპამს ჰგავს, ამიტომ შეჩერდა',spam_links:'ახალი ანგარიში ბმულებს ჯერ შეზღუდულად აზიარებს. სცადე მოგვიანებით',album_full:'ალბომში მაქსიმუმ 1000 ფოტოა',bad_role:'ამ როლის მინიჭება შეუძლებელია',not_enough_coins:'მონეტები არ გყოფნის',already_claimed:'დღევანდელი ბონუსი უკვე აიღე',adults_only:'ეს ნაწილი მხოლოდ 18+ მომხმარებლებისთვისაა',dating_off:'ჯერ ჩართე გაცნობის პროფილი',blocked:'ეს მომხმარებელი დაბლოკილია',dm_friends_only:'ამ ადამიანს მხოლოდ მეგობრები წერენ',minor_protected:'ამ ადამიანს ახლა ვერ დაუკავშირდები: მას მხოლოდ მეგობრები, ოჯახი და კლასელები ან კურსელები სწერენ',not_allowed:'ეს მოქმედება ახლა შეუძლებელია',too_young:'Peera-ზე რეგისტრაცია 13 წლიდანაა შესაძლებელი',staff_only:'მხოლოდ მოდერატორებისთვის',post_must_belong_to_your_page:'რეკლამა მხოლოდ შენი გვერდის პოსტზე შეიძლება'};
 function errMsg(e){const m=String(e?.message||e||'');for(const k in ERR)if(m.includes(k))return ERR[k];if(/row-level security|permission denied/i.test(m))return 'ამის უფლება არ გაქვს';if(/duplicate key/i.test(m))return 'ეს უკვე არსებობს';if(/Failed to fetch|NetworkError/i.test(m))return 'ინტერნეტთან კავშირი არ არის';return 'შეცდომა: '+m.slice(0,120)}
 async function q(p){const r=await p;if(r.error)throw r.error;return r.data}
 async function rpc(fn,args){return q(sb.rpc(fn,args||{}))}
@@ -26,6 +26,12 @@ const PC=new Map();
 const PCOLS='id,username,name,bio,city,hue,avatar_url,cover_url,privacy,dating,gender,is_business,verified,role,banned,rating,last_seen,created_at,nameday,nameday_label,surname';
 /* people search leaves out whom the viewer may not reach (an adult and a pupil under 18 who do not know each other);
    if the check is not there, everybody stays */
+/* whom this person may talk to and challenge in games: friends, family, the same class or course, or someone of the
+   same age group (reachable_talk). Remembered ten minutes; when the check cannot be made nobody new is let through */
+const RCH=new Map();
+async function reachTalk(ids){ids=[...new Set((ids||[]).filter(u=>u&&typeof ME!=='undefined'&&ME&&u!==ME.id))];const now=Date.now(),need=ids.filter(u=>!(RCH.has(u)&&now-RCH.get(u).t<6e5));
+ if(need.length){try{const ok=await q(sb.rpc('reachable_talk',{p_ids:need}));const s=new Set(Array.isArray(ok)?ok:need);need.forEach(u=>RCH.set(u,{v:s.has(u),t:now}))}catch(e){}}
+ return new Set(ids.filter(u=>(typeof FRIENDS!=='undefined'&&FRIENDS.has(u))||(RCH.get(u)&&RCH.get(u).v)))}
 async function reachOnly(ps){if(!ps||!ps.length)return ps;try{const ok=await q(sb.rpc('reachable',{p_ids:ps.map(p=>p.id)}));if(!Array.isArray(ok))return ps;const s=new Set(ok);return ps.filter(p=>p.id===ME.id||s.has(p.id)||(typeof FRIENDS!=='undefined'&&FRIENDS.has(p.id)))}catch(e){return ps}}
 async function loadProfiles(ids){const need=[...new Set(ids.filter(Boolean))].filter(id=>!PC.has(id)&&id!==ME?.id);if(need.length){for(let i=0;i<need.length;i+=100){const d=await q(sb.from('profiles').select(PCOLS).in('id',need.slice(i,i+100)));d.forEach(p=>PC.set(p.id,p))}}}
 const prof=id=>id&&ME&&id===ME.id?ME:PC.get(id)||{id,name:'მომხმარებელი',hue:200};
@@ -213,7 +219,51 @@ function editImage(file,opt={}){return new Promise(async resolve=>{let done=fals
  $('#eddone').onclick=()=>{$('#eddone').disabled=true;const finish=b=>{done=true;LAYER_CB=null;closeLayer();resolve(b)};
   if(c.style.filter&&c.style.filter!=='none'){const c2=document.createElement('canvas');c2.width=c.width;c2.height=c.height;const x2=c2.getContext('2d');x2.drawImage(c,0,0);c2.toBlob(finish,'image/jpeg',.86)}else c.toBlob(finish,'image/jpeg',.86)}})}
 async function pickImage(opt={}){const f=await pickFile('image/*',{capture:opt.capture});if(!f)return null;if(f.size>25e6){toast('ფოტო ძალიან დიდია (მაქს. 25 მბ)');return null}if(f.type==='image/gif')return f;return editImage(f,opt)}
-async function pickVideo(){const f=await pickFile('video/*');if(!f)return null;if(f.size>50e6){toast('ვიდეო 50 მბ-ზე ნაკლები უნდა იყოს');return null}return f}
+async function pickVideo(){const f=await pickFile('video/*');if(!f)return null;if(f.size>400e6){toast('ვიდეო ძალიან დიდია');return null}return vcMaybe(f)}
+/* a big or very sharp video is made smaller on the phone before it goes up: 1280 px on the long side, about 2 Mbit/s.
+   The phone plays it once to itself (as long as the video lasts) and records what it shows, the sound comes along through
+   WebAudio. The person starts it with a tap (phones play sound only after one) and may keep the original while it is under
+   50 MB; whenever something does not work, the original is used */
+const VCMP={long:1280,vbr:2e6,abr:96e3,maxDur:240};
+const mbOf=n=>(Math.round(n/1e5)/10).toLocaleString('ka-GE');
+function vcType(){if(!window.MediaRecorder||!window.HTMLCanvasElement||!window.HTMLCanvasElement.prototype.captureStream||!(window.AudioContext||window.webkitAudioContext))return '';
+ return ['video/mp4;codecs=avc1.42E01F,mp4a.40.2','video/mp4;codecs=avc1,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(t=>{try{return MediaRecorder.isTypeSupported(t)}catch(e){return false}})||''}
+function vcProbe(blob){return new Promise(res=>{const v=document.createElement('video'),u=URL.createObjectURL(blob);let ok=false;v.preload='auto';v.playsInline=true;v.setAttribute('playsinline','');
+ const t=setTimeout(()=>{if(!ok){URL.revokeObjectURL(u);res(null)}},12000);
+ v.onloadedmetadata=()=>{ok=true;clearTimeout(t);res({v,u,w:v.videoWidth,h:v.videoHeight,d:v.duration})};v.onerror=()=>{clearTimeout(t);URL.revokeObjectURL(u);res(null)};v.src=u})}
+async function vcMaybe(f){const big=()=>{toast('ვიდეო 50 მბ-ზე ნაკლები უნდა იყოს');return null};
+ const mt=vcType(),p=mt?await vcProbe(f):null;
+ if(!p||!p.w||!p.h||!isFinite(p.d)||p.d<=0){if(p)URL.revokeObjectURL(p.u);return f.size>50e6?big():f}
+ const rate=f.size*8/p.d,long=Math.max(p.w,p.h),need=(f.size>6e6&&rate>3.2e6)||(long>1400&&f.size>3e6);
+ if(!need||p.d>VCMP.maxDur){URL.revokeObjectURL(p.u);return f.size>50e6?big():f}
+ const est=(VCMP.vbr+VCMP.abr)*p.d/8,secs=Math.ceil(p.d);
+ return new Promise(res=>{let run=null,fin=false;
+  const end=x=>{if(fin)return;fin=true;try{p.v.pause()}catch(e){}URL.revokeObjectURL(p.u);p.v.removeAttribute('src');try{p.v.load()}catch(e){}res(x)};
+  layer(lhead('ვიდეოს შეკუმშვა')+`<div class="ph-body vcbox"><p>ვიდეო ${mbOf(f.size)} მბ-ია. შეკუმშვის შემდეგ დაახლოებით ${mbOf(est)} მბ იქნება: სწრაფად აიტვირთება და ნაკლებ ინტერნეტს დახარჯავთ შენც და მნახველებიც.</p>
+   <p class="muted" id="vc_t">შეკუმშვას დაახლოებით ${secs} წამი დასჭირდება. ამ დროს გვერდი ღია დატოვე.</p><div class="vcbar" id="vc_b" hidden><i id="vc_i"></i></div></div>
+   <div class="ph-foot">${f.size<=50e6?'<button class="btn ghost" id="vc_skip">ორიგინალით</button>':''}<span class="sp"></span><button class="btn" id="vc_go">${ic('check')}შეკუმშვა</button></div>`,
+   ()=>{if(run)run.stop(true);end(null)});
+  const sk=$('#vc_skip');if(sk)sk.onclick=()=>{end(f);closeLayer()};
+  $('#vc_go').onclick=e=>{const b=e.currentTarget;b.disabled=true;if(sk)sk.disabled=true;$('#vc_b').hidden=false;
+   try{run=vcRun(p,mt,x=>{const i=$('#vc_i'),t=$('#vc_t');if(i)i.style.width=Math.round(x*100)+'%';if(t)t.textContent=`მზადდება… ${Math.round(x*100)}% · დარჩა ${Math.max(0,Math.ceil(p.d*(1-x)))} წამი`})}catch(er){run=null}
+   if(!run){end(f.size<=50e6?f:big());closeLayer();return}
+   run.out.then(out=>{if(fin)return;const good=out&&out.size>20000&&out.size<f.size*.85;if(!good&&f.size>50e6){end(big());closeLayer();return}
+     if(good)toast(`შეიკუმშა: ${mbOf(f.size)} → ${mbOf(out.size)} მბ`);end(good?new File([out],'video.'+(out.type.includes('mp4')?'mp4':'webm'),{type:out.type}):f);closeLayer()})
+    .catch(()=>{if(fin)return;run.stop(true);end(f.size<=50e6?f:big());closeLayer()})}})}
+/* plays the video once into a smaller canvas and records it with its sound; started inside the tap.
+   MP4 first (H.264 where the phone has it): a recorded WebM carries no length, so players could not show or seek it */
+function vcRun(p,mt,onp){const v=p.v,sc=Math.min(1,VCMP.long/Math.max(p.w,p.h)),cw=Math.max(2,Math.round(p.w*sc/2)*2),chh=Math.max(2,Math.round(p.h*sc/2)*2);
+ const c=document.createElement('canvas');c.width=cw;c.height=chh;const x=c.getContext('2d'),stream=c.captureStream(30);
+ const AC=window.AudioContext||window.webkitAudioContext,ac=new AC(),src=ac.createMediaElementSource(v),dst=ac.createMediaStreamDestination();src.connect(dst);dst.stream.getAudioTracks().forEach(t=>stream.addTrack(t));
+ const rec=new MediaRecorder(stream,{mimeType:mt,videoBitsPerSecond:VCMP.vbr,audioBitsPerSecond:VCMP.abr}),chunks=[];rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
+ let stopped='',last=-1;
+ const draw=()=>{if(stopped)return;if(v.currentTime!==last){last=v.currentTime;try{x.drawImage(v,0,0,cw,chh)}catch(e){}onp(Math.min(1,v.currentTime/p.d))}if(v.requestVideoFrameCallback)v.requestVideoFrameCallback(draw);else requestAnimationFrame(draw)};
+ const vis=()=>{if(stopped)return;try{if(document.hidden){v.pause();if(rec.state==='recording')rec.pause()}else{if(rec.state==='paused')rec.resume();v.play().catch(()=>{})}}catch(e){}};
+ document.addEventListener('visibilitychange',vis);
+ const out=new Promise((res,rej)=>{rec.onstop=()=>{document.removeEventListener('visibilitychange',vis);try{stream.getTracks().forEach(t=>t.stop())}catch(e){}try{ac.close()}catch(e){}res(stopped==='cancel'?null:new Blob(chunks,{type:mt.split(';')[0]}))};
+  rec.onerror=e=>rej(e.error||new Error('rec'));v.onended=()=>{if(stopped)return;onp(1);setTimeout(()=>{stopped='end';try{if(rec.state!=='inactive')rec.stop()}catch(e){rej(e)}},150)};v.onerror=()=>rej(new Error('video'))});
+ try{v.currentTime=0}catch(e){}v.muted=false;rec.start(1000);const pl=v.play();if(ac.state==='suspended')ac.resume().catch(()=>{});draw();
+ return {out:Promise.all([out,pl]).then(a=>a[0]),stop(cancel){if(stopped)return;stopped=cancel?'cancel':'end';try{v.pause()}catch(e){}try{if(rec.state!=='inactive')rec.stop()}catch(e){}}}}
 function recordVoice(){return new Promise(async resolve=>{let done=false,rec,stream,chunks=[],t0,tm;const fin=v=>{if(done)return;done=true;try{rec&&rec.state!=='inactive'&&rec.stop()}catch(e){}stream&&stream.getTracks().forEach(t=>t.stop());clearInterval(tm);resolve(v)};
  try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(e){toast('მიკროფონზე წვდომა არ არის');return resolve(null)}
  const mt=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||'';
@@ -238,3 +288,17 @@ function linkCard(l,cls=''){if(!l||!l.url)return '';const img=l.image&&!ECO()?`<
 /* the "good idea" reaction. it is stored as 🍷 (the reaction lists in the database were made with it) and shown as a light bulb */
 const IDEA='💡';
 const rg=e=>e==='🍷'?IDEA:e;
+
+/* what breaks on a phone reaches the admin panel (client_errors): each error once a visit, at most 8 a visit,
+   only for someone signed in; network hiccups, aborted media and browser noise are left out */
+const ERRS={seen:new Set(),n:0,v:((document.querySelector('script[src*="/js/core.js"]')||{}).src||'').replace(/^.*[?&]v=/,'').slice(0,20)};
+const ERR_NOISE=/ResizeObserver loop|^Script error\.?$|AbortError|aborted|Failed to fetch|NetworkError|Load failed|network|NotAllowedError|play\(\) request|interrupted by a call to pause|Fetch is aborted|The operation was aborted|JWT expired|Refresh Token/i;
+function errReport(msg,src,line,col,stack){try{
+ if(typeof ME==='undefined'||!ME||!ME.id||ME.offline||ERRS.n>=8)return;msg=String(msg||'').slice(0,500);if(!msg||ERR_NOISE.test(msg))return;
+ const k=msg+'|'+(src||'')+'|'+(line||0);if(ERRS.seen.has(k))return;ERRS.seen.add(k);ERRS.n++;
+ sb.from('client_errors').insert({msg,src:String(src||'').replace(location.origin,'').slice(0,300),line:+line||null,col:+col||null,stack:String(stack||'').replace(new RegExp(location.origin.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'),'').slice(0,2000),
+  page:((location.hash||'#')+(typeof S!=='undefined'&&S.page?' · '+S.page.id:'')+(typeof S!=='undefined'&&S.game?' · '+S.game:'')).slice(0,200),ua:navigator.userAgent.slice(0,300),ver:ERRS.v}).then(()=>{},()=>{})}catch(e){}}
+window.addEventListener('error',e=>{if(!e.error&&e.target&&e.target!==window)return;errReport(e.message,e.filename,e.lineno,e.colno,e.error&&e.error.stack)});
+window.addEventListener('unhandledrejection',e=>{const r=e.reason;if(r&&r.code)return;errReport(r&&r.message||String(r),'promise',0,0,r&&r.stack)});
+/* a programming error inside a button's action is reported too (a database refusal is not: it has a code) */
+const errBug=(x,a)=>{if(x instanceof Error&&/^(TypeError|ReferenceError|SyntaxError|RangeError)$/.test(x.name))errReport(x.message,'action:'+a,0,0,x.stack)};

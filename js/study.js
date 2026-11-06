@@ -201,23 +201,26 @@ async function kuEduPage(){const el=$('#edub');if(!el)return;const E=await kuEdu
   :empty('ჯერ არაფერი დაგიმატებია','დაამატე სკოლა ან უნივერსიტეტი.',`<button class="btn" data-a="eduadd">${ic('plus')}დამატება</button>`))}
 A.eduadd=()=>eduSheet(-1);
 A.eduedit=t=>eduSheet(+t.dataset.i);
-function eduSheet(i){const E=(KUR.cache.edu||[]).slice(),e=i>=0?Object.assign({},E[i]):{k:'school',n:'',c:ME.city||'',y0:'',y1:'',cls:'',f:''};const yr=new Date().getFullYear();
- const draw=()=>{const isU=e.k==='uni';
-  $('#eduf').innerHTML=`<div class="seg flat" style="margin:0"><button type="button" data-k="school" aria-pressed="${!isU}">${ic('book')}სკოლა</button><button type="button" data-k="uni" aria-pressed="${isU}">${ic('school')}უნივერსიტეტი</button></div>
+/* the school or university form, used by the education sheet and by the first steps of a new person */
+function eduDraw(e){const isU=e.k==='uni',yr=new Date().getFullYear(),box=$('#eduf');if(!box)return;
+ box.innerHTML=`<div class="seg flat" style="margin:0"><button type="button" data-k="school" aria-pressed="${!isU}">${ic('book')}სკოლა</button><button type="button" data-k="uni" aria-pressed="${isU}">${ic('school')}უნივერსიტეტი</button></div>
   ${isU?`<label class="fld">უნივერსიტეტი<input id="ed_n" list="ed_ul" maxlength="80" required value="${esc(e.n)}" placeholder="დაიწყე წერა: თსუ, ილიაუნი…"><datalist id="ed_ul">${UNIS.map(u=>`<option value="${esc(u[1])}">${esc(u[2])}</option>`).join('')}</datalist></label>
    <label class="fld">ფაკულტეტი ან პროგრამა<input id="ed_f" list="ed_fl" maxlength="50" value="${esc(e.f||'')}" placeholder="მაგ. ეკონომიკა და ბიზნესი"><datalist id="ed_fl">${FACS.map(f=>`<option value="${esc(f)}">`).join('')}</datalist></label>
    <div class="row2"><label class="fld grow">ჩარიცხვის წელი<input id="ed_y0" type="number" inputmode="numeric" min="1950" max="${yr+1}" value="${esc(e.y0||'')}" placeholder="${yr-1}"></label><label class="fld grow">დამთავრება<input id="ed_y1" type="number" inputmode="numeric" min="1950" max="${yr+8}" value="${esc(e.y1||'')}" placeholder="${yr+3}"></label></div>`
   :`<label class="fld">სკოლა<input id="ed_n" maxlength="80" required value="${esc(e.n)}" placeholder="მაგ. 51-ე საჯარო სკოლა"></label><label class="fld">ქალაქი ან სოფელი<input id="ed_c" maxlength="40" value="${esc(e.c||'')}" placeholder="მაგ. თბილისი"></label>
    <div class="row2"><label class="fld grow">დამთავრების წელი<input id="ed_y1" type="number" inputmode="numeric" min="1950" max="${yr+12}" value="${esc(e.y1||'')}" placeholder="${yr}"></label><label class="fld grow">კლასი (ასო)<input id="ed_cls" maxlength="4" value="${esc(e.cls||'')}" placeholder="ა, ბ, გ…"></label></div>`}`;
-  $$('#eduf [data-k]').forEach(b=>b.onclick=()=>{read();e.k=b.dataset.k;e.n='';draw()})};
- const read=()=>{const v=id=>{const x=$('#'+id);return x?x.value.trim():undefined};e.n=v('ed_n')||'';if(e.k==='uni'){e.f=v('ed_f')||'';e.y0=v('ed_y0')||'';e.y1=v('ed_y1')||'';e.c='';e.cls=''}else{e.c=v('ed_c')||'';e.y1=v('ed_y1')||'';e.cls=v('ed_cls')||'';e.f='';e.y0=''}};
+ $$('#eduf [data-k]').forEach(b=>b.onclick=()=>{eduRead(e);e.k=b.dataset.k;e.n='';eduDraw(e)})}
+function eduRead(e){const v=id=>{const x=$('#'+id);return x?x.value.trim():undefined};e.n=v('ed_n')||'';if(e.k==='uni'){e.f=v('ed_f')||'';e.y0=v('ed_y0')||'';e.y1=v('ed_y1')||'';e.c='';e.cls=''}else{e.c=v('ed_c')||'';e.y1=v('ed_y1')||'';e.cls=v('ed_cls')||'';e.f='';e.y0=''}}
+/* what is filled in, ready to keep: the entry, or what is still wrong with it */
+function eduBuild(e){eduRead(e);if(e.n.length<2)return e.k==='uni'?'ჩაწერე უნივერსიტეტი':'ჩაწერე სკოლა';const y=k=>e[k]===''||/^\d{4}$/.test(String(e[k]));if(!y('y0')||!y('y1'))return 'წელი ოთხი ციფრით ჩაწერე';
+ const o={k:e.k,n:e.n.slice(0,80)};if(e.c)o.c=e.c.slice(0,40);if(e.f)o.f=e.f.slice(0,50);if(e.y0)o.y0=+e.y0;if(e.y1)o.y1=+e.y1;if(e.cls)o.cls=e.cls.slice(0,4);o.key=eduKey(o);return o}
+const eduNew=()=>({k:'school',n:'',c:ME.city||'',y0:'',y1:'',cls:'',f:''});
+function eduSheet(i){const E=(KUR.cache.edu||[]).slice(),e=i>=0?Object.assign({},E[i]):eduNew();
  sheet(head(i>=0?'რედაქტირება':'სკოლა ან უნივერსიტეტი')+`<form class="ph-body" id="eduf"></form><div class="ph-foot">${i>=0?`<button class="btn ghost danger" id="ed_del">${ic('trash')}წაშლა</button>`:''}<span class="sp"></span><button class="btn" id="ed_ok">${ic('check')}შენახვა</button></div>`);
- draw();$('#eduf').onsubmit=ev=>{ev.preventDefault();$('#ed_ok').click()};
- const save=async L=>{try{const db=await kuEduSave(L);KUR.cache.edu=L;closeSheet();toast(db?'შენახულია':'შენახულია ამ ტელეფონზე');if(db)sb.rpc('join_edu_groups').then(()=>{},()=>{});kuEduPage()}catch(er){toast(errMsg(er))}};
+ eduDraw(e);$('#eduf').onsubmit=ev=>{ev.preventDefault();$('#ed_ok').click()};
+ const save=async L=>{try{const db=await kuEduSave(L);KUR.cache.edu=L;closeSheet();toast(db?'შენახულია':'შენახულია ამ ტელეფონზე');if(db)sb.rpc('join_edu_groups').then(()=>{KUR.groups=null},()=>{});kuEduPage()}catch(er){toast(errMsg(er))}};
  if(i>=0)$('#ed_del').onclick=()=>{E.splice(i,1);save(E)};
- $('#ed_ok').onclick=()=>{read();if(e.n.length<2){toast(e.k==='uni'?'ჩაწერე უნივერსიტეტი':'ჩაწერე სკოლა');return}const y=k=>e[k]===''||/^\d{4}$/.test(String(e[k]));if(!y('y0')||!y('y1')){toast('წელი ოთხი ციფრით ჩაწერე');return}
-  const o={k:e.k,n:e.n.slice(0,80)};if(e.c)o.c=e.c.slice(0,40);if(e.f)o.f=e.f.slice(0,50);if(e.y0)o.y0=+e.y0;if(e.y1)o.y1=+e.y1;if(e.cls)o.cls=e.cls.slice(0,4);o.key=eduKey(o);
-  if(i>=0)E[i]=o;else E.push(o);save(E)}}
+ $('#ed_ok').onclick=()=>{const o=eduBuild(e);if(typeof o==='string'){toast(o);return}if(i>=0)E[i]=o;else E.push(o);save(E)}}
 A.edugroups=async()=>{try{const ids=await q(sb.rpc('join_edu_groups'));KUR.groups=null;toast(ids&&ids.length?`ჯგუფები: ${ids.length}`:'ჯგუფები ვერ შეიქმნა');openPage('groups')}catch(e){toast(kuMissing(e)?'ჯგუფები ბაზის განახლების შემდეგ ჩაირთვება':errMsg(e))}};
 PG.classmates={r(){view.innerHTML=pgHead('კლასელები და კურსელები')+`<div id="cmb">${skel(4)}</div>`;kuMates()}};
 async function kuMates(){const el=$('#cmb');if(!el)return;const E=await kuEduOf(ME.id);if(!el.isConnected)return;

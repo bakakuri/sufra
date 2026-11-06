@@ -1,7 +1,7 @@
 /* admin panel: overview, reports, all content, users and coins, verification, sponsored posts and stories, notifications to everyone, site settings, pages, words, the log */
 Object.assign(ERR,{admin_only:'ეს მხოლოდ ადმინისტრატორს შეუძლია',cannot_ban_admin:'ადმინისტრატორს ვერ შეზღუდავ',cannot_demote_self:'საკუთარ თავს როლს ვერ ჩამოართმევ',not_pending:'ეს რეკლამა უკვე განხილულია',bad_type:'ამ ტიპის შინაარსს ასე ვერ დამალავ',staff_only:'ეს მხოლოდ გუნდს შეუძლია'});
 const ADM={tab:'overview',rst:'open',uf:'new',st:{},ct:'post',cq:'',ch:false,pt:'mine',promos:[]};
-const ATABS=[['overview','მიმოხილვა',null,0],['reports','საჩივრები','open_reports',0],['content','კონტენტი',null,0],['users','მომხმარებლები',null,0],['verify','ვერიფიკაცია','pending_verifications',0],['promo','რეკლამა','pending_ads',0],['notify','შეტყობინებები',null,1],['site','საიტი',null,1],['pages','გვერდები',null,0],['words','სიტყვები',null,0],['log','ჟურნალი',null,0]];
+const ATABS=[['overview','მიმოხილვა',null,0],['reports','საჩივრები','open_reports',0],['content','კონტენტი',null,0],['users','მომხმარებლები',null,0],['verify','ვერიფიკაცია','pending_verifications',0],['promo','რეკლამა','pending_ads',0],['notify','შეტყობინებები',null,1],['site','საიტი',null,1],['pages','გვერდები',null,0],['words','სიტყვები',null,0],['errors','შეცდომები',null,0],['log','ჟურნალი',null,0]];
 const atabs=()=>ATABS.filter(t=>!t[3]||ME.role==='admin');
 const TTYPE={post:'პოსტი',comment:'კომენტარი',user:'პროფილი',listing:'განცხადება',message:'შეტყობინება',page:'გვერდი',story:'ისტორია',event:'ღონისძიება',job:'ვაკანსია',ride:'მგზავრობა',room:'ოთახი',fixture:'მატჩი',place:'ადგილი',review:'შეფასება',toast:'სადღეგრძელო',help:'დახმარების თხოვნა'};
 const ROLE_L={user:'მომხმარებელი',moderator:'მოდერატორი',admin:'ადმინისტრატორი'};
@@ -14,7 +14,16 @@ async function loadAdmin(){try{ADM.st=await rpc('admin_stats')||{}}catch(e){ADM.
 function drawAdTabs(){const el=$('#adtabs');if(!el)return;el.innerHTML=atabs().map(([k,l,c])=>`<button data-a="adtab" data-k="${k}" aria-pressed="${ADM.tab===k}">${l}${c&&ADM.st[c]?` <span class="badge">${ADM.st[c]}</span>`:''}</button>`).join('')}
 A.adtab=t=>{ADM.tab=t.dataset.k;drawAdTabs();adminTab()};
 async function refreshStats(){try{ADM.st=await rpc('admin_stats')||{};drawAdTabs()}catch(e){}}
-function adminTab(){const el=$('#adb');if(!el)return;el.innerHTML=skel(3);({overview:admOverview,reports:admReports,content:admContent,users:admUsers,verify:admVerify,promo:admPromo,ads:admAds,notify:admNotify,site:admSite,pages:admPages,words:admWords,log:admLog})[ADM.tab](el).catch(e=>{if(el.isConnected)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e),'<button class="btn" data-a="adreload">თავიდან ცდა</button>')})}
+/* errors from people's phones (client_errors), the same one together: how often, how many people, when, on what */
+async function admErrors(el){const rows=await q(sb.from('client_errors').select('id,user_id,created_at,msg,src,line,col,stack,page,ua,ver').order('created_at',{ascending:false}).limit(400));if(!el.isConnected)return;
+ const G=new Map();for(const r of rows){const k=r.msg+'|'+r.src+'|'+(r.line||0);let g=G.get(k);if(!g){g={r,n:0,u:new Set(),last:r.created_at};G.set(k,g)}g.n++;if(r.user_id)g.u.add(r.user_id)}
+ const L=ADM.errs=[...G.values()].sort((a,b)=>b.n-a.n||new Date(b.last)-new Date(a.last));
+ const dev=ua=>/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':/Windows/.test(ua)?'Windows':/Mac OS/.test(ua)?'Mac':'სხვა';
+ el.innerHTML=`<p class="hint" style="padding:12px 16px 0">ბოლო 14 დღის შეცდომები ხალხის ტელეფონებიდან. ერთნაირი ერთად ჩანს, ყველაზე ხშირი ზემოთაა.</p>`+(L.length?L.map((g,i)=>`<details class="aderr"><summary><b>${esc(g.r.msg)}</b><span class="sub">${g.n}-ჯერ · ${g.u.size} ადამიანი · ${ago(g.last)} · ${esc(dev(g.r.ua))}${g.r.page?' · '+esc(g.r.page):''}</span></summary><pre>${esc((g.r.src||'')+(g.r.line?':'+g.r.line+':'+(g.r.col||0):''))}
+${esc(g.r.stack||'')}
+ვერსია ${esc(g.r.ver||'?')}</pre>${ME.role==='admin'?`<button class="btn sm ghost" data-a="aderrdel" data-i="${i}">${ic('check')}მოგვარდა, წაშლა</button>`:''}</details>`).join(''):empty('შეცდომები არ არის','როცა ვინმეს ტელეფონზე რამე გაფუჭდება, აქ გამოჩნდება.'))}
+A.aderrdel=async t=>{const g=(ADM.errs||[])[+t.dataset.i];if(!g)return;try{await q(sb.from('client_errors').delete().eq('msg',g.r.msg).eq('src',g.r.src));toast('წაიშალა');adminTab()}catch(e){toast(errMsg(e))}};
+function adminTab(){const el=$('#adb');if(!el)return;el.innerHTML=skel(3);({overview:admOverview,reports:admReports,content:admContent,users:admUsers,verify:admVerify,promo:admPromo,ads:admAds,notify:admNotify,site:admSite,pages:admPages,words:admWords,errors:admErrors,log:admLog})[ADM.tab](el).catch(e=>{if(el.isConnected)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e),'<button class="btn" data-a="adreload">თავიდან ცდა</button>')})}
 A.adreload=()=>adminTab();
 
 /* reports: grouped by target, with a preview and one-tap actions */

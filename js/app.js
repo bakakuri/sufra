@@ -105,6 +105,7 @@ function route(h){h=String(h||'');if(!h||h==='#'||h.includes('='))return false;l
  try{const m=decodeURIComponent(h).match(/^#([a-z]+)(?:-(.+))?$/);if(!m)return false;[,id,arg]=m}catch(e){return false}
  const base=()=>{if(!view.childElementCount)go('home')};
  if(id==='chat'&&arg){base();openChat(+arg);return true}
+ if(id==='join'&&/^\d+$/.test(arg||'')){base();joinByLink(+arg);return true}
  if(id==='notifications'){base();openNotes();return true}
  if(id==='storyv'&&arg){base();openStoryById(+arg);return true}
  if(id==='chats'){base();openChats();return true}
@@ -123,7 +124,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ME){count
 
 /* global input */
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;if(b.dataset.tab===S.tab&&!S.page&&view.scrollTop>10){view.scrollTo({top:0,behavior:RM()?'auto':'smooth'});return}go(b.dataset.tab)});
-document.addEventListener('click',e=>{if(!e.target.closest('.rwrap'))$$('.picker').forEach(x=>x.remove());const t=e.target.closest('[data-a]');if(!t)return;const f=A[t.dataset.a];if(!f)return;if(t.tagName==='A')e.preventDefault();try{const r=f(t,e);if(r&&r.catch)r.catch(x=>toast(errMsg(x)))}catch(x){toast(errMsg(x))}});
+document.addEventListener('click',e=>{if(!e.target.closest('.rwrap'))$$('.picker').forEach(x=>x.remove());const t=e.target.closest('[data-a]');if(!t)return;const f=A[t.dataset.a];if(!f)return;if(t.tagName==='A')e.preventDefault();try{const r=f(t,e);if(r&&r.catch)r.catch(x=>{toast(errMsg(x));errBug(x,t.dataset.a)})}catch(x){toast(errMsg(x));errBug(x,t.dataset.a)}});
 $('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeSheet()});
 $('#layer').addEventListener('click',e=>{if(e.target.id==='layer')closeLayer()});
 /* a plate or card that acts as a button (role=button with an action) answers Enter and Space like one */
@@ -134,13 +135,16 @@ document.addEventListener('keydown',e=>{if(PV&&!$('#pv')?.hidden&&$('#sheet').hi
 try{const ro=new ResizeObserver(()=>{const r=document.documentElement.style;r.setProperty('--th',$('#top').offsetHeight+'px');r.setProperty('--bh',$('#tabs').offsetHeight+'px')});ro.observe($('#top'));ro.observe($('#tabs'))}catch(e){}
 
 /* start */
+/* an invite link opened before signing in (or before the sign-up mail is confirmed) is kept until the app opens */
+try{const m=location.hash.match(/^#join-(\d+)$/);if(m)store.set('pendjoin',+m[1])}catch(e){}
 let ENTERED=false;
 async function enterApp(){if(ENTERED)return;ENTERED=true;
  try{const{data}=await sb.auth.getUser();S.email=data?.user?.email||''}catch(e){}
  $('#app').hidden=false;$('#boot')?.remove();renderTop();renderTabs();renderSide();
  if(!ME.offline)await Promise.race([loadFriends(),new Promise(r=>setTimeout(r,2500))]);
  if(ME.offline)go('games');else if(!route(location.hash))go('home');
- navInit();renderBadges();
+ navInit();
+ {const pj=store.get('pendjoin',null);if(pj&&!ME.offline&&!/^#join-/.test(location.hash))setTimeout(()=>joinByLink(+pj),400)}renderBadges();
  if(ME.offline){toast('ინტერნეტი არ არის. ბოტებთან თამაში მაინც მუშაობს');return}
  if(ME.banned)toast('შენი ანგარიში შეზღუდულია: პოსტები და შეტყობინებები დროებით გამორთულია');
  try{netInit()}catch(e){}try{listenCalls()}catch(e){}try{listenNotes()}catch(e){}

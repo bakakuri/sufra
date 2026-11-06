@@ -10,7 +10,10 @@ function gvWhere(){if(!ME)return null;
  if(S.page&&S.page.id==='lotable'&&typeof LOT!=='undefined'&&LOT.id&&LOT.t&&LOT.seat>=0&&LOT.t.status!=='closed')return{key:'lo'+LOT.id,allow:LOT.t.seats.filter(u=>u&&u!==ME.id),ch:LOT.ch};
  if(!S.page&&S.tab==='games'&&S.game){const c=GAME[S.game]&&GAME[S.game].ctx;if(c&&c.mode==='online'&&c.gid&&c.opp&&!c.gone)return{key:'g'+c.gid,allow:[c.opp],ch:c.gr&&c.gr.ch}}
  return null}
-const gvOk=u=>!!u&&!!ME&&u!==ME.id&&GV.allow.includes(u);
+const gvOk=u=>!!u&&!!ME&&u!==ME.id&&GV.allow.includes(u)&&gvTalk(u);
+/* voice only between people who may talk (reachTalk): an adult and a pupil under 18 who do not know each other sit at the same table but do not hear each other */
+const gvTalk=u=>(typeof FRIENDS!=='undefined'&&FRIENDS.has(u))||!!(RCH.get(u)&&RCH.get(u).v);
+function gvReach(){const need=GV.allow.filter(u=>!gvTalk(u)&&!RCH.has(u));if(!need.length||GV.rq||Date.now()-(GV.rqt||0)<15000)return;GV.rq=1;GV.rqt=Date.now();reachTalk(need).then(()=>{GV.rq=0;if(GV.ch)gvSync()},()=>{GV.rq=0})}
 function gvSend(p){try{if(GV.ch)GV.ch.send({type:'broadcast',event:'sig',payload:Object.assign({from:ME.id},p)})}catch(e){}}
 /* the button sits among the table's tools; it says whether the mic is off, on, or muted, and glows when the other side is talking */
 function gvDraw(){const w=gvWhere();if(GV.ch&&(!w||w.key!==GV.key)){gvLeave(true);return}
@@ -53,7 +56,7 @@ function gvLeave(quiet){const w=gvWhere(),key=GV.key;clearInterval(GV.chk);GV.ch
  Object.assign(GV,{key:'',ch:null,local:null,mute:false,allow:[],here:new Map()});$$('.speaking[data-vu],.pl.speaking').forEach(e=>e.classList.remove('speaking'));
  if(!quiet)toast('ხმოვანი საუბარი დასრულდა');gvDraw()}
 /* who is in the circle: the one with the smaller id calls the other, so each pair connects once */
-function gvSync(){if(!GV.ch)return;const w=gvWhere();if(w&&w.key===GV.key)GV.allow=w.allow;const ps=GV.ch.presenceState(),now=new Map();
+function gvSync(){if(!GV.ch)return;const w=gvWhere();if(w&&w.key===GV.key)GV.allow=w.allow;gvReach();const ps=GV.ch.presenceState(),now=new Map();
  for(const[k,arr]of Object.entries(ps)){const m=arr&&arr[arr.length-1];if(gvOk(k))now.set(k,m||{})}GV.here=now;
  for(const u of now.keys())if(!GV.peers.has(u)){const p=gvPeer(u);if(ME.id<u)gvOffer(p)}
  for(const u of[...GV.peers.keys()])if(!now.has(u))gvClose(u);gvDraw()}
