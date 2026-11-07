@@ -72,7 +72,7 @@ async function shopOrder(id){let o;try{o=await q(sb.from('shop_orders').select('
   <p class="shst"><span class="ist o-${o.status}">${ic(s[1])}${s[0]}</span> ${esc(s[2])}${auto?` თუ პრობლემას არ მიუთითებ, შეკვეთა თავისით დასრულდება (${auto.getDate()} ${MONTHS[auto.getMonth()]}).`:''}</p>
   <div class="pocopy"><span class="grow"><small>${buyer?'მიწოდება (შენ მიუთითე)':'მიწოდება: მყიდველის მონაცემები'}</small><span>${esc(o.delivery)}</span></span>${buyer?'':`<button class="ibtn sm" data-a="adpocopy" data-v="${esc(o.delivery)}" aria-label="კოპირება">${ic('copy')}</button>`}</div>
   ${o.ship_note?`<p class="note"><b>გაგზავნის შენიშვნა:</b> ${esc(o.ship_note)}</p>`:''}${o.dispute?`<p class="note"><b>პრობლემა:</b> ${esc(o.dispute)}</p>`:''}${o.admin_note?`<p class="note"><b>ადმინისტრაცია:</b> ${esc(o.admin_note)}</p>`:''}
-  ${o.status==='completed'&&!buyer&&o.payout!=null?`<p class="note">მიიღე ${nf(o.payout)} მონეტა (10% საკომისიოს გარეშე)${o.payout_cash?`, მათ შორის ${nf(o.payout_cash)} გასატანი`:''}.</p>`:''}
+  ${o.status==='completed'&&!buyer&&o.payout!=null?`<p class="note">მიიღე ${nf(o.payout)} მონეტა (10% საკომისიოს გარეშე).</p>`:''}
   <div class="shnote" id="sho_nw" hidden><label class="fld"><span id="sho_nl"></span><textarea id="sho_n" rows="2" maxlength="300"></textarea></label></div>
   <div class="shacts">${acts.map(([a,c,l])=>`<button class="${c}" data-a="shoact" data-act="${a}" data-id="${o.id}">${l}</button>`).join('')}<button class="btn ghost" data-a="shochat" data-u="${other}" data-t="${esc(o.title)}">${ic('msg')}${buyer?'გამყიდველს':'მყიდველს'} მიწერა</button></div></div>`,'short')}
 A.shochat=t=>{closeSheet();openChatWith(t.dataset.u,`შეკვეთა „${t.dataset.t}“: `)};

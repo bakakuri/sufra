@@ -2844,11 +2844,7 @@ body.wide .pspace{flex-wrap:wrap;margin:6px 0 0;padding:4px 0 2px;-webkit-mask-i
 /* ---------- coins: balance in two parts, the promotion, the 7-day bonus, today's progress, the rules ---------- */
 .cbal{gap:10px}
 .cbal>span{font-size:13px;font-weight:700;opacity:.85}
-.cparts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
-.cparts>div{display:flex;flex-direction:column;gap:1px;padding:10px 12px;border-radius:14px;background:color-mix(in srgb,#fff 22%,transparent);backdrop-filter:blur(2px)}
-.cparts>div:first-child{background:color-mix(in srgb,#fff 34%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,#fff 45%,transparent)}
-.cparts b{font-size:22px;line-height:1.15}
-.cparts small{font-size:11.5px;opacity:.85;line-height:1.3}
+.cbal .cgel{font-size:13px;font-weight:600;opacity:.8;margin-top:-6px}
 .cout{display:flex;flex-direction:column;gap:6px}
 .cout small{font-size:12px;line-height:1.35;opacity:.9}
 .cbar{height:8px;border-radius:999px;background:color-mix(in srgb,currentColor 16%,transparent);overflow:hidden}
@@ -2894,7 +2890,6 @@ body.wide .pspace{flex-wrap:wrap;margin:6px 0 0;padding:4px 0 2px;-webkit-mask-i
 .crrow.full b,.crrow.full .crc{opacity:.55}
 .crgo{align-self:flex-start;margin-top:8px}
 .hist .cn{color:var(--muted);font-weight:700}
-.hist .ccash{display:inline-block;padding:1px 7px;border-radius:999px;background:color-mix(in srgb,var(--gold) 18%,var(--sunk));color:color-mix(in srgb,var(--gold) 75%,var(--ink));font-size:11px;font-weight:700}
 /* "+3" rising from the coin chip when coins arrive */
 .coinping{position:fixed;z-index:90;transform:translate(-50%,0);display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:999px;background:var(--gold);color:var(--on-gold);font-weight:800;font-size:13px;font-variant-numeric:tabular-nums;box-shadow:var(--shadow);pointer-events:none;animation:coinping 1.5s var(--ease-out) forwards}
 .coinping svg{width:15px;height:15px}
