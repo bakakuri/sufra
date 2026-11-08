@@ -3069,3 +3069,64 @@ body.wide .pspace{flex-wrap:wrap;margin:6px 0 0;padding:4px 0 2px;-webkit-mask-i
 .shacts{display:flex;flex-wrap:wrap;gap:8px}
 .adshgal img{width:96px;height:96px;object-fit:cover;border-radius:10px;flex:none}
 .lnk{color:var(--wine);font-weight:600;text-decoration:underline;text-underline-offset:2px}
+
+/* ---------- the games chooser and the page of each kind ---------- */
+.hub{padding:0 16px 18px;overflow-y:auto;min-height:0;overscroll-behavior:contain}
+.hubp .ph-head{border-bottom:0;padding-bottom:0}
+.hubp .ph-head h2{font-size:24px;font-weight:900}
+.hub-sub{margin:0 0 14px;color:var(--muted);font-size:13.5px}
+.hub-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hub-k{position:relative;display:flex;flex-direction:column;justify-content:flex-end;aspect-ratio:4/5;border-radius:22px;overflow:hidden;padding:0;text-align:left;color:#fff;isolation:isolate;
+ box-shadow:0 12px 26px -14px rgb(0 0 0/.6),inset 0 0 0 1px rgb(255 255 255/.1);transition:transform .18s var(--ease-out);animation:hubIn .5s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--i,0) * 60ms)}
+.hub-k:active{transform:scale(.965)}
+.hub-k::after,.hub-hero::after{content:"";position:absolute;inset:auto 0 0;height:60%;background:linear-gradient(to top,rgb(0 0 0/.66),rgb(0 0 0/0));z-index:1;pointer-events:none}
+.hub-pic{position:absolute;inset:0 0 auto;height:72%;display:grid;place-items:center;z-index:0}
+.hub-art{width:96%;height:auto;max-height:100%;filter:drop-shadow(0 6px 10px rgb(0 0 0/.35))}
+.hub-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hub-pic:has(.hub-img){height:100%}
+.hub-hero .hub-pic:has(.hub-img){width:100%}
+.hub-tx{position:relative;z-index:2;display:flex;flex-direction:column;gap:3px;padding:0 14px 14px}
+.hub-tx b{font-size:17px;font-weight:800;line-height:1.15;text-shadow:0 1px 8px rgb(0 0 0/.35)}
+.hub-tx small{font-size:12px;line-height:1.3;opacity:.85;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hub-soon,.hub-n{position:absolute;top:10px;left:10px;z-index:2;font-style:normal;font-size:11px;font-weight:800;padding:4px 9px;border-radius:999px;color:#fff;background:rgb(255 255 255/.18);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.hub-soon{background:#FFD66B;color:#3A2400}
+.hub-18{position:absolute;top:10px;right:10px;z-index:2;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:10.5px;font-weight:900;color:#fff;background:rgb(0 0 0/.35);box-shadow:inset 0 0 0 1.5px rgb(255 255 255/.6)}
+/* each kind its own light */
+.hub-slots{background:radial-gradient(120% 90% at 50% 18%,#A1328C 0,#4C0F50 55%,#22052A 100%)}
+.hub-board{background:#2A1606}
+.hub-casino,.hub-bj{background:radial-gradient(120% 90% at 50% 25%,#1F7E53 0,#0B4A30 55%,#052417 100%)}
+.hub-fast{background:radial-gradient(120% 90% at 72% 12%,#2E3F96 0,#121A4A 55%,#070B24 100%)}
+.hub-plain{background:var(--sunk)}
+/* the last game played, one tap away */
+.hub-last{display:flex;align-items:center;gap:12px;width:100%;margin-top:14px;padding:10px 12px 10px 10px;border-radius:18px;background:var(--sunk);text-align:left;animation:hubIn .5s cubic-bezier(.16,1,.3,1) .26s both}
+.hub-last img{width:52px;height:52px;border-radius:12px;object-fit:cover;flex:none}
+.hub-last small{display:block;font-size:11.5px;color:var(--muted)}
+.hub-last b{font-size:15px}
+/* small movements in the pictures */
+.hub-spin{transform-origin:100px 76px;animation:hubSpin 30s linear infinite}
+.hub-plane{animation:hubFly 2.8s ease-in-out infinite}
+.hub-bulb{animation:hubBulb 1.6s ease-in-out infinite;animation-delay:var(--d)}
+@keyframes hubIn{from{opacity:0;transform:translateY(16px) scale(.97)}}
+@keyframes hubSpin{to{transform:rotate(360deg)}}
+@keyframes hubFly{50%{transform:translate(-3px,3px)}}
+@keyframes hubBulb{50%{opacity:.25}}
+/* a kind's page: the big picture, then its games */
+.hubpg{padding-top:12px}
+.hub-hero{position:relative;display:flex;flex-direction:column;justify-content:flex-end;height:210px;border-radius:24px;overflow:hidden;color:#fff;isolation:isolate;box-shadow:0 14px 30px -16px rgb(0 0 0/.6),inset 0 0 0 1px rgb(255 255 255/.1)}
+.hub-hero .hub-pic{inset:0 0 0 auto;width:64%;height:100%}
+.hub-hero .hub-tx{padding:0 18px 18px;max-width:54%}
+.hub-hero .hub-tx b{font-size:24px}
+.hub-hero .hub-tx small{font-size:13px}
+.hub-list{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.hub-g{display:flex;align-items:center;gap:14px;width:100%;padding:10px 12px 10px 10px;border-radius:20px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);text-align:left;animation:hubIn .45s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--i,0) * 60ms + 80ms)}
+.hub-g:active{transform:scale(.98)}
+.hub-th{position:relative;width:72px;height:72px;border-radius:16px;overflow:hidden;flex:none;display:grid;place-items:center}
+.hub-th .hub-art{width:120%;max-height:none;filter:none}
+.hub-th img{width:100%;height:100%;object-fit:cover}
+.hub-g .grow{min-width:0}
+.hub-g b{display:block;font-size:15.5px}
+.hub-g small{display:block;margin-top:2px;font-size:12.5px;line-height:1.35;color:var(--muted)}
+.hub-g .hub-soon{position:static;flex:none}
+.hub-note{display:flex;align-items:center;gap:8px;margin-top:16px}
+.hub-note svg{width:16px;height:16px;flex:none}
+@media (prefers-reduced-motion:reduce){.hub-k,.hub-g,.hub-last{animation:none}.hub-spin,.hub-plane,.hub-bulb{animation:none}}
