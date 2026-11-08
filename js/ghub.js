@@ -1,16 +1,16 @@
 /* the games button opens a chooser of four kinds: slots, table games, casino, fast games.
    table games are the lobby that was there before; each other kind has a page with its games.
-   slots, casino and the aviator are for adults only (a minor does not see them) and are not built yet: they say "soon" */
+   slots, casino and the aviator are played on coins (js/casino.js) and only by adults: a minor does not see them */
 const GKINDS=[
- {k:'slots',n:'სლოტები',d:'ქართული სლოტი',adult:1,soon:1},
+ {k:'slots',n:'სლოტები',d:'ქართული სლოტი',adult:1},
  {k:'board',n:'სამაგიდო თამაშები',d:'ნარდი, ჭადრაკი, ჯოკერი, დომინო და სხვა'},
- {k:'casino',n:'კაზინო',d:'რულეტკა და ბლექჯეკი',adult:1,soon:1},
+ {k:'casino',n:'კაზინო',d:'რულეტკა და ბლექჯეკი',adult:1},
  {k:'fast',n:'სწრაფი თამაშები',d:'ავიატორი და კვერცხის ჭახუნი'}];
-/* the games of each kind; the egg game already exists, the rest come later */
+/* the games of each kind: the egg game is a board-style game, the others are casino pages */
 const GKGAMES={
- slots:[{id:'gslot',n:'ქართული სლოტი',d:'ღვინო, ყურძენი, ხაჭაპური და შვიდიანები',adult:1,soon:1,art:'slots'}],
- casino:[{id:'roulette',n:'რულეტკა',d:'ევროპული ბორბალი, ერთი ნულით',adult:1,soon:1,art:'casino'},{id:'bj',n:'ბლექჯეკი',d:'21: შენ დილერის წინააღმდეგ',adult:1,soon:1,art:'bj'}],
- fast:[{id:'aviator',n:'ავიატორი',d:'თვითმფრინავი მაღლა მიფრინავს: აიღე, სანამ გაფრინდება',adult:1,soon:1,art:'fast'},{id:'egg',n:'კვერცხის ჭახუნი',d:'',img:1}]};
+ slots:[{id:'slot',n:'ქართული სლოტი',d:'ღვინო, ყურძენი, ხაჭაპური, ჩურჩხელა, ყანწი და შვიდიანები',adult:1,art:'slots'}],
+ casino:[{id:'roulette',n:'რულეტკა',d:'ევროპული ბორბალი, ერთი ნულით',adult:1,art:'casino'},{id:'bj',n:'ბლექჯეკი',d:'21: შენ დილერის წინააღმდეგ',adult:1,art:'bj'}],
+ fast:[{id:'aviator',n:'ავიატორი',d:'თვითმფრინავი მაღლა მიფრინავს: აიღე, სანამ გაფრინდება',adult:1,art:'fast'},{id:'egg',n:'კვერცხის ჭახუნი',d:'',img:1}]};
 const gkVisible=()=>{const ad=isAdult();return GKINDS.filter(k=>!k.adult||ad).map(k=>({...k,d:k.k==='fast'&&!ad?'კვერცხის ჭახუნი':k.d,games:(GKGAMES[k.k]||[]).filter(g=>!g.adult||ad)}))};
 
 /* drawn pictures for the kinds that have no board art yet */
@@ -48,7 +48,7 @@ const HUBART={
 function hubPic(k){if(k==='board'||k==='fast'&&!isAdult())return `<img class="hub-img" src="${GART(k==='board'?'nardi':'egg',600)}" alt="" decoding="async">`;return (HUBART[k]||HUBART.slots)()}
 function hubCard(k,i){
  return `<button class="hub-k hub-${k.k}" style="--i:${i}" data-a="gkind" data-k="${k.k}" aria-label="${k.n}. ${k.d}${k.soon?'. მალე':''}"><span class="hub-pic">${hubPic(k.k)}</span>
- <span class="hub-tx"><b>${k.n}</b><small>${k.d}</small></span>${k.soon?'<em class="hub-soon">მალე</em>':k.k==='board'?`<em class="hub-n">${GAMES.filter(g=>g.id!=='egg').length} თამაში</em>`:''}${k.adult?'<i class="hub-18" aria-hidden="true">18+</i>':''}</button>`}
+ <span class="hub-tx"><b>${k.n}</b><small>${k.d}</small></span>${k.soon?'<em class="hub-soon">მალე</em>':`<em class="hub-n">${k.k==='board'?GAMES.filter(g=>g.id!=='egg').length:k.games.length} თამაში</em>`}${k.adult?'<i class="hub-18" aria-hidden="true">18+</i>':''}</button>`}
 
 /* the chooser: a sheet, so the back button closes it and leaves the person where they were */
 function gHub(){if(typeof tabOk==='function'&&!tabOk('games')){go('games');return}
@@ -56,7 +56,9 @@ function gHub(){if(typeof tabOk==='function'&&!tabOk('games')){go('games');retur
  sheet(head('თამაშები')+`<div class="hub"><p class="hub-sub">აირჩიე, რა ითამაშო</p><div class="hub-grid">${gkVisible().map(hubCard).join('')}</div>
   ${lg?`<button class="hub-last" data-a="gkplay" data-g="${lg.id}"><img src="${GART(lg.id,600)}" alt="" loading="lazy" decoding="async"><span class="grow"><small>ბოლოს ითამაშე</small><b>${lg.n}</b></span><span class="btn sm gold">${ic('play')}${gSaved(lg.id)?'გაგრძელება':'თამაში'}</span></button>`:''}</div>`,'short hubp')}
 A.gkind=t=>{const k=t.dataset.k;closeSheet();if(k==='board'){go('games');return}openPage('gkind',k)};
+const GK_PAGES=['slot','roulette','bj','aviator'];
 A.gkplay=t=>{const id=t.dataset.g,g=[...GAMES,...Object.values(GKGAMES).flat()].find(x=>x.id===id);if(!g)return;
+ if(GK_PAGES.includes(id)&&PG[id]){closeSheet();openPage(id);return}
  if(g.soon||!GAME[id]){toast(`${g.n} მალე დაემატება`);return}closeSheet();A.play(t)};
 
 /* a kind's own page: the big picture, then its games */
