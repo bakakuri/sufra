@@ -199,6 +199,8 @@ function g3Tick(sc,now){let busy=false;const c=sc.cam;
   if(k>=1){o.tw=null;o.p=t.p1.slice();o.q=t.q1.slice();if(o.dying)sc.objs.delete(o.id);else if(o.kf&&o.kf.length){g3KfGo(o,o.kf.shift(),now);busy=true}else if(o.kfL){o.kfL=0;if(o.rest){const r=o.rest;o.rest=null;g3Aim(o,r,now,{},false);busy=true}}else if(t.land){const md=sc.models[o.m];if(md&&md.land)try{md.land(o,sc)}catch(e){}}}else busy=true}
  for(const o of sc.objs.values())if(o.wg&&g3WgStep(o,now))busy=true;
  if(sc.look&&g3LookStep(sc,now))busy=true;
+ /* a scene may move things itself, frame by frame (the roulette wheel and its ball) */
+ if(sc.onTick)try{if(sc.onTick(now))busy=true}catch(e){}
  g3Life(sc,now);return busy}
 /* people at rest are not statues: they breathe (on high quality) and blink now and then; this needs a few frames a second, not sixty */
 const hashS=s=>{let k=0;for(const ch of s)k=(k*31+ch.charCodeAt(0))>>>0;return(k%1000)/1000};
