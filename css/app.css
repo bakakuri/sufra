@@ -3134,3 +3134,11 @@ body.wide .pspace{flex-wrap:wrap;margin:6px 0 0;padding:4px 0 2px;-webkit-mask-i
 .hub-note{display:flex;align-items:center;gap:8px;margin-top:16px}
 .hub-note svg{width:16px;height:16px;flex:none}
 @media (prefers-reduced-motion:reduce){.hub-k,.hub-g,.hub-last{animation:none}.hub-spin,.hub-plane,.hub-bulb{animation:none}}
+
+/* the games, closed for everyone but the admin */
+.glock{min-height:calc(100dvh - 160px);display:grid;place-items:center;padding:24px 16px}
+.glock-c{max-width:420px;text-align:center;padding:28px 22px;border-radius:24px;background:var(--surface);border:1px solid var(--line);box-shadow:0 16px 40px -24px rgb(0 0 0/.4)}
+.glock-i{width:64px;height:64px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;background:var(--sunk);color:var(--wine)}
+.glock-i svg{width:30px;height:30px}
+.glock-c h2{margin:0 0 8px;font-size:20px}
+.glock-c p{margin:0 0 18px;color:var(--muted);line-height:1.5}
