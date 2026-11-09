@@ -14,15 +14,19 @@ const castBy=id=>CAST.find(c=>c.id===id)||null,castNamed=n=>CAST.find(c=>c.n===S
 const castRandOn=()=>store.get('jkcastr',true)!==false;
 const castFixed=()=>{const f=store.get('jkcast',null);return Array.isArray(f)&&f.length===3&&f.every(castBy)&&new Set(f).size===3?f.slice():null};
 const TCAST=[null,'f1','m1','f2'];
+/* the people whose hands are free: at the tables they hold nothing but their cards (the other pictures hold dice, a chip or a bingo card) */
+const CAST_FREE=['m1','m3','m5','f1','f2','f3'];
+const castFree=()=>CAST.filter(c=>CAST_FREE.includes(c.id));
+function castFreeIds(ids){const used=new Set(),out=ids.map(c=>CAST_FREE.includes(c)&&!used.has(c)?(used.add(c),c):null),pool=shuffle(CAST_FREE.filter(c=>!used.has(c)));return out.map(c=>c||pool.shift())}
 /* a new game: three at random (all different), unless a choice was saved */
-function castRoll(){const f=!castRandOn()&&castFixed();const ids=f||shuffle(CAST.map(c=>c.id)).slice(0,3);TCAST[1]=ids[0];TCAST[2]=ids[1];TCAST[3]=ids[2];castSync()}
+function castRoll(){const f=!castRandOn()&&castFixed();const ids=f?castFreeIds(f):shuffle(CAST_FREE.slice()).slice(0,3);TCAST[1]=ids[0];TCAST[2]=ids[1];TCAST[3]=ids[2];castSync()}
 /* the names in the games follow the seats: joker's ids, and the players of durak, bura and loto */
 function castSync(){for(const p of[1,2,3]){const c=castBy(TCAST[p]);if(!c)continue;if(typeof cPlayers!=='undefined')cPlayers[p]={n:c.n,h:cPlayers[p]&&cPlayers[p].h||200,cast:c.id};
   if(typeof DMN!=='undefined')DMN[p]={n:c.n,h:DMN[p]&&DMN[p].h||150,cast:c.id};
   if(typeof JK!=='undefined'&&JK.ids&&JK.ids[p]&&typeof JK.ids[p]==='object')JK.ids[p]={n:c.n,h:JK.ids[p].h,cast:c.id}}}
 /* the card games whose players are the cast; a saved game keeps its people */
 const CASTG=['joker','durak','bura','domino'];
-function castResume(a){if(!Array.isArray(a)||a.length!==3||!a.every(castBy)||new Set(a).size!==3)return;TCAST[1]=a[0];TCAST[2]=a[1];TCAST[3]=a[2];castSync()}
+function castResume(a){if(!Array.isArray(a)||a.length!==3||!a.every(castBy)||new Set(a).size!==3)return;a=castFreeIds(a);TCAST[1]=a[0];TCAST[2]=a[1];TCAST[3]=a[2];castSync()}
 /* the character picked for someone who has not chosen one: from who they are, the same on every phone */
 const castPool=fem=>fem==null?CASTI:CASTI.filter(c=>(c[0]==='f')===!!fem);
 const castHashOf=(k,fem)=>{let h=0;for(const ch of String(k||''))h=(h*31+ch.charCodeAt(0))>>>0;const P=castPool(fem);return P[h%P.length]};
@@ -560,7 +564,7 @@ function castSheetHTML(){const id=gCur(),seats=castSeatsOf(id);if(!seats.include
  return head('მოთამაშეები')+`<div class="castsh">
   ${seats.length>1?`<div class="cseats" role="group" aria-label="ადგილი">${seats.map(p=>{const c=castBy(TCAST[p]);return `<button class="cseat" data-a="gcastseat" data-s="${p}" aria-pressed="${p===CASTSEL}">${castAv(c.id,46)}<b>${esc(c.n)}</b><small>${CASTSN[p]}</small></button>`}).join('')}</div>
   <p class="chint">${esc(CASTSN[CASTSEL])} ზის <b>${esc(castBy(TCAST[CASTSEL]).n)}</b>. აირჩიე, ვინ დაჯდეს მის ადგილზე</p>`:`<p class="chint">პირისპირ ზის <b>${esc(castBy(TCAST[CASTSEL]).n)}</b>. აირჩიე, ვინ დაჯდეს მის ადგილზე</p>`}
-  <div class="cgrid">${CAST.map(c=>{const p=who(c.id);return `<button class="cpick${p===CASTSEL?' cur':p?' busy':''}" data-a="gcastpick" data-c="${c.id}" aria-pressed="${p===CASTSEL}" aria-label="${esc(c.n)}, ${esc(c.d)}${p&&p!==CASTSEL?', ზის '+CASTSN[p]:''}">${castAv(c.id,58)}<b>${esc(c.n)}</b>${p&&p!==CASTSEL?`<small>${CASTSN[p]}</small>`:''}</button>`}).join('')}</div>
+  <div class="cgrid">${castFree().map(c=>{const p=who(c.id);return `<button class="cpick${p===CASTSEL?' cur':p?' busy':''}" data-a="gcastpick" data-c="${c.id}" aria-pressed="${p===CASTSEL}" aria-label="${esc(c.n)}, ${esc(c.d)}${p&&p!==CASTSEL?', ზის '+CASTSN[p]:''}">${castAv(c.id,58)}<b>${esc(c.n)}</b>${p&&p!==CASTSEL?`<small>${CASTSN[p]}</small>`:''}</button>`}).join('')}</div>
   <div class="gmenu">
    <button data-a="gcastroll">${ic('dice')}<span>აურიე ახლავე</span></button>
    <button data-a="gcastr" aria-pressed="${rnd}">${ic('turn')}<span>ყოველ ახალ თამაშზე შემთხვევით</span><i class="sw${rnd?' on':''}" aria-hidden="true"></i></button>
@@ -574,7 +578,7 @@ function castChanged(save){castSync();if(save){store.set('jkcast',TCAST.slice(1)
  if(typeof DK!=='undefined'&&DK.fools)DK.fools.cast=TCAST.slice();castRedrawSheet();gRedraw();if(typeof g3Need==='function')g3Need()}
 A.gcastseat=t=>{CASTSEL=+t.dataset.s||1;castRedrawSheet()};
 A.gcastpick=t=>{const c=t.dataset.c;if(!castBy(c))return;const cur=TCAST[CASTSEL];if(cur===c)return;const o=[1,2,3].find(p=>p!==CASTSEL&&TCAST[p]===c);if(o)TCAST[o]=cur;TCAST[CASTSEL]=c;if(typeof gSnd==='function')gSnd('card',.5);castChanged(true)};
-A.gcastroll=()=>{const pool=shuffle(CAST.map(c=>c.id));TCAST[1]=pool[0];TCAST[2]=pool[1];TCAST[3]=pool[2];castChanged(false)};
+A.gcastroll=()=>{const pool=shuffle(CAST_FREE.slice());TCAST[1]=pool[0];TCAST[2]=pool[1];TCAST[3]=pool[2];castChanged(false)};
 A.gcastr=()=>{const on=!castRandOn();store.set('jkcastr',on);if(!on)store.set('jkcast',TCAST.slice(1));castRedrawSheet()};
 /* the games with people at the table, and the switch between the drawn characters and the sculpted figures (the table menu has it too) */
 const CASTP=['joker','durak','bura','domino','chess','shashi','nardi','egg'];

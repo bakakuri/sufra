@@ -164,7 +164,7 @@ function joDraw(){const el=$('#jko');if(!el||!JO.t||!joHere(JO.id))return;const 
  const me=JO.seat,base=me>=0?me:0,P=k=>(base+k)%4,host=joIsHost(),live=['bid','play','trump'].includes(s.phase);
  const seat=(p,pos)=>`<div class="seat ${pos}${s.cur===p&&s.win==null&&live?' turn':''}">${joAv(p,38)}<b>${esc(joName(p))}</b>${jPips(s.bids[p],s.taken[p])}<span class="jsc${s.score[p]<0?' neg':''}">${s.score[p]}</span></div>`;
  const tr=(s.trick||[]).map(e=>{const h=jCardHTML(e.card).replace('class="card','class="card p'+((e.p-base+4)%4));return e.card.j?h.replace('</div>',`<span class="jm">${e.jm==='hi'?'მაღალი':'დაბალი'}${e.js?' '+SY[e.js]:''}</span></div>`):h}).join('');
- const trumpTxt=trumpChip(s.trump,s.phase==='trump');
+ const trumpTxt=trumpChip(s.trump,s.phase==='trump');jTrumpFlash('jo'+(s.hist||[]).length+':'+s.trump,s.trump,['bid','play'].includes(s.phase));
  /* the last full trick of this deal stays viewable after it is swept */
  if(s.trick&&s.trick.length===4&&s.win!=null)JO.lastT={t:s.trick.map(e=>Object.assign({},e)),w:s.win,deal:s.deal};if(JO.lastT&&JO.lastT.deal!==s.deal)JO.lastT=null;
  const myTurn=me>=0&&s.cur===me&&s.win==null&&!JO.wait;
@@ -186,7 +186,7 @@ function joDraw(){const el=$('#jko');if(!el||!JO.t||!joHere(JO.id))return;const 
  const Pp=gShellParts({stage,mid:stage,top:gTop('ჯოკერი ონლაინ',null,'back')+info+jMiniHTML(s.hist,s.score||[0,0,0,0],[0,1,2,3].map(joShort),s.phase==='handover','jkosheet'),bot:`${mine}<div class="status${turn?' mine':''}" role="status">${joStatus()}</div>${panel}`,res});
  el.className='view-pad game jko gx'+(Pp.w?' is3d lux':'');gPatch(el,Pp.html);g3After('jko')}
 A.jkolast=()=>{jLastOpen(JO.lastT,p=>p===JO.seat?'შენ':joShort(p),JO.seat>=0?JO.seat:0)};
-A.jkosheet=()=>{const s=JO.st;jSheetOpen(s&&s.hist,(s&&s.score)||[0,0,0,0],[0,1,2,3].map(joShort))};
+A.jkosheet=()=>{const s=JO.st;jNoteToggle(s&&s.hist,(s&&s.score)||[0,0,0,0],[0,1,2,3].map(joShort))};
 /* the result counts once per person per table, like a game against the computer */
 function joResult(){const s=JO.st;if(s&&s.phase!=='over')JO.res=false;if(!s||s.phase!=='over'||JO.seat<0||JO.res)return;JO.res=true;const k='jkres-'+JO.id+'-'+s.deal;
  try{if(localStorage.getItem(k))return;localStorage.setItem(k,'1')}catch(e){}

@@ -3142,3 +3142,24 @@ body.wide .pspace{flex-wrap:wrap;margin:6px 0 0;padding:4px 0 2px;-webkit-mask-i
 .glock-i svg{width:30px;height:30px}
 .glock-c h2{margin:0 0 8px;font-size:20px}
 .glock-c p{margin:0 0 18px;color:var(--muted);line-height:1.5}
+
+/* the joker sheet: small in the corner, open where it is on a tap (scrolling when long), closed on the next */
+.gx .ghud.top .jsm{cursor:pointer;transition:width .28s ease,height .28s ease,transform .28s ease}
+.gx .ghud.top .jsm.big{width:min(92vw,380px);height:auto;max-height:min(64vh,560px);right:50%;transform:translateX(50%);top:calc(env(safe-area-inset-top,0px) + 58px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;border-radius:6px;z-index:6;box-shadow:0 22px 50px -10px rgb(0 0 0/.65);-webkit-overflow-scrolling:touch}
+.gx .ghud.top .jsm.big .jnote{width:100%;transform:none}
+.gx .ghud.top .jsm.big:active{transform:translateX(50%) scale(.99)}
+.gx .ghud.top .jsm.fresh{animation:jsm-fresh 1.6s ease-out 2}
+@keyframes jsm-fresh{0%,100%{box-shadow:0 2px 6px rgb(0 0 0/.35)}35%{box-shadow:0 0 0 3px #FFD35C,0 0 22px rgb(255 211 92/.8)}}
+@media (min-aspect-ratio:5/4){.gx .ghud.top .jsm.big{right:calc(var(--hw) * .5);width:min(60vw,380px)}}
+/* the trump, bigger and clearer in the bar */
+.gx .ginfo>span.tchip{padding:5px 16px 5px 5px;box-shadow:0 0 0 1.5px rgb(255 214 107/.5),0 6px 16px rgb(0 0 0/.35)}
+.gx .ginfo .tsu{width:44px;height:56px;border-radius:8px}
+.gx .ginfo .tsu svg{width:33px;height:33px}
+.gx .ginfo .tsn b{font-size:17px}
+.gbig .gx .ginfo .tsu{width:50px;height:64px}.gbig .gx .ginfo .tsu svg{width:38px;height:38px}.gbig .gx .ginfo .tsn b{font-size:19px}
+/* the trump said big in the middle of the table when a hand gets it */
+.jtrf{position:fixed;left:50%;top:44%;z-index:80;display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none;transform:translate(-50%,-50%);animation:jtrf 2.1s cubic-bezier(.2,1.2,.4,1) forwards}
+.jtrf-c{display:grid;place-items:center;width:112px;height:150px;border-radius:14px;background:linear-gradient(180deg,#FFFFFF,#F1ECE2);box-shadow:0 0 0 3px rgb(255 214 107/.9),0 18px 40px rgb(0 0 0/.55),0 0 40px rgb(255 214 107/.45)}
+.jtrf-c svg{width:78px;height:78px}.jtrf-c b{font-size:56px;color:#8A93AE}
+.jtrf>b{padding:6px 16px;border-radius:999px;font-size:20px;font-weight:900;color:#fff;background:rgb(10 8 16/.78);box-shadow:0 6px 16px rgb(0 0 0/.4)}
+@keyframes jtrf{0%{opacity:0;transform:translate(-50%,-50%) scale(.4) rotateY(90deg)}18%{opacity:1;transform:translate(-50%,-50%) scale(1.06) rotateY(0)}26%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-62%) scale(.7)}}

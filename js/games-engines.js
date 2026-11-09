@@ -364,8 +364,17 @@ function jNoteHTML(hist,score,names,o={}){const rows=[],run=[0,0,0,0];hist=hist|
   const nx=hist[ix+1];if(nx&&nx.s!==h.s)rows.push(`<div class="jn-r jn-sub"><span class="jn-m"></span>${run.map(x=>`<span class="jn-c${x<0?' neg':''}">${jInk(x)}</span>`).join('')}</div>`)});
  const body=o.last?rows.slice(-o.last):rows;
  return `<div class="jnote" aria-label="ქულების ფურცელი"><div class="jn-r jn-h"><span class="jn-m"></span>${names.map(n=>`<span class="jn-c">${jInk(String(n).split(' ')[0])}</span>`).join('')}</div>${body.join('')}${hist.length?`<div class="jn-r jn-tot"><span class="jn-m">${jInk('სულ')}</span>${score.map(x=>`<span class="jn-c${x<0?' neg':''}">${jInk(x)}</span>`).join('')}</div>`:''}</div>`}
-/* the sheet lies small in the corner; after a hand it slides out for a moment with the new row; a tap opens it in full */
-const jMiniHTML=(hist,score,names,pop,a)=>`<button class="jsm${pop?' pop':''}" data-a="${a}" aria-label="ქულების ფურცელი">${jNoteHTML(hist,score,names,{last:pop?4:8,hl:pop})}</button>`;
+/* the sheet lies small in the corner; a tap opens it where it is (all the rows, scrolled to the newest, scrolling if they do not fit),
+   another tap closes it. After a hand it only lights up with the new row; it stays open or closed across moves */
+const JNOTE={open:false};
+const jMiniHTML=(hist,score,names,pop,a)=>`<div class="jsm${JNOTE.open?' big':''}${pop?' fresh':''}" role="button" tabindex="0" data-a="${a}" aria-expanded="${JNOTE.open}" aria-label="ქულების ფურცელი${JNOTE.open?', დაჭერით დაიხურება':''}">${jNoteHTML(hist,score,names,{last:JNOTE.open?0:8,hl:pop})}</div>`;
+function jNoteToggle(hist,score,names){JNOTE.open=!JNOTE.open;const el=$('.gx .jsm');if(!el)return;el.classList.toggle('big',JNOTE.open);el.classList.remove('fresh');el.setAttribute('aria-expanded',String(JNOTE.open));
+ el.innerHTML=jNoteHTML(hist,score,names,{last:JNOTE.open?0:8});if(JNOTE.open)requestAnimationFrame(()=>{el.scrollTop=el.scrollHeight});else el.scrollTop=0;if(typeof gSnd==='function')gSnd('card',.4)}
+/* the trump, said big in the middle of the table once a hand has it */
+const JTRF={k:null};
+function jTrumpFlash(k,s,on){if(!on||JTRF.k===k)return;JTRF.k=k;if(RM())return;$$('.jtrf').forEach(x=>x.remove());const col=s?(c4On()?SC4[s]:isRed(s)?'#E0243B':'#17110E'):'#8A93AE';
+ const d=document.createElement('div');d.className='jtrf';d.setAttribute('aria-hidden','true');d.innerHTML=`<span class="jtrf-c" style="color:${col}">${s?suitSvg(s):'<b>✕</b>'}</span><b>${s?'კოზირი: '+SN[s]:'უკოზირო'}</b>`;
+ document.body.appendChild(d);setTimeout(()=>d.remove(),2100)}
 function jSheetOpen(hist,score,names){sheet(head('ქულების ფურცელი')+`<div class="ph-body jnbody">${jNoteHTML(hist,score,names)}</div>`,'jnp')}
 /* what a player said and took: one pip per trick said, filled when taken; extra tricks in red; a pass shows the word */
 function jPips(b,t){const lab=`aria-label="ნათქვამი ${b??'ჯერ არა'}, წაღებული ${t}"`;if(b==null)return `<span class="bt pips" ${lab}>–</span>`;
@@ -438,7 +447,7 @@ const JK=GAME.joker={title:'ჯოკერი',
   const pips=p=>jPips(this.bids[p],this.taken[p]);
   const seat=(p,pos)=>`<div class="seat ${pos}${this.cur===p&&(this.phase==='bid'||this.phase==='play'||this.phase==='trump')?' turn':''}"${castTap(p)}>${avAny(this.ids[p],38)}<b>${esc(this.nm(p))}</b>${pips(p)}<span class="jsc${this.score[p]<0?' neg':''}">${this.score[p]}</span></div>`;
   const tr=this.trick.map(e=>{const h=jCardHTML(e.card).replace('class="card','class="card p'+e.p);return e.card.j?h.replace('</div>',`<span class="jm">${e.jm==='hi'?'მაღალი':'დაბალი'}${e.js?' '+SY[e.js]:''}</span></div>`):h}).join('');
-  const trumpTxt=trumpChip(this.trump,this.phase==='trump');
+  const trumpTxt=trumpChip(this.trump,this.phase==='trump');jTrumpFlash('jk'+(this.hist||[]).length+':'+this.trump,this.trump,['bid','play'].includes(this.phase));
   const L=this.phase==='play'&&this.cur===0?this.legal(0):[];
   const hand=this.phase==='trump'&&this.cur===0?this.first3[0].map(c=>jCardHTML(c)).join('')+'<div class="card" style="opacity:.25" aria-hidden="true"></div>'.repeat(this.n-3)
    :this.hands[0].map((c,i)=>`<button class="card${c.j?' jk':''}${!c.j&&isRed(c.s)?' red':''}" data-a="jcard" data-i="${i}"${c.j?'':` data-s="${SY[c.s]}"`} aria-label="${cardName(c)}"${L.includes(c)?'':' disabled'}>${c.j?'<i>★</i>ჯოკერი':`<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span>`}</button>`).join('');
@@ -467,7 +476,7 @@ const jkJokerSheet=(lead,a)=>sheet(head('ჯოკერი')+(lead?`<div class=
 A.jcard=t=>{if(JK.phase!=='play'||JK.cur!==0)return;const c=JK.hands[0][+t.dataset.i];if(!c||!JK.legal(0).includes(c))return;
  if(!c.j){JK.playCard(0,c);return}JK.pj=c;jkJokerSheet(!JK.trick.length,'jj')};
 A.jj=t=>{closeSheet();if(JK.pj&&JK.phase==='play'&&JK.cur===0){const c=JK.pj;JK.pj=null;JK.playCard(0,c,t.dataset.m,t.dataset.s||null)}};
-A.jsheet=()=>jSheetOpen(JK.hist,JK.score||[0,0,0,0],[0,1,2,3].map(p=>JK.nm(p)));
+A.jsheet=()=>jNoteToggle(JK.hist,JK.score||[0,0,0,0],[0,1,2,3].map(p=>JK.nm(p)));
 A.jlast=()=>jLastOpen(JK.lastT,p=>p===0?'შენ':JK.nm(p),0);
 /* menu switches for cards: the four-colour deck, and the bid hint against the computer */
 function gSwFlip(t,on){const b=t&&t.closest&&t.closest('button'),s=b&&b.querySelector('.sw');if(b)b.setAttribute('aria-pressed',String(on));if(s)s.classList.toggle('on',on)}

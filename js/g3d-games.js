@@ -158,7 +158,10 @@ const CDW=.92,CDH=1.28,JR=8.1,JA=.8,JTS=2.3;
 /* seats counted from me: 0 me, 1 left, 2 across, 3 right. the side seats sit a little toward the far side, so a phone held upright still sees all three */
 const JSP=[[0,JR],[-JR*Math.sin(JA),-JR*Math.cos(JA)],[0,-JR],[JR*Math.sin(JA),-JR*Math.cos(JA)]];
 const JYAW=JSP.map(([x,z])=>Math.atan2(-x,-z));
-const JTRK=JSP.map(([x,z],i)=>{const l=Math.hypot(x,z);return i===0?[0,1.95]:[x/l*1.95,z/l*1.9]}),JTJ=[-.05,.12,.03,-.1];
+/* where each player's card lies in a trick: in front of them, near enough for their hand to put it down */
+const JTRK=JSP.map(([x,z],i)=>{const l=Math.hypot(x,z);return i===0?[0,2.45]:[x/l*2.55,z/l*2.5]}),JTJ=[-.05,.12,.03,-.1],JTSK=2.65;
+/* at a card table sit only the people whose hands are free (CAST_FREE in js/games-core.js); people online keep a free one too */
+function castClean(ids){const out=ids.slice(),used=new Set(out.filter(c=>CAST_FREE.includes(c)));out.forEach((c,i)=>{if(c&&!CAST_FREE.includes(c)){const fem=c[0]==='f',alt=CAST_FREE.filter(x=>!used.has(x)),k=alt.find(x=>(x[0]==='f')===fem)||alt[0];if(k){used.add(k);out[i]=k}}});return out}
 const lerpN=(a,b,t)=>a+(b-a)*t;
 /* the eye sits above your chair; how wide it sees follows the screen, so the three players stay in view held upright or on its side */
 function jkCam(asp){const t=clamp((asp-.55)/1.0,0,1),eye=[0,lerpN(5.9,8.2,t),lerpN(8.3,12.4,t)],tgt=[0,lerpN(.2,1.5,t),lerpN(-1.6,-2.2,t)];
@@ -273,8 +276,8 @@ function rigWrist(g,P){const v=v3.sub(P,g.A),l=v3.len(v)||1e-3,d=v3.mul(v,1/l);r
 /* the arm and hand at rest: the elbow on the table's edge, the hand up holding the fan of cards (hold) or lying on the table in front */
 function rigPush(L,sc,key,cid,B,s,o={}){if(!rigOn())return null;rigModels(sc,cid);const f=rigFrame(B,s,cid),E=f.E,hl=(f.fem?.98:1.12)*E,
  g={f,key,cid,E,hl,A:rigP(f,.66,-.08,.6),grip:o.grip||(o.hold?rigP(f,.32,1.15,1.1):rigP(f,.3,.32,1.15))};g.rest=rigWrist(g,g.grip);
- (sc.rigs||(sc.rigs={}))[key]=g;const W=f.fem?.42:.5;
- L.push({k:'pw'+key,m:'hand:'+cid,p:g.rest,s:1,a:.998,cast:false,refl:false,arm:{a:g.A,len:hl,w:hl*.5},dur:o.dur||450},
+ (sc.rigs||(sc.rigs={}))[key]=g;const W=f.fem?.56:.66;
+ L.push({k:'pw'+key,m:'hand:'+cid,p:g.rest,s:1,a:.998,cast:false,refl:false,arm:{a:g.A,len:hl*1.08,w:hl*.62},dur:o.dur||450},
   {k:'pa'+key,m:'arm:'+cid,p:g.A,s:1,a:.998,cast:false,refl:false,arm:{a:g.A,of:'k:pw'+key,w:W*E},now:1});return g}
 /* the fan held in that hand: the cards spread from the fingers, faces toward the one who holds them */
 function rigFan(g,i,n,s){const f=g.f,q0=qt.mul(qt.ax(0,1,0,f.yaw+Math.PI),qt.ax(1,0,0,-.22)),rt=qt.rot(q0,[1,0,0]),up=qt.rot(q0,[0,1,0]),nr=qt.rot(q0,[0,0,1]);
@@ -364,7 +367,7 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
  if(sc.look){const Lk=sc.look;Lk.on=gLookSet()!=='off';const on=Lk.on&&cur!=null&&cur!==0&&V.win==null,gy=on?(cur===1?.075:cur===3?-.075:0):0,gp=on?(cur===2?.035:.012):0;if(gy!==Lk.gy||gp!==Lk.gp){Lk.gy=gy;Lk.gp=gp;g3Need()}}
  /* the three others */
  /* the drawn people come with their picture; until it is here the chairs wait empty (no sculpted people flashing by first) */
- const want=castPic(),pic=want&&castModel(sc),CA=pic?castSeats(V.ids):null;
+ const want=castPic(),pic=want&&castModel(sc),CA=pic?castClean(castSeats(V.ids)):null;
  for(const r of[1,2,3]){if(V.on&&!V.on.includes(r))continue;const id=V.ids[(r+V.base)%4],lean=cur===r&&V.win==null?.07:0;
   const cnt=V.counts[r]||0;
   if(pic){const cid=CA[(r+V.base)%4],B=castPush(L,r,cid,lean*.6);rigPush(L,sc,String(r),cid,B,1,{hold:cnt>0})}else if(want){/* waiting for the picture */}
@@ -375,22 +378,28 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
    if(deal){d.from={p:dp,q:FACEDN(0),s:.9};d.delay=(i*4+r)*40;d.dur=520}L.push(d)}}
  /* a drawn person's hand: the card they play is pulled from the fan and tossed to its place; the hand comes back to the fan */
  const rigOf=r=>r>0&&pic&&sc.rigs&&sc.rigs[String(r)],fromFan=r=>{const g=rigOf(r),n=Math.max(1,V.counts[r]||0),f=rigFan(g,n,n+1);return{p:f.p,q:f.q,s:f.s}};
- const tossBy=(r,P)=>{const g=rigOf(r);if(!g)return 0;const st=fromFan(r).p;rigGo(sc,String(r),[{p:st,d:170},{p:v3.lerp(st,rigAbove(P,.5),.5),d:300,arc:.5}],{lean:.08});return 170};
+ const carryBy=(r,d)=>{const g=rigOf(r);if(!g)return false;const F=fromFan(r),T=Math.round(Math.min(640,330+90*Math.sqrt(v3.len(v3.sub(d.p,F.p)))));
+  rigGo(sc,String(r),[{p:F.p,d:170},{p:rigAbove(d.p,.03),d:T,arc:.45},{p:rigAbove(d.p,.03),d:90}],{lean:.12,reach:4.4});d.from=F;d.delay=170;d.dur=T;d.arc=.45;d.ez=null;return true};
  /* my hand, held in front of me at the bottom of the screen */
  const n=V.hand.length;if(!V.mine||!V.hand.some(cd=>'c'+cardIdx(cd)===sc.csel))sc.csel=null;
  if(n){const tall=asp<.8,hs=tall?.165:.19,dd=2.4,C=jkCam(asp),t=Math.tan(C.fov/2),s=hs*2*t*dd/CDH,cw=CDW*s/(t*asp*dd),room=(2+2*C.sx)*.8,spc=Math.min(cw*.62,(room-cw*1.1)/Math.max(1,n-1)),qf=jkFace(asp);
   V.hand.forEach((cd,i)=>{const ok=V.legal.includes(cd),key='c'+cardIdx(cd),sel=sc.csel===key||!!V.sel&&V.sel.includes(i),nx=C.sx+(i-(n-1)/2)*spc,lift=V.legal.length?(sel?.5:ok?.13:-.03):0,
     ny=-1+hs*1.06-(nx-C.sx)*(nx-C.sx)*.07+lift*hs*2,p=jkScr(asp,nx,ny,dd-i*.004),d={k:key,m:'card',p,q:qt.mul(qf,qt.ax(0,0,1,-(nx-C.sx)*.2)),s,uv:cardUV(cardIdx(cd)),dim:V.legal.length&&!ok?.5:1,pick:V.mine&&ok?{i,k:key}:null,drag:V.mine&&ok&&!V.tap1,glow:sel?[.12,.09,.03]:V.hint===cd?[.05,.16,.1]:null,refl:false,cast:false,dur:420,hud:1};
    if(deal){d.from={p:dp,q:FACEDN(0),s:.9};d.delay=i*70;d.dur=560}L.push(d)})}
+ /* my two hands (as in the board games): they wait below the picture and come up to lay my card */
+ const myc=V.ctx||(typeof GAME!=='undefined'&&S.game&&GAME[S.game]&&GAME[S.game].ctx)||{mode:'online'};mhPush(sc,L,{on:mhShow(myc),yaw:0,y:-1.6,S:1.4,rest:[[-3.4,8.6],[3.4,8.6]]});
+ const mineBy=d=>{if(!sc.mh)return false;const o=sc.objs.get('k:'+d.k),F=o&&!o.dying?{p:o.p.slice(),q:o.q.slice(),s:o.s}:{p:jkScr(asp,.08,-.62,2.6),q:jkFace(asp),s:.62},T=Math.round(Math.min(620,300+90*Math.sqrt(v3.len(v3.sub(d.p,F.p)))));
+  mhCarry(sc,[{p:F.p},{p:d.p,d:T,arc:.4}],{s:1});d.from=F;d.delay=340;d.dur=T;d.arc=.4;return true};
  /* the trick, each card in front of whoever played it, all turned to read from my chair */
- V.trick.forEach((e,k)=>{const r=rel(e.p),[tx,tz]=JTRK[r],idx=cardIdx(e.card),p=[tx,.012+k*.008,tz],won=V.win!=null&&rel(V.win)===r&&V.trick.length===4,d={k:'c'+idx,m:'card',p,q:FACEUP(JTJ[r]),s:JTS,uv:cardUV(idx),glow:won?[.2,.14,.04]:null,cast:true};
-  if(r!==0||!sc.objs.has('k:c'+idx)){const fresh=!sc.objs.has('k:c'+idx),f=r===0?{p:jkScr(asp,0,-.55,2.4),q:jkFace(asp),s:.6}:rigOf(r)?fromFan(r):{p:jkLocal(r,0,[0,1.95,2.5]),q:qt.mul(jkSeatQ(r,0),qt.mul(qt.ax(0,1,0,Math.PI),qt.ax(1,0,0,-.5))),s:.95};d.from=f;d.dur=560;d.arc=1.4;if(fresh&&r!==0)d.delay=tossBy(r,p)}
-  L.push(d);if(won)M.push({m:'mk',p:[tx,.01,tz],s:[JTS*1.25,1,JTS*1.6],uv:MK.blob,c:[1,.78,.3],a:.55,add:true});
-  else if(V.win==null&&k===V.trick.length-1)M.push({m:'mk',p:[tx,.009,tz],s:[JTS*1.1,1,JTS*1.45],uv:MK.blob,c:[1,.9,.6],a:.28,add:true});
-  if(e.card.j){const t=(e.jm==='hi'?'მაღალი':'დაბალი')+(e.js?' '+SY[e.js]:'');lblModel(sc,t);L.push({k:'lb'+idx,m:'l:'+t,p:[tx,.05+k*.008,tz+1.45],q:qt.id(),s:1.15,cast:false,now:1})}});
+ V.trick.forEach((e,k)=>{const r=rel(e.p),[tx,tz]=JTRK[r],idx=cardIdx(e.card),p=[tx,.012+k*.008,tz],won=V.win!=null&&rel(V.win)===r&&V.trick.length===4,last=V.win==null&&k===V.trick.length-1,d={k:'c'+idx,m:'card',p,q:FACEUP(JTJ[r]),s:JTSK,uv:cardUV(idx),glow:won?[.2,.14,.04]:last?[.1,.08,.03]:null,cast:true};
+  /* a card still in my fan is carried out of it by my hand; a new card comes in the hand of whoever played it */
+  const had=sc.objs.get('k:c'+idx);if(r===0&&had&&had.hud&&!had.dying)mineBy(d);else if(!had){const done=r===0?mineBy(d):carryBy(r,d);if(!done){d.from=r===0?{p:jkScr(asp,0,-.55,2.4),q:jkFace(asp),s:.6}:{p:jkLocal(r,0,[0,1.95,2.5]),q:qt.mul(jkSeatQ(r,0),qt.mul(qt.ax(0,1,0,Math.PI),qt.ax(1,0,0,-.5))),s:.95};d.dur=560;d.arc=1.2}}
+  L.push(d);if(won)M.push({m:'mk',p:[tx,.01,tz],s:[JTSK*1.25,1,JTSK*1.6],uv:MK.blob,c:[1,.78,.3],a:.6,add:true});
+  else if(last)M.push({m:'mk',p:[tx,.009,tz],s:[JTSK*1.15,1,JTSK*1.5],uv:MK.blob,c:[1,.9,.6],a:.4,add:true});
+  if(e.card.j){const t=(e.jm==='hi'?'მაღალი':'დაბალი')+(e.js?' '+SY[e.js]:'');lblModel(sc,t);L.push({k:'lb'+idx,m:'l:'+t,p:[tx,.05+k*.008,tz+1.65],q:qt.id(),s:1.15,cast:false,now:1})}});
  /* cards laid on the table by place: durak's pairs, bura's two rows; each flies in from whoever played it */
  (V.tbl||[]).forEach(e=>{const idx=cardIdx(e.card),r=e.r,key='c'+idx,d={k:key,m:'card',p:[e.x,.012+(e.y||0),e.z],q:FACEUP(e.yaw||0),s:e.s||JTS,uv:cardUV(idx),glow:e.glow?[.2,.14,.04]:null,cast:true};
-  if(r!=null&&(r!==0||!sc.objs.has('k:'+key))){const fresh=!sc.objs.has('k:'+key);d.from=r===0?{p:jkScr(asp,0,-.55,2.4),q:jkFace(asp),s:.6}:rigOf(r)?fromFan(r):{p:jkLocal(r,0,[0,1.95,2.5]),q:qt.mul(jkSeatQ(r,0),qt.mul(qt.ax(0,1,0,Math.PI),qt.ax(1,0,0,-.5))),s:.95};d.dur=560;d.arc=1.2;if(fresh&&r!==0)d.delay=tossBy(r,d.p)}
+  if(r!=null&&!sc.objs.has('k:'+key)){const done=r===0?mineBy(d):carryBy(r,d);if(!done){d.from=r===0?{p:jkScr(asp,0,-.55,2.4),q:jkFace(asp),s:.6}:{p:jkLocal(r,0,[0,1.95,2.5]),q:qt.mul(jkSeatQ(r,0),qt.mul(qt.ax(0,1,0,Math.PI),qt.ax(1,0,0,-.5))),s:.95};d.dur=560;d.arc=1.2}}
   L.push(d)});
  if(V.disc){const h=Math.max(.02,V.disc*.006);L.push({k:'disc',m:'deck',p:[3.35,h/2+.01,.85],s:[1.15,h,1.15],q:qt.ax(0,1,0,.55),dur:400})}
  /* tricks already taken lie in a little pile in front of each player */
