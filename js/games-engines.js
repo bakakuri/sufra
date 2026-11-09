@@ -333,7 +333,7 @@ function jHint(hand,tr,n,f){const e=jEst(hand,tr);let b=Math.max(0,Math.min(n,Ma
 const jHintOn=()=>store.get('jkhint',true)!==false;
 /* the last trick, laid out as it lay on the table: who played what, in which order, and who took it */
 function jLastOpen(L,nm,base){if(!L||!L.t||L.t.length<4)return;const pos=['b','l','t','r'];
- sheet(head('ბოლო ხელი')+`<div class="ph-body"><div class="jlast">${L.t.map((e,k)=>{const r=(e.p-base+4)%4,w=e.p===L.w;return `<div class="jl ${pos[r]}${w?' won':''}"><span class="jlc">${jCardHTML(e.card)}<em>${k+1}</em></span><b>${esc(nm(e.p))}</b>${e.card.j?`<small>${e.jm==='hi'?'მაღალი':'დაბალი'}${e.js?' '+SY[e.js]:''}</small>`:''}${w?'<small class="jlw">წაიღო</small>':''}</div>`}).join('')}<span class="jlmid" aria-hidden="true">${ic('cards')}</span></div></div>`,'short')}
+ sheet(head('ბოლო ხელი')+`<div class="ph-body"><div class="jlast">${L.t.map((e,k)=>{const r=(e.p-base+4)%4,w=e.p===L.w;return `<div class="jl ${pos[r]}${w?' won':''}"><span class="jlc">${jCardHTML(e.card)}<em>${k+1}</em></span><b>${esc(nm(e.p))}</b>${e.card.j?`<small>${jmTxt(e)}</small>`:''}${w?'<small class="jlw">წაიღო</small>':''}</div>`}).join('')}<span class="jlmid" aria-hidden="true">${ic('cards')}</span></div></div>`,'short')}
 const jLastBtn=a=>`<button class="jlt" data-a="${a}" aria-label="ბოლო ხელის ნახვა">${ic('cards')}<span>ბოლო ხელი</span></button>`;
 function jDeck(){const d=[];for(const s of SUITS)for(let r=6;r<=14;r++)if(!(r===6&&(s==='s'||s==='c')))d.push({s,r});d.push({j:1},{j:2});return d}
 const sortHand=h=>h.sort((a,b)=>(a.j?99:SUITS.indexOf(a.s)*20+a.r)-(b.j?99:SUITS.indexOf(b.s)*20+b.r));
@@ -375,6 +375,32 @@ const JTRF={k:null};
 function jTrumpFlash(k,s,on){if(!on||JTRF.k===k)return;JTRF.k=k;if(RM())return;$$('.jtrf').forEach(x=>x.remove());const col=s?(c4On()?SC4[s]:isRed(s)?'#E0243B':'#17110E'):'#8A93AE';
  const d=document.createElement('div');d.className='jtrf';d.setAttribute('aria-hidden','true');d.innerHTML=`<span class="jtrf-c" style="color:${col}">${s?suitSvg(s):'<b>✕</b>'}</span><b>${s?'კოზირი: '+SN[s]:'უკოზირო'}</b>`;
  document.body.appendChild(d);setTimeout(()=>d.remove(),2100)}
+/* what a joker was played as, said as it is said at the table: led high it asks for the top card of a suit,
+   led low it lets the top card of that suit take; played later it takes (high) or gives the trick away (low) */
+const jmTxt=e=>(e.jm==='hi'?'მაღალი':e.js?'წაიღოს':'დაბალი')+(e.js?' '+SY[e.js]:'');
+/* a joker just put on the table is called out big in the middle of it, once */
+const JJF={k:null};
+function jJokerCall(pre,t,taken,win,nm){if(!t||!t.length)return;const e=t[t.length-1];if(!e||!e.card||!e.card.j)return;
+ const done=(taken||[]).reduce((a,b)=>a+(b||0),0)-(win!=null&&t.length===4?1:0),k=pre+':'+done+':'+e.p;if(JJF.k===k)return;JJF.k=k;if(RM())return;
+ $$('.jjf').forEach(x=>x.remove());const hi=e.jm==='hi',col=e.js?(c4On()?SC4[e.js]:isRed(e.js)?'#E0243B':'#17110E'):'';
+ const d=document.createElement('div');d.className='jjf '+(hi?'hi':'lo');d.setAttribute('aria-hidden','true');
+ d.innerHTML=`<small><i>★</i>ჯოკერი · ${esc(nm(e.p))}</small><b>${hi?'მაღალი':e.js?'წაიღოს':'დაბალი'}</b>${e.js?`<span class="jjf-s" style="color:${col}">${suitSvg(e.js)}<em>${SN[e.js]}</em></span>`:''}`;
+ document.body.appendChild(d);setTimeout(()=>d.remove(),2000)}
+/* the end of a hand: a ხიშტი (said a number, took nothing) is stamped in red over that player, a section premium shines in gold;
+   each player's own points float up from their seat */
+const JHF={k:null};
+function jHandFx(k,hist,nm,seatOf){if(JHF.k===k)return;JHF.k=k;const{hand,prem}=jLast(hist||[]);if(!hand)return;
+ const kh=[0,1,2,3].filter(p=>hand.b[p]>0&&hand.t[p]===0),pr=prem?[0,1,2,3].filter(p=>prem.p[p]):[];if(!kh.length&&!pr.length)return;
+ const sg=x=>(x>0?'+':x<0?'−':'')+Math.abs(x),pop=(cls,html,wait,life)=>setTimeout(()=>{const d=document.createElement('div');d.className='jfx '+cls;d.setAttribute('aria-hidden','true');d.innerHTML=html;document.body.appendChild(d);setTimeout(()=>d.remove(),life)},wait);
+ const float=(p,txt,cls,wait)=>setTimeout(()=>{const el=seatOf(p);if(!el||!el.isConnected)return;const r=el.getBoundingClientRect();if(!r.width)return;
+  el.classList.remove('jhit','jshine');void el.offsetWidth;el.classList.add(cls==='kh'?'jhit':'jshine');setTimeout(()=>el.classList.remove('jhit','jshine'),1400);
+  const d=document.createElement('div');d.className='jfn '+cls;d.setAttribute('aria-hidden','true');d.textContent=txt;d.style.left=(r.left+r.width/2)+'px';d.style.top=r.top+'px';document.body.appendChild(d);setTimeout(()=>d.remove(),1900)},wait);
+ let t=250;
+ if(kh.length){pop('kh',`<b>ხიშტი!</b><span>${kh.map(p=>`${esc(nm(p))} <em>${sg(hand.p[p])}</em>`).join(' · ')}</span>`,t,2000);kh.forEach(p=>float(p,sg(hand.p[p]),'kh',t+250));
+  setTimeout(()=>{if(typeof gSnd==='function')gSnd(GSND.boom?'boom':'lose',.6)},t);t+=2000}
+ if(pr.length){const up=pr.filter(p=>prem.p[p]>0),dn=pr.filter(p=>prem.p[p]<0);
+  pop('pr',`<small>სექციის პრემია</small><b><i>★</i>პრემია</b>${up.length?`<span>${up.map(p=>`${esc(nm(p))} <em>${sg(prem.p[p])}</em>`).join(' · ')}</span>`:''}${dn.length?`<span class="dn">${dn.map(p=>`${esc(nm(p))} ${sg(prem.p[p])}`).join(' · ')}</span>`:''}`,t,2300);
+  pr.forEach(p=>float(p,sg(prem.p[p]),prem.p[p]>0?'pr':'kh',t+300));setTimeout(()=>{if(typeof gSnd==='function')gSnd(GSND.big?'big':'win',.6)},t)}}
 function jSheetOpen(hist,score,names){sheet(head('ქულების ფურცელი')+`<div class="ph-body jnbody">${jNoteHTML(hist,score,names)}</div>`,'jnp')}
 /* what a player said and took: one pip per trick said, filled when taken; extra tricks in red; a pass shows the word */
 function jPips(b,t){const lab=`aria-label="ნათქვამი ${b??'ჯერ არა'}, წაღებული ${t}"`;if(b==null)return `<span class="bt pips" ${lab}>–</span>`;
@@ -445,9 +471,11 @@ const JK=GAME.joker={title:'ჯოკერი',
    <div class="jkonline"><div><b>მეგობრებთან ონლაინ</b><p class="note">გაშალე მაგიდა და მოიწვიე მეგობრები. ცარიელ ადგილებზე ბოტები ჩაჯდებიან.</p></div><button class="btn ghost" data-a="jkonew">${ic('users')}მაგიდის გაშლა</button></div></section>`,bot:''});return}
   const g3=g3Want(),mine=this.cur===0&&['bid','play','trump'].includes(this.phase)&&this.win==null;gTurnSnd(this,mine);
   const pips=p=>jPips(this.bids[p],this.taken[p]);
-  const seat=(p,pos)=>`<div class="seat ${pos}${this.cur===p&&(this.phase==='bid'||this.phase==='play'||this.phase==='trump')?' turn':''}"${castTap(p)}>${avAny(this.ids[p],38)}<b>${esc(this.nm(p))}</b>${pips(p)}<span class="jsc${this.score[p]<0?' neg':''}">${this.score[p]}</span></div>`;
-  const tr=this.trick.map(e=>{const h=jCardHTML(e.card).replace('class="card','class="card p'+e.p);return e.card.j?h.replace('</div>',`<span class="jm">${e.jm==='hi'?'მაღალი':'დაბალი'}${e.js?' '+SY[e.js]:''}</span></div>`):h}).join('');
+  const seat=(p,pos)=>`<div class="seat ${pos}${this.cur===p&&(this.phase==='bid'||this.phase==='play'||this.phase==='trump')?' turn':''}"${castTap(p)}><span class="sav">${avAny(this.ids[p],38)}</span><b>${esc(this.nm(p))}</b>${pips(p)}<span class="jsc${this.score[p]<0?' neg':''}">${this.score[p]}</span></div>`;
+  const tr=this.trick.map(e=>{const h=jCardHTML(e.card).replace('class="card','class="card p'+e.p);return e.card.j?h.replace('</div>',`<span class="jm">${jmTxt(e)}</span></div>`):h}).join('');
   const trumpTxt=trumpChip(this.trump,this.phase==='trump');jTrumpFlash('jk'+(this.hist||[]).length+':'+this.trump,this.trump,['bid','play'].includes(this.phase));
+  if(this.phase==='play')jJokerCall('jk'+this.tk+':'+this.h,this.trick,this.taken,this.win,p=>p===0?'შენ':this.nm(p));
+  if(this.phase==='handover'||this.phase==='over')jHandFx('jk'+this.tk+':'+this.hist.length,this.hist,p=>p===0?'შენ':this.nm(p),p=>$(p===0?'.gx .pl.me':'.gx .seat.'+['','left','top','right'][p]));
   const L=this.phase==='play'&&this.cur===0?this.legal(0):[];
   const hand=this.phase==='trump'&&this.cur===0?this.first3[0].map(c=>jCardHTML(c)).join('')+'<div class="card" style="opacity:.25" aria-hidden="true"></div>'.repeat(this.n-3)
    :this.hands[0].map((c,i)=>`<button class="card${c.j?' jk':''}${!c.j&&isRed(c.s)?' red':''}" data-a="jcard" data-i="${i}"${c.j?'':` data-s="${SY[c.s]}"`} aria-label="${cardName(c)}"${L.includes(c)?'':' disabled'}>${c.j?'<i>★</i>ჯოკერი':`<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span>`}</button>`).join('');

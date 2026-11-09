@@ -154,20 +154,33 @@ G3U.nardi=sc=>{const G=NR,c=G.ctx,me=c.side,flip=me===-1,L=[],M=[],dI=i=>flip?(G
 /* ---------- cards: the joker table, seen from your own chair ----------
    a round table in a dim room under one lamp. the three others sit at it, hold their cards and look at whoever is playing.
    your own cards are held in front of you at the bottom of the screen; played cards fly to the middle and the trick sweeps to its winner */
-const CDW=.92,CDH=1.28,JR=8.1,JA=.8,JTS=2.3;
-/* seats counted from me: 0 me, 1 left, 2 across, 3 right. the side seats sit a little toward the far side, so a phone held upright still sees all three */
+const CDW=.92,CDH=1.28,JR=8.1,JA=1.45,JTS=2.3;
+/* seats counted from me: 0 me, 1 left, 2 across, 3 right: a cross, one opposite and one at each hand (the side seats a touch toward the far side) */
 const JSP=[[0,JR],[-JR*Math.sin(JA),-JR*Math.cos(JA)],[0,-JR],[JR*Math.sin(JA),-JR*Math.cos(JA)]];
 const JYAW=JSP.map(([x,z])=>Math.atan2(-x,-z));
 /* where each player's card lies in a trick: in front of them, near enough for their hand to put it down */
-const JTRK=JSP.map(([x,z],i)=>{const l=Math.hypot(x,z);return i===0?[0,2.45]:[x/l*2.55,z/l*2.5]}),JTJ=[-.05,.12,.03,-.1],JTSK=2.65;
+const JTRK=JSP.map(([x,z],i)=>{const l=Math.hypot(x,z);return i===0?[0,2.6]:[x/l*2.75,z/l*2.7]}),JTJ=[-.05,.12,.03,-.1],JTSK=2.9;
+/* where each player keeps the tricks they took: on the table in front of them, a little to their right, clear of the trick */
+const jkRim=(r,da,R)=>{const[x,z]=JSP[r],a=Math.atan2(z,x)+da;return[R*Math.cos(a),0,R*Math.sin(a)]},jkPile=r=>jkRim(r,-.5,4.7),JPJ=[.04,-.06,.02,-.03,.07];
+/* the deck and its trump card lie by the dealer, on their left (the other side from their tricks) */
+const jkDeckAt=r=>jkRim(r,.5,4.6);
+/* the number of tricks over a pile: a round badge that turns to the eye */
+function pileTex(n){return g3T('pn:'+n,()=>{const c=cvs(128,128),x=c.getContext('2d');x.beginPath();x.arc(64,64,57,0,Math.PI*2);x.fillStyle='rgba(12,16,32,.92)';x.fill();x.lineWidth=7;x.strokeStyle='#F2C46A';x.stroke();
+ x.fillStyle='#FFF4DC';x.font='800 '+(n>9?60:72)+'px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(String(n),64,69);return g3Tex(c)})}
+const pileModel=(sc,n)=>sc.models['pn:'+n]||g3Model(sc,'pn:'+n,[[gQuad(1,1),g3Mat({t:pileTex(n),unlit:true,cut:true})]],[.5,.5,.06]);
 /* at a card table sit only the people whose hands are free (CAST_FREE in js/games-core.js); people online keep a free one too */
 function castClean(ids){const out=ids.slice(),used=new Set(out.filter(c=>CAST_FREE.includes(c)));out.forEach((c,i)=>{if(c&&!CAST_FREE.includes(c)){const fem=c[0]==='f',alt=CAST_FREE.filter(x=>!used.has(x)),k=alt.find(x=>(x[0]==='f')===fem)||alt[0];if(k){used.add(k);out[i]=k}}});return out}
 const lerpN=(a,b,t)=>a+(b-a)*t;
-/* the eye sits above your chair; how wide it sees follows the screen, so the three players stay in view held upright or on its side */
-function jkCam(asp){const t=clamp((asp-.55)/1.0,0,1),eye=[0,lerpN(5.9,8.2,t),lerpN(8.3,12.4,t)],tgt=[0,lerpN(.2,1.5,t),lerpN(-1.6,-2.2,t)];
- /* on a wide screen the panels take a column on the right, so the table moves into the space left of it */
+/* the eye sits high behind your chair and looks down on the middle of the table; it sees wide enough that the players at your left and right
+   stay in view on a phone held upright. On a wide screen the panels take a column on the right, so the table moves into the space left of it */
+/* with nobody at your sides (durak for two, bura) the eye stays low over your chair, close to the one player opposite */
+const JKC={side:true};
+function jkCamDuo(asp){const t=clamp((asp-.55)/1.0,0,1),eye=[0,lerpN(5.9,8.2,t),lerpN(8.3,12.4,t)],tgt=[0,lerpN(.2,1.5,t),lerpN(-1.6,-2.2,t)];
  const W=(G3D.cv&&G3D.cv.clientWidth)||800,side=asp>=1.25?Math.min(380,W*.4)/W:0;
  const hh=lerpN(.58,.8,t)*(1-side*.45);let fov=2*Math.atan(Math.tan(hh)/asp);fov=clamp(fov,.72,1.8);return{eye,tgt,fov,sy:lerpN(.05,0,t),sx:-side}}
+function jkCam(asp){if(!JKC.side)return jkCamDuo(asp);const t=clamp((asp-.5)/.5,0,1),eye=[0,13-t*2.6,12.5+t*1.5],tgt=[0,0,-1.2-t*.6];
+ const W=(G3D.cv&&G3D.cv.clientWidth)||800,side=asp>=1.25?Math.min(380,W*.4)/W:0;
+ const fov=clamp(Math.max(1.02,2*Math.atan(.5/(asp*(1-side)))),.9,1.7);return{eye,tgt,fov,sy:lerpN(-.02,0,t),sx:-side}}
 /* a point on the screen (nx, ny from -1 to 1) at distance d in front of the eye, and the turn that makes a card face the eye */
 function jkScr(asp,nx,ny,d){const C=jkCam(asp),F=v3.norm(v3.sub(C.tgt,C.eye)),R=v3.norm(v3.cross(F,[0,1,0])),U=v3.cross(R,F),t=Math.tan(C.fov/2);
  return v3.add(C.eye,v3.add(v3.mul(F,d),v3.add(v3.mul(R,(nx-C.sx)*t*asp*d),v3.mul(U,(ny-C.sy)*t*d))))}
@@ -321,11 +334,11 @@ function oppCarry(sc,pts,durs,arcs){if(!oppRig(sc))return;const up=p=>[p[0],p[1]
 const LKS=['short','curly','long','pony','bald'],hexOk=v=>typeof v==='string'&&/^#[0-9a-fA-F]{6}$/.test(v);
 function oppLook(L){const o=L&&typeof L==='object'?L:{};return{style:LKS.includes(o.style)?o.style:'short',fem:o.fem?1:0,mus:o.mus?1:0,beard:o.beard?1:0,glasses:o.glasses?1:0,hat:o.hat?1:0,skin:hexOk(o.skin)?o.skin:'#E2AF8C',hair:hexOk(o.hair)?o.hair:'#2A1A12',brow:hexOk(o.brow)?o.brow:undefined,eye:hexOk(o.eye)?o.eye:undefined,old:o.old?1:0,shirt:hexOk(o.shirt)?o.shirt:(typeof o.shirt==='string'&&/^hsl\(/.test(o.shirt)?o.shirt:'#2F5D8A')}}
 const lkKey=L=>[L.style,L.fem,L.mus,L.beard,L.glasses,L.hat,L.skin,L.hair,L.brow||'',L.shirt,L.eye||'',L.old?1:0].join('|');
-G3B.joker=()=>{const sc=g3Scene({cam:{fixed:jkCam,tgt:[0,0,0],fov:1,dy:0,dp:0,dz:1},orbit:false,zoom:false,shR:12,shC:[0,0,-1.6],spot:[0,2.4,11,.62],bg:[.035,.024,.02],
+G3B.joker=()=>{const sc=g3Scene({cam:{fixed:jkCam,tgt:[0,0,0],fov:1,dy:0,dp:0,dz:1},orbit:false,zoom:false,shR:12.5,shC:[0,0,-.6],spot:[0,2.4,11,.62],bg:[.035,.024,.02],
   light:{d:v3.norm([-.22,1,.4]),c:[2.35,2.08,1.72],sky:[.26,.22,.2],gnd:[.12,.08,.06],exp:1.0},
   anchors:[['.seat.left',[...[JSP[1][0]*.97,6.25,JSP[1][1]*.97]]],['.seat.top',[0,6.35,-JR*.97]],['.seat.right',[JSP[3][0]*.97,6.25,JSP[3][1]*.97]]]});
  /* the room and the table: the night lounge (navy felt, gold, a city behind the glass), or the old room with the rug and the green felt */
- sc.lux=jkRoom()==='lounge';if(sc.lux){luxTable(sc);envLounge(sc)}else{roundRoom(sc,5.45,g3T('felt',()=>g3Tex(feltCv({a:'#2E7D59',b:'#123B29',ring:1}))));envRoom(sc)}if(typeof gEvActive==='function'&&gEvActive('easter'))eggPlateAt(sc,[-3.3,0,-2.7],.8);
+ sc.cross=1;sc.lux=jkRoom()==='lounge';if(sc.lux){luxTable(sc);envLounge(sc)}else{roundRoom(sc,5.45,g3T('felt',()=>g3Tex(feltCv({a:'#2E7D59',b:'#123B29',ring:1}))));envRoom(sc)}if(typeof gEvActive==='function'&&gEvActive('easter'))eggPlateAt(sc,[-3.3,0,-2.7],.8);
  sc.look={on:gLookSet()!=='off',y:0,p:0,uy:0,up:0,gy:0,gp:0,my:.55,mp:.3,t:0};
  mkModel(sc);if(castPic())castLoad();
  const atl=jkAtlas(),back=cardUV(38);sc.c4=jkC4()+':'+gStyleOf('joker');
@@ -333,7 +346,7 @@ G3B.joker=()=>{const sc=g3Scene({cam:{fixed:jkCam,tgt:[0,0,0],fov:1,dy:0,dp:0,dz
  g3Model(sc,'deck',[[gBox(CDW,1,CDH,0,1,(f,u,v)=>f===0?[back[0]+u*back[2],back[1]+v*back[3]]:[268/2048,170/2048]),g3Mat({t:atl,sh:20,sp:.15,gl:.1})]],null);
  /* the first touch lifts a card, the second plays it; a card dragged up onto the table is played too */
  sc.hoverAll=true;
- sc.tap=ray=>{const o=g3HitObj(sc,ray,o=>o.pick&&o.pick.i!=null);if(!o)return;if(sc.tap1){g3Act(sc.act,{i:String(o.pick.i)});return}if(sc.csel===o.pick.k){sc.csel=null;g3Act(sc.act||'jcard',{i:String(o.pick.i)});return}sc.csel=o.pick.k;snd('card',.6);G3U[sc.host](sc);g3Need()};
+ sc.tap=ray=>{const o=g3HitObj(sc,ray,o=>o.pick&&(o.pick.i!=null||o.pick.last));if(!o)return;if(o.pick.last){if(sc.lastA)g3Act(sc.lastA,{});return}if(sc.tap1){g3Act(sc.act,{i:String(o.pick.i)});return}if(sc.csel===o.pick.k){sc.csel=null;g3Act(sc.act||'jcard',{i:String(o.pick.i)});return}sc.csel=o.pick.k;snd('card',.6);G3U[sc.host](sc);g3Need()};
  sc.drag={y:.4,lift:.5,dz:0,start:o=>{sc.csel=o.pick.k;if(sc.look){sc.look.uy=sc.look.up=0;sc.look.fast=performance.now()+700}},drop:(o,p)=>{if(p&&Math.hypot(p[0],p[2])<5.2){sc.csel=null;g3Act(sc.act||'jcard',{i:String(o.pick.i)})}}};
  sc.onResize=()=>{try{G3U[sc.host](sc)}catch(e){}};sc.people=seatOf;
  return sc};
@@ -361,7 +374,8 @@ function jkGaze(r,V,rel){const cur=V.cur!=null&&V.cur>=0?rel(V.cur):null,me=JSP[
 /* the sculpted people have lids of their own: a head bowed as far would hide their eyes from a camera above, so they bow less */
 const pplNod=()=>PPL.st===2?.3:1;
 /* one picture of the table for both kinds of game */
-function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.act=V.act;sc.tap1=!!V.tap1;jkDeck(sc);
+function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.act=V.act;sc.tap1=!!V.tap1;sc.lastA=V.lastA||null;jkDeck(sc);
+ const side=!V.on||V.on.some(r=>r===1||r===3);if(side!==JKC.side){JKC.side=side;g3Need()}
  const deal=V.deal!==sc.deal;if(deal)sc.deal=V.deal;const dealer=V.dealer!=null?rel(V.dealer):2,cur=V.cur!=null&&V.cur>=0?rel(V.cur):null,dg=dealer>0&&castPic()&&sc.rigs&&sc.rigs[String(dealer)],dp=dealer===0?[0,1.4,6.6]:dg?rigP(dg.f,.25,.6,1.5):jkLocal(dealer,0,[0,1.6,2.6]);
  /* my eyes go a little toward whoever is to move, and back to my hand when it is me */
  if(sc.look){const Lk=sc.look;Lk.on=gLookSet()!=='off';const on=Lk.on&&cur!=null&&cur!==0&&V.win==null,gy=on?(cur===1?.075:cur===3?-.075:0):0,gp=on?(cur===2?.035:.012):0;if(gy!==Lk.gy||gp!==Lk.gp){Lk.gy=gy;Lk.gp=gp;g3Need()}}
@@ -396,35 +410,41 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
   const had=sc.objs.get('k:c'+idx);if(r===0&&had&&had.hud&&!had.dying)mineBy(d);else if(!had){const done=r===0?mineBy(d):carryBy(r,d);if(!done){d.from=r===0?{p:jkScr(asp,0,-.55,2.4),q:jkFace(asp),s:.6}:{p:jkLocal(r,0,[0,1.95,2.5]),q:qt.mul(jkSeatQ(r,0),qt.mul(qt.ax(0,1,0,Math.PI),qt.ax(1,0,0,-.5))),s:.95};d.dur=560;d.arc=1.2}}
   L.push(d);if(won)M.push({m:'mk',p:[tx,.01,tz],s:[JTSK*1.25,1,JTSK*1.6],uv:MK.blob,c:[1,.78,.3],a:.6,add:true});
   else if(last)M.push({m:'mk',p:[tx,.009,tz],s:[JTSK*1.15,1,JTSK*1.5],uv:MK.blob,c:[1,.9,.6],a:.4,add:true});
-  if(e.card.j){const t=(e.jm==='hi'?'მაღალი':'დაბალი')+(e.js?' '+SY[e.js]:'');lblModel(sc,t);L.push({k:'lb'+idx,m:'l:'+t,p:[tx,.05+k*.008,tz+1.65],q:qt.id(),s:1.15,cast:false,now:1})}});
+  if(e.card.j){const t=jmTxt(e);lblModel(sc,t);L.push({k:'lb'+idx,m:'l:'+t,p:[tx,.07+k*.008,tz+.95],q:qt.id(),s:1.1,cast:false,now:1})}});
  /* cards laid on the table by place: durak's pairs, bura's two rows; each flies in from whoever played it */
  (V.tbl||[]).forEach(e=>{const idx=cardIdx(e.card),r=e.r,key='c'+idx,d={k:key,m:'card',p:[e.x,.012+(e.y||0),e.z],q:FACEUP(e.yaw||0),s:e.s||JTS,uv:cardUV(idx),glow:e.glow?[.2,.14,.04]:null,cast:true};
   if(r!=null&&!sc.objs.has('k:'+key)){const done=r===0?mineBy(d):carryBy(r,d);if(!done){d.from=r===0?{p:jkScr(asp,0,-.55,2.4),q:jkFace(asp),s:.6}:{p:jkLocal(r,0,[0,1.95,2.5]),q:qt.mul(jkSeatQ(r,0),qt.mul(qt.ax(0,1,0,Math.PI),qt.ax(1,0,0,-.5))),s:.95};d.dur=560;d.arc=1.2}}
   L.push(d)});
  if(V.disc){const h=Math.max(.02,V.disc*.006);L.push({k:'disc',m:'deck',p:[3.35,h/2+.01,.85],s:[1.15,h,1.15],q:qt.ax(0,1,0,.55),dur:400})}
- /* tricks already taken lie in a little pile in front of each player */
- for(let r=0;r<4;r++){const tk=V.taken[(r+V.base)%4]||0;if(!tk)continue;const h=.035*tk,pp=r===0?[2.7,h/2+.01,3.6]:(()=>{const v=jkLocal(r,0,[-1.7,0,3.9]);return[v[0],h/2+.01,v[2]]})();
-  L.push({k:'pile'+r,m:'deck',p:pp,s:[1.05,h,1.05],q:qt.ax(0,1,0,(r===0?0:JYAW[r])+.2),dur:400})}
  /* the deck and the trump card under it, by the dealer */
- if(V.trumpCard&&V.deckN>0&&['bid','play'].includes(V.phase)){const h=Math.max(.02,V.deckN*.008),c=dealer===0?[-2.6,0,3.1]:jkLocal(dealer,0,[1.9,0,4.1]),yw=dealer===0?0:JYAW[dealer];
-  L.push({k:'tc',m:'card',p:[c[0],.008,c[2]],q:FACEUP(yw+Math.PI/2),s:1.35,uv:cardUV(cardIdx(V.trumpCard)),cast:false});L.push({k:'deck',m:'deck',p:[c[0]+.35*Math.cos(yw),h/2+.02,c[2]-.35*Math.sin(yw)],s:[1.3,h,1.3],q:qt.ax(0,1,0,yw+.06)})}
+ if(V.trumpCard&&V.deckN>0&&['bid','play'].includes(V.phase)){const h=Math.max(.02,V.deckN*.008),c=dealer===0&&!JKC.side?[-2.6,0,3.1]:jkDeckAt(dealer),yw=dealer===0?0:JYAW[dealer];
+  L.push({k:'tc',m:'card',p:[c[0],.008,c[2]],q:FACEUP(yw+Math.PI/2),s:1.25,uv:cardUV(cardIdx(V.trumpCard)),cast:false});L.push({k:'deck',m:'deck',p:[c[0]+.35*Math.cos(yw),h/2+.02,c[2]-.35*Math.sin(yw)],s:[1.3,h,1.3],q:qt.ax(0,1,0,yw+.06)})}
  sc.jw=V.gto!=null?V.gto:V.win!=null?rel(V.win):sc.jw;
  /* the winner of a trick gathers it: the hand goes to the middle and draws the cards to their pile */
  const keys=new Set(L.map(d=>'k:'+d.k)),leaving=[...sc.objs.values()].some(o=>o.m==='card'&&o.id.startsWith('k:c')&&!o.dying&&!o.hud&&!keys.has(o.id)),sw=sc.jw;let sweep=0;
- if(leaving&&typeof sw==='number'&&rigOf(sw)){const pile=jkLocal(sw,0,[-1.7,.25,3.9]);rigGo(sc,String(sw),[{p:[0,.4,0],d:320,arc:.3},{p:pile,d:520,arc:.4}],{lean:.1});sweep=320}
+ if(leaving&&typeof sw==='number'&&rigOf(sw)){const pile=v3.add(jkPile(sw),[0,.25,0]);rigGo(sc,String(sw),[{p:[0,.4,0],d:320,arc:.3},{p:pile,d:520,arc:.4}],{lean:.1});sweep=320}
+ /* tricks already taken lie in front of each player: a face-down card a trick, each laid across the one before, as people keep them at a table.
+    Their number stands over the pile, and a touch on a pile shows the last trick. A trick just won joins the pile when it is swept there */
+ const wonNow=V.win!=null&&V.trick.length===4?rel(V.win):-1,inAt=leaving?150+sweep+430:0,C0=jkCam(asp);sc.pileD=inAt;
+ for(let r=0;r<4;r++){const tk=(V.taken[(r+V.base)%4]||0)-(wonNow===r?1:0);if(tk<=0)continue;const c=jkPile(r),yw=JYAW[r],tap=V.lastA?{last:1}:null;
+  for(let t=0;t<tk;t++)L.push({k:'pl'+r+'-'+t,m:'card',p:[c[0],.014+t*.016,c[2]],q:FACEDN(yw+(t%2?Math.PI/2:0)+JPJ[t%5]),s:1.2,pick:tap,refl:false,from:{p:[c[0],.55+t*.016,c[2]],a:0},delay:inAt,dur:220});
+  const y=.62+tk*.016,el=Math.atan2(C0.eye[1]-y,Math.hypot(C0.eye[0]-c[0],C0.eye[2]-c[2]));pileModel(sc,tk);
+  L.push({k:'pn'+r,m:'pn:'+tk,p:[c[0],y,c[2]],q:qt.ax(1,0,0,-el),s:r===0?.78:1,bb:1,cast:false,refl:false,pick:tap,from:{p:[c[0],y+.25,c[2]],a:0},delay:inAt,dur:200})}
+ /* whoever is to move has a ring glowing on the table where their card will go */
+ if(cur!=null&&V.win==null&&['trump','bid','play'].includes(V.phase)&&!V.tbl){const[tx,tz]=JTRK[cur];M.push({m:'mk',p:[tx,.006,tz],s:[JTSK*1.5,1,JTSK*1.5],uv:MK.ring,c:[1,.8,.38],a:.5,add:true,pulse:1})}
  /* a drawn dealer deals with their hand: a flick toward each player in turn */
  if(deal&&rigOf(dealer)){const g=rigOf(dealer),T=[1,2,3,0].filter(r=>r!==dealer).map(r=>r===0?[0,.5,4]:v3.lerp(jkLocal(r,0,[0,.5,2.5]),[0,.5,0],.35)),st=[];for(let k=0;k<6;k++){st.push({p:v3.lerp(dp,T[k%T.length],.35),d:120,arc:.15},{p:dp,d:110})}rigGo(sc,String(dealer),st,{lean:.04})}
  /* a word said at the table: a nod for a number, a knock on the table for a pass */
  if(V.bids&&pic){const B0=sc.bids0||[];for(const r of[1,2,3]){const b=V.bids[(r+V.base)%4],was=B0[(r+V.base)%4];if(b!=null&&was===null){g3Wig(sc,'k:ph'+r,{ax:'x',a:.09,f:1,d:700});if(b===0&&rigOf(r)){const g=rigOf(r),P=rigP(g.f,.1,.05,1.6);rigGo(sc,String(r),[{p:rigAbove(P,.35),d:200},{p:P,d:90},{p:rigAbove(P,.3),d:110},{p:P,d:90}],{lean:.05})}}}sc.bids0=V.bids.slice()}
- sc.marks=M;g3Set(sc,L,{gone:o=>{if(o.m==='card'&&o.id.startsWith('k:c')){const w=sc.jw??0,p=w==='disc'?[3.35,.25,.85]:w===0?[2.7,.2,3.6]:jkLocal(w,0,[-1.7,.2,3.9]);return{p,a:0,dur:560,delay:150+sweep,s:1.05,q:FACEDN(w==='disc'||w===0?0:JYAW[w])}}if(o.id.startsWith('k:h'))return{a:0,dur:160};return{a:0,dur:250}}})}
+ sc.marks=M;g3Set(sc,L,{gone:o=>{if(o.id.startsWith('k:pn'))return{a:0,dur:140,delay:sc.pileD||0};if(o.m==='card'&&o.id.startsWith('k:c')){const w=sc.jw??0,p=w==='disc'?[3.35,.25,.85]:v3.add(jkPile(w),[0,.2,0]);return{p,a:0,dur:560,delay:150+sweep,s:1.05,q:FACEDN(w==='disc'||w===0?0:JYAW[w])}}if(o.id.startsWith('k:h'))return{a:0,dur:160};return{a:0,dur:250}}})}
 G3U.joker=sc=>{const G=JK,V={hint:typeof jkPlayHint==='function'?(m=>m&&m.c)(jkPlayHint()):null,base:0,act:'jcard',hand:[],legal:[],counts:[0,0,0,0],taken:[0,0,0,0],trick:[],win:null,deal:null,dealer:null,cur:null,phase:G.phase,mine:false,trumpCard:null,deckN:0,ids:G.ids.map((x,i)=>i===0?{n:ME.name,k:'me'}:{n:x.n,h:x.h,k:x.n,cast:x.cast})};
  if(G.hands){const tr=G.phase==='trump'&&G.cur===0;V.hand=tr?G.first3[0]:G.phase==='trump'?[]:G.hands[0];V.legal=G.phase==='play'&&G.cur===0&&G.win==null?G.legal(0):[];V.mine=V.legal.length>0;
-  V.counts=[0,1,2,3].map(p=>G.phase==='trump'?(p===0?0:3):G.hands[p].length);V.taken=G.taken||V.taken;V.trick=G.trick;V.bids=G.bids;V.win=G.win;V.cur=G.cur;V.dealer=G.dealer;V.deal=G.len+':'+G.h+':'+G.dealer;V.trumpCard=G.trumpCard;V.deckN=36-4*G.n}
+  V.counts=[0,1,2,3].map(p=>G.phase==='trump'?(p===0?0:3):G.hands[p].length);V.taken=G.taken||V.taken;V.trick=G.trick;V.bids=G.bids;V.win=G.win;V.cur=G.cur;V.dealer=G.dealer;V.deal=G.len+':'+G.h+':'+G.dealer;V.trumpCard=G.trumpCard;V.deckN=36-4*G.n;V.lastA=G.lastT&&G.phase==='play'?'jlast':null}
  jkScene(sc,V)};
 G3U.jko=sc=>{const s=JO.st,me=JO.seat,V={base:me>=0?me:0,act:'jkocard',hand:[],legal:[],counts:[0,0,0,0],taken:[0,0,0,0],trick:[],win:null,deal:null,dealer:null,cur:null,phase:s?s.phase:'wait',mine:false,trumpCard:null,deckN:0,
   ids:[0,1,2,3].map(p=>{const u=JO.t&&JO.t.seats[p];if(u){const pr=typeof PC!=='undefined'&&PC.get(u);return{n:u===ME.id?ME.name:(pr&&pr.name)||'მოთამაშე',h:pr&&pr.hue,k:u,lk:(JO.looks&&JO.looks[u])||(pr&&pr.look)||null}}const b=s&&s.bots&&s.bots[p];return{n:b||'ბოტი',h:b?joBotHue(b):30,k:'b'+(b||p),cast:b&&castNamed(b)?castNamed(b).id:null}})};
  if(s&&s.counts){V.hand=me>=0?JO.hand:[];const myTurn=me>=0&&s.cur===me&&s.win==null&&!JO.wait&&s.phase==='play';V.legal=myTurn?JK.legal.call({hands:{[me]:JO.hand},trick:s.trick,trump:s.trump},me):[];V.mine=V.legal.length>0;
-  V.counts=[0,1,2,3].map(r=>s.counts[(r+V.base)%4]||0);V.taken=s.taken||V.taken;V.bids=s.bids||null;V.trick=s.trick||[];V.win=s.win;V.cur=s.cur;V.dealer=s.dealer;V.deal=s.deal;V.trumpCard=s.trumpCard;V.deckN=36-4*s.n}
+  V.counts=[0,1,2,3].map(r=>s.counts[(r+V.base)%4]||0);V.taken=s.taken||V.taken;V.bids=s.bids||null;V.trick=s.trick||[];V.win=s.win;V.cur=s.cur;V.dealer=s.dealer;V.deal=s.deal;V.trumpCard=s.trumpCard;V.deckN=36-4*s.n;V.lastA=JO.lastT&&s.phase==='play'?'jkolast':null}
  jkScene(sc,V)};
 
 /* durak: the pairs on the table in two rows of three, the deck with its trump by the table's left side, the discard on the right */
@@ -647,7 +667,9 @@ const wallQ=(sc,m,p,w,h,yaw)=>P3(sc,gQuad(w,h),m,p,qt.ax(0,1,0,yaw||0),false);
 function envRoom(sc){envSet(sc,'room');const rug=g3Mat({t:g3T('rug',()=>g3Tex(rugCv())),sh:4,sp:.02,gl:0});wallQ(sc,rug,[0,8,-19.6],7,14);
  const sb=g3Mat({t:woodTex('walnut'),sh:40,sp:.25,gl:.2});P3(sc,gBox(9,.45,1.6,.1,2),sb,[11.5,4.2,-19.1],null,false);jugAt(sc,[9.2,4.43,-19.1],1.4);hornAt(sc,[11.4,4.43,-19],-.25);if(gNewYear())chichilakiAt(sc,[14.6,4.43,-19.0],1.15);
  wallQ(sc,envMat(sc,'win',windowCv),[-19.9,8,-6],8,14,Math.PI/2);hangLampAt(sc,[0,19,-1.5]);
- jugAt(sc,[4.55,0,1.25],.8);wineGlassAt(sc,[3.75,0,2.15]);wineGlassAt(sc,[4.85,0,.2]);plateAt(sc,[-4.35,0,1.05],1);breadAt(sc,[-4.35,.06,1.05],.9);hornAt(sc,[-4.6,0,2.35],2.2,.62);envDone(sc)}
+ /* with a player at each hand (sc.cross) the jug, the glasses, the bread and the horn stand on the rim between the seats */
+ if(sc.cross){const rim=(a,y=.16)=>[5.92*Math.cos(a),y,5.92*Math.sin(a)];jugAt(sc,rim(-.79),.8);wineGlassAt(sc,rim(.7));wineGlassAt(sc,rim(.9));plateAt(sc,rim(-2.36),.75);breadAt(sc,rim(-2.36,.22),.7);hornAt(sc,rim(2.36),2.2,.62)}
+ else{jugAt(sc,[4.55,0,1.25],.8);wineGlassAt(sc,[3.75,0,2.15]);wineGlassAt(sc,[4.85,0,.2]);plateAt(sc,[-4.35,0,1.05],1);breadAt(sc,[-4.35,.06,1.05],.9);hornAt(sc,[-4.6,0,2.35],2.2,.62)}envDone(sc)}
 /* ---------- the night lounge ---------- */
 const jkRoom=()=>{const v=typeof store!=='undefined'?store.get('jkroom','lounge'):'lounge';return v==='room'?'room':'lounge'};
 const gLookSet=()=>{const v=typeof store!=='undefined'?store.get('glook','auto'):'auto';return['auto','tilt','off'].includes(v)?v:'auto'};
@@ -684,13 +706,15 @@ function envLounge(sc){envSet(sc,'lounge');const panel=g3Mat({t:g3T('luxpanel',(
  /* the Georgian rug in a dark frame, behind the far chair */
  P3(sc,gBox(7.3,12.9,.3,.08,2),g3Mat({c:'#1B1511',sh:60,sp:.35,gl:.25}),[-2.6,8.2,-19.75],null,false);wallQ(sc,g3Mat({t:g3T('rug',()=>g3Tex(rugCv())),sh:4,sp:.02,gl:0}),[-2.6,8.2,-19.55],6.5,12.1,0);
  ringLampAt(sc,[8.8,11.8,-12]);globeLampAt(sc,[-9.8,11.4,-14]);monsteraAt(sc,[13.2,-11,-13.5],1.2);monsteraAt(sc,[-14.5,-11,-12.5],1.05);
- /* on the table: the card box, a gold dish, a mug with the crown, a lantern and a little plant */
- const box=g3Mat({c:'#14161C',sh:90,sp:.5,gl:.35});P3(sc,gBox(1.25,.42,1.7,.07,2),box,[-4.35,.21,-.5],qt.ax(0,1,0,.55));P3(sc,gPlane(1.12,1.56),g3Mat({t:g3T('cardbox',()=>g3Tex(cardBoxCv())),sh:60,sp:.4,gl:.3}),[-4.35,.425,-.5],qt.ax(0,1,0,.55),false);
- P3(sc,gLathe([[0,0],[.5,0],[.64,.1],[.6,.13],[.46,.05],[0,.05]],32),g3Mat({c:'#16203A',sh:120,sp:.6,gl:.35}),[-4.2,0,2.55]);P3(sc,gTorus(.62,.025,32,5),goldM(),[-4.2,.115,2.55],null,false);
- P3(sc,gLathe([[0,0],[.44,0],[.47,.05],[.47,1.05],[.42,1.05],[.42,.12],[0,.12]],28),g3Mat({t:g3T('mug',()=>g3Tex(mugCv())),sh:110,sp:.7,gl:.45}),[4.5,0,1.4],qt.ax(0,1,0,-.35));P3(sc,gTorus(.25,.06,14,6),g3Mat({c:'#12203E',sh:110,sp:.7,gl:.45}),[4.5+.48*Math.cos(.35),.55,1.4+.48*Math.sin(.35)],qt.mul(qt.ax(0,1,0,-.35),qt.ax(1,0,0,Math.PI/2)));
- P3(sc,gBox(.66,.96,.66,.05,2),g3Mat({c:'#1E140C',e:'#6A3410',sh:120,sp:.9,gl:.6}),[4.85,.53,-.15]);P3(sc,gEll(.12,.2,.12,[0,0,0],null,10),g3Mat({c:'#FFE7B0',e:'#FFC060',unlit:true}),[4.85,.5,-.15],null,false);const brass=g3Mat({c:'#8A6428',sh:90,sp:.6,gl:.35});P3(sc,gBox(.78,.08,.78,.03,1),brass,[4.85,1.06,-.15]);P3(sc,gLathe([[0,0],[.3,0],[0,.32]],12),brass,[4.85,1.1,-.15]);P3(sc,gBox(.78,.08,.78,.03,1),brass,[4.85,.04,-.15]);
- P3(sc,gMerge(...[[-.36,-.36],[.36,-.36],[-.36,.36],[.36,.36]].map(([dx,dz])=>gXf(gBox(.045,1.0,.045,.015,1),[dx,0,dz],qt.id()))),brass,[4.85,.53,-.15]);haloAt(sc,[4.85,.6,.4],2.4,'#FFB870');
- potPlantAt(sc,[-4.85,0,1.25]);envDone(sc)}
+ /* on the table: the card box, a gold dish, a mug with the crown, a lantern and a little plant. At a table with a player at each hand
+    (sc.cross) the sides are taken by their cards, so the things stand on the rim between the seats and the card box stays away */
+ const X=sc.cross,rim=a=>[5.92*Math.cos(a),.16,5.92*Math.sin(a)],D=X?rim(2.36):[-4.2,0,2.55],G=X?rim(.79):[4.5,0,1.4],T=X?rim(-.79):[4.85,0,-.15],Pp=X?rim(-2.36):[-4.85,0,1.25],at=(B,dx,dy,dz)=>[B[0]+dx,B[1]+dy,B[2]+dz];
+ if(!X){const box=g3Mat({c:'#14161C',sh:90,sp:.5,gl:.35});P3(sc,gBox(1.25,.42,1.7,.07,2),box,[-4.35,.21,-.5],qt.ax(0,1,0,.55));P3(sc,gPlane(1.12,1.56),g3Mat({t:g3T('cardbox',()=>g3Tex(cardBoxCv())),sh:60,sp:.4,gl:.3}),[-4.35,.425,-.5],qt.ax(0,1,0,.55),false)}
+ P3(sc,gLathe([[0,0],[.5,0],[.64,.1],[.6,.13],[.46,.05],[0,.05]],32),g3Mat({c:'#16203A',sh:120,sp:.6,gl:.35}),D);P3(sc,gTorus(.62,.025,32,5),goldM(),at(D,0,.115,0),null,false);
+ P3(sc,gLathe([[0,0],[.44,0],[.47,.05],[.47,1.05],[.42,1.05],[.42,.12],[0,.12]],28),g3Mat({t:g3T('mug',()=>g3Tex(mugCv())),sh:110,sp:.7,gl:.45}),G,qt.ax(0,1,0,-.35));P3(sc,gTorus(.25,.06,14,6),g3Mat({c:'#12203E',sh:110,sp:.7,gl:.45}),at(G,.48*Math.cos(.35),.55,.48*Math.sin(.35)),qt.mul(qt.ax(0,1,0,-.35),qt.ax(1,0,0,Math.PI/2)));
+ P3(sc,gBox(.66,.96,.66,.05,2),g3Mat({c:'#1E140C',e:'#6A3410',sh:120,sp:.9,gl:.6}),at(T,0,.53,0));P3(sc,gEll(.12,.2,.12,[0,0,0],null,10),g3Mat({c:'#FFE7B0',e:'#FFC060',unlit:true}),at(T,0,.5,0),null,false);const brass=g3Mat({c:'#8A6428',sh:90,sp:.6,gl:.35});P3(sc,gBox(.78,.08,.78,.03,1),brass,at(T,0,1.06,0));P3(sc,gLathe([[0,0],[.3,0],[0,.32]],12),brass,at(T,0,1.1,0));P3(sc,gBox(.78,.08,.78,.03,1),brass,at(T,0,.04,0));
+ P3(sc,gMerge(...[[-.36,-.36],[.36,-.36],[-.36,.36],[.36,.36]].map(([dx,dz])=>gXf(gBox(.045,1.0,.045,.015,1),[dx,0,dz],qt.id()))),brass,at(T,0,.53,0));haloAt(sc,at(T,0,.6,.55),2.4,'#FFB870');
+ potPlantAt(sc,Pp);envDone(sc)}
 /* the phone's tilt needs a yes on some phones: asked at the next tap, once */
 document.addEventListener('click',()=>{if(gLookSet()!=='tilt'||G3GY.on)return;const D=window.DeviceOrientationEvent;if(D&&typeof D.requestPermission==='function')D.requestPermission().then(r=>{if(r==='granted')g3GyroOn(true)}).catch(()=>{});else g3GyroOn(true)},true);
 function envYardS(sc){envSet(sc,'out');const brick=g3Mat({t:g3T('brick',()=>g3Tex(brickCv(),{rep:true})),uv:[0,0,8,5],sh:8,sp:.04,gl:0}),plaster=g3Mat({t:g3T('pl:ochre',()=>g3Tex(plasterCv('#C9A77A'))),sh:6,sp:.03,gl:0});
