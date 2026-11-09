@@ -171,16 +171,16 @@ const pileModel=(sc,n)=>sc.models['pn:'+n]||g3Model(sc,'pn:'+n,[[gQuad(1,1),g3Ma
 /* at a card table sit only the people whose hands are free (CAST_FREE in js/games-core.js); people online keep a free one too */
 function castClean(ids){const out=ids.slice(),used=new Set(out.filter(c=>CAST_FREE.includes(c)));out.forEach((c,i)=>{if(c&&!CAST_FREE.includes(c)){const fem=c[0]==='f',alt=CAST_FREE.filter(x=>!used.has(x)),k=alt.find(x=>(x[0]==='f')===fem)||alt[0];if(k){used.add(k);out[i]=k}}});return out}
 const lerpN=(a,b,t)=>a+(b-a)*t;
-/* the eye sits high behind your chair and looks down on the middle of the table; it sees wide enough that the players at your left and right
-   stay in view on a phone held upright. On a wide screen the panels take a column on the right, so the table moves into the space left of it */
-/* with nobody at your sides (durak for two, bura) the eye stays low over your chair, close to the one player opposite */
+/* the eye sits over your chair, low and close, so the table fills the screen. On a phone held upright the players at your left and right
+   are out of the picture, as they are at the edge of your eyes at a real table: you turn to them (a finger across the table, turning the phone,
+   or a touch on their name at the edge of the screen) and the view drifts back to the table. On a wide screen all four are in view.
+   On a wide screen the panels take a column on the right, so the table moves into the space left of it */
 const JKC={side:true};
-function jkCamDuo(asp){const t=clamp((asp-.55)/1.0,0,1),eye=[0,lerpN(5.9,8.2,t),lerpN(8.3,12.4,t)],tgt=[0,lerpN(.2,1.5,t),lerpN(-1.6,-2.2,t)];
+function jkCam(asp){const t=clamp((asp-.55)/1.0,0,1),eye=[0,lerpN(5.9,8.2,t),lerpN(8.3,12.4,t)],tgt=[0,lerpN(.2,1.5,t),lerpN(-1.6,-2.2,t)];
  const W=(G3D.cv&&G3D.cv.clientWidth)||800,side=asp>=1.25?Math.min(380,W*.4)/W:0;
  const hh=lerpN(.58,.8,t)*(1-side*.45);let fov=2*Math.atan(Math.tan(hh)/asp);fov=clamp(fov,.72,1.8);return{eye,tgt,fov,sy:lerpN(.05,0,t),sx:-side}}
-function jkCam(asp){if(!JKC.side)return jkCamDuo(asp);const t=clamp((asp-.5)/.5,0,1),eye=[0,13-t*2.6,12.5+t*1.5],tgt=[0,0,-1.2-t*.6];
- const W=(G3D.cv&&G3D.cv.clientWidth)||800,side=asp>=1.25?Math.min(380,W*.4)/W:0;
- const fov=clamp(Math.max(1.02,2*Math.atan(.5/(asp*(1-side)))),.9,1.7);return{eye,tgt,fov,sy:lerpN(-.02,0,t),sx:-side}}
+/* how far the eyes turn to look at a seat: positive is to the left */
+function jkTurnTo(asp,p){const C=jkCam(asp),f=[C.tgt[0]-C.eye[0],C.tgt[2]-C.eye[2]],d=[p[0]-C.eye[0],p[2]-C.eye[2]];return Math.atan2(f[1]*d[0]-f[0]*d[1],f[0]*d[0]+f[1]*d[1])}
 /* a point on the screen (nx, ny from -1 to 1) at distance d in front of the eye, and the turn that makes a card face the eye */
 function jkScr(asp,nx,ny,d){const C=jkCam(asp),F=v3.norm(v3.sub(C.tgt,C.eye)),R=v3.norm(v3.cross(F,[0,1,0])),U=v3.cross(R,F),t=Math.tan(C.fov/2);
  return v3.add(C.eye,v3.add(v3.mul(F,d),v3.add(v3.mul(R,(nx-C.sx)*t*asp*d),v3.mul(U,(ny-C.sy)*t*d))))}
@@ -339,7 +339,7 @@ G3B.joker=()=>{const sc=g3Scene({cam:{fixed:jkCam,tgt:[0,0,0],fov:1,dy:0,dp:0,dz
   anchors:[['.seat.left',[...[JSP[1][0]*.97,6.25,JSP[1][1]*.97]]],['.seat.top',[0,6.35,-JR*.97]],['.seat.right',[JSP[3][0]*.97,6.25,JSP[3][1]*.97]]]});
  /* the room and the table: the night lounge (navy felt, gold, a city behind the glass), or the old room with the rug and the green felt */
  sc.cross=1;sc.lux=jkRoom()==='lounge';if(sc.lux){luxTable(sc);envLounge(sc)}else{roundRoom(sc,5.45,g3T('felt',()=>g3Tex(feltCv({a:'#2E7D59',b:'#123B29',ring:1}))));envRoom(sc)}if(typeof gEvActive==='function'&&gEvActive('easter'))eggPlateAt(sc,[-3.3,0,-2.7],.8);
- sc.look={on:gLookSet()!=='off',y:0,p:0,uy:0,up:0,gy:0,gp:0,my:.55,mp:.3,t:0};
+ sc.look={on:gLookSet()!=='off',y:0,p:0,uy:0,up:0,gy:0,gp:0,my:.55,mp:.3,t:0,hold:4500};
  mkModel(sc);if(castPic())castLoad();
  const atl=jkAtlas(),back=cardUV(38);sc.c4=jkC4()+':'+gStyleOf('joker');
  g3Model(sc,'card',[[gQuad(CDW,CDH),g3Mat({t:atl,cut:true,vary:true,sh:30,sp:.18,gl:.1})],[gQuad(CDW,CDH,true),g3Mat({t:atl,uv:back,cut:true,sh:30,sp:.2,gl:.12})]],[CDW/2,CDH/2,.03]).land=()=>snd('card');
@@ -378,7 +378,7 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
  const side=!V.on||V.on.some(r=>r===1||r===3);if(side!==JKC.side){JKC.side=side;g3Need()}
  const deal=V.deal!==sc.deal;if(deal)sc.deal=V.deal;const dealer=V.dealer!=null?rel(V.dealer):2,cur=V.cur!=null&&V.cur>=0?rel(V.cur):null,dg=dealer>0&&castPic()&&sc.rigs&&sc.rigs[String(dealer)],dp=dealer===0?[0,1.4,6.6]:dg?rigP(dg.f,.25,.6,1.5):jkLocal(dealer,0,[0,1.6,2.6]);
  /* my eyes go a little toward whoever is to move, and back to my hand when it is me */
- if(sc.look){const Lk=sc.look;Lk.on=gLookSet()!=='off';const on=Lk.on&&cur!=null&&cur!==0&&V.win==null,gy=on?(cur===1?.075:cur===3?-.075:0):0,gp=on?(cur===2?.035:.012):0;if(gy!==Lk.gy||gp!==Lk.gp){Lk.gy=gy;Lk.gp=gp;g3Need()}}
+ if(sc.look){const Lk=sc.look;Lk.on=gLookSet()!=='off';Lk.my=side&&asp<1.1?Math.min(1.05,Math.abs(jkTurnTo(asp,[JSP[1][0]*.83,0,JSP[1][1]*.83]))+.12):.55;if(side&&asp<1.1)jkLookHint();const on=Lk.on&&cur!=null&&cur!==0&&V.win==null,gy=on?(cur===1?.075:cur===3?-.075:0):0,gp=on?(cur===2?.035:.012):0;if(gy!==Lk.gy||gp!==Lk.gp){Lk.gy=gy;Lk.gp=gp;g3Need()}}
  /* the three others */
  /* the drawn people come with their picture; until it is here the chairs wait empty (no sculpted people flashing by first) */
  const want=castPic(),pic=want&&castModel(sc),CA=pic?castClean(castSeats(V.ids)):null;
@@ -715,6 +715,17 @@ function envLounge(sc){envSet(sc,'lounge');const panel=g3Mat({t:g3T('luxpanel',(
  P3(sc,gBox(.66,.96,.66,.05,2),g3Mat({c:'#1E140C',e:'#6A3410',sh:120,sp:.9,gl:.6}),at(T,0,.53,0));P3(sc,gEll(.12,.2,.12,[0,0,0],null,10),g3Mat({c:'#FFE7B0',e:'#FFC060',unlit:true}),at(T,0,.5,0),null,false);const brass=g3Mat({c:'#8A6428',sh:90,sp:.6,gl:.35});P3(sc,gBox(.78,.08,.78,.03,1),brass,at(T,0,1.06,0));P3(sc,gLathe([[0,0],[.3,0],[0,.32]],12),brass,at(T,0,1.1,0));P3(sc,gBox(.78,.08,.78,.03,1),brass,at(T,0,.04,0));
  P3(sc,gMerge(...[[-.36,-.36],[.36,-.36],[-.36,.36],[.36,.36]].map(([dx,dz])=>gXf(gBox(.045,1.0,.045,.015,1),[dx,0,dz],qt.id()))),brass,at(T,0,.53,0));haloAt(sc,at(T,0,.6,.55),2.4,'#FFB870');
  potPlantAt(sc,Pp);envDone(sc)}
+/* a touch on the name of a player at the edge of the screen (out of the picture) turns the eyes to them for a while */
+document.addEventListener('click',e=>{const el=e.target.closest&&e.target.closest('.g3jt .seat.g3l,.g3jt .seat.g3r');const sc=G3D.sc;if(!el||!sc||!sc.look||!sc.look.on)return;
+ const r=el.classList.contains('left')?1:el.classList.contains('right')?3:2,L=sc.look,a=jkTurnTo(G3D.asp||.5,[JSP[r][0]*.83,0,JSP[r][1]*.83]);
+ e.stopPropagation();L.uy=clamp(a-L.gy,-L.my,L.my);L.up=0;L.t=performance.now();L.fast=L.t+900;g3Need();if(typeof snd==='function')snd('card',.3)},true);
+/* the first time the players sit out of the picture: how to look at them */
+function jkLookHint(){if(JKC.hint||(typeof store!=='undefined'&&store.get('jklh',0)>=2))return;JKC.hint=1;try{store.set('jklh',(store.get('jklh',0)||0)+1)}catch(e){}
+ setTimeout(()=>{if(!G3D.cv||!G3D.cv.isConnected)return;const tilt=!!window.DeviceOrientationEvent&&gLookSet()!=='tilt'&&matchMedia('(pointer:coarse)').matches,d=document.createElement('div');d.className='jklh';d.setAttribute('role','status');
+  d.innerHTML=`<span>${ic('eye')}გვერდით მსხდომებს შეხედავ თითის გასმით${tilt?' ან ტელეფონის მოტრიალებით':''}</span>${tilt?'<button class="btn sm gold" data-a="jklooktilt">მოტრიალებით</button>':''}<button class="jklhx" data-a="jklhx" aria-label="დახურვა">${ic('x')}</button>`;
+  document.body.appendChild(d);const t0=Date.now(),iv=setInterval(()=>{if(!d.isConnected||!G3D.cv||!G3D.cv.isConnected||Date.now()-t0>9000){clearInterval(iv);d.remove()}},400)},1600)}
+A.jklhx=()=>{$$('.jklh').forEach(x=>x.remove());try{store.set('jklh',9)}catch(e){}};
+A.jklooktilt=()=>{A.jklhx();A.glookset({dataset:{v:'tilt'}})};
 /* the phone's tilt needs a yes on some phones: asked at the next tap, once */
 document.addEventListener('click',()=>{if(gLookSet()!=='tilt'||G3GY.on)return;const D=window.DeviceOrientationEvent;if(D&&typeof D.requestPermission==='function')D.requestPermission().then(r=>{if(r==='granted')g3GyroOn(true)}).catch(()=>{});else g3GyroOn(true)},true);
 function envYardS(sc){envSet(sc,'out');const brick=g3Mat({t:g3T('brick',()=>g3Tex(brickCv(),{rep:true})),uv:[0,0,8,5],sh:8,sp:.04,gl:0}),plaster=g3Mat({t:g3T('pl:ochre',()=>g3Tex(plasterCv('#C9A77A'))),sh:6,sp:.03,gl:0});

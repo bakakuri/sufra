@@ -3212,3 +3212,16 @@ body.wide .pspace{flex-wrap:wrap;margin:6px 0 0;padding:4px 0 2px;-webkit-mask-i
 @keyframes jglow{0%,100%{}30%,70%{box-shadow:0 0 0 2px #FFD36B,0 0 30px rgb(255 205 100/.8)}}
 @keyframes jfxfade{0%{opacity:0}10%,85%{opacity:1}100%{opacity:0}}
 @media (prefers-reduced-motion:reduce){.jfx b,.jfx span,.jfx small,.jfn{animation-name:jfxfade!important}.jfx.pr b::after{display:none}.seat.jhit,.pl.jhit,.seat.jshine,.pl.jshine{animation:none}}
+/* joker on an upright phone: the players at your sides are out of the picture; their names wait at the edge with an arrow, a touch turns you to them */
+.g3jt .seat.g3l,.g3jt .seat.g3r{pointer-events:auto;cursor:pointer}
+.g3jt .seat.g3l::before,.g3jt .seat.g3r::before{content:"";position:absolute;top:50%;width:0;height:0;border:7px solid transparent;transform:translateY(-50%);filter:drop-shadow(0 1px 2px rgb(0 0 0/.6));animation:jedge 1.6s ease-in-out infinite}
+.g3jt .seat.g3l::before{left:-13px;border-right:9px solid #F2C46A;border-left:0}
+.g3jt .seat.g3r::before{right:-13px;border-left:9px solid #F2C46A;border-right:0}
+@keyframes jedge{50%{opacity:.45}}
+.jklh{position:fixed;left:50%;top:47%;z-index:79;transform:translate(-50%,-50%);display:flex;align-items:center;gap:8px;width:max-content;max-width:calc(100vw - 32px);padding:8px 8px 8px 14px;border-radius:16px;
+ background:rgb(12 16 32/.9);border:1px solid rgb(242 196 106/.45);color:#F4F1EA;font-size:13.5px;line-height:1.35;box-shadow:0 10px 30px rgb(0 0 0/.5);animation:jlhin .35s ease-out both}
+.jklh>span{display:flex;align-items:center;gap:8px}.jklh>span svg{width:18px;height:18px;flex:none;color:#F2C46A}
+.jklh .btn{flex:none;white-space:nowrap}
+.jklhx{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:rgb(255 255 255/.08);color:inherit;border:0}.jklhx svg{width:16px;height:16px}
+@keyframes jlhin{from{opacity:0;transform:translate(-50%,calc(-50% + 10px))}}
+@media (prefers-reduced-motion:reduce){.g3jt .seat.g3l::before,.g3jt .seat.g3r::before,.jklh{animation:none}}

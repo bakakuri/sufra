@@ -584,12 +584,12 @@ A.gcastr=()=>{const on=!castRandOn();store.set('jkcastr',on);if(!on)store.set('j
 const CASTP=['joker','durak','bura','domino','chess','shashi','nardi','egg'];
 A.gcaststy2=t=>{const on=store.get('gcast','pic')==='3d';store.set('gcast',on?'pic':'3d');gSwFlip(t,on);gRedraw();if(typeof g3Need==='function')g3Need()};
 A.gcaststy=t=>{store.set('gcast',t.dataset.v==='3d'?'3d':'pic');castRedrawSheet();gRedraw();if(typeof g3Need==='function')g3Need()};
-const JKROOMN={lounge:'ღამის ლაუნჯი',room:'ძველი ოთახი ხალიჩით'},GLOOKN={auto:'თვალებით',tilt:'თვალებით და დახრით',off:'გაჩერებული'};
+const JKROOMN={lounge:'ღამის ლაუნჯი',room:'ძველი ოთახი ხალიჩით'},GLOOKN={auto:'თვალებით',tilt:'თვალებით და ტელეფონის მოტრიალებით',off:'გაჩერებული'};
 const jkRoomSet=()=>store.get('jkroom','lounge')==='room'?'room':'lounge';
 const gLookSet2=()=>{const v=store.get('glook','auto');return GLOOKN[v]?v:'auto'};
 A.jkroom=()=>{const cur=jkRoomSet();sheet(head('ოთახი')+`<div class="gmenu">${Object.keys(JKROOMN).map(k=>`<button data-a="jkroomset" data-v="${k}"${k===cur?' aria-pressed="true"':''}>${ic(k===cur?'check':'home')}<span><b>${JKROOMN[k]}</b><br><small class="muted">${{lounge:'მუქი ლურჯი მაგიდა ოქროსფრით, მინის კედლის მიღმა ღამის ქალაქი',room:'მწვანე მაუდი, კედელზე ქართული ხალიჩა'}[k]}</small></span></button>`).join('')}</div>`,'short')};
 A.jkroomset=t=>{store.set('jkroom',t.dataset.v==='room'?'room':'lounge');closeSheet();gRedraw()};
-A.gcam=()=>{const cur=gLookSet2();sheet(head('კამერა')+`<div class="gmenu">${Object.keys(GLOOKN).map(k=>`<button data-a="glookset" data-v="${k}"${k===cur?' aria-pressed="true"':''}>${ic(k===cur?'check':'eye')}<span><b>${GLOOKN[k]}</b><br><small class="muted">${{auto:'ვისი სვლაცაა, იქით გაიხედავ. თითის გასმით მაგიდის გარშემო მიმოიხედავ',tilt:'იგივე, და ტელეფონის დახრითაც იყურები',off:'კადრი არ მოძრაობს'}[k]}</small></span></button>`).join('')}</div>`,'short')};
+A.gcam=()=>{const cur=gLookSet2();sheet(head('კამერა')+`<div class="gmenu">${Object.keys(GLOOKN).map(k=>`<button data-a="glookset" data-v="${k}"${k===cur?' aria-pressed="true"':''}>${ic(k===cur?'check':'eye')}<span><b>${GLOOKN[k]}</b><br><small class="muted">${{auto:'ვისი სვლაცაა, იქით გაიხედავ. თითის გასმით მაგიდის გარშემო მიმოიხედავ',tilt:'იგივე, და ტელეფონს საითაც მიატრიალებ, იქით გაიხედავ, როგორც თავის მიბრუნებით',off:'კადრი არ მოძრაობს'}[k]}</small></span></button>`).join('')}</div>`,'short')};
 A.glookset=async t=>{const v=t.dataset.v;if(!GLOOKN[v])return;
  if(v==='tilt'){const D=window.DeviceOrientationEvent;if(!D){toast('ამ მოწყობილობას დახრის სენსორი არ აქვს');return}if(typeof D.requestPermission==='function'){try{if(await D.requestPermission()!=='granted'){toast('დახრაზე წვდომა არ მოგვცა');return}}catch(e){toast('დახრაზე წვდომა ვერ მივიღეთ');return}}}
  store.set('glook',v);closeSheet();if(typeof g3GyroOn==='function')g3GyroOn(v==='tilt');if(typeof G3D!=='undefined'&&G3D.sc&&G3D.sc.look){G3D.sc.look.on=v!=='off';g3Need()}gRedraw()};

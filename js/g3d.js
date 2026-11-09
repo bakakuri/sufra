@@ -326,7 +326,9 @@ function g3LabSize(el){let z=G3L.get(el);if(z)return z;z={w:el.offsetWidth/2+6,h
 function g3Labels(sc){g3Hug(sc);const C=sc.camNow,cv=G3D.cv,root=cv&&cv.parentNode&&cv.parentNode.parentNode;if(!C||!root||!sc.anchors)return;
  if(G3D.lroot!==root){G3D.lroot=root;G3D.rootW=root.clientWidth;G3D.rootH=root.clientHeight}const W=G3D.rootW,H=G3D.rootH;if(!W||!H)return;
  const L=[];for(const[sel,p]of sc.anchors){const el=root.querySelector(sel);if(!el)continue;const r=m4.xf(C.VP,p);if(r[3]<=0)continue;L.push([el,r,g3LabSize(el)])}
- for(const[el,r,z]of L){const x=clamp((r[0]*.5+.5)*W,z.w,W-z.w).toFixed(1)+'px',y=clamp((.5-r[1]*.5)*H,z.h,H-z.h).toFixed(1)+'px';el._g3p=1;
+ for(const[el,r,z]of L){const rx=(r[0]*.5+.5)*W,ol=rx<2,or=rx>W-2,m=ol||or?14:0,x=clamp(rx,z.w+m,W-z.w-m).toFixed(1)+'px',y=clamp((.5-r[1]*.5)*H+(m?z.h*2.2:0),z.h,H-z.h).toFixed(1)+'px';el._g3p=1;
+  /* a label whose person is out of the picture stays at the edge, a little lower so it does not cover a label in the picture,
+     with room for its arrow, and is marked so (g3l / g3r) */if(el.classList.contains('g3l')!==ol)el.classList.toggle('g3l',ol);if(el.classList.contains('g3r')!==or)el.classList.toggle('g3r',or);
   if(el.style.left!==x)el.style.left=x;if(el.style.top!==y)el.style.top=y}}
 function g3Need(){if(!G3D.raf&&G3D.ok)G3D.raf=requestAnimationFrame(g3Frame)}
 function g3Pace(now){const L=G3D.lastF;G3D.lastF=now;if(!L||now-L>250)return;(G3D.ft||(G3D.ft=[])).push(now-L);if(G3D.ft.length<40)return;const a=G3D.ft.sort((x,y)=>x-y)[20];G3D.ft=[];
@@ -416,15 +418,22 @@ function g3Wx(sc,now){const W=sc.wx;if(!W.mesh){const g=[],R=rng(W.k==='snow'?71
    the phone's tilt does the same when that is switched on, and the scene itself may glance toward whoever is to move (gy, gp) */
 function g3LookStep(sc,now){const L=sc.look,dt=Math.min(.1,Math.max(0,(now-(L.tt||now))/1000));L.tt=now;let busy=false;
  if(!L.on){L.uy=L.up=L.gy=L.gp=0}
- else if(!L.drag&&!L.gyro&&now-L.t>2600&&(L.uy||L.up)){const k=Math.pow(.08,dt);L.uy*=k;L.up*=k;if(Math.abs(L.uy)<.002&&Math.abs(L.up)<.002)L.uy=L.up=0;busy=true}
+ else if(!L.drag&&!L.gyro&&now-L.t>(L.hold||2600)&&(L.uy||L.up)){const k=Math.pow(.08,dt);L.uy*=k;L.up*=k;if(Math.abs(L.uy)<.002&&Math.abs(L.up)<.002)L.uy=L.up=0;busy=true}
  else if(!L.drag&&!L.gyro&&(L.uy||L.up))busy=true;
  const ty=clamp(L.gy+L.uy,-L.my,L.my),tp=clamp(L.gp+L.up,-L.mp,L.mp),tau=L.drag||L.gyro||now<(L.fast||0)?.07:.6,k=1-Math.exp(-dt/tau);
  L.y+=(ty-L.y)*k;L.p+=(tp-L.p)*k;if(Math.abs(ty-L.y)>.0005||Math.abs(tp-L.p)>.0005)busy=true;else{L.y=ty;L.p=tp}
  return busy}
-/* the phone's tilt, measured from how it was held a moment ago (that slowly follows, so the view settles back) */
-const G3GY={on:false,b0:null,g0:null};
-function g3GyroOn(on){G3GY.on=on;G3GY.b0=G3GY.g0=null;const sc=G3D.sc;if(sc&&sc.look){sc.look.gyro=on&&sc.look.on;if(!on){sc.look.uy=sc.look.up=0;g3Need()}}}
-window.addEventListener('deviceorientation',e=>{if(!G3GY.on||e.beta==null||e.gamma==null)return;const sc=G3D.sc,L=sc&&sc.look;if(!L||!L.on||!G3D.cv||!G3D.cv.isConnected)return;L.gyro=true;
- const a=((screen.orientation&&screen.orientation.angle)??window.orientation??0)%360,b=e.beta,g=e.gamma;let yw,pt;if(a===90){yw=b;pt=-g}else if(a===270||a===-90){yw=-b;pt=g}else{yw=g;pt=b}
- if(G3GY.b0==null){G3GY.b0=pt;G3GY.g0=yw}G3GY.b0+=(pt-G3GY.b0)*.004;G3GY.g0+=(yw-G3GY.g0)*.004;
- const ty=clamp(-(yw-G3GY.g0)*.014,-L.my,L.my),tp=clamp((pt-G3GY.b0)*.011,-L.mp,L.mp);if(Math.abs(ty-L.uy)+Math.abs(tp-L.up)<.002)return;L.uy+=(ty-L.uy)*.3;L.up+=(tp-L.up)*.3;L.t=performance.now();g3Need()});
+/* turning the phone turns the view, as turning your head would: the way the back of the phone points (or its top, when it lies flat)
+   is measured against where it pointed a moment ago. That reference follows slowly, and at once past the edge of what can be seen,
+   so the view settles back to the table; tipping the phone up or down looks up or down a little */
+const G3GY={on:false,h0:null,e0:null};
+function g3GyroOn(on){G3GY.on=on;G3GY.h0=G3GY.e0=null;const sc=G3D.sc;if(sc&&sc.look){sc.look.gyro=on&&sc.look.on;if(!on){sc.look.uy=sc.look.up=0;g3Need()}}}
+const g3Wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
+window.addEventListener('deviceorientation',e=>{if(!G3GY.on||e.alpha==null||e.beta==null||e.gamma==null)return;const sc=G3D.sc,L=sc&&sc.look;if(!L||!L.on||!G3D.cv||!G3D.cv.isConnected)return;L.gyro=true;
+ const D=Math.PI/180,ca=Math.cos(e.alpha*D),sa=Math.sin(e.alpha*D),cb=Math.cos(e.beta*D),sb=Math.sin(e.beta*D),cg=Math.cos(e.gamma*D),sg=Math.sin(e.gamma*D);
+ /* the back of the phone and its top, in the room (x east, y north, z up) */
+ const bx=-ca*sg-sa*sb*cg,by=-sa*sg+ca*sb*cg,bz=-cb*cg,tx=-sa*cb,ty=ca*cb,h=Math.atan2(bx+tx,by+ty),el=Math.asin(clamp(bz,-1,1));
+ if(G3GY.h0==null){G3GY.h0=h;G3GY.e0=el}
+ let dh=g3Wrap(h-G3GY.h0);const lim=L.my+.05;if(dh>lim){G3GY.h0=g3Wrap(h-lim);dh=lim}else if(dh<-lim){G3GY.h0=g3Wrap(h+lim);dh=-lim}
+ G3GY.h0=g3Wrap(G3GY.h0+dh*.0012);let de=el-G3GY.e0;G3GY.e0+=de*.004;
+ const ty2=clamp(-dh,-L.my,L.my),tp=clamp(de*.8,-L.mp,L.mp);if(Math.abs(ty2-L.uy)+Math.abs(tp-L.up)<.002)return;L.uy+=(ty2-L.uy)*.35;L.up+=(tp-L.up)*.35;L.t=performance.now();g3Need()});
