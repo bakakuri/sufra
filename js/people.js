@@ -363,7 +363,7 @@ A.storytext=()=>{const T={g:0,poll:false,opts:['კი','არა']};
   <textarea class="field" id="st_t" rows="3" maxlength="200" placeholder="ტექსტი ისტორიისთვის" aria-label="ტექსტი"></textarea>
   <div class="stgs" role="group" aria-label="ფერი">${STG.map((g,i)=>`<button type="button" data-g="${i}" style="--a:${g[0]};--b:${g[1]}" aria-label="ფერი ${i+1}" aria-pressed="${!i}"></button>`).join('')}</div>
   <label class="chk"><input type="checkbox" id="st_p"><span>გამოკითხვის დამატება</span></label><div id="st_pf" hidden></div></div>
-  <div class="ph-foot"><span class="sp"></span><button class="btn" id="st_ok">შემდეგი</button></div>`);
+  <div class="ph-foot">${emoBtnHTML('st_t')}<span class="sp"></span><button class="btn" id="st_ok">შემდეგი</button></div>`);
  const ta=$('#st_t'),pv=$('#stp'),pt=$('#stpt');
  const paint=()=>{const g=STG[T.g];pv.style.background=`linear-gradient(160deg,${g[0]},${g[1]})`;pt.textContent=ta.value.trim()||(T.poll?'':'დაწერე რამე…')};
  const pollUI=()=>{const f=$('#st_pf');f.hidden=!T.poll;if(!T.poll){f.innerHTML='';paint();return}

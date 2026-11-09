@@ -3392,3 +3392,34 @@ html.c4 .jpsu[data-s="c"]{color:#1C7A3A}html.c4 .jpsu[data-s="d"]{color:#1A55C4}
 .jst-b b{font-size:14px;font-variant-numeric:tabular-nums}.jst-b small{font-size:11px;color:var(--muted)}
 .jkstb{justify-self:center;margin-top:2px}
 .jend{justify-content:center;margin-top:8px}
+/* the emoji panel: under the text box, in place of the phone's keyboard; tabs on top, the groups below with their sub-groups */
+.emop{flex:none;display:flex;flex-direction:column;height:min(44vh,360px);min-height:240px;background:var(--surface);border-top:1px solid var(--line);animation:emoin .18s var(--ease-out);padding-bottom:env(safe-area-inset-bottom,0px)}
+@keyframes emoin{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.emop.wait{display:grid;place-items:center}
+.emobar{display:flex;align-items:center;gap:2px;padding:4px 4px 2px;border-bottom:1px solid var(--line)}
+.emotabs{flex:1;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;min-width:0}.emotabs::-webkit-scrollbar{display:none}
+.emot-b,.emo-x{flex:none;width:38px;height:36px;border-radius:10px;border:0;background:none;font-size:20px;line-height:1;display:grid;place-items:center;color:var(--muted);cursor:pointer;
+ font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;filter:grayscale(.75);opacity:.75;transition:filter .15s,opacity .15s,background .15s}
+.emot-b.on{filter:none;opacity:1;background:var(--sunk);box-shadow:inset 0 -2px 0 var(--accent,#4F46E5)}
+.emo-x{filter:none;opacity:1;font-size:18px}.emo-x svg{width:20px;height:20px}
+.emotone{display:flex;gap:4px;justify-content:center;padding:6px;border-bottom:1px solid var(--line)}
+.emotone button{width:42px;height:38px;border-radius:10px;border:1px solid transparent;background:var(--sunk);font-size:22px;cursor:pointer;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.emotone button[aria-pressed="true"]{border-color:var(--accent,#4F46E5)}
+.emofind{padding:6px 8px;border-bottom:1px solid var(--line)}.emofind .field{width:100%;height:38px}
+.emobody,.emores{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:2px 6px 10px;position:relative;-webkit-overflow-scrolling:touch}
+.emobody h4{margin:10px 4px 2px;font-size:13px;font-weight:800;color:var(--ink)}
+.emobody h5{margin:8px 4px 2px;font-size:11.5px;font-weight:600;color:var(--muted)}
+.emog{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr))}
+.emog button{height:44px;border:0;background:none;border-radius:10px;font-size:28px;line-height:1;cursor:pointer;padding:0;display:grid;place-items:center;
+ font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;-webkit-tap-highlight-color:transparent}
+.emog button:hover{background:var(--sunk)}.emog button:active{transform:scale(.88)}
+.emog button.pop{animation:emopop .25s ease}
+@keyframes emopop{50%{transform:scale(1.3)}}
+.emost{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:4px}
+.emost button{border:0;background:var(--sunk);border-radius:14px;padding:4px;cursor:pointer}.emost .stk{width:100%;height:auto;display:block}
+.emon{padding:12px 6px;margin:0}
+.ibtn.emob,.ibtn[data-a="emo"]{font-size:20px}
+[data-a="emo"].on{background:var(--sunk);border-radius:12px}
+.ctool.t-emo span{font-size:18px;line-height:1}
+.panel>.emop{margin:0}
+@media (prefers-reduced-motion:reduce){.emop,.emog button.pop{animation:none}}
