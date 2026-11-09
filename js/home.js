@@ -51,29 +51,53 @@ R.home=()=>{
  <div class="feedbar"><div class="seg feedsw" role="group" aria-label="ფიდის რეჟიმი">${[['for','შენთვის'],['friends','მეგობრები'],['new','ახალი']].map(([k,l])=>`<button data-a="feed" data-f="${k}" aria-pressed="${S.feed===k}">${l}</button>`).join('')}</div><button class="ibtn sq" data-a="topics" aria-label="ჩემი თემები" title="ჩემი თემები">${ic('star')}</button></div>
  <div id="feed">${skel(3)}</div><div id="more" class="morebox" aria-live="polite"></div>`;
  drawBanner();loadStories();loadFirstSteps();loadMemories();loadFeed(true);svcCounts();svcAuto();
- const io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting))loadFeed(false)},{root:view,rootMargin:'600px'});io.observe($('#more'))};
+ /* the next ten come when the eighth of the last ten is on the screen; the end of the list is a fallback for a fast flick */
+ FEED.io&&FEED.io.disconnect();FEED.io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting))loadFeed(false)},{root:view,rootMargin:'0px 0px 120px 0px'});FEED.io.observe($('#more'))};
+const FEED_N=10,FEED_AT=8;
+function feedWatch(el){if(!el)return;FEED.w8&&FEED.w8.disconnect();FEED.w8=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)){FEED.w8.disconnect();FEED.w8=null;loadFeed(false)}},{root:view,threshold:0});FEED.w8.observe(el)}
 A.feed=t=>{S.feed=t.dataset.f;$$('.feedsw button').forEach(b=>b.setAttribute('aria-pressed',String(b===t)));$('#feed').innerHTML=skel(3);loadFeed(true)};
 async function loadAds(){try{const ads=await q(sb.from('ads').select('id,post_id').eq('status','active').limit(6));if(!ads.length)return [];const rows=await fetchPosts(b=>b.in('id',ads.map(a=>a.post_id)));return rows.map(p=>Object.assign(p,{ad:ads.find(a=>a.post_id===p.id).id}))}catch(e){return []}}
-async function loadFeed(reset){if(reset){FEED.done=false;FEED.cursor=null;FEED.count=0;FEED.seen=new Set()}if(FEED.loading||FEED.done)return;FEED.loading=true;const mode=S.feed,lim=mode==='for'?30:20,my=++FEED.tok;
+async function loadFeed(reset){if(reset){FEED.done=false;FEED.cursor=null;FEED.count=0;FEED.seen=new Set()}if(!reset&&(FEED.loading||FEED.done))return;FEED.loading=true;const mode=S.feed,lim=FEED_N,my=++FEED.tok;if(reset&&FEED.w8){FEED.w8.disconnect();FEED.w8=null}
  const more=$('#more');if(more&&!reset)more.innerHTML='<span class="spin" aria-label="იტვირთება"></span>';
  try{if(mode==='for')await loadTagFollows();let rows=await fetchPosts(b=>{b=b.is('group_id',null).eq('hidden',false).order('created_at',{ascending:false}).limit(lim);if(FEED.cursor)b=b.lt('created_at',FEED.cursor);if(mode==='friends')b=b.in('author',[ME.id,...FRIENDS]);return b});
   if(my!==FEED.tok)return;
   if(rows.length)FEED.cursor=rows[rows.length-1].created_at;if(rows.length<lim)FEED.done=true;
   /* posts on the topics you follow come in even when they are older than the newest ones */
-  if(mode==='for'&&reset&&TAGF.size){try{const have=new Set(rows.map(p=>p.id)),extra=await fetchPosts(b=>b.is('group_id',null).eq('hidden',false).overlaps('tags',[...TAGF].slice(0,40)).order('created_at',{ascending:false}).limit(15));extra.forEach(p=>{if(!have.has(p.id))rows.push(p)})}catch(e){}}
+  if(mode==='for'&&reset&&TAGF.size){try{const have=new Set(rows.map(p=>p.id)),extra=await fetchPosts(b=>b.is('group_id',null).eq('hidden',false).overlaps('tags',[...TAGF].slice(0,40)).order('created_at',{ascending:false}).limit(5));extra.forEach(p=>{if(!have.has(p.id))rows.push(p)})}catch(e){}}
   rows=rows.filter(p=>!LOCALHIDE[p.id]&&!LOCALHIDE[feedKey(p)]&&!(p.repost_of&&!p.body&&!POSTS.has(p.repost_of))).filter(p=>{const k=feedKey(p);if(FEED.seen.has(k))return false;FEED.seen.add(k);return true});if(mode==='for')rows.sort((a,b)=>score(b)-score(a));
   if(reset&&mode!=='friends')FEED.ads=await loadAds();
   if(reset){FEED.pq=mode==='friends'?[]:(await loadPromos(true)).post.slice();FEED.np=3}
-  const feed=$('#feed');if(!feed)return;let html='';
+  const feed=$('#feed');if(!feed)return;let html='';const before=reset?0:$$('#feed > .post').length;
   rows.forEach(p=>{FEED.count++;html+=postHTML(p);if(FEED.pq&&FEED.pq.length&&FEED.count>=FEED.np){const pr=FEED.pq.shift();html+=promoHTML(pr);FEED.np=FEED.count+pr.every;promoSeen(pr.id)}if(FEED.count%6===0&&FEED.ads.length){const ad=FEED.ads.shift();html+=postHTML(ad);if(!FEED.adsShown.has(ad.ad)){FEED.adsShown.add(ad.ad);sb.rpc('ad_impression',{p_ad:ad.ad}).then(()=>{})}}if(reset&&FEED.count===2)html+='<div id="sugg"></div>'});
   if(reset){feed.innerHTML=html||empty(mode==='friends'?'მეგობრების პოსტები ჯერ არ არის':'აქ ჯერ ცარიელია',mode==='friends'?'დაამატე მეგობრები და მათი პოსტები აქ გამოჩნდება.':'დაწერე პირველი პოსტი ან მოიწვიე მეგობრები.',`<div class="row2"><button class="btn" data-a="compose">პოსტის დაწერა</button><button class="btn ghost" data-a="invite">მეგობრის მოწვევა</button></div>`);staggerIn($$('.post',feed).slice(0,6));loadSuggest()}
   else feed.insertAdjacentHTML('beforeend',html);
+  if(!FEED.done){const ps=$$('#feed > .post');feedWatch(ps[Math.min(ps.length-1,before+FEED_AT-1)])}
   if(more)more.innerHTML=FEED.done&&FEED.count?'<span class="note">ყველაფერი ნახე</span>':''}
  catch(e){const f=$('#feed');if(f&&reset)f.innerHTML=empty('ფიდი ვერ ჩაიტვირთა',errMsg(e),'<button class="btn" data-a="reload">თავიდან ცდა</button>')}
- finally{FEED.loading=false}}
+ finally{if(my===FEED.tok)FEED.loading=false}}
 FEED.tok=0;
 A.reload=()=>go(S.tab);
-A.invite=()=>shareLink(location.origin,'შემოდი Peera-ზე');
+/* my invite link: whoever signs up by it is counted as invited by me (the welcome gift for them, a share for me, as the coin rules say) */
+const invCode=()=>ME&&(ME.username||ME.id)||'';
+const invUrl=(hash='')=>'https://www.peera.my/?i='+encodeURIComponent(invCode())+hash;
+async function invRules(){if(INVR.r)return INVR.r;try{const rows=await q(sb.from('coin_rules').select('action,amount,active').in('action',['welcome','invite']));const r={};rows.forEach(x=>{if(x.active&&x.amount>0)r[x.action]=x.amount});INVR.r=r}catch(e){INVR.r={}}return INVR.r}
+const INVR={r:null};
+A.invite=async()=>{const url=invUrl();navMark('invite',()=>A.invite());
+ sheet(head('მოიწვიე მეგობრები')+`<div class="ph-body inv"><div class="invhero" aria-hidden="true">🎁</div><p class="invt" id="inv_t">გაუგზავნე ბმული მეგობრებს: კლასელებს, კურსელებს.</p>
+  <div class="invlink"><input class="field" id="inv_u" readonly value="${esc(url)}" aria-label="მოწვევის ბმული"><button class="btn ghost" id="inv_c" aria-label="კოპირება">${ic('copy')}</button></div>
+  <div class="row2"><button class="btn" id="inv_s">${ic('share')}ბმულის გაზიარება</button></div><p class="note" id="inv_n"></p></div>`,'short');
+ const R=await invRules(),t=$('#inv_t');if(t&&(R.welcome||R.invite))t.innerHTML=`გაუგზავნე ბმული მეგობრებს.${R.welcome?` რეგისტრაციისას თითოეული <b>${R.welcome} მონეტას</b> მიიღებს საჩუქრად`:''}${R.invite?`${R.welcome?',':''} შენ კი <b>${R.invite} მონეტას</b> თითოეულზე, ვინც შენი ბმულით მოვა`:''}.`;
+ const txt=R.welcome?`შემოდი Peera-ზე: ჩემი ბმულით რეგისტრაციისას ${R.welcome} მონეტა საჩუქრად`:'შემოდი Peera-ზე';
+ $('#inv_s').onclick=()=>shareLink(url,txt);$('#inv_c').onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('ბმული დაკოპირდა')}catch(e){$('#inv_u').select()}};
+ try{const rows=await q(sb.from('referrals').select('paid').eq('inviter',ME.id));const n=$('#inv_n');if(n&&rows.length){const p=rows.filter(x=>x.paid).length;n.textContent=`შენი ბმულით დარეგისტრირდა ${rows.length}${R.invite&&p?` · +${p*R.invite} მონეტა`:''}`}}catch(e){}};
+/* a link someone came by, kept from before signing up: counted once, for a new account */
+async function invClaim(){const c=store.get('pendinv',null);if(!c||!ME||ME.offline)return;if(c===ME.username||c===ME.id){store.set('pendinv',null);return}
+ try{const r=await rpc('claim_invite',{p_code:String(c)});if(r)store.set('pendinv',null)}catch(e){if(/claim_invite|PGRST202|function/i.test(String(e&&(e.message||e.code)||'')))store.set('pendinv',null)}}
+/* the welcome gift, said once when it has come */
+function welcomeGift(){try{if(!ME||ME.offline||store.get('welc',null)===ME.id)return;if(ME.created_at&&Date.now()-new Date(ME.created_at)>3*864e5)return;
+ q(sb.from('coin_log').select('amount').eq('user_id',ME.id).eq('action','welcome').limit(1)).then(rows=>{if(!rows||!rows.length)return;store.set('welc',ME.id);
+  sheet(head('მოგესალმებით Peera-ზე!')+`<div class="ph-body inv"><div class="invhero" aria-hidden="true">🎁</div><p class="invt"><b>${rows[0].amount} მონეტა</b> საჩუქრად, რეგისტრაციისთვის. მონეტებით თამაშობ, ჩუქნი და მაღაზიაში ყიდულობ.</p>
+   <div class="row2"><button class="btn" data-a="close">მადლობა!</button><button class="btn ghost" data-a="invite">მეგობრების მოწვევა</button></div></div>`,'short');try{confetti()}catch(e){}}).catch(()=>{})}catch(e){}}
 async function loadSuggest(){const el=$('#sugg');if(!el)return;try{const s=await rpc('friend_suggestions',{p_limit:10});if(!s.length){el.remove();return}s.forEach(p=>PC.set(p.id,Object.assign(PC.get(p.id)||{},p)));
  el.outerHTML=`<section class="suggest"><div class="shead"><h3>შეიძლება იცნობდე</h3><button class="trb" data-a="page" data-p="friends">ყველა</button></div><div class="hscroll">${s.map(p=>`<div class="pcard2"><button data-a="user" data-u="${p.id}" class="pc2">${av(p,64)}<b>${esc(p.name)}${vb(p)}</b><span>${p.mutual?p.mutual+' საერთო მეგობარი':esc(p.city||'Peera-ზეა')}</span></button><button class="btn sm" data-a="addfriend" data-u="${p.id}">დამატება</button></div>`).join('')}</div></section>`}catch(e){el.remove()}}
 /* trending tags are shown only in search (not on the feed) */

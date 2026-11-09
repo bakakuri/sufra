@@ -3431,3 +3431,18 @@ html.c4 .jpsu[data-s="c"]{color:#1C7A3A}html.c4 .jpsu[data-s="d"]{color:#1A55C4}
 .picker .pkx,.mqr .mqx,.sv-rx .svrx-x{display:grid;place-items:center}
 .picker .pkx svg,.mqr .mqx svg,.sv-rx .svrx-x svg{width:22px;height:22px}
 .picker .pkx{color:var(--muted)}
+/* the invite sheet and the welcome gift */
+.inv{display:grid;gap:12px;text-align:center;justify-items:center;padding-bottom:18px}
+.invhero{font-size:54px;line-height:1;margin-top:4px;animation:emopop .5s ease}
+.invt{margin:0;font-size:15px;line-height:1.5;max-width:420px}
+.invlink{display:flex;gap:6px;width:100%;max-width:440px}.invlink .field{flex:1;min-width:0;font-size:13px}
+.inv .row2{justify-content:center}
+/* the sign-in screen: a friend's invitation over the form, what Peera is under it */
+.auth-inv{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:18px;background:linear-gradient(135deg,rgb(242 184 75/.18),rgb(79 70 229/.14));border:1px solid rgb(242 184 75/.4);animation:popin .5s var(--ease-out)}
+.auth-inv>span:first-child{font-size:30px;line-height:1}.auth-inv b{display:block;font-size:15px}.auth-inv small{color:var(--muted);font-size:13px}
+.auth-feats{list-style:none;margin:0;padding:0 4px;display:grid;gap:8px}
+.auth-feats li{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--muted)}
+.auth-feats svg{width:20px;height:20px;flex:none;color:var(--wine)}
+.fsinv{display:grid;gap:8px;justify-items:start;padding:12px 4px 4px;border-top:1px solid var(--line);margin-top:8px}.fsinv .muted{margin:0;font-size:13.5px}
+/* while the games or the admin panel come */
+.glz{display:grid;place-items:center;min-height:50vh}

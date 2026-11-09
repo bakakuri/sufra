@@ -8,10 +8,14 @@ function authErr(e){const m=String(e?.message||e||'');
  if(/rate limit|too many/i.test(m))return 'ძალიან ბევრი მცდელობა. სცადე ცოტა ხანში';
  if(/invalid.*email|Unable to validate email/i.test(m))return 'ელფოსტის მისამართი არასწორია';
  return errMsg(e)}
-function authShell(inner){const el=$('#auth');el.hidden=false;const b=$('#boot');if(b)b.remove();
- el.innerHTML=`<div class="auth-in"><div class="auth-brand"><span class="logo big">${kLogo()}</span><p>კლასელები, კურსელები და მეგობრები ერთ ადგილას.</p></div><div class="auth-card">${inner}</div>
+/* someone who came by a friend's link is greeted as invited, and starts on the sign-up form */
+const authInvited=()=>!!(store.get('pendinv',null)||store.get('pendjoin',null));
+const AUTHF=[['users','კლასისა და კურსის ჯგუფები: შენები ერთ ადგილას'],['cal','ლექციების ცხრილი, გამოცდები, კონსპექტები'],['msg','ჩატი, ისტორიები, კლიპები'],['dice','ნარდი, ჯოკერი, დომინო მეგობრებთან']];
+function authShell(inner,feats){const el=$('#auth');el.hidden=false;const b=$('#boot');if(b)b.remove();
+ el.innerHTML=`<div class="auth-in"><div class="auth-brand"><span class="logo big">${kLogo()}</span><p>კლასელები, კურსელები და მეგობრები ერთ ადგილას.</p></div>${feats&&authInvited()?`<div class="auth-inv" role="note"><span aria-hidden="true">🎁</span><span><b>მეგობარი გიწვევს Peera-ზე</b><small id="auth_gift">დარეგისტრირდი და შენებს აქ ნახავ</small></span></div>`:''}<div class="auth-card">${inner}</div>
+ ${feats?`<ul class="auth-feats">${AUTHF.map(([i,t])=>`<li>${ic(i)}<span>${t}</span></li>`).join('')}</ul>`:''}
  <p class="auth-foot"><button class="trb" data-a="rules">საზოგადოების წესები</button><span>·</span><button class="trb" data-a="privacy">კონფიდენციალურობა</button></p></div>`}
-function showAuth(mode='in'){
+function showAuth(mode='in',user){if(mode==='in'&&!user&&authInvited())mode='up';
  if(mode==='reset'){authShell(`<h2>პაროლის აღდგენა</h2><p class="note">შეიყვანე ელფოსტა და გამოგიგზავნით ბმულს ახალი პაროლისთვის.</p><form class="form0" id="af"><label class="fld">ელფოსტა<input id="a_e" type="email" autocomplete="email" required></label><p class="aerr" id="aerr" role="alert"></p><button class="btn wide">ბმულის გაგზავნა</button></form><button class="trb" data-a="authmode" data-m="in">შესვლაზე დაბრუნება</button>`);
   $('#af').onsubmit=async e=>{e.preventDefault();const b=$('#af button');b.disabled=true;try{const{error}=await sb.auth.resetPasswordForEmail($('#a_e').value.trim(),{redirectTo:location.origin});if(error)throw error;$('#aerr').textContent='ბმული გაიგზავნა. შეამოწმე ფოსტა, სპამის საქაღალდეც.';$('#aerr').classList.add('ok')}catch(x){$('#aerr').textContent=authErr(x)}b.disabled=false};return}
  if(mode==='newpass'){authShell(`<h2>ახალი პაროლი</h2><form class="form0" id="af"><label class="fld">ახალი პაროლი<input id="a_p" type="password" minlength="8" autocomplete="new-password" required></label><p class="aerr" id="aerr" role="alert"></p><button class="btn wide">შენახვა</button></form>`);
@@ -23,14 +27,15 @@ function showAuth(mode='in'){
  <label class="fld">პაროლი<input id="a_p" type="password" minlength="8" autocomplete="${up?'new-password':'current-password'}" required></label>
  ${up?'<label class="chk"><input type="checkbox" id="a_ok" required><span>ვეთანხმები <button type="button" class="trb" data-a="rules">წესებს</button> და <button type="button" class="trb" data-a="privacy">კონფიდენციალურობის პოლიტიკას</button>. ვარ 13 წლის ან უფროსი.</span></label>':''}
  <p class="aerr" id="aerr" role="alert"></p><button class="btn wide">${up?'ანგარიშის შექმნა':'შესვლა'}</button></form>
- ${up?'':'<button class="trb" data-a="authmode" data-m="reset">პაროლი დამავიწყდა</button>'}`);
+ ${up?'':'<button class="trb" data-a="authmode" data-m="reset">პაროლი დამავიწყდა</button>'}`,true);
+ if(up&&authInvited()&&typeof invRules==='function')invRules().then(R=>{const g=$('#auth_gift');if(g&&R.welcome)g.textContent=`რეგისტრაციისას ${R.welcome} მონეტა საჩუქრად`}).catch(()=>{});
  $('#af').onsubmit=async e=>{e.preventDefault();const b=$('#af button.btn');b.disabled=true;$('#aerr').textContent='';$('#aerr').classList.remove('ok');
   const email=$('#a_e').value.trim(),password=$('#a_p').value;
   try{if(up){const{data,error}=await sb.auth.signUp({email,password,options:{data:{name:$('#a_n').value.trim()},emailRedirectTo:location.origin}});if(error)throw error;
     if(!data.session){$('#aerr').textContent='თითქმის მზადაა! ელფოსტაზე დადასტურების ბმული გამოგიგზავნეთ. დააჭირე და შემდეგ შედი.';$('#aerr').classList.add('ok');b.disabled=false;return}}
    else{const{error}=await sb.auth.signInWithPassword({email,password});if(error)throw error}
    await afterLogin()}catch(x){$('#aerr').textContent=authErr(x);b.disabled=false}}}
-A.authmode=t=>showAuth(t.dataset.m);
+A.authmode=t=>showAuth(t.dataset.m,true);
 function showOnboarding(){
  const max=new Date();max.setFullYear(max.getFullYear()-13);const mx=max.toISOString().slice(0,10);
  authShell(`<h2>მოგესალმები Peera-ზე!</h2><p class="note">რამდენიმე დეტალი და მზად ხარ. დაბადების თარიღი სხვებს არ უჩანთ: საჭიროა ასაკის შესამოწმებლად (გაცნობა მხოლოდ 18+).</p>
@@ -41,7 +46,7 @@ function showOnboarding(){
  <p class="aerr" id="aerr" role="alert"></p><button class="btn wide">დაწყება</button></form><button class="trb" data-a="signout">სხვა ანგარიშით შესვლა</button>`);
  $('#o_u').oninput=e=>{e.target.value=e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g,'')};
  $('#of').onsubmit=async e=>{e.preventDefault();const b=$('#of button.btn');b.disabled=true;
-  try{await rpc('complete_onboarding',{p_name:$('#o_n').value.trim(),p_birthday:$('#o_b').value,p_username:$('#o_u').value.trim(),p_city:$('#o_c').value.trim()});ME=await rpc('my_profile');store.set('fsw',ME.id);$('#auth').hidden=true;enterApp()}
+  try{if(typeof invClaim==='function')await invClaim();await rpc('complete_onboarding',{p_name:$('#o_n').value.trim(),p_birthday:$('#o_b').value,p_username:$('#o_u').value.trim(),p_city:$('#o_c').value.trim()});ME=await rpc('my_profile');store.set('fsw',ME.id);$('#auth').hidden=true;enterApp()}
   catch(x){$('#aerr').textContent=/username|unique/i.test(x.message)?'ეს მომხმარებლის სახელი დაკავებულია':errMsg(x);b.disabled=false}}}
 A.signout=async()=>{await sb.auth.signOut();location.hash='';location.reload()};
 let AFTER=false;

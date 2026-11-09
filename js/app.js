@@ -85,7 +85,7 @@ async function loadSideR(){const el=$('#sider');if(!el)return;
   c('#sr_sg',sg.length?`<h3>შეიძლება იცნობდე</h3>${sg.map(p=>`<div class="srow"><button data-a="user" data-u="${p.id}">${av(p,36)}</button><button class="grow" data-a="user" data-u="${p.id}" style="text-align:left"><b>${esc(p.name)}</b><small>${p.mutual?p.mutual+' საერთო':esc(p.city||'')}</small></button><button class="btn sm" data-a="addfriend" data-u="${p.id}" aria-label="დამატება">${ic('plus')}</button></div>`).join('')}`:'');
   const bd=(await upcoming(7)).slice(0,4);c('#sr_bd',bd.length?`<h3>${ic('gift')}მალე</h3>${bd.map(e=>`<button class="srow" data-a="greet" data-u="${e.p.id}" data-k="${e.kind}">${av(e.p,32)}<span class="grow"><b>${esc(e.p.name)}</b><small>${whenTxt(e.n)} · ${e.kind==='b'?'დაბადების დღე':e.label}</small></span></button>`).join('')}`:'')}catch(e){}}
 WIDE.addEventListener?.('change',renderSide);
-document.addEventListener('click',e=>{const b=e.target.closest('[data-tab2]');if(b){if(b.dataset.tab2==='games'){gHub();return}go(b.dataset.tab2);markSide()}});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-tab2]');if(b){if(b.dataset.tab2==='games'){gOpenHub();return}go(b.dataset.tab2);markSide()}});
 setInterval(()=>{if(document.body.classList.contains('wide')&&!document.hidden)loadSideR()},300000);
 
 /* in-app banner for live notifications */
@@ -111,7 +111,7 @@ function route(h){h=String(h||'');if(!h||h==='#'||h.includes('='))return false;l
  if(id==='storyv'&&arg){base();openStoryById(+arg);return true}
  if(id==='chats'){base();openChats();return true}
  if(R[id]){go(id);return true}
- if(PG[id]){openPage(id,arg);return true}
+ if(PG[id]||typeof GLZ_PG!=='undefined'&&GLZ_PG.includes(id)){openPage(id,arg);return true}
  return false}
 
 /* service worker, install prompt, push routing */
@@ -124,8 +124,8 @@ window.addEventListener('online',()=>{toast('კავშირი აღდგ�
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ME){countUnread();touchSeen()}});
 
 /* global input */
-$('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;if(b.dataset.tab==='games'){gHub();return}if(b.dataset.tab===S.tab&&!S.page&&view.scrollTop>10){view.scrollTo({top:0,behavior:RM()?'auto':'smooth'});return}go(b.dataset.tab)});
-document.addEventListener('click',e=>{if(!e.target.closest('.rwrap'))$$('.picker').forEach(x=>x.remove());const t=e.target.closest('[data-a]');if(!t)return;const f=A[t.dataset.a];if(!f)return;if(t.tagName==='A')e.preventDefault();try{const r=f(t,e);if(r&&r.catch)r.catch(x=>{toast(errMsg(x));errBug(x,t.dataset.a)})}catch(x){toast(errMsg(x));errBug(x,t.dataset.a)}});
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;if(b.dataset.tab==='games'){gOpenHub();return}if(b.dataset.tab===S.tab&&!S.page&&view.scrollTop>10){view.scrollTo({top:0,behavior:RM()?'auto':'smooth'});return}go(b.dataset.tab)});
+document.addEventListener('click',e=>{if(!e.target.closest('.rwrap'))$$('.picker').forEach(x=>x.remove());const t=e.target.closest('[data-a]');if(!t)return;const f=A[t.dataset.a];if(!f){/* an action of the games or the admin panel, touched before they came */if(typeof GLZ!=='undefined'&&t.dataset.a&&(!GLZ.ready||ME&&ME.role==='admin'&&!PG.admin))(GLZ.ready?glAdmin():glLoad()).then(()=>{const g=A[t.dataset.a];if(g&&t.isConnected)g(t,e)}).catch(()=>{});return}if(t.tagName==='A')e.preventDefault();try{const r=f(t,e);if(r&&r.catch)r.catch(x=>{toast(errMsg(x));errBug(x,t.dataset.a)})}catch(x){toast(errMsg(x));errBug(x,t.dataset.a)}});
 $('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeSheet()});
 $('#layer').addEventListener('click',e=>{if(e.target.id==='layer')closeLayer()});
 /* a plate or card that acts as a button (role=button with an action) answers Enter and Space like one */
@@ -138,6 +138,8 @@ try{const ro=new ResizeObserver(()=>{const r=document.documentElement.style;r.se
 /* start */
 /* an invite link opened before signing in (or before the sign-up mail is confirmed) is kept until the app opens */
 try{const m=location.hash.match(/^#join-(\d+)$/);if(m)store.set('pendjoin',+m[1])}catch(e){}
+/* ?i=…: who invited; kept until the new account is there, and taken off the address */
+try{const u=new URL(location.href),i=u.searchParams.get('i');if(i&&/^[\w@.-]{2,64}$/.test(i)){store.set('pendinv',i);u.searchParams.delete('i');history.replaceState(history.state,'',u.pathname+u.search+u.hash)}}catch(e){}
 let ENTERED=false;
 async function enterApp(){if(ENTERED)return;ENTERED=true;
  try{const{data}=await sb.auth.getUser();S.email=data?.user?.email||''}catch(e){}
@@ -146,6 +148,7 @@ async function enterApp(){if(ENTERED)return;ENTERED=true;
  if(ME.offline)go('games');else if(!route(location.hash))go('home');
  navInit();
  {const pj=store.get('pendjoin',null);if(pj&&!ME.offline&&!/^#join-/.test(location.hash))setTimeout(()=>joinByLink(+pj),400)}renderBadges();
+ if(!ME.offline){invClaim();setTimeout(welcomeGift,1800);setTimeout(glPrefetch,4000)}
  if(ME.offline){toast('ინტერნეტი არ არის. ბოტებთან თამაში მაინც მუშაობს');return}
  if(ME.banned)toast('შენი ანგარიში შეზღუდულია: პოსტები და შეტყობინებები დროებით გამორთულია');
  try{netInit()}catch(e){}try{listenCalls()}catch(e){}try{listenNotes()}catch(e){}try{coinsInit()}catch(e){}

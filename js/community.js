@@ -30,7 +30,7 @@ A.gpic=t=>changePic('groups',+t.dataset.id,'ჯგუფის სურათ�
 A.ppic=t=>changePic('pages',+t.dataset.id,'გვერდის სურათი');
 /* school, class, university and course groups: "invite classmates" with a link and a QR code, and the starosta */
 const EDUK={class:['მოიწვიე კლასელები','ჩვენს კლასში'],course:['მოიწვიე კურსელები','ჩვენს კურსზე'],school:['მოიწვიე სკოლელები','ჩვენი სკოლის ჯგუფში'],uni:['მოიწვიე სტუდენტები','ჩვენი უნივერსიტეტის ჯგუფში']};
-A.ginvite=t=>{const G=GRP;if(!G||!G.g)return;const g=G.g,url='https://www.peera.my/#join-'+g.id,k=EDUK[g.kind]||['მოიწვიე','ჯგუფში'];
+A.ginvite=t=>{const G=GRP;if(!G||!G.g)return;const g=G.g,url=(typeof invUrl==='function'?invUrl('#join-'+g.id):'https://www.peera.my/#join-'+g.id),k=EDUK[g.kind]||['მოიწვიე','ჯგუფში'];
  sheet(head(k[0])+`<div class="ph-body qrb"><div class="qrcard"><div class="qrimg" id="qri"><span class="spin"></span></div><div class="qrwho"><b>${esc(g.name)}</b></div></div>
   <p class="note" style="text-align:center">გაუგზავნე ბმული კლასის Viber-ის ან Messenger-ის ჯგუფში, ან დაასკანერებინე QR კოდი. ვინც გახსნის, რეგისტრაციის შემდეგ პირდაპირ ამ ჯგუფში მოხვდება.</p>
   <div class="row2"><button class="btn" id="gi_s">${ic('share')}ბმულის გაზიარება</button><button class="btn ghost" id="gi_c">${ic('copy')}კოპირება</button></div></div>`,'short');
