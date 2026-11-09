@@ -1803,8 +1803,8 @@ html.zoomed .pmw{max-height:none}html.zoomed .pmmedia{max-height:calc(68dvh / va
 .g3jt .seat>.av,.g3jt .seat>.sav{grid-row:1/3}.g3jt .seat .av{--s:30px!important;width:30px;height:30px}
 .g3jt .seat b{grid-column:2/4;font-size:12px;max-width:96px;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
 .g3jt .seat .bt{background:none;padding:0;font-size:11px;color:#E9DCC6;line-height:1.2}
-.g3jt .seat>span:not(.bt):not(.av):not(.sav){font-size:11px;color:#F2C46A;font-weight:700;font-variant-numeric:tabular-nums}
-.g3jt .seat>span:not(.bt):not(.av):not(.sav)::before{content:"· ";color:#E9DCC6;font-weight:400}
+.g3jt .seat>span:not(.bt):not(.av):not(.sav):not(.jres){font-size:11px;color:#F2C46A;font-weight:700;font-variant-numeric:tabular-nums}
+.g3jt .seat>span:not(.bt):not(.av):not(.sav):not(.jres)::before{content:"· ";color:#E9DCC6;font-weight:400}
 .g3jt .seat.turn{box-shadow:0 0 0 2px var(--gold),0 2px 12px rgb(0 0 0/.4)}
 .g3jt .seat{left:50%;top:50%;transform:translate(-50%,-50%)}
 .g3jt .seat.top{top:9%}.g3jt .seat.left{left:12%;top:38%}.g3jt .seat.right{left:88%;top:38%}
@@ -3225,3 +3225,47 @@ body.wide .pspace{flex-wrap:wrap;margin:6px 0 0;padding:4px 0 2px;-webkit-mask-i
 .jklhx{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:rgb(255 255 255/.08);color:inherit;border:0}.jklhx svg{width:16px;height:16px}
 @keyframes jlhin{from{opacity:0;transform:translate(-50%,calc(-50% + 10px))}}
 @media (prefers-reduced-motion:reduce){.g3jt .seat.g3l::before,.g3jt .seat.g3r::before,.jklh{animation:none}}
+/* joker: what has been said against the cards; how many more I need; the dealer's mark */
+.gx .ginfo>span.jbsum{color:#E8EEFF}
+.gx .ginfo>span.jbsum.over{color:#FFD0CC;border-color:rgb(255 110 100/.45);background:rgb(60 14 14/.62)}
+.gx .ginfo>span.jbsum.under{color:#CFE8FF;border-color:rgb(120 180 255/.45);background:rgb(12 26 60/.62)}
+.jneed{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:800;line-height:1.5;color:#1B1205;background:#F2C46A}
+.jneed.ok{background:#5FD49A;color:#06220F}
+.jdl{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:6px;border-radius:50%;font:800 10.5px/1 system-ui,sans-serif;font-style:normal;color:#1B1205;background:linear-gradient(180deg,#FFE29A,#E9B44C);box-shadow:0 1px 3px rgb(0 0 0/.4);vertical-align:2px}
+/* after a hand: what it brought, standing over the name */
+.jres{position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);padding:3px 10px;border-radius:999px;font-size:13px;font-weight:900;white-space:nowrap;box-shadow:0 4px 12px rgb(0 0 0/.45);animation:jresin .45s cubic-bezier(.2,1.4,.4,1) both;pointer-events:none}
+.jres.ok{background:#1E9E5E;color:#fff}.jres.no{background:#3A4157;color:#E6EAF5}.jres.kh{background:#D8362C;color:#fff}
+.seat,.gx .pl.me{position:relative}
+@keyframes jresin{from{opacity:0;transform:translate(-50%,8px) scale(.7)}}
+@media (prefers-reduced-motion:reduce){.jres{animation:none}}
+/* the score sheet, small: the four by points in a dark card; a touch opens the whole sheet */
+.gx .ghud.top .jsm.strip{width:auto;min-width:104px;height:auto;padding:5px 4px;border-radius:12px;transform:none;background:linear-gradient(180deg,rgb(20 28 54/.9),rgb(9 13 30/.9));border:1px solid rgb(150 175 255/.22);box-shadow:0 8px 20px rgb(0 0 0/.45)}
+.gx .ghud.top .jsm.strip::after{display:none}
+.gx .ghud.top .jsm.strip:active{transform:scale(.96)}
+.jsb{display:grid;gap:1px}
+.jsr{display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:8px;padding:2px 7px;border-radius:7px;font-size:11.5px;line-height:1.35;color:#DCE3F5}
+.jsr b{font-weight:600;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jsr em{font-style:normal;font-weight:800;font-variant-numeric:tabular-nums;color:#F4F6FF}
+.jsr em.neg,.jsr i.neg{color:#FF8A80}
+.jsr i{grid-column:1/3;justify-self:end;font-style:normal;font-size:10.5px;font-weight:800;color:#7EE0A6;margin-top:-2px}
+.jsr.me{background:rgb(255 255 255/.07)}
+.jsr.lead b,.jsr.lead em{color:#FFD36B}
+.jsr.lead b::before{content:"♛ ";font-size:10px}
+/* joker, before the game: the choice under the table */
+.jkset{display:grid;gap:10px;padding:16px;border-radius:20px;background:linear-gradient(180deg,rgb(20 28 54/.92),rgb(9 13 30/.94));border:1px solid rgb(150 175 255/.2);box-shadow:0 18px 40px rgb(0 0 0/.5);color:#EEF1FA}
+.jkset h3{margin:0;font-size:20px;font-weight:800}
+.jkset .note{margin:0;color:#B9C4E6;font-size:13px;line-height:1.45}
+.jkset:not(.on3d){max-width:440px;margin:auto}
+.jkmodes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.jkmode{display:grid;gap:3px;justify-items:start;text-align:left;padding:14px 14px 12px;border-radius:16px;border:1px solid rgb(255 255 255/.14);background:rgb(255 255 255/.06);color:inherit;cursor:pointer;transition:transform .15s}
+.jkmode b{font-size:18px;font-weight:800}
+.jkmode span{font-size:12px;color:#B9C4E6;line-height:1.35}
+.jkmode.gold{background:linear-gradient(180deg,#FFE29A,#E9B44C);border-color:transparent;color:#1B1205}
+.jkmode.gold span{color:#5A3D0A}
+.jkmode:active{transform:scale(.97)}
+.jkonl{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border-radius:14px;border:1px solid rgb(255 255 255/.1);background:rgb(255 255 255/.04);color:inherit;text-align:left;cursor:pointer}
+.jkonl>svg{width:22px;height:22px;flex:none;color:#F2C46A}
+.jkonl>svg:last-child{width:16px;height:16px;color:#8A93AE}
+.jkonl span{flex:1;display:grid;gap:2px}.jkonl b{font-size:14px}.jkonl small{font-size:12px;color:#9AA5C8;line-height:1.35}
+/* the info chips keep clear of the score list in the corner */
+.gx .ghud.top:has(.jsm.strip) .ginfo{padding-right:122px}

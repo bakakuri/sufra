@@ -102,7 +102,7 @@ function gview(id,title,board,status,extra='',plx=null,topx=''){if(S.tab!=='game
  const op=g3Want()&&gPplOn()&&['chess','shashi','nardi'].includes(id),oppl=plCard(c,-c.side,ts===-c.side,plx);
  GSCR.html=gShell(id,{stage:op?board+`<div class="g3op">${oppl}</div>`:board,mid:board,top:gTop(title,c)+(op?`<div class="oppt">${oppl}</div>`:oppl)+topx,bot:plCard(c,c.side,ts===c.side,plx)+`<div class="status${mine?' mine':''}" role="status">${status}</div>${extra}`,res:gResHTML(G)});gSaveLater(G)}
 /* a chime when the turn comes to you */
-function gTurnSnd(G,mine){if(mine&&!G.wasMine&&typeof gSnd==='function'){gSnd('turn');gBuzz(12)}G.wasMine=mine}
+function gTurnSnd(G,mine){if(mine&&!G.wasMine&&typeof gSnd==='function'){gSnd('turn');gBuzz([18,60,26])}G.wasMine=mine}
 /* the end of a game: a card over the board with the result and what to do next */
 const RESWHY={give:'წაგებანა: ქვები და სვლა აღარ დარჩა',gone:'მეტოქე გავიდა',time:'დრო ამოიწურა',mate:'მატი',stale:'პატი',rep:'პოზიცია სამჯერ განმეორდა',mat:'მატისთვის საკმარისი ფიგურები აღარ დარჩა','50':'50 სვლა აყვანისა და პაიკის სვლის გარეშე',resign:'დანებება',blocked:'სვლა აღარ დარჩა',kings:'15 სვლა მხოლოდ დამებით',k31:'სამმა დამამ ერთი ვერ აიყვანა'};
 const CINE_MS=2300;
@@ -277,6 +277,7 @@ A.gmenu=()=>{const id=gCur(),G=GAME[id],c=G&&G.ctx,sw=on=>`<i class="sw${on?' on
  navMark('gmenu',()=>A.gmenu());
  sheet(head('თამაში')+`<div class="gmenu">
   ${id==='loto'?`<button data-a="lotosay" aria-pressed="${lotoSayOn()}">${ic('mic')}<span>რიცხვების გახმოვანება</span>${sw(lotoSayOn())}</button>`:`<button data-a="g3tog" aria-pressed="${g3Want()}">${ic('cube')}<span>3D დაფა</span>${sw(g3Want())}</button>`}
+  ${id==='joker'&&JK.lastT&&JK.phase==='play'?`<button data-a="jlast">${ic('cards')}<span>ბოლო ხელი</span><small class="gmv">ან შეეხე გროვას</small></button>`:''}${S.page&&S.page.id==='jktable'&&typeof JO!=='undefined'&&JO.lastT&&JO.st&&JO.st.phase==='play'?`<button data-a="jkolast">${ic('cards')}<span>ბოლო ხელი</span><small class="gmv">ან შეეხე გროვას</small></button>`:''}
   <button data-a="gfull" aria-pressed="${!!document.fullscreenElement}">${ic('full')}<span>სრული ეკრანი</span>${sw(!!document.fullscreenElement)}</button>
   <button data-a="gsnd" aria-pressed="${GS.on}">${ic('mic')}<span>ხმა და ვიბრაცია</span>${sw(GS.on)}</button>
   ${g3Want()&&id!=="loto"?`<button data-a="genvm">${ic('tree')}<span>მაგიდა და გარემო</span><small class="gmv">გრაფიკა, სტილი, ამინდი…</small></button>`:''}

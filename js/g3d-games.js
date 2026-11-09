@@ -244,9 +244,12 @@ function jkPerson(sc,key,L){if(sc.models['pb:'+key])return;if(!PPL.st)pplLoad();
    every cell of the picture is laid out alike (eyes at the same place, eyes to chin the same size), so one quad seats them all */
 const CST={st:0,img:null},CEY=160/508,CEC=72/508,CASP=400/508,CS=1.1,CTL=3.4;
 /* the picture of the ten, and the hand they reach with; the table waits for the first, the arms come when the second is here */
-function castLoad(){if(CST.st)return;CST.st=1;const v=(($('script[src*="/js/core.js"]')||{}).src||'').split('v=')[1]||'',q=v?'?v='+v:'',im=new Image(),hd=new Image();im.decoding='async';hd.decoding='async';
+/* and the same ten with the arm on their arm side taken out (icons/g/cast2r.webp: cut where it stood clear of the body, painted over where it lay
+   in front of it), for the whole 3D arm drawn in its place */
+function castLoad(){if(CST.st)return;CST.st=1;const v=(($('script[src*="/js/core.js"]')||{}).src||'').split('v=')[1]||'',q=v?'?v='+v:'',im=new Image(),hd=new Image(),ri=new Image();im.decoding='async';hd.decoding='async';ri.decoding='async';
  im.onload=()=>{CST.img=im;CST.st=2;castRefresh()};im.onerror=()=>{CST.st=3;castRefresh()};im.src='/icons/g/cast2.webp'+q;
- hd.onload=()=>{CST.hand=hd;if(CST.st===2)castRefresh()};hd.src='/icons/g/hand1.webp'+q}
+ hd.onload=()=>{CST.hand=hd;if(CST.st===2)castRefresh()};hd.src='/icons/g/hand1.webp'+q;
+ ri.onload=()=>{CST.rimg=ri;if(CST.st===2)castRefresh()};ri.src='/icons/g/cast2r.webp'+q}
 function castRefresh(){const sc=G3D.sc;if(sc&&sc.host&&G3U[sc.host]){try{G3U[sc.host](sc)}catch(e){}g3Need()}}
 /* the drawn characters unless the sculpted ones were chosen (or the picture could not be had) */
 const castPic=()=>(typeof store==='undefined'||store.get('gcast','pic')!=='3d')&&CST.st!==3;
@@ -254,10 +257,10 @@ const castUV=id=>{const i=Math.max(0,CASTI.indexOf(id));return[(i%5)*409/2048,Ma
 /* the quad's origin is on the table line, under the eyes: eyes CTL above it, everything below it out of sight under the table */
 function castModel(sc){if(sc.models.cast)return true;if(CST.st!==2){castLoad();return false}const H=CS/CEC,W=H*CASP,g=gQuad(W,H);gXf(g,[0,CTL*CS-(.5-CEY)*H,0],qt.id());
  g3Model(sc,'cast',[[g,g3Mat({t:g3T('cast2',()=>g3Tex(CST.img)),unlit:true,vary:true,c:'#EEE6DC'}),false]],null);
- g3Model(sc,'castR',[[g,g3Mat({t:g3T('cast2r',()=>g3Tex(castCutCv())),unlit:true,vary:true,c:'#EEE6DC'}),false]],null);return true}
-/* the picture of the ten with the arm cut out on the side where the whole arm is drawn */
-function castCutCv(){const c=document.createElement('canvas');c.width=CST.img.naturalWidth||2048;c.height=CST.img.naturalHeight||1024;const x=c.getContext('2d'),k=c.width/2048;x.drawImage(CST.img,0,0,c.width,c.height);
- x.globalCompositeOperation='destination-out';CASTI.forEach((id,i)=>{const R=RIG[id];if(!R||!R.ik)return;const ox=(i%5)*409,oy=Math.floor(i/5)*516;x.beginPath();R.ik.mask.forEach(([px,py],j)=>x[j?'lineTo':'moveTo']((ox+px)*k,(oy+py)*k));x.closePath();x.fill()});return c}
+ return true}
+/* the picture without the arms, once it is here */
+function castRModel(sc){if(sc.models.castR)return true;if(!CST.rimg||!sc.models.cast)return false;const H=CS/CEC,W=H*CASP,g=gQuad(W,H);gXf(g,[0,CTL*CS-(.5-CEY)*H,0],qt.id());
+ g3Model(sc,'castR',[[g,g3Mat({t:g3T('cast2r',()=>g3Tex(CST.rimg)),unlit:true,vary:true,c:'#EEE6DC'}),false]],null);return true}
 /* a pixel of a character's cell as a point of the picture (on the table line, under the eyes, facing +z) */
 const castPx=(px,py,z)=>{const H=CS/CEC,W=H*CASP;return[(px/400-.5)*W,CTL*CS-(.5-CEY)*H+(.5-py/508)*H,z||0]};
 /* who is who: a seat's own character if it has one (the bots), or one picked from who they are (people online); never the same twice at a table.
@@ -278,67 +281,94 @@ function castOfSide(c,s){const a=c&&c.avs&&c.avs[s];if(a&&typeof a==='object'&&C
 /* ---------- the drawn people's arm: a forearm from the elbow resting on the table's edge, and a hand at its end ----------
    the hand holds the cards, reaches for a card, a piece, a tile or the dice, carries it and comes back.
    each of the ten has a sleeve colour and a skin (the hand picture is one, tinted); and the side the arm comes from, away from what they already hold */
-/* the six who sit at the card tables (CAST_FREE) have a whole arm: from the shoulder in their picture (ik.S, a pixel of their cell),
-   the upper arm, the elbow, the forearm and the hand, bending as an arm bends; the arm drawn in the picture on that side is cut out (ik.mask) */
-const RIG={m1:{sl:'#3B302F',sk:'#FFFFFF',ik:{S:[270,314],up:'#3B302F',lo:'#3B302F',mask:[[248,322],[256,304],[272,292],[296,296],[308,312],[308,412],[250,412]]}},m2:{sl:'#7A5A3E',sk:'#E6C6AC'},m3:{sl:'#E8A584',sk:'#FFFFFF',ik:{S:[274,292],up:'#8AA6BE',lo:'#E8A584',mask:[[262,286],[272,270],[294,276],[320,300],[332,326],[318,346],[292,358],[268,362],[264,330]]}},m4:{sl:'#EEEAE4',sk:'#FFF4EC'},m5:{sl:'#B84C42',sk:'#8E6452',ik:{S:[300,292],up:'#B84C42',lo:'#B84C42',mask:[[284,288],[300,276],[318,290],[336,316],[350,336],[350,412],[296,412],[290,340]]}},
- f1:{sl:'#F2A383',sk:'#FFF1E8',f:1,ik:{S:[260,296],up:'#F2A383',lo:'#F2A383',mask:[[246,300],[250,280],[270,276],[282,294],[282,374],[250,374],[250,326],[244,318]]}},f2:{sl:'#F4E4D4',sk:'#FFF3EC',f:1,ik:{S:[288,302],up:'#F4E4D4',lo:'#F4E4D4',mask:[[266,290],[280,276],[304,280],[322,304],[334,344],[336,412],[268,412],[268,330]]}},f3:{sl:'#83654A',sk:'#FFF1E8',f:1,ik:{S:[284,302],up:'#83654A',lo:'#83654A',mask:[[266,296],[290,284],[308,298],[318,330],[318,412],[266,412]]}},f4:{sl:'#F2EEE8',sk:'#FFF3EC',f:1,side:-1},f5:{sl:'#F3C9A9',sk:'#FFF3EC',f:1,side:-1}};
+/* every one of the ten has a whole arm on one side: the shoulder is a pixel of their cell (ik.S), on the right as you see them, or on the left
+   for side -1 (Rezo, whose other hand holds his cards). up is the upper arm's cloth, lo the forearm's (or the skin, bare), cuff the band at the wrist,
+   short a sleeve that ends halfway down the upper arm; skin the hand. sl and sk are for the flat arm drawn until the picture without arms is here */
+const RIG={m1:{sl:'#3B302F',sk:'#FFFFFF',skin:'#F2B08C',ik:{S:[260,322],up:'#2C2425',lo:'#2C2425',cuff:'#EEE9E2'}},
+ m2:{sl:'#7A5A3E',sk:'#E6C6AC',skin:'#E59A70',side:-1,ik:{S:[136,292],up:'#6E4C38',lo:'#6E4C38',cuff:'#EDE4DA'}},
+ m3:{sl:'#E8A584',sk:'#FFFFFF',skin:'#F6B28C',ik:{S:[264,300],up:'#8AA8BF',lo:'#F6B28C',short:1}},
+ m4:{sl:'#EEEAE4',sk:'#FFF4EC',skin:'#F3B28F',ik:{S:[244,282],up:'#E9E3DC',lo:'#E9E3DC',cuff:'#DCD5CC'}},
+ m5:{sl:'#B84C42',sk:'#8E6452',skin:'#9A5A40',ik:{S:[290,300],up:'#B24A43',lo:'#B24A43',cuff:'#963A36'}},
+ f1:{sl:'#F2A383',sk:'#FFF1E8',f:1,skin:'#F6B394',ik:{S:[250,304],up:'#F6B394',lo:'#F6B394'}},
+ f2:{sl:'#F4E4D4',sk:'#FFF3EC',f:1,skin:'#F4AD8E',ik:{S:[278,310],up:'#F2E8DE',lo:'#F2E8DE',cuff:'#E6DACD'}},
+ f3:{sl:'#83654A',sk:'#FFF1E8',f:1,skin:'#F2AE8F',ik:{S:[274,310],up:'#836548',lo:'#836548',cuff:'#6E553C'}},
+ f4:{sl:'#F2EEE8',sk:'#FFF3EC',f:1,skin:'#EFA584',ik:{S:[266,292],up:'#EBDDD0',lo:'#EBDDD0',cuff:'#DDCDBE'}},
+ f5:{sl:'#F3C9A9',sk:'#FFF3EC',f:1,skin:'#F4B08C',ik:{S:[240,304],up:'#F4B08C',lo:'#F4B08C'}}};
 const rigOn=()=>castPic()&&!!CST.hand;
 function sleeveCv(){const c=document.createElement('canvas');c.width=64;c.height=8;const x=c.getContext('2d'),g=x.createLinearGradient(0,0,64,0);
  [[0,'rgba(120,120,120,0)'],[.08,'rgba(150,150,150,1)'],[.3,'#FFFFFF'],[.45,'#F4F4F4'],[.8,'#B4B4B4'],[.93,'rgba(120,120,120,1)'],[1,'rgba(100,100,100,0)']].forEach(([o,c])=>g.addColorStop(o,c));x.fillStyle=g;x.fillRect(0,0,64,8);return c}
-function jointCv(){const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(26,26,2,32,32,31);
- [[0,'#FFFFFF'],[.45,'#EDEDED'],[.8,'#B4B4B4'],[.93,'rgba(120,120,120,1)'],[1,'rgba(100,100,100,0)']].forEach(([o,cl])=>g.addColorStop(o,cl));x.fillStyle=g;x.beginPath();x.arc(32,32,32,0,Math.PI*2);x.fill();return c}
 function rigModels(sc,cid){if(sc.models['hand:'+cid])return;const R=RIG[cid]||RIG.m1,strip=()=>gXf(gQuad(1,1),[0,.5,0],qt.id());
- g3Model(sc,'arm:'+cid,[[strip(),g3Mat({t:g3T('sleeve',()=>g3Tex(sleeveCv())),unlit:true,c:R.ik?R.ik.lo:R.sl,two:true}),false]],null);
- if(R.ik){g3Model(sc,'armU:'+cid,[[strip(),g3Mat({t:g3T('sleeve',()=>g3Tex(sleeveCv())),unlit:true,c:R.ik.up,two:true}),false]],null);
-  for(const[k,cl]of[['jU',R.ik.up],['jL',R.ik.lo]])g3Model(sc,k+':'+cid,[[gQuad(1,1),g3Mat({t:g3T('joint',()=>g3Tex(jointCv())),unlit:true,c:cl,two:true}),false]],null)}
+ g3Model(sc,'arm:'+cid,[[strip(),g3Mat({t:g3T('sleeve',()=>g3Tex(sleeveCv())),unlit:true,c:R.sl,two:true}),false]],null);
  g3Model(sc,'hand:'+cid,[[strip(),g3Mat({t:g3T('hand1',()=>g3Tex(CST.hand)),unlit:true,c:R.sk,two:true}),false]],null)}
+/* ---------- the whole arm, in 3D ----------
+   lit like everything on the table and soft as the pictures are: upper arm and forearm are rounded tubes that taper to the wrist
+   (one long piece each, made for a face of 1 and scaled to the person); the hand has a palm, four fingers and a thumb */
+const RIGA=1.5,RIGB=1.35,RIGH=1.0;
+const hexK=(h,k)=>{const n=parseInt(h.slice(1),16),c=[n>>16,(n>>8)&255,n&255].map(v=>Math.max(0,Math.min(255,Math.round(v*k))));return'#'+c.map(v=>v.toString(16).padStart(2,'0')).join('')};
+/* the room's lamp is strong; the arms take a darker colour under it, so they come out as light as the pictures */
+const rigMat=(c,skin)=>g3Mat({c:hexK(c,.58),e:hexK(c,skin?.2:.17),sh:skin?22:12,sp:skin?.1:.04,gl:.02,wrap:.6,rim:.25,sss:skin?.35:0});
+function rigModels3(sc,cid){if(sc.models['aU3:'+cid])return;const R=RIG[cid],I=R.ik,k=R.f?.86:1,rS=.34*k,rE=.26*k,rW=.19*k,skin=rigMat(R.skin,true),up=rigMat(I.up,I.up===R.skin),lo=rigMat(I.lo,I.lo===R.skin);
+ const U=[];if(I.short){U.push([gCap([0,0,0],[0,RIGA,0],rS*.9,rE),skin],[gMerge(gCap([0,0,0],[0,RIGA*.5,0],rS*1.05,rS*.98),gXf(gTorus(rS*.98,.05*k,20,6),[0,RIGA*.5,0],qt.id())),up])}else U.push([gCap([0,0,0],[0,RIGA,0],rS,rE),up]);
+ g3Model(sc,'aU3:'+cid,U,null);
+ const F=[[gCap([0,0,0],[0,RIGB,0],rE*.96,rW),lo]];if(I.cuff)F.push([gMerge(gCap([0,RIGB-.24,0],[0,RIGB-.02,0],rW*1.14,rW*1.12),gXf(gTorus(rW*1.12,.035*k,20,6),[0,RIGB-.02,0],qt.id())),rigMat(I.cuff)]);
+ if(I.lo!==R.skin)F.push([gCap([0,RIGB-.06,0],[0,RIGB+.1,0],rW*.92,rW*.9),skin]);
+ g3Model(sc,'aF3:'+cid,F,null);
+ /* the hand: made pointing along +z with its back up; the thumb on the side toward the body */
+ g3Model(sc,'hd3:'+cid,[[gScale3(handGeo(-(R.side||1)),RIGH*k/.85,RIGH*k/.85,RIGH*k/.85),skin]],[.4,.25,.5],[0,0,.45])}
+
 /* a person's frame: B on the table line under the eyes, R to their left as you see it, F toward you, E the size of a face (eyes to chin) */
 function rigFrame(B,s,cid){const eye=G3D.sc&&G3D.sc.camNow?G3D.sc.camNow.eye:[0,8,12],yaw=Math.atan2(eye[0]-B[0],eye[2]-B[2]),R0=RIG[cid]||RIG.m1;
  return{B,E:CS*(s||1),R:[Math.cos(yaw),0,-Math.sin(yaw)],F:[Math.sin(yaw),0,Math.cos(yaw)],yaw,side:R0.side||1,fem:!!R0.f,cid}}
 const rigP=(f,x,y,z)=>[f.B[0]+(f.R[0]*x*f.side+f.F[0]*z)*f.E,f.B[1]+y*f.E,f.B[2]+(f.R[2]*x*f.side+f.F[2]*z)*f.E];
 /* where the wrist goes for the fingers to be at P (the hand points along the arm; close by, the forearm keeps a little length and the hand overshoots) */
-function rigWrist(g,P){if(g.ik){const v=v3.sub(P,g.Sw),l=v3.len(v)||1e-3,d=v3.mul(v,1/l);return v3.add(g.Sw,v3.mul(d,Math.max(l-g.hl*.7,g.hl*.5)))}
+function rigWrist(g,P){if(g.ik)return v3.sub(P,v3.mul(rigHandDir(g,P),g.hl*.62));
  const v=v3.sub(P,g.A),l=v3.len(v)||1e-3,d=v3.mul(v,1/l);return v3.add(g.A,v3.mul(d,Math.max(l-g.hl*.7,g.hl*.22)))}
 /* the arm and hand at rest: the elbow on the table's edge, the hand up holding the fan of cards (hold) or lying on the table in front */
-function rigPush(L,sc,key,cid,B,s,o={}){if(!rigOn())return null;rigModels(sc,cid);const R0=RIG[cid];if(R0&&R0.ik&&sc.models.castR)return rigPushIK(L,sc,key,cid,B,s,o);const f=rigFrame(B,s,cid),E=f.E,hl=(f.fem?.98:1.12)*E,
+function rigPush(L,sc,key,cid,B,s,o={}){if(!rigOn())return null;rigModels(sc,cid);const R0=RIG[cid];if(R0&&R0.ik&&castRModel(sc))return rigPushIK(L,sc,key,cid,B,s,o);const f=rigFrame(B,s,cid),E=f.E,hl=(f.fem?.98:1.12)*E,
  g={f,key,cid,E,hl,A:rigP(f,.66,-.08,.6),grip:o.grip||(o.hold?rigP(f,.32,1.15,1.1):rigP(f,.3,.32,1.15))};g.rest=rigWrist(g,g.grip);
  (sc.rigs||(sc.rigs={}))[key]=g;const W=f.fem?.56:.66;
  L.push({k:'pw'+key,m:'hand:'+cid,p:g.rest,s:1,a:.998,cast:false,refl:false,arm:{a:g.A,len:hl*1.08,w:hl*.62},dur:o.dur||450},
   {k:'pa'+key,m:'arm:'+cid,p:g.A,s:1,a:.998,cast:false,refl:false,arm:{a:g.A,of:'k:pw'+key,w:W*E},now:1});return g}
-/* a whole arm: the picture loses its own arm on that side; the shoulder is a point of the picture, so it follows the body when it leans or nods.
-   The hand (pw) is what moves; every frame rigTick bends the arm to it: upper arm (xu) from the shoulder (xs) to the elbow (xe), forearm (pa) on to the wrist */
-const RIGA=1.75,RIGB=1.5;
-function rigPushIK(L,sc,key,cid,B,s,o){const f=rigFrame(B,s,cid),E=f.E,hl=(f.fem?.98:1.12)*E,R=RIG[cid].ik,c=L.find(d=>d.k==='ph'+key);if(c)c.m='castR';
- const S0=v3.mul(castPx(R.S[0]-10,R.S[1]+8,.12),s||1),lean=c?c.q:qt.id(),Sw=v3.add(B,qt.rot(qt.mul(qt.ax(0,1,0,f.yaw),lean),S0)),xs=(R.S[0]/400-.5)*(CS/CEC)*CASP/CS;
- const g={f,key,cid,E,hl,ik:{S0,a:RIGA*E,b:RIGB*E},Sw,A:rigP(f,xs*.8+.2,.25,.7),grip:o.grip||(o.hold?rigP(f,.32,1.15,1.1):rigP(f,.3,.32,1.15))};g.rest=rigWrist(g,g.grip);
- g.Sv=Sw.slice();g.Ev=rigElbow(g,Sw,g.rest);(sc.rigs||(sc.rigs={}))[key]=g;const wU=(f.fem?.58:.66)*E,wF=(f.fem?.5:.56)*E,base={s:1,a:.998,cast:false,refl:false};
- L.push(Object.assign({k:'xu'+key,m:'armU:'+cid,p:Sw,arm:{a:g.Sv,of:'k:xe'+key,w:wU},now:1},base),
-  Object.assign({k:'xs'+key,m:'jU:'+cid,p:Sw,s:wU*.98,now:1},base),
-  Object.assign({k:'xe'+key,m:'jL:'+cid,p:g.Ev,s:(wU+wF)*.52,now:1},base),
-  Object.assign({k:'pw'+key,m:'hand:'+cid,p:g.rest,arm:{a:g.Ev,len:hl*1.08,w:hl*.62},dur:o.dur||450},base),
-  Object.assign({k:'pa'+key,m:'arm:'+cid,p:g.Ev,arm:{a:g.Ev,of:'k:pw'+key,w:wF},now:1},base));return g}
-/* the elbow for a shoulder S and a wrist W: the two bones of the arm keep their length; the elbow comes forward and out over the table,
-   a little down, as it does when cards are held up in front; it never goes into the table */
+/* a whole arm: the picture without its own arm on that side; the shoulder is a point of the picture, so it follows the body when it leans or nods.
+   The hand (pw) is what moves, from stop to stop, turned at each the way a hand is (rigHandQ); every frame rigTick bends the arm to it:
+   the upper arm (xu) from the shoulder to the elbow, the forearm (pa) from the elbow to the wrist */
+function rigPushIK(L,sc,key,cid,B,s,o){const f=rigFrame(B,s,cid),E=f.E,R=RIG[cid],hl=RIGH*(R.f?.86:1)*E,c=L.find(d=>d.k==='ph'+key);if(c)c.m='castR';rigModels3(sc,cid);
+ const S0=castPx(R.ik.S[0],R.ik.S[1],.1),lean=c?c.q:qt.id(),Sw=v3.add(B,qt.rot(qt.mul(qt.ax(0,1,0,f.yaw),lean),v3.mul(S0,s||1))),xs=(R.ik.S[0]/400-.5)*(CS/CEC)*CASP/CS*(R.side||1);
+ /* holding cards: the hand low in front of the chest, a little in toward the middle, the fan standing up out of it */
+ const g={f,key,cid,E,hl,ik:{S0,a:RIGA*E,b:RIGB*E},Sw,A:Sw,grip:o.grip||(o.hold?rigP(f,xs*.35,.85,1.45):rigP(f,xs*.7,.3,1.5))};
+ g.rest=rigWrist(g,g.grip);g.restQ=rigHandQ(g,g.rest,g.grip);g.Sv=Sw.slice();g.Ev=rigElbow(g,Sw,g.rest);(sc.rigs||(sc.rigs={}))[key]=g;
+ const base={a:1,cast:true,refl:false};
+ L.push(Object.assign({k:'xu'+key,m:'aU3:'+cid,p:Sw,q:qFromY(v3.sub(g.Ev,Sw)),s:E,now:1},base),
+  Object.assign({k:'pa'+key,m:'aF3:'+cid,p:g.Ev,q:qFromY(v3.sub(g.rest,g.Ev)),s:E,now:1},base),
+  Object.assign({k:'pw'+key,m:'hd3:'+cid,p:g.rest,q:g.restQ,s:E,dur:o.dur||450},base));return g}
+/* which way the hand points for its fingers to be at P: up near the body (holding cards) it stands up; on the table or reaching out it goes along the reach */
+function rigHandDir(g,P){const S=g.Sw,r=v3.sub(P,S),hz=Math.hypot(r[0],r[2])/g.E,hy=(P[1]-g.f.B[1])/g.E,k=clamp(2.1-hz/1.25,0,1)*clamp((hy-.45)/.35,0,1),rd=v3.norm(r),inw=v3.mul(g.f.R,-g.f.side);
+ /* a fan is held from the side: the fingers go up and in across its foot */
+ return v3.norm(v3.add(v3.mul(rd,1-k*.9),v3.add(v3.mul([0,1,0],k*.8),v3.add(v3.mul(inw,k*.62),v3.mul(g.f.F,k*.1)))))}
+/* and how it is turned: the back of the hand toward you when it stands up (the palm round the cards), up when it reaches down to the table */
+function rigHandQ(g,W,P){const fd=v3.norm(v3.sub(P,W)),U=v3.norm(v3.add(v3.mul(g.f.F,.8),[0,.6,0]));let up=v3.sub(U,v3.mul(fd,v3.dot(U,fd)));if(v3.len(up)<.1)up=g.f.F;return qBasis(fd,v3.norm(up))}
+/* the elbow for a shoulder S and a wrist W: the two bones keep their length, the elbow drops (down, a touch out; behind the line when the arm reaches down);
+   it rests on the table's edge rather than going into it */
 function rigElbow(g,S,W){const a=g.ik.a,b=g.ik.b,d=v3.sub(W,S),l=v3.len(d)||1e-3,u=v3.mul(d,1/l),f=g.f;
- const pole=v3.add(v3.add(v3.mul(f.R,.55*f.side),[0,-.45,0]),v3.mul(f.F,1));let n=v3.sub(pole,v3.mul(u,v3.dot(pole,u)));const nl=v3.len(n);n=nl>1e-4?v3.mul(n,1/nl):[0,-1,0];
+ const pole=v3.add(v3.add(v3.mul(f.R,.18*f.side),[0,-1,0]),v3.mul(f.F,.05));let n=v3.sub(pole,v3.mul(u,v3.dot(pole,u)));const nl=v3.len(n);n=nl>1e-4?v3.mul(n,1/nl):[0,-1,0];
  let El;if(l>=a+b)El=v3.add(S,v3.mul(u,l*a/(a+b)));else{const ca=(a*a+l*l-b*b)/(2*a*l),sa=Math.sqrt(Math.max(0,1-ca*ca));El=v3.add(S,v3.add(v3.mul(u,a*ca),v3.mul(n,a*sa)))}
- const lo=.3*g.E;if(El[1]<lo)El[1]=lo;return El}
-/* every frame: the shoulder where the picture now has it, the elbow bent to where the hand now is, the rounds turned to the eye */
-function rigTick(sc){const C=sc.camNow;if(!C||!sc.rigs)return;const set=(A,v)=>{A[0]=v[0];A[1]=v[1];A[2]=v[2]};
+ const lo=f.B[1]+.42*g.E;if(El[1]<lo)El[1]=lo;return El}
+/* every frame: the shoulder where the picture now has it, the elbow bent to where the hand now is, the two bones laid between them */
+function rigTick(sc){const C=sc.camNow;if(!C||!sc.rigs)return;
  for(const key in sc.rigs){const g=sc.rigs[key];if(!g.ik)continue;const c=sc.objs.get('k:ph'+key),h=sc.objs.get('k:pw'+key);if(!c||!h)continue;
   const yaw=Math.atan2(C.eye[0]-c.p[0],C.eye[2]-c.p[2]),S=v3.add(c.p,qt.rot(qt.mul(qt.ax(0,1,0,yaw),c.q),v3.mul(g.ik.S0,typeof c.s==='number'?c.s:1))),El=rigElbow(g,S,h.p);
-  set(g.Sv,S);set(g.Ev,El);
-  for(const[k,P]of[['xs',S],['xe',El],['xu',S],['pa',El]]){const o=sc.objs.get('k:'+k+key);if(!o)continue;o.p=P.slice();o.tw=null;
-   if(k==='xs'||k==='xe'){const d=v3.norm(v3.sub(C.eye,P));o.q=qt.mul(qt.ax(0,1,0,Math.atan2(d[0],d[2])),qt.ax(1,0,0,-Math.asin(clamp(d[1],-1,1))))}}}}
+  g.Sv=S;g.Ev=El;const u=sc.objs.get('k:xu'+key),fa=sc.objs.get('k:pa'+key),E=g.E;
+  if(u){const d=v3.sub(El,S);u.p=S;u.q=qFromY(d);u.s=[E,Math.max(.2,v3.len(d)/RIGA),E];u.tw=null}
+  if(fa){const d=v3.sub(h.p,El);fa.p=El;fa.q=qFromY(d);fa.s=[E,Math.max(.2,v3.len(d)/RIGB),E];fa.tw=null;fa.a=h.a;u&&(u.a=h.a)}}}
 /* the fan held in that hand: the cards spread from the fingers, faces toward the one who holds them */
 function rigFan(g,i,n,s){const f=g.f,q0=qt.mul(qt.ax(0,1,0,f.yaw+Math.PI),qt.ax(1,0,0,-.22)),rt=qt.rot(q0,[1,0,0]),up=qt.rot(q0,[0,1,0]),nr=qt.rot(q0,[0,0,1]);
- const sp=Math.min(.3,1.5/Math.max(n-1,1)),ph=(i-(n-1)/2)*sp,rad=.6*g.E,pv=v3.sub(g.grip,v3.mul(f.F,.14*g.E));
+ const sp=Math.min(.3,1.5/Math.max(n-1,1)),ph=(i-(n-1)/2)*sp,rad=.6*g.E,pv=g.ik?v3.add(g.grip,v3.add(v3.mul(f.F,-.18*g.E),[0,.05*g.E,0])):v3.sub(g.grip,v3.mul(f.F,.14*g.E));
  return{p:v3.add(pv,v3.add(v3.mul(rt,Math.sin(ph)*rad),v3.add(v3.mul(up,Math.cos(ph)*rad),v3.mul(nr,-i*.006)))),q:qt.mul(q0,qt.ax(0,0,1,-ph)),s:.74*(s||1)}}
 /* the hand goes through the given points (where the fingers are), each in its own time, and comes back; the body leans in while it does */
 function rigGo(sc,key,stops,o={}){const g=sc.rigs&&sc.rigs[key],h=sc.objs.get('k:pw'+key);if(!g||!h||RM())return 0;let t=0;
  /* an arm reaches so far and no farther: beyond it the hand lets go and the thing goes on by itself */
  const O=g.ik?g.Sw:g.A,far=P=>{const v=v3.sub(P,O),l=v3.len(v),m=g.ik?(g.ik.a+g.ik.b)*.97+g.hl*.7:(o.reach||3.1)*g.E;return l>m?v3.add(O,v3.mul(v,m/l)):P};
- const K=stops.map(st=>{t+=st.d||300;return{p:rigWrist(g,far(st.p)),d:st.d||300,arc:st.arc||0,delay:st.delay||0}});K.push({p:g.rest,d:o.back||430,arc:.12});t+=o.back||430;
+ const K=stops.map(st=>{t+=st.d||300;const P=far(st.p),W=rigWrist(g,P);return{p:W,q:g.ik?rigHandQ(g,W,P):null,d:st.d||300,arc:st.arc||0,delay:st.delay||0}});K.push({p:g.rest,q:g.restQ||null,d:o.back||430,arc:.12});t+=o.back||430;
  h.kfL=0;g3Kf(h,K);if(o.lean!==0)g3Wig(sc,'k:ph'+key,{ax:'x',a:o.lean??.07,f:.5,d:t,delay:o.leanDelay||0});return t}
 /* the fingers' point a little above a place on the table */
 const rigAbove=(P,h)=>[P[0],P[1]+(h??.25),P[2]];
@@ -475,7 +505,7 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
  /* a word said at the table: a nod for a number, a knock on the table for a pass */
  if(V.bids&&pic){const B0=sc.bids0||[];for(const r of[1,2,3]){const b=V.bids[(r+V.base)%4],was=B0[(r+V.base)%4];if(b!=null&&was===null){g3Wig(sc,'k:ph'+r,{ax:'x',a:.09,f:1,d:700});if(b===0&&rigOf(r)){const g=rigOf(r),P=rigP(g.f,.1,.05,1.6);rigGo(sc,String(r),[{p:rigAbove(P,.35),d:200},{p:P,d:90},{p:rigAbove(P,.3),d:110},{p:P,d:90}],{lean:.05})}}}sc.bids0=V.bids.slice()}
  sc.marks=M;g3Set(sc,L,{gone:o=>{if(o.id.startsWith('k:pn'))return{a:0,dur:140,delay:sc.pileD||0};if(o.m==='card'&&o.id.startsWith('k:c')){const w=sc.jw??0,p=w==='disc'?[3.35,.25,.85]:v3.add(jkPile(w),[0,.2,0]);return{p,a:0,dur:560,delay:150+sweep,s:1.05,q:FACEDN(w==='disc'||w===0?0:JYAW[w])}}if(o.id.startsWith('k:h'))return{a:0,dur:160};return{a:0,dur:250}}})}
-G3U.joker=sc=>{const G=JK,V={hint:typeof jkPlayHint==='function'?(m=>m&&m.c)(jkPlayHint()):null,base:0,act:'jcard',hand:[],legal:[],counts:[0,0,0,0],taken:[0,0,0,0],trick:[],win:null,deal:null,dealer:null,cur:null,phase:G.phase,mine:false,trumpCard:null,deckN:0,ids:G.ids.map((x,i)=>i===0?{n:ME.name,k:'me'}:{n:x.n,h:x.h,k:x.n,cast:x.cast})};
+G3U.joker=sc=>{const G=JK;if(!G.ids)return;const V={hint:typeof jkPlayHint==='function'?(m=>m&&m.c)(jkPlayHint()):null,base:0,act:'jcard',hand:[],legal:[],counts:[0,0,0,0],taken:[0,0,0,0],trick:[],win:null,deal:null,dealer:null,cur:null,phase:G.phase,mine:false,trumpCard:null,deckN:0,ids:G.ids.map((x,i)=>i===0?{n:ME.name,k:'me'}:{n:x.n,h:x.h,k:x.n,cast:x.cast})};
  if(G.hands){const tr=G.phase==='trump'&&G.cur===0;V.hand=tr?G.first3[0]:G.phase==='trump'?[]:G.hands[0];V.legal=G.phase==='play'&&G.cur===0&&G.win==null?G.legal(0):[];V.mine=V.legal.length>0;
   V.counts=[0,1,2,3].map(p=>G.phase==='trump'?(p===0?0:3):G.hands[p].length);V.taken=G.taken||V.taken;V.trick=G.trick;V.bids=G.bids;V.win=G.win;V.cur=G.cur;V.dealer=G.dealer;V.deal=G.len+':'+G.h+':'+G.dealer;V.trumpCard=G.trumpCard;V.deckN=36-4*G.n;V.lastA=G.lastT&&G.phase==='play'?'jlast':null}
  jkScene(sc,V)};

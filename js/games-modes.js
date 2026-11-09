@@ -209,7 +209,8 @@ function gTip(txt){let el=$('#gcoach');if(!el){el=document.createElement('div');
 /* joker: the card the careful player would play now */
 function jkPlayHint(){if(JK.phase!=='play'||JK.cur!==0||JK.win!=null||!jHintOn()||!JK.ctx||!['bot','learn'].includes(JK.ctx.mode))return null;try{const px=Object.create(JK),m=JK.botPlay.call(px,0);return m&&m.c?m:null}catch(e){return null}}
 {const r=JK.render;JK.render=function(){r.call(this);if(S.tab!=='games'||S.game!=='joker'||S.page)return;const m=jkPlayHint();this.hintC=m?m.c:null;if(!m)return;const i=this.hands[0].indexOf(m.c),b=$(`.hand [data-i="${i}"]`,view);if(b)b.classList.add('hint');
- const st=$('.status',view),need=this.bids[0]-this.taken[0];if(st)st.innerHTML+=`<small class="bhint">რჩევა: ${cardName(m.c)}${m.c.j?` (${m.jm==='lo'?'დაბალი':'მაღალი'})`:''} · ${need>0?`კიდევ ${need} ხელი გჭირდება`:'ხელი აღარ გჭირდება'}</small>`}}
+ /* the card glows; its name is said only to a screen reader (how many are still needed stands by my name) */
+ const st=$('.status',view);if(st)st.insertAdjacentHTML('beforeend',`<span class="g3sr">რჩევა: ${cardName(m.c)}${m.c.j?` (${m.jm==='lo'?'დაბალი':'მაღალი'})`:''}</span>`)}}
 
 /* ---------- big buttons and letters, for an easier read and an easier tap ---------- */
 const gBigOn=()=>!!store.get('gbig',false);
