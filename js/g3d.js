@@ -199,6 +199,8 @@ function g3Tick(sc,now){let busy=false;const c=sc.cam;
   if(k>=1){o.tw=null;o.p=t.p1.slice();o.q=t.q1.slice();if(o.dying)sc.objs.delete(o.id);else if(o.kf&&o.kf.length){g3KfGo(o,o.kf.shift(),now);busy=true}else if(o.kfL){o.kfL=0;if(o.rest){const r=o.rest;o.rest=null;g3Aim(o,r,now,{},false);busy=true}}else if(t.land){const md=sc.models[o.m];if(md&&md.land)try{md.land(o,sc)}catch(e){}}}else busy=true}
  for(const o of sc.objs.values())if(o.wg&&g3WgStep(o,now))busy=true;
  if(sc.look&&g3LookStep(sc,now))busy=true;
+ /* the drawn people's arms bend to where their hands are (rigTick in js/g3d-games.js) */
+ if(sc.rigs&&typeof rigTick==='function')try{rigTick(sc)}catch(e){}
  /* a scene may move things itself, frame by frame (the roulette wheel and its ball) */
  if(sc.onTick)try{if(sc.onTick(now))busy=true}catch(e){}
  g3Life(sc,now);return busy}
