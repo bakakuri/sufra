@@ -139,8 +139,9 @@ async function admCasino(el){const s=await rpc('admin_casino_stats');const top=s
  <section class="tourcard adsite"><h3>ლიმიტები</h3><p class="note">მონეტებში. 10,000 მონეტა = 1 ₾.</p>
   <div class="cs-adf">${[['min_bet','მინიმალური ფსონი',10],['max_bet','მაქსიმალური ფსონი',500],['max_win','ერთი მოგება მაქსიმუმ',100000],['day_bets','დღეში ფსონები ერთ ადამიანზე',20000]].map(([k,l,d])=>`<label class="fld">${l}<input id="acs_${k}" type="number" inputmode="numeric" min="1" value="${c[k]??d}"></label>`).join('')}</div>
   <button class="btn" data-a="adcsnsave">${ic('check')}შენახვა</button></section>`}
+/* a single game here is the same switch as in the games tab (js/admin.js admGameSet), so the two never disagree */
 A.adcsnsw=async t=>{const k=t.dataset.k,on=t.getAttribute('aria-checked')!=='true';t.setAttribute('aria-checked',String(on));
- try{await rpc('admin_casino_set',{p_cfg:k==='on'?{on}:{games:{[k]:on}}});CSN.info=null;toast(on?'ჩაირთო':'გამოირთო');adminTab()}catch(e){t.setAttribute('aria-checked',String(!on));toast(errMsg(e))}};
+ try{if(k==='on')await rpc('admin_casino_set',{p_cfg:{on}});else await admGameSet(k==='avl'?'aviator':k,on);CSN.info=null;toast(on?'ჩაირთო':'გამოირთო');adminTab()}catch(e){t.setAttribute('aria-checked',String(!on));toast(errMsg(e))}};
 A.adcsnsave=async()=>{const v={};for(const k of ['min_bet','max_bet','max_win','day_bets']){const n=Math.floor(+$('#acs_'+k).value);if(!(n>=1)){toast('ჩაწერე დადებითი რიცხვი');return}v[k]=n}
  if(v.min_bet>v.max_bet){toast('მინიმალური ფსონი მაქსიმალურზე მეტია');return}
  try{await rpc('admin_casino_set',{p_cfg:v});CSN.info=null;toast('შენახულია');adminTab()}catch(e){toast(errMsg(e))}};

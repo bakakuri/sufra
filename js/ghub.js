@@ -11,7 +11,8 @@ const GKGAMES={
  slots:[{id:'slot',n:'ქართული სლოტი',d:'ღვინო, ყურძენი, ხაჭაპური, ჩურჩხელა, ყანწი და შვიდიანები',adult:1,art:'slots'},{id:'fleece',n:'ოქროს საწმისი',d:'5 ბარაბანი, 10 ხაზი, უფასო ტრიალები',adult:1,art:'fleece',need:'fleece'},{id:'batumi',n:'ბათუმის ღამე',d:'5 ბარაბანი, 10 ხაზი, უფასო ტრიალები',adult:1,art:'batumi',need:'batumi'}],
  casino:[{id:'roulette',n:'რულეტკა',d:'ევროპული ბორბალი, ერთი ნულით',adult:1,art:'casino'},{id:'bj',n:'ბლექჯეკი',d:'21: შენ დილერის წინააღმდეგ',adult:1,art:'bj'}],
  fast:[{id:'aviator',n:'ავიატორი',d:'თვითმფრინავი მაღლა მიფრინავს: აიღე, სანამ გაფრინდება',adult:1,art:'fast'},{id:'mines',n:'ნაღმები',d:'იპოვე ბრილიანტები, აარიდე ნაღმებს',adult:1,art:'mines',need:'mines'},{id:'plinko',n:'პლინკო',d:'ბურთი ლურსმნებს შორის ეცემა',adult:1,art:'plinko',need:'plinko'}]};
-const gkVisible=()=>{const ad=isAdult();return GKINDS.filter(k=>!k.adult||ad).map(k=>({...k,games:(GKGAMES[k.k]||[]).filter(g=>(!g.adult||ad)&&(!g.need||typeof csHas!=='function'||csHas(g.need)))}))};
+/* what the admin switched off (js/glock.js) is not shown: a whole kind, or a game in it */
+const gkVisible=()=>{const ad=isAdult(),off=typeof gOff==='function'?gOff:()=>false,goff=typeof gGroupOff==='function'?gGroupOff:()=>false;return GKINDS.filter(k=>(!k.adult||ad)&&!goff(k.k)).map(k=>({...k,games:(GKGAMES[k.k]||[]).filter(g=>(!g.adult||ad)&&!off(g.id)&&(!g.need||typeof csHas!=='function'||csHas(g.need)))})).filter(k=>k.k==='board'||k.games.length)};
 
 /* drawn pictures for the kinds that have no board art yet */
 function hubRoulette(){const cx=100,cy=76,P=(r,a)=>`${(cx+r*Math.cos(a)).toFixed(2)} ${(cy+r*Math.sin(a)).toFixed(2)}`,n=18;let seg='';
@@ -52,7 +53,7 @@ const HUBART={
 function hubPic(k){if(k==='board')return `<img class="hub-img" src="${GART(k==='board'?'nardi':'egg',600)}" alt="" decoding="async">`;return (HUBART[k]||HUBART.slots)()}
 function hubCard(k,i){
  return `<button class="hub-k hub-${k.k}" style="--i:${i}" data-a="gkind" data-k="${k.k}" aria-label="${k.n}. ${k.d}${k.soon?'. მალე':''}"><span class="hub-pic">${hubPic(k.k)}</span>
- <span class="hub-tx"><b>${k.n}</b><small>${k.d}</small></span>${k.soon?'<em class="hub-soon">მალე</em>':`<em class="hub-n">${k.k==='board'?GAMES.length:k.games.length} თამაში</em>`}${k.adult?'<i class="hub-18" aria-hidden="true">18+</i>':''}</button>`}
+ <span class="hub-tx"><b>${k.n}</b><small>${k.d}</small></span>${k.soon?'<em class="hub-soon">მალე</em>':`<em class="hub-n">${k.k==='board'?GAMES.filter(g=>typeof gOff!=='function'||!gOff(g.id)).length:k.games.length} თამაში</em>`}${k.adult?'<i class="hub-18" aria-hidden="true">18+</i>':''}</button>`}
 
 /* the chooser: a sheet, so the back button closes it and leaves the person where they were */
 function gHub(){if(typeof tabOk==='function'&&!tabOk('games')||!isAdult()){go('games');return}

@@ -3269,3 +3269,18 @@ body.wide .pspace{flex-wrap:wrap;margin:6px 0 0;padding:4px 0 2px;-webkit-mask-i
 .jkonl span{flex:1;display:grid;gap:2px}.jkonl b{font-size:14px}.jkonl small{font-size:12px;color:#9AA5C8;line-height:1.35}
 /* the info chips keep clear of the score list in the corner */
 .gx .ghud.top:has(.jsm.strip) .ginfo{padding-right:122px}
+/* a friend's day coming up, first in the row of stories: a warm ring, a cake (or a candle for a name day) and how many there are */
+.ring.rem::before{background:conic-gradient(from 0deg,#FF9F43,#FFD36B,#FF6B9A,#FF9F43);animation-duration:7s}
+.ring.rem.now::before{animation-duration:2.6s}
+.ring .remtag{background:linear-gradient(90deg,#FF8A3D,#FF5C8A);letter-spacing:0;white-space:nowrap}
+.ring i.remb{width:auto;min-width:22px;height:22px;padding:0 4px;right:-4px;top:-2px;bottom:auto;background:#FF5C8A;font-size:11px;font-weight:800;border-radius:999px}
+.remsheet .list{margin:0 -4px}
+/* the admin's games: a group, its games under it; dimmed while the games are closed to everyone */
+.adgsub{display:block;font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.4;white-space:normal}
+.adgames.dim{opacity:.62}
+.adgames .adgh{border-bottom:1px solid var(--line)}
+.adgl.off{opacity:.5}
+.adgl .setrow:last-child{border-bottom:0}
+.adgcs{display:block;width:max-content;max-width:100%;margin-top:3px;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;color:var(--muted);background:var(--sunk)}
+.adgcs.warn{color:#B4231B;background:rgb(220 60 50/.12)}
+.glock-none{padding:24px 16px;text-align:center}

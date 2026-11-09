@@ -46,11 +46,11 @@ const firstName=()=>esc(String(ME.name||'').split(' ')[0]);
 R.home=()=>{
  view.innerHTML=`<div id="annc"></div><div class="stories" id="stories" role="list">${'<span class="story sk" aria-hidden="true"><span class="ring seen"><span class="av" style="--s:58px"></span></span><span></span></span>'.repeat(5)}</div>
  <section class="svstrip" aria-label="სერვისები"><div class="svhd"><h3>სერვისები</h3><span class="sp"></span><button class="ibtn sm svarr" data-a="svscroll" data-d="-1" aria-label="წინა">${ic('back')}</button><button class="ibtn sm svarr nx" data-a="svscroll" data-d="1" aria-label="შემდეგი">${ic('back')}</button><button class="svall" data-a="menu">ყველა</button></div><div class="svtrack" id="svtrack">${SHORT.filter(x=>pageOk(x[0])).map(svcCard).join('')}</div></section>
- <div id="fsteps"></div><div id="remind"></div><div id="memo"></div>
+ <div id="fsteps"></div><div id="memo"></div>
  <button class="compose cbtn" data-a="compose">${av('me')}<span class="cph">რა ხდება, ${firstName()}?</span><span class="cq" aria-hidden="true">${ic('image')}${ic('poll')}</span></button>
  <div class="feedbar"><div class="seg feedsw" role="group" aria-label="ფიდის რეჟიმი">${[['for','შენთვის'],['friends','მეგობრები'],['new','ახალი']].map(([k,l])=>`<button data-a="feed" data-f="${k}" aria-pressed="${S.feed===k}">${l}</button>`).join('')}</div><button class="ibtn sq" data-a="topics" aria-label="ჩემი თემები" title="ჩემი თემები">${ic('star')}</button></div>
  <div id="feed">${skel(3)}</div><div id="more" class="morebox" aria-live="polite"></div>`;
- drawBanner();loadStories();loadFirstSteps();loadRemind();loadMemories();loadFeed(true);svcCounts();svcAuto();
+ drawBanner();loadStories();loadFirstSteps();loadMemories();loadFeed(true);svcCounts();svcAuto();
  const io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting))loadFeed(false)},{root:view,rootMargin:'600px'});io.observe($('#more'))};
 A.feed=t=>{S.feed=t.dataset.f;$$('.feedsw button').forEach(b=>b.setAttribute('aria-pressed',String(b===t)));$('#feed').innerHTML=skel(3);loadFeed(true)};
 async function loadAds(){try{const ads=await q(sb.from('ads').select('id,post_id').eq('status','active').limit(6));if(!ads.length)return [];const rows=await fetchPosts(b=>b.in('id',ads.map(a=>a.post_id)));return rows.map(p=>Object.assign(p,{ad:ads.find(a=>a.post_id===p.id).id}))}catch(e){return []}}
@@ -86,8 +86,16 @@ async function upcoming(days){const now=new Date();now.setHours(0,0,0,0);const o
  return out.sort((a,b)=>a.n-b.n)}
 const whenTxt=n=>n===0?'დღეს':n===1?'ხვალ':n+' დღეში';
 const remRow=e=>`<div class="rrow">${av(e.p,40)}<div class="grow"><span class="when">${whenTxt(e.n)} · ${e.dt.getDate()} ${MONTHS[e.dt.getMonth()]}</span><b>${esc(e.p.name)} · ${e.kind==='b'?'დაბადების დღე':'ანგელოზის დღე, '+e.label}</b></div><button class="btn ghost" data-a="greet" data-u="${e.p.id}" data-k="${e.kind}">მილოცვა</button><button class="btn ghost" data-a="gift" data-u="${e.p.id}" aria-label="საჩუქრის გაგზავნა">${ic('gift')}</button></div>`;
-async function loadRemind(){const el=$('#remind');if(!el||!FRIENDS.size)return;const u=(await upcoming(14)).slice(0,3);if(!u.length||!$('#remind'))return;
- el.innerHTML=`<section class="remind"><div class="shead" style="padding:0"><h3>არ დაგავიწყდეს</h3><button class="trb" data-a="page" data-p="calendar">კალენდარი</button></div>${u.map(remRow).join('')}</section>`}
+/* friends' days coming up are not in the feed: they stand first in the row of stories, only while one is near (two weeks),
+   and a touch opens them with a greeting and a gift at hand; the whole calendar is a tap further */
+const REMC={at:0,u:null};
+async function remList(){if(!FRIENDS.size)return[];if(!REMC.u||Date.now()-REMC.at>6e5){REMC.u=await upcoming(14);REMC.at=Date.now()}return REMC.u}
+async function remStory(){const el=$('#stories');if(!el||typeof featOff==='function'&&!isAdm()&&featOff('calendar'))return;let u=[];try{u=await remList()}catch(e){}const S0=$('#stories');if(!S0||!u.length)return;
+ $$('.remst',S0).forEach(x=>x.remove());const e=u[0],today=u.filter(x=>x.n===0).length;
+ const fn=String(e.p.name||'').split(' ')[0],tag=today?'დღეს':e.n===1?'ხვალ':e.n+' დღეში';
+ const b=`<button class="story remst" data-a="remopen" role="listitem" aria-label="არ დაგავიწყდეს: ${u.length} მილოცვა, ${esc(e.p.name)} ${whenTxt(e.n)}"><span class="ring rem${today?' now':''}">${av(e.p,58)}<i class="lvtag remtag">${tag}</i>${u.length>1?`<i class="remb">+${u.length-1}</i>`:''}</span><span>${e.kind==='b'?'🎂':'🕯'} ${esc(fn)}</span></button>`;
+ const first=S0.firstElementChild;if(first&&first.matches('[data-a="addstory"],[data-a="story"]'))first.insertAdjacentHTML('afterend',b);else S0.insertAdjacentHTML('afterbegin',b)}
+A.remopen=async()=>{const u=await remList();sheet(head('არ დაგავიწყდეს')+`<div class="ph-body remsheet">${u.length?`<div class="list">${u.map(remRow).join('')}</div>`:empty('ახლო დღეებში არაფერია','მეგობრების დაბადების და ანგელოზის დღეები აქ გამოჩნდება.')}<button class="btn ghost" data-a="page" data-p="calendar" style="margin-top:12px">${ic('cal')}მთელი კალენდარი</button></div>`,'short')};
 A.greet=t=>openCardPicker({uid:t.dataset.u,kind:t.dataset.k==='b'?'b':'n'});
 PG.calendar={r(){view.innerHTML=pgHead('კალენდარი',`<button class="btn sm ghost" data-a="page" data-p="namedays">${ic('cal')}სახელის დღეები</button>`)+`<p class="hint" style="padding:12px 16px 0">მეგობრების დაბადების დღეები და ანგელოზის დღეები მომდევნო 4 თვეში.</p><div id="calb">${skel(3)}</div>`;
  upcoming(120).then(u=>{let html='',m=-1;for(const e of u){if(e.dt.getMonth()!==m){m=e.dt.getMonth();html+=`<h3 class="sec2">${MONTHS[m]}</h3>`}html+=`<div class="list">${remRow(e)}</div>`}

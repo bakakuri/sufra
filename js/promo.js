@@ -1,9 +1,9 @@
 /* what the admin controls for everyone: a banner, sections switched off, sponsored posts in the feed and sponsored stories */
 
 /* sections the admin can switch off: the pages that belong to each one */
-const FEATS=[['rooms','სასწავლო ოთახი, დისკუსია, ლაივი',['rooms','room']],['places','ადგილები',['places','place','placenew']],['sport','მატჩები და პროგნოზები',['sport','fixture']],['help','დახმარება',['help','helpnew','helpreq']],['rides','ერთად წავიდეთ',['rides','ridenew','ride']],['jobs','ვაკანსიები და CV',['jobs','jobnew','job','myjobs','cv']],['market','ბაზრობა',['market','mknew']],['shop','მაღაზია (მონეტებზე)',['shop','shopitem','shopedit','shopapply']],['events','შეხვედრები',['events','event','evnew']],['albums','ალბომები',['albums','album']],['groups','ჯგუფები',['groups','group']],['pages','არხები და გვერდები',['pages','pagev']],['tree','ოჯახის ხე',['tree','surname']],['namedays','სახელის დღეები და კალენდარი',['namedays','calendar']],['clips','კლიპები',[]],['date','გაცნობა',[]],['games','თამაშები',['tour','jktable']]];
+const FEATS=[['rooms','სასწავლო ოთახი, დისკუსია, ლაივი',['rooms','room']],['places','ადგილები',['places','place','placenew']],['sport','მატჩები და პროგნოზები',['sport','fixture']],['help','დახმარება',['help','helpnew','helpreq']],['rides','ერთად წავიდეთ',['rides','ridenew','ride']],['jobs','ვაკანსიები და CV',['jobs','jobnew','job','myjobs','cv']],['market','ბაზრობა',['market','mknew']],['shop','მაღაზია (მონეტებზე)',['shop','shopitem','shopedit','shopapply']],['events','შეხვედრები',['events','event','evnew']],['albums','ალბომები',['albums','album']],['groups','ჯგუფები',['groups','group']],['pages','არხები და გვერდები',['pages','pagev']],['tree','ოჯახის ხე',['tree','surname']],['namedays','სახელის დღეები',['namedays']],['calendar','კალენდარი და შეხსენებები (დაბადების და ანგელოზის დღეები)',['calendar']],['study','სწავლა: ცხრილი, გამოცდები, კონსპექტები, კლასელები, რჩევები',['schedule','exams','notes','classmates','tips','edu']],['recipes','რეცეპტები',['recipes','recipe']],['toasts','სადღეგრძელოები',['toasts']],['stories','ისტორიები',['storyarch']],['memories','მოგონებები',['memories']],['polls','გამოკითხვები',[]],['gchat','ჯგუფური ჩატები',[]],['gifts','საჩუქრები',[]],['clips','კლიპები',[]],['date','გაცნობა',[]],['games','თამაშები',['tour','jktable']]];
 const FEAT_OF={};FEATS.forEach(([k,,pgs])=>pgs.forEach(p=>{FEAT_OF[p]=k}));
-const CREATE_FEAT={croom:'rooms',cbirja:'rooms',clive:'rooms',cevent:'events',clisting:'market',cgroup:'groups',cpage:'pages',cplace:'places',chelp:'help',ctoast:'toasts',cride:'rides',cjob:'jobs',crecipe:'recipes',cclip:'clips'};
+const CREATE_FEAT={croom:'rooms',cbirja:'rooms',clive:'rooms',cevent:'events',clisting:'market',cgroup:'groups',cpage:'pages',cplace:'places',chelp:'help',ctoast:'toasts',cride:'rides',cjob:'jobs',crecipe:'recipes',cclip:'clips',cnote:'study',clesson:'study',cexam:'study',cstory:'stories',cpoll:'polls',cgchat:'gchat'};
 let APPSET={banner:null,features:{off:[]}};
 const featOff=k=>!!k&&(APPSET.features.off||[]).includes(k);
 const isAdm=()=>!!ME&&ME.role==='admin';
@@ -11,13 +11,20 @@ const isAdm=()=>!!ME&&ME.role==='admin';
 const pageOk=p=>isAdm()||!featOff(FEAT_OF[p]);
 const tabOk=t=>isAdm()||!featOff(t);
 const createOk=a=>isAdm()||!featOff(CREATE_FEAT[a]);
-async function loadAppSettings(){try{const rows=await q(sb.from('app_settings').select('key,value'));const m=Object.fromEntries(rows.map(r=>[r.key,r.value]));APPSET={banner:m.banner||null,features:Object.assign({off:[]},m.features||{})}}catch(e){}applyAppSettings()}
-function applyAppSettings(){try{renderTabs();renderSide();moveInd(S.tab);markSide()}catch(e){}if(!S.page&&S.tab&&!tabOk(S.tab))go('home');drawBanner()}
+async function loadAppSettings(){try{const rows=await q(sb.from('app_settings').select('key,value'));const m=Object.fromEntries(rows.map(r=>[r.key,r.value]));APPSET={banner:m.banner||null,features:Object.assign({off:[]},m.features||{}),games_lock:m.games_lock||null,games:m.games||null}}catch(e){}applyAppSettings()}
+function applyAppSettings(){try{renderTabs();renderSide();moveInd(S.tab);markSide()}catch(e){}if(!S.page&&S.tab&&!tabOk(S.tab))go('home');drawBanner();if(typeof gCtlApply==='function')gCtlApply()}
 const offView=label=>empty('დროებით გამორთულია',`„${esc(label)}“ ადმინისტრაციამ დროებით გამორთო. მალე დაბრუნდება.`,'<button class="btn" data-a="home">მთავარზე</button>');
-for(const[k,label,pgs]of FEATS){
- for(const id of pgs){const pg=PG[id];if(!pg)continue;const r=pg.r;pg.r=function(arg){if(!pageOk(id)){view.innerHTML=pgHead(esc(label))+offView(label);return}return r.call(this,arg)}}
- if(['clips','date','games'].includes(k)&&R[k]){const r=R[k];R[k]=function(...a){if(!tabOk(k)){view.className='';view.innerHTML=`<div class="view-pad">${offView(label)}</div>`;return}return r.apply(this,a)}}}
+/* each page and tab of a section says it is off; run again once the files after this one have made their pages (js/app.js) */
+function featWrap(){for(const[k,label,pgs]of FEATS){
+ for(const id of pgs){const pg=PG[id];if(!pg||pg._fw)continue;const r=pg.r;pg._fw=1;pg.r=function(arg){if(!pageOk(id)){view.innerHTML=pgHead(esc(label))+offView(label);return}return r.call(this,arg)}}
+ if(['clips','date','games','study'].includes(k)&&R[k]&&!R[k]._fw){const r=R[k];R[k]=function(...a){if(!tabOk(k)){view.className='';view.innerHTML=`<div class="view-pad">${offView(label)}</div>`;return}return r.apply(this,a)};R[k]._fw=1}}}
+featWrap();
 
+/* sections that are not pages of their own: what opens them says it is off, and their place on the home page stays empty */
+{const offA=(k,l)=>{const label=(FEATS.find(f=>f[0]===k)||[])[1]||l;toast(`„${label}“ დროებით გამორთულია`)};
+ for(const[a,k]of[['addstory','stories'],['cstory','stories'],['story','stories'],['gift','gifts'],['newgroupchat','gchat'],['remopen','calendar']]){const f=A[a];if(f)A[a]=function(...x){if(!isAdm()&&featOff(k)){offA(k);return}return f.apply(this,x)}}
+ if(typeof loadStories==='function'){const ls=loadStories;loadStories=async function(...x){if(!isAdm()&&featOff('stories')){const el=$('#stories');if(el)el.innerHTML='';if(typeof remStory==='function')remStory();return}return ls.apply(this,x)}}
+ if(typeof loadMemories==='function'){const lm=loadMemories;loadMemories=function(...x){if(!isAdm()&&featOff('memories'))return;return lm.apply(this,x)}}}
 /* a banner on top of the home page; closing it hides that text only */
 const hashStr=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))|0;return String(h>>>0)};
 function drawBanner(){const el=$('#annc');if(!el)return;const b=APPSET.banner;const key=b&&b.on&&b.text?'bn'+hashStr(b.text+(b.link||'')):'';let hid=false;try{hid=!!key&&localStorage.getItem('annc')===key}catch(e){}
