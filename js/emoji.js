@@ -68,8 +68,8 @@ function emoBody(){const D=EMO.data,stk=!!(EMO.inp&&EMO.inp._stk);
   +D.G.map(([k,n,,subs])=>`<section data-k="${k}"><h4>${n}</h4>${subs.map(([sn,list])=>{const b=emoBtns(list.split(' '));return b?`<h5>${sn}</h5><div class="emog">${b}</div>`:''}).join('')}</section>`).join('')}
 function emoTabs(){const D=EMO.data,stk=!!(EMO.inp&&EMO.inp._stk);const t=(k,i,n)=>`<button type="button" class="emot-b" data-k="${k}" role="tab" aria-label="${n}" title="${n}">${i}</button>`;
  return t('rec','🕘','ბოლოს გამოყენებული')+(stk&&typeof STICKERS!=='undefined'?t('stk','✨','სტიკერები'):'')+t('ge','🇬🇪','ჩვენებური')+D.G.map(([k,n,i])=>t(k,i,n)).join('')}
-function emoPanelHTML(){return `<div class="emop" role="dialog" aria-label="სმაილები"><div class="emobar"><div class="emotabs" role="tablist">${emoTabs()}</div>
- <button type="button" class="emo-x" data-ex="find" aria-label="ძებნა">${ic('search')}</button><button type="button" class="emo-x emotn" data-ex="tone" aria-label="კანის ფერი">${emoToned('✋\u0000',EMO.tone)}</button><button type="button" class="emo-x" data-ex="del" aria-label="წაშლა">⌫</button></div>
+function emoPanelHTML(){const pick=!!EMO.cb;return `<div class="emop${pick?' pick':''}" role="dialog" aria-label="${pick?'რეაქცია':'სმაილები'}">${pick?`<div class="emohd"><b>${esc(EMO.title||'აირჩიე რეაქცია')}</b><button type="button" class="emo-x" data-ex="close" aria-label="დახურვა">${ic('x')}</button></div>`:''}<div class="emobar"><div class="emotabs" role="tablist">${emoTabs()}</div>
+ <button type="button" class="emo-x" data-ex="find" aria-label="ძებნა">${ic('search')}</button><button type="button" class="emo-x emotn" data-ex="tone" aria-label="კანის ფერი">${emoToned('✋\u0000',EMO.tone)}</button>${pick?'':'<button type="button" class="emo-x" data-ex="del" aria-label="წაშლა">⌫</button>'}</div>
  <div class="emotone" hidden>${EMTONE.map(t=>`<button type="button" data-tn="${t}" aria-pressed="${t===EMO.tone}">${emoToned('✋\u0000',t)}</button>`).join('')}</div>
  <div class="emofind" hidden><input type="search" class="field" placeholder="მოძებნე: გული, სიცილი, ძაღლი…" aria-label="სმაილის ძებნა" enterkeyhint="search"></div>
  <div class="emobody" tabindex="-1">${emoBody()}</div><div class="emores" hidden></div></div>`}
@@ -89,19 +89,26 @@ function emoOpen(btn){const inp=document.getElementById(btn.dataset.for),host=bt
  emoClose(true);EMO.inp=inp;EMO.btn=btn;btn.setAttribute('aria-expanded','true');btn.classList.add('on');
  /* the phone's keyboard goes away: the panel takes its place */
  if(document.activeElement===inp&&!matchMedia('(pointer:fine)').matches)inp.blur();
- host.insertAdjacentHTML('beforeend','<div class="emop wait" role="dialog" aria-label="სმაილები"><span class="spin" aria-hidden="true"></span></div>');EMO.p=$('.emop',host);navOpen('emo');
- emoLoad().then(()=>{if(!EMO.p||!EMO.p.isConnected||EMO.inp!==inp)return;emoProbe();emoIndex();const w=document.createElement('div');w.innerHTML=emoPanelHTML();const nu=w.firstElementChild;EMO.p.replaceWith(nu);EMO.p=nu;emoWire(nu);emoSpy();
+ host.insertAdjacentHTML('beforeend','<div class="emop wait" role="dialog" aria-label="სმაილები"><span class="spin" aria-hidden="true"></span></div>');EMO.p=$('.emop',host);navOpen('emo');emoBuild()}
+function emoBuild(){const tok=EMO.p;
+ emoLoad().then(()=>{if(!EMO.p||EMO.p!==tok||!tok.isConnected)return;emoProbe();emoIndex();const w=document.createElement('div');w.innerHTML=emoPanelHTML();const nu=w.firstElementChild;EMO.p.replaceWith(nu);EMO.p=nu;emoWire(nu);emoSpy();
   if(!EMO.rec.length){const b=$('.emobody',nu),s=$('section[data-k="face"]',nu);if(b&&s)b.scrollTop=s.offsetTop}})
-  .catch(()=>{if(EMO.p){EMO.p.classList.remove('wait');EMO.p.innerHTML='<p class="note emon">სმაილები ვერ ჩაიტვირთა. შეამოწმე ინტერნეტი და სცადე ისევ.</p>'}})}
-function emoClose(nav){const p=EMO.p;EMO.p=null;if(EMO.btn){EMO.btn.setAttribute('aria-expanded','false');EMO.btn.classList.remove('on')}EMO.btn=null;if(p){p.remove();if(!nav)navKill('emo')}}
+  .catch(()=>{if(EMO.p===tok){tok.classList.remove('wait');tok.innerHTML='<p class="note emon">სმაილები ვერ ჩაიტვირთა. შეამოწმე ინტერნეტი და სცადე ისევ.</p>'}})}
+/* choosing one emoji (a reaction): the same panel on its own at the bottom of the screen, above everything (the story viewer too).
+   A touch picks, closes and hands the emoji to cb; a touch beside it, the cross or back closes it without one */
+function emoPick(cb,o={}){emoClose(true);EMO.inp=null;EMO.cb=cb;EMO.title=o.title||null;EMO.onx=o.onClose||null;
+ const w=document.createElement('div');w.className='emopick';w.innerHTML='<div class="emobk"></div><div class="emop pick wait" role="dialog" aria-label="რეაქცია"><span class="spin" aria-hidden="true"></span></div>';
+ w.firstElementChild.addEventListener('click',()=>emoClose());document.body.appendChild(w);EMO.wrap=w;EMO.p=$('.emop',w);navOpen('emo');emoBuild()}
+function emoClose(nav){const p=EMO.p,w=EMO.wrap,x=EMO.onx;EMO.p=null;EMO.wrap=null;EMO.cb=null;EMO.onx=null;if(EMO.btn){EMO.btn.setAttribute('aria-expanded','false');EMO.btn.classList.remove('on')}EMO.btn=null;
+ if(w)w.remove();if(p){p.remove();if(!nav)navKill('emo')}if(x)try{x()}catch(e){}}
 function emoWire(p){const body=$('.emobody',p),res=$('.emores',p),find=$('.emofind',p),fi=$('input',find),tone=$('.emotone',p);
  body.addEventListener('scroll',()=>{if(EMO.spyF)return;EMO.spyF=requestAnimationFrame(()=>{EMO.spyF=0;emoSpy()})},{passive:true});
  p.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!p.contains(b))return;
-  if(b.dataset.e){emoPut(b.dataset.e);b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop');return}
+  if(b.dataset.e){if(EMO.cb){const f=EMO.cb,v=b.dataset.e;EMO.rec=[v,...EMO.rec.filter(x=>x!==v)].slice(0,40);try{store.set('emorec',EMO.rec)}catch(x){}emoClose();f(v);return}emoPut(b.dataset.e);b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop');return}
   if(b.dataset.st){const f=EMO.inp&&EMO.inp._stk,id=b.dataset.st;emoClose();if(f)f(id);return}
   if(b.dataset.k){find.hidden=true;res.hidden=true;body.hidden=false;if(b.dataset.k==='rec'){const r=$('section[data-k="rec"]',body);if(r)r.innerHTML=emoRecHTML()}const s=$(`section[data-k="${b.dataset.k}"]`,body);if(s)body.scrollTop=s.offsetTop;EMO.spyK=null;emoSpy();return}
   if(b.dataset.tn!=null){EMO.tone=b.dataset.tn;try{store.set('emotone',EMO.tone)}catch(x){}$$('[data-tn]',tone).forEach(x=>x.setAttribute('aria-pressed',String(x===b)));tone.hidden=true;emoRedraw();return}
-  const x=b.dataset.ex;if(x==='del'){emoDel();return}
+  const x=b.dataset.ex;if(x==='del'){emoDel();return}if(x==='close'){emoClose();return}
   if(x==='tone'){tone.hidden=!tone.hidden;return}
   if(x==='find'){const on=find.hidden;find.hidden=!on;if(on){fi.value='';res.hidden=true;body.hidden=false;fi.focus()}else{res.hidden=true;body.hidden=false}}});
  fi.addEventListener('input',()=>{const L=emoSearch(fi.value);if(!fi.value.trim()){res.hidden=true;body.hidden=false;return}body.hidden=true;res.hidden=false;
@@ -111,5 +118,5 @@ function emoWire(p){const body=$('.emobody',p),res=$('.emores',p),find=$('.emofi
 A.emo=t=>{const b=t.closest?t.closest('[data-a="emo"]')||t:t;if(EMO.p&&EMO.btn===b){emoClose();return}emoOpen(b)};
 document.addEventListener('pointerdown',e=>{if(!EMO.p||!EMO.inp||e.pointerType==='mouse')return;if(e.target===EMO.inp)emoClose()},true);
 /* back closes the panel, and only the panel */
-{const i=OVS.findIndex(x=>x[0]==='sheet');OVS.splice(i<0?0:i,0,['emo',()=>!!EMO.p&&EMO.p.isConnected,()=>emoClose(true)])}
+{const i=OVS.findIndex(x=>x[0]==='layer');OVS.splice(i<0?0:i,0,['emo',()=>!!EMO.p&&EMO.p.isConnected,()=>emoClose(true)])}
 const emoBtnHTML=(id,o={})=>`<button type="button" class="${o.cls||'ibtn emob'}" data-a="emo" data-for="${id}" aria-label="${o.lab||'სმაილები'}" aria-expanded="false">${o.html||'😊'}</button>`;

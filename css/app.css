@@ -3423,3 +3423,11 @@ html.c4 .jpsu[data-s="c"]{color:#1C7A3A}html.c4 .jpsu[data-s="d"]{color:#1A55C4}
 .ctool.t-emo span{font-size:18px;line-height:1}
 .panel>.emop{margin:0}
 @media (prefers-reduced-motion:reduce){.emop,.emog button.pop{animation:none}}
+/* the emoji panel on its own, to pick one reaction: at the bottom of the screen over everything, a dim beside it */
+.emopick{position:fixed;inset:0;z-index:62;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+.emobk{position:absolute;inset:0;background:rgb(12 6 16/.38);animation:fade .2s}
+.emopick .emop{position:relative;width:100%;max-width:560px;height:min(58vh,460px);border-radius:20px 20px 0 0;border-top:0;box-shadow:0 -10px 40px rgb(0 0 0/.3);color:var(--ink)}
+.emohd{display:flex;align-items:center;gap:8px;padding:10px 8px 4px 16px}.emohd b{flex:1;font-size:16px}
+.picker .pkx,.mqr .mqx,.sv-rx .svrx-x{display:grid;place-items:center}
+.picker .pkx svg,.mqr .mqx svg,.sv-rx .svrx-x svg{width:22px;height:22px}
+.picker .pkx{color:var(--muted)}

@@ -139,8 +139,10 @@ async function setReaction(id,emoji){const s=STAT.get(id)||blankStat(id),old=s.m
  try{if(emoji)await q(sb.from('reactions').upsert({post_id:id,user_id:ME.id,emoji},{onConflict:'post_id,user_id'}));else await q(sb.from('reactions').delete().eq('post_id',id).eq('user_id',ME.id))}catch(e){toast(errMsg(e))}}
 A.react=t=>{const id=pidOf(t),s=STAT.get(id);if(s&&s.my_reaction){setReaction(id,null);return}
  const w=t.parentElement,open=$('.picker',w);$$('.picker').forEach(x=>x.remove());if(open)return;
- w.insertAdjacentHTML('beforeend',`<div class="picker" role="menu">${EMOJI.map(x=>`<button data-a="pick" data-e="${x}" role="menuitem" aria-label="${x==='🍷'?'კარგი იდეა':x}">${rg(x)}</button>`).join('')}</div>`)};
+ w.insertAdjacentHTML('beforeend',`<div class="picker" role="menu">${EMOJI.map(x=>`<button data-a="pick" data-e="${x}" role="menuitem" aria-label="${x==='🍷'?'კარგი იდეა':x}">${rg(x)}</button>`).join('')}<button class="pkx" data-a="pickx" role="menuitem" aria-label="სხვა რეაქცია">${ic('plus')}</button></div>`)};
 A.pick=t=>setReaction(pidOf(t),t.dataset.e);
+/* any emoji as a reaction: the emoji panel, to pick one */
+A.pickx=t=>{const id=pidOf(t);$$('.picker').forEach(x=>x.remove());if(id)emoPick(e=>setReaction(id,e))};
 A.ecopost=t=>{const p=POSTS.get(pidOf(t));if(p){p._eco=true;rerenderPost(p.id)}};
 A.dbl=t=>{const now=Date.now();if(now-(t._l||0)<330){t._l=0;const id=pidOf(t),b=$('.burst',t);if(b){b.classList.remove('go');void b.offsetWidth;b.classList.add('go')}const s=STAT.get(id);if(!s||s.my_reaction!=='❤️')setTimeout(()=>setReaction(id,'❤️'),500)}else t._l=now};
 const gval=x=>x==='5+'?6:+x;

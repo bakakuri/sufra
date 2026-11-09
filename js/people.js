@@ -202,7 +202,7 @@ function openStory(i,f,src){if(src)SVSRC=src;const s=SVL()[i];if(!s){closeStory(
  ${pr&&(pr.title||pr.body)?`<div class="sv-cap">${pr.title?`<b>${esc(pr.title)}</b>`:''}${pr.body?`<span>${esc(pr.body)}</span>`:''}</div>`:''}${pr&&pr.link?`<button class="sv-post sv-cta" data-a="promogo" data-id="${pr.id}"${s.preview?' data-prev="1"':''}>${esc(pr.cta||'გაიგე მეტი')}${ic('back')}</button>`:''}
  ${st.post_id?`<button class="sv-post" data-a="svpost" data-pid="${st.post_id}">${ic('image')}პოსტის ნახვა</button>`:''}
  ${!hl&&st.poll&&Array.isArray(st.poll.opts)?`<div class="svpoll" id="svpoll" data-id="${st.id}">${pollStoryHTML(st,null,mine)}</div>`:''}${stickersHTML(st,mine,hl)}
- ${mine||hl||pr?'':`<div class="sv-rx" role="group" aria-label="რეაქცია ისტორიაზე">${SV_RX.map(e=>`<button data-a="svreact" data-id="${st.id}" data-e="${e}" aria-label="${e}">${rg(e)}</button>`).join('')}</div><form class="sv-foot"><input class="field" id="svin" placeholder="უპასუხე…" aria-label="პასუხი ისტორიაზე" autocomplete="off"><button class="ibtn" aria-label="გაგზავნა">${ic('send')}</button></form>`}</div>`;
+ ${mine||hl||pr?'':`<div class="sv-rx" role="group" aria-label="რეაქცია ისტორიაზე">${SV_RX.map(e=>`<button data-a="svreact" data-id="${st.id}" data-e="${e}" aria-label="${e}">${rg(e)}</button>`).join('')}<button class="svrx-x" data-a="svreactx" data-id="${st.id}" aria-label="სხვა რეაქცია">${ic('plus')}</button></div><form class="sv-foot"><input class="field" id="svin" placeholder="უპასუხე…" aria-label="პასუხი ისტორიაზე" autocomplete="off"><button class="ibtn" aria-label="გაგზავნა">${ic('send')}</button></form>`}</div>`;
  if(el.hidden){el.hidden=false;navOpen('story')}const v=$('#svv');SV.left=st.poll?9000:5000;SV.why=new Set();SV.paused=false;el.classList.remove('paused','holding');
  if(v){v.onended=()=>stepStory(1);v.onloadedmetadata=()=>{const bar=$('.sv-bars i.run',el);if(bar){bar.style.animation=`fill ${v.duration||8}s linear forwards`;if(SV&&SV.paused)bar.style.animationPlayState='paused'}}}else{SV.at=Date.now();SV.t=setTimeout(()=>stepStory(1),SV.left)}
  if(st.poll&&!hl){const bar=$('.sv-bars i.run',el);if(bar&&!v)bar.style.animationDuration='9s';rpc('story_poll',{p_story:st.id}).then(r=>{const b=$('#svpoll');if(b&&+b.dataset.id===st.id&&r)b.innerHTML=pollStoryHTML(st,r,mine)}).catch(()=>{})}
@@ -272,6 +272,8 @@ A.svvote=async t=>{const id=+t.dataset.id,i=+t.dataset.i,b=$('#svpoll');if(SV)cl
  try{await q(sb.from('story_votes').insert({story_id:id,user_id:ME.id,opt:i}));const r=await rpc('story_poll',{p_story:id});const s0=SVL()[SV?.i]?.list[SV?.f];if(b&&s0)b.innerHTML=pollStoryHTML(s0,r,false)}catch(e){toast(/duplicate/i.test(e.message||'')?'უკვე მიეცი ხმა':errMsg(e))}
  if(SV)SV.t=setTimeout(()=>stepStory(1),2500)};
 const SV_SENT=new Set();
+/* any emoji on a story: the story waits while it is picked */
+A.svreactx=t=>{if(typeof svPause==='function')svPause('emo');emoPick(e=>{t.dataset.e=e;A.svreact(t);delete t.dataset.e},{onClose:()=>{if(typeof svResume==='function')svResume('emo')}})};
 A.svreact=async t=>{const id=+t.dataset.id,e=t.dataset.e,a=SV&&SVL()[SV.i]?.a;pop(t);burst(t);if(SV_SENT.has(id+e)){toast(`${e} უკვე გაგზავნილია`);return}SV_SENT.add(id+e);
  try{await q(sb.from('story_reactions').upsert({story_id:id,user_id:ME.id,emoji:e},{onConflict:'story_id,user_id'}));if(a)await storyToChat(a,id,e,'react');toast(`${e} გაეგზავნა, ნახავ ჩატში`)}catch(x){SV_SENT.delete(id+e);toast(errMsg(x))}};
 A.svpost=t=>{const id=+t.dataset.pid;closeStory();openPage('post',id)};
