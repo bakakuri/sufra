@@ -159,11 +159,11 @@ const CDW=.92,CDH=1.28,JR=8.1,JA=1.45,JTS=2.3;
 const JSP=[[0,JR],[-JR*Math.sin(JA),-JR*Math.cos(JA)],[0,-JR],[JR*Math.sin(JA),-JR*Math.cos(JA)]];
 const JYAW=JSP.map(([x,z])=>Math.atan2(-x,-z));
 /* where each player's card lies in a trick: in front of them, near enough for their hand to put it down */
-const JTRK=JSP.map(([x,z],i)=>{const l=Math.hypot(x,z);return i===0?[0,2.6]:[x/l*2.75,z/l*2.7]}),JTJ=[-.05,.12,.03,-.1],JTSK=2.9;
+const JTRK=JSP.map(([x,z],i)=>{const l=Math.hypot(x,z);return i===0?[0,2.25]:[x/l*2.5,z/l*2.45]}),JTJ=[-.05,.12,.03,-.1],JTSK=2.2;
 /* where each player keeps the tricks they took: on the table in front of them, a little to their right, clear of the trick */
-const jkRim=(r,da,R)=>{const[x,z]=JSP[r],a=Math.atan2(z,x)+da;return[R*Math.cos(a),0,R*Math.sin(a)]},jkPile=r=>jkRim(r,-.5,4.7),JPJ=[.04,-.06,.02,-.03,.07];
+const jkRim=(r,da,R)=>{const[x,z]=JSP[r],a=Math.atan2(z,x)+da;return[R*Math.cos(a),0,R*Math.sin(a)]},jkPile=r=>jkRim(r,-.52,4.25),JPJ=[.04,-.06,.02,-.03,.07];
 /* the deck and its trump card lie by the dealer, on their left (the other side from their tricks) */
-const jkDeckAt=r=>jkRim(r,.5,4.6);
+const jkDeckAt=r=>r===0?jkRim(0,.62,4.0):jkRim(r,.52,4.25);
 /* the number of tricks over a pile: a round badge that turns to the eye */
 function pileTex(n){return g3T('pn:'+n,()=>{const c=cvs(128,128),x=c.getContext('2d');x.beginPath();x.arc(64,64,57,0,Math.PI*2);x.fillStyle='rgba(12,16,32,.92)';x.fill();x.lineWidth=7;x.strokeStyle='#F2C46A';x.stroke();
  x.fillStyle='#FFF4DC';x.font='800 '+(n>9?60:72)+'px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(String(n),64,69);return g3Tex(c)})}
@@ -335,7 +335,7 @@ function rigPush(L,sc,key,cid,B,s,o={}){if(!rigOn())return null;rigModels(sc,cid
 function rigPushIK(L,sc,key,cid,B,s,o){const f=rigFrame(B,s,cid),E=f.E,R=RIG[cid],hl=RIGH*(R.f?.86:1)*E,c=L.find(d=>d.k==='ph'+key);if(c)c.m='castR';rigModels3(sc,cid);
  const S0=castPx(R.ik.S[0],R.ik.S[1],.1),lean=c?c.q:qt.id(),Sw=v3.add(B,qt.rot(qt.mul(qt.ax(0,1,0,f.yaw),lean),v3.mul(S0,s||1))),xs=(R.ik.S[0]/400-.5)*(CS/CEC)*CASP/CS*(R.side||1);
  /* holding cards: the hand low in front of the chest, a little in toward the middle, the fan standing up out of it */
- const g={f,key,cid,E,hl,ik:{S0,a:RIGA*E,b:RIGB*E},Sw,A:Sw,grip:o.grip||(o.hold?rigP(f,xs*.35,.85,1.45):rigP(f,xs*.7,.3,1.5))};
+ const g={f,key,cid,E,hl,ik:{S0,a:RIGA*E,b:RIGB*E},Sw,A:Sw,grip:o.grip||(o.hold?rigP(f,xs*.35,.85,1.45):rigP(f,xs*.6,.3,1.05))};
  g.hold=!!o.hold;g.rest=rigWrist(g,g.grip);g.restQ=rigHandQ(g,g.rest,g.grip);g.Sv=Sw.slice();g.Ev=rigElbow(g,Sw,g.rest);(sc.rigs||(sc.rigs={}))[key]=g;
  const base={a:1,cast:true,refl:false};
  L.push(Object.assign({k:'xu'+key,m:'aU3:'+cid,p:Sw,q:qFromY(v3.sub(g.Ev,Sw)),s:E,now:1},base),
@@ -494,7 +494,7 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
  if(V.disc){const h=Math.max(.02,V.disc*.006);L.push({k:'disc',m:'deck',p:[3.35,h/2+.01,.85],s:[1.15,h,1.15],q:qt.ax(0,1,0,.55),dur:400})}
  /* the deck and the trump card under it, by the dealer */
  if(V.trumpCard&&V.deckN>0&&['bid','play'].includes(V.phase)){const h=Math.max(.02,V.deckN*.008),c=dealer===0&&!JKC.side?[-2.6,0,3.1]:jkDeckAt(dealer),yw=dealer===0?0:JYAW[dealer];
-  L.push({k:'tc',m:'card',p:[c[0],.008,c[2]],q:FACEUP(yw+Math.PI/2),s:1.25,uv:cardUV(cardIdx(V.trumpCard)),cast:false});L.push({k:'deck',m:'deck',p:[c[0]+.35*Math.cos(yw),h/2+.02,c[2]-.35*Math.sin(yw)],s:[1.3,h,1.3],q:qt.ax(0,1,0,yw+.06)})}
+  L.push({k:'tc',m:'card',p:[c[0],.008,c[2]],q:FACEUP(yw+Math.PI/2),s:dealer===0?.85:1.05,uv:cardUV(cardIdx(V.trumpCard)),cast:false});L.push({k:'deck',m:'deck',p:[c[0]+.35*Math.cos(yw),h/2+.02,c[2]-.35*Math.sin(yw)],s:[1.3,h,1.3],q:qt.ax(0,1,0,yw+.06)})}
  sc.jw=V.gto!=null?V.gto:V.win!=null?rel(V.win):sc.jw;
  /* the winner of a trick gathers it: the hand goes to the middle and draws the cards to their pile */
  const keys=new Set(L.map(d=>'k:'+d.k)),leaving=[...sc.objs.values()].some(o=>o.m==='card'&&o.id.startsWith('k:c')&&!o.dying&&!o.hud&&!keys.has(o.id)),sw=sc.jw;let sweep=0;
@@ -503,11 +503,11 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
     Their number stands over the pile, and a touch on a pile shows the last trick. A trick just won joins the pile when it is swept there */
  const wonNow=V.win!=null&&V.trick.length===4?rel(V.win):-1,inAt=leaving?150+sweep+430:0,C0=jkCam(asp);sc.pileD=inAt;
  for(let r=0;r<4;r++){const tk=(V.taken[(r+V.base)%4]||0)-(wonNow===r?1:0);if(tk<=0)continue;const c=jkPile(r),yw=JYAW[r],tap=V.lastA?{last:1}:null;
-  for(let t=0;t<tk;t++)L.push({k:'pl'+r+'-'+t,m:'card',p:[c[0],.014+t*.016,c[2]],q:FACEDN(yw+(t%2?Math.PI/2:0)+JPJ[t%5]),s:1.2,pick:tap,refl:false,from:{p:[c[0],.55+t*.016,c[2]],a:0},delay:inAt,dur:220});
-  const y=.62+tk*.016,el=Math.atan2(C0.eye[1]-y,Math.hypot(C0.eye[0]-c[0],C0.eye[2]-c[2]));pileModel(sc,tk);
-  L.push({k:'pn'+r,m:'pn:'+tk,p:[c[0],y,c[2]],q:qt.ax(1,0,0,-el),s:r===0?.78:1,bb:1,cast:false,refl:false,pick:tap,from:{p:[c[0],y+.25,c[2]],a:0},delay:inAt,dur:200})}
+  for(let t=0;t<tk;t++)L.push({k:'pl'+r+'-'+t,m:'card',p:[c[0],.014+t*.016,c[2]],q:FACEDN(yw+(t%2?Math.PI/2:0)+JPJ[t%5]),s:.95,pick:tap,refl:false,from:{p:[c[0],.55+t*.016,c[2]],a:0},delay:inAt,dur:220});
+  const y=.5+tk*.016,el=Math.atan2(C0.eye[1]-y,Math.hypot(C0.eye[0]-c[0],C0.eye[2]-c[2]));pileModel(sc,tk);
+  L.push({k:'pn'+r,m:'pn:'+tk,p:[c[0],y,c[2]],q:qt.ax(1,0,0,-el),s:r===0?.48:.62,bb:1,cast:false,refl:false,pick:tap,from:{p:[c[0],y+.25,c[2]],a:0},delay:inAt,dur:200})}
  /* whoever is to move has a ring glowing on the table where their card will go */
- if(cur!=null&&V.win==null&&['trump','bid','play'].includes(V.phase)&&!V.tbl){const[tx,tz]=JTRK[cur];M.push({m:'mk',p:[tx,.006,tz],s:[JTSK*1.5,1,JTSK*1.5],uv:MK.ring,c:[1,.8,.38],a:.5,add:true,pulse:1})}
+ if(cur!=null&&V.win==null&&['trump','bid','play'].includes(V.phase)&&!V.tbl){const[tx,tz]=JTRK[cur];M.push({m:'mk',p:[tx,.006,tz],s:[JTSK*1.25,1,JTSK*1.25],uv:MK.ring,c:[1,.8,.38],a:.36,add:true,pulse:1})}
  /* a drawn dealer deals with their hand: a flick toward each player in turn */
  if(deal&&rigOf(dealer)){const g=rigOf(dealer),T=[1,2,3,0].filter(r=>r!==dealer).map(r=>r===0?[0,.5,4]:v3.lerp(jkLocal(r,0,[0,.5,2.5]),[0,.5,0],.35)),st=[];for(let k=0;k<6;k++){st.push({p:v3.lerp(dp,T[k%T.length],.35),d:120,arc:.15},{p:dp,d:110})}rigGo(sc,String(dealer),st,{lean:.04})}
  /* a word said at the table: a nod for a number, a knock on the table for a pass */

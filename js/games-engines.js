@@ -390,14 +390,14 @@ function jJokerCall(pre,t,taken,win,nm){if(!t||!t.length)return;const e=t[t.leng
  d.innerHTML=`<small><i>★</i>ჯოკერი · ${esc(nm(e.p))}</small><b>${hi?'მაღალი':e.js?'წაიღოს':'დაბალი'}</b>${e.js?`<span class="jjf-s" style="color:${col}">${suitSvg(e.js)}<em>${SN[e.js]}</em></span>`:''}`;
  document.body.appendChild(d);setTimeout(()=>d.remove(),2000)}
 /* the end of a hand: a ხიშტი (said a number, took nothing) is stamped in red over that player, a section premium shines in gold;
-   each player's own points float up from their seat */
+   the player's name shakes or shines, the points stand over it (jResChip) */
 const JHF={k:null};
 function jHandFx(k,hist,nm,seatOf){if(JHF.k===k)return;JHF.k=k;const{hand,prem}=jLast(hist||[]);if(!hand)return;
  const kh=[0,1,2,3].filter(p=>hand.b[p]>0&&hand.t[p]===0),pr=prem?[0,1,2,3].filter(p=>prem.p[p]):[];if(!kh.length&&!pr.length)return;
  const sg=x=>(x>0?'+':x<0?'−':'')+Math.abs(x),pop=(cls,html,wait,life)=>setTimeout(()=>{const d=document.createElement('div');d.className='jfx '+cls;d.setAttribute('aria-hidden','true');d.innerHTML=html;document.body.appendChild(d);setTimeout(()=>d.remove(),life)},wait);
- const float=(p,txt,cls,wait)=>setTimeout(()=>{const el=seatOf(p);if(!el||!el.isConnected)return;const r=el.getBoundingClientRect();if(!r.width)return;
-  el.classList.remove('jhit','jshine');void el.offsetWidth;el.classList.add(cls==='kh'?'jhit':'jshine');setTimeout(()=>el.classList.remove('jhit','jshine'),1400);
-  const d=document.createElement('div');d.className='jfn '+cls;d.setAttribute('aria-hidden','true');d.textContent=txt;d.style.left=(r.left+r.width/2)+'px';d.style.top=r.top+'px';document.body.appendChild(d);setTimeout(()=>d.remove(),1900)},wait);
+ /* the player's name shakes (ხიშტი) or shines (premium); the points themselves stand over the name already (jResChip) */
+ const float=(p,txt,cls,wait)=>setTimeout(()=>{const el=seatOf(p);if(!el||!el.isConnected)return;
+  el.classList.remove('jhit','jshine');void el.offsetWidth;el.classList.add(cls==='kh'?'jhit':'jshine');setTimeout(()=>el.classList.remove('jhit','jshine'),1400)},wait);
  let t=250;
  if(kh.length){pop('kh',`<b>ხიშტი!</b><span>${kh.map(p=>`${esc(nm(p))} <em>${sg(hand.p[p])}</em>`).join(' · ')}</span>`,t,2000);kh.forEach(p=>float(p,sg(hand.p[p]),'kh',t+250));
   setTimeout(()=>{if(typeof gSnd==='function')gSnd(GSND.boom?'boom':'lose',.6)},t);t+=2000}
@@ -412,8 +412,8 @@ function jPips(b,t){const lab=`aria-label="ნათქვამი ${b??'ჯე
 const jBidCols=n=>n+1<=8?n+1:Math.ceil((n+1)/2);
 /* what has been said against the cards in the hand: once everyone has spoken, more than the cards (someone will fall short) or less (someone takes extra) */
 function jBidSum(bids,n,phase){if(!bids||!['bid','play'].includes(phase))return'';const said=bids.filter(b=>b!=null),t=said.reduce((a,b)=>a+b,0);if(!said.length)return'';
- const all=said.length===4,cls=!all?'':t>n?' over':t<n?' under':'',w=!all?'':t>n?` · მეტია ${t-n}-ით`:t<n?` · ნაკლებია ${n-t}-ით`:'';
- return `<span class="jbsum${cls}" aria-label="ნათქვამია ${t}, კარტი ${n}">ნათქვამი ${t}/${n}${w}</span>`}
+ const all=said.length===4,cls=!all?'':t>n?' over':t<n?' under':'',w=!all||t===n?'':` <b>${t>n?'+':'−'}${Math.abs(t-n)}</b>`;
+ return `<span class="jbsum${cls}" aria-label="ნათქვამია ${t}, კარტი ${n}${all&&t!==n?(t>n?', მეტია ':', ნაკლებია ')+Math.abs(t-n)+'-ით':''}">ნათქვამი ${t}/${n}${w}</span>`}
 /* how many more tricks I need, next to my name */
 function jNeed(b,t,phase){if(phase!=='play'||b==null)return'';const k=b-t;if(k>0)return `<span class="jneed">კიდევ ${k}</span>`;if(k===0&&b>0)return `<span class="jneed ok">შესრულდა</span>`;return''}
 /* the dealer's mark on a seat */

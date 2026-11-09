@@ -328,7 +328,9 @@ function g3LabSize(el){let z=G3L.get(el);if(z)return z;z={w:el.offsetWidth/2+6,h
 function g3Labels(sc){g3Hug(sc);const C=sc.camNow,cv=G3D.cv,root=cv&&cv.parentNode&&cv.parentNode.parentNode;if(!C||!root||!sc.anchors)return;
  if(G3D.lroot!==root){G3D.lroot=root;G3D.rootW=root.clientWidth;G3D.rootH=root.clientHeight}const W=G3D.rootW,H=G3D.rootH;if(!W||!H)return;
  const L=[];for(const[sel,p]of sc.anchors){const el=root.querySelector(sel);if(!el)continue;const r=m4.xf(C.VP,p);if(r[3]<=0)continue;L.push([el,r,g3LabSize(el)])}
- for(const[el,r,z]of L){const rx=(r[0]*.5+.5)*W,ol=rx<2,or=rx>W-2,m=ol||or?14:0,x=clamp(rx,z.w+m,W-z.w-m).toFixed(1)+'px',y=clamp((.5-r[1]*.5)*H+(m?z.h*2.2:0),z.h,H-z.h).toFixed(1)+'px';el._g3p=1;
+ /* on a wide screen the panels take a column on the right (the camera's cx): labels stay out of it */
+ const XR=W*(1+Math.min(0,C.cx||0));
+ for(const[el,r,z]of L){const rx=(r[0]*.5+.5)*W,ol=rx<2,or=rx>XR-2,m=ol||or?14:0,x=clamp(rx,z.w+m,XR-z.w-m).toFixed(1)+'px',y=clamp((.5-r[1]*.5)*H+(m?z.h*2.2:0),z.h,H-z.h).toFixed(1)+'px';el._g3p=1;
   /* a label whose person is out of the picture stays at the edge, a little lower so it does not cover a label in the picture,
      with room for its arrow, and is marked so (g3l / g3r) */if(el.classList.contains('g3l')!==ol)el.classList.toggle('g3l',ol);if(el.classList.contains('g3r')!==or)el.classList.toggle('g3r',or);
   if(el.style.left!==x)el.style.left=x;if(el.style.top!==y)el.style.top=y}}
