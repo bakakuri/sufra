@@ -406,7 +406,8 @@ function g3Tap(x,y){const sc=G3D.sc;if(!sc||!sc.tap)return;try{sc.tap(g3Ray(x,y)
 /* call a game action the same way a button on the flat board would */
 const g3Act=(a,data)=>{if(A[a])A[a]({dataset:data,closest:()=>null})};
 /* one step of a keyframed move; the rest wait in o.kf */
-function g3KfGo(o,n,now){o.tw={t0:now+(n.delay||0),d:n.d||300,p0:o.p.slice(),q0:o.q.slice(),s0:o.s,a0:o.a,p1:n.p.slice(),q1:(n.q||o.q).slice(),s1:o.s,a1:o.a,arc:n.arc||0,ez:n.ez||null}}
+/* a step of a keyframed move; size and fade go on to where they were headed (a hand still fading in when it starts to move ends up seen) */
+function g3KfGo(o,n,now){o.tw={t0:now+(n.delay||0),d:n.d||300,p0:o.p.slice(),q0:o.q.slice(),s0:o.s,a0:o.a,p1:n.p.slice(),q1:(n.q||o.q).slice(),s1:o.s1??o.s,a1:o.dying?o.a:o.a1??o.a,arc:n.arc||0,ez:n.ez||null}}
 function g3Kf(o,list){if(!o||!list||!list.length||RM())return;o.kfL=1;o.kf=list.slice(1);g3KfGo(o,list[0],performance.now());g3Need()}
 /* snow or rain: a block of flakes (or drops) built once, drawn twice one above the other and slid down without end */
 function g3Wx(sc,now){const W=sc.wx;if(!W.mesh){const g=[],R=rng(W.k==='snow'?71:73),n=W.k==='snow'?520:420;

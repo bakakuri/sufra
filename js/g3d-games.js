@@ -336,7 +336,7 @@ function rigPushIK(L,sc,key,cid,B,s,o){const f=rigFrame(B,s,cid),E=f.E,R=RIG[cid
  const S0=castPx(R.ik.S[0],R.ik.S[1],.1),lean=c?c.q:qt.id(),Sw=v3.add(B,qt.rot(qt.mul(qt.ax(0,1,0,f.yaw),lean),v3.mul(S0,s||1))),xs=(R.ik.S[0]/400-.5)*(CS/CEC)*CASP/CS*(R.side||1);
  /* holding cards: the hand low in front of the chest, a little in toward the middle, the fan standing up out of it */
  const g={f,key,cid,E,hl,ik:{S0,a:RIGA*E,b:RIGB*E},Sw,A:Sw,grip:o.grip||(o.hold?rigP(f,xs*.35,.85,1.45):rigP(f,xs*.7,.3,1.5))};
- g.rest=rigWrist(g,g.grip);g.restQ=rigHandQ(g,g.rest,g.grip);g.Sv=Sw.slice();g.Ev=rigElbow(g,Sw,g.rest);(sc.rigs||(sc.rigs={}))[key]=g;
+ g.hold=!!o.hold;g.rest=rigWrist(g,g.grip);g.restQ=rigHandQ(g,g.rest,g.grip);g.Sv=Sw.slice();g.Ev=rigElbow(g,Sw,g.rest);(sc.rigs||(sc.rigs={}))[key]=g;
  const base={a:1,cast:true,refl:false};
  L.push(Object.assign({k:'xu'+key,m:'aU3:'+cid,p:Sw,q:qFromY(v3.sub(g.Ev,Sw)),s:E,now:1},base),
   Object.assign({k:'pa'+key,m:'aF3:'+cid,p:g.Ev,q:qFromY(v3.sub(g.rest,g.Ev)),s:E,now:1},base),
@@ -369,7 +369,15 @@ function rigGo(sc,key,stops,o={}){const g=sc.rigs&&sc.rigs[key],h=sc.objs.get('k
  /* an arm reaches so far and no farther: beyond it the hand lets go and the thing goes on by itself */
  const O=g.ik?g.Sw:g.A,far=P=>{const v=v3.sub(P,O),l=v3.len(v),m=g.ik?(g.ik.a+g.ik.b)*.97+g.hl*.7:(o.reach||3.1)*g.E;return l>m?v3.add(O,v3.mul(v,m/l)):P};
  const K=stops.map(st=>{t+=st.d||300;const P=far(st.p),W=rigWrist(g,P);return{p:W,q:g.ik?rigHandQ(g,W,P):null,d:st.d||300,arc:st.arc||0,delay:st.delay||0}});K.push({p:g.rest,q:g.restQ||null,d:o.back||430,arc:.12});t+=o.back||430;
- h.kfL=0;g3Kf(h,K);if(o.lean!==0)g3Wig(sc,'k:ph'+key,{ax:'x',a:o.lean??.07,f:.5,d:t,delay:o.leanDelay||0});return t}
+ h.kfL=0;g3Kf(h,K);if(o.fan)rigFanDown(sc,g,key,t,o.back||430);if(o.lean!==0)g3Wig(sc,'k:ph'+key,{ax:'x',a:o.lean??.07,f:.5,d:t,delay:o.leanDelay||0});return t}
+/* one hand cannot hold the cards and play: they are laid face down on the table in front of the player (on the other side from the arm) while the hand is away,
+   and taken up again as it comes back (to where the fan now is, a card fewer) */
+function rigFanDown(sc,g,key,t,back){if(!g.hold)return;const fan=[...sc.objs.values()].filter(o=>o.id.startsWith('k:h'+key+'-')&&!o.dying);if(!fan.length)return;
+ const f=g.f,B=f.B,yaw=Math.atan2(B[0],B[2]),c=rigP(f,-.6,0,1.4),n=fan.length,wait=Math.max(60,t-150-260-back*.55);
+ fan.forEach((o,i)=>{const P=[c[0],.016+i*.006,c[2]],q=FACEDN(yaw+(i-(n-1)/2)*.07);
+  /* where it goes back to, unless the table is drawn again meanwhile (then g3Aim leaves the newer place in o.rest) */
+  o.rest={p:(o.p1||o.p).slice(),q:(o.q1||o.q).slice(),s:o.s1??o.s,a:o.a1??1,uv:o.uv,refl:o.refl,cast:o.cast,glow:o.glow,dim:o.dim,pick:o.pick,dur:Math.round(back*.8)};
+  o.kfL=0;g3Kf(o,[{p:P,q,d:260,delay:150+i*12,arc:.12},{p:P,q,d:wait}])})}
 /* the fingers' point a little above a place on the table */
 const rigAbove=(P,h)=>[P[0],P[1]+(h??.25),P[2]];
 /* a person at the table: body, head (turned by hq), and the two forearms that turn at the elbow; id names the seat */
@@ -461,7 +469,7 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
  /* a drawn person's hand: the card they play is pulled from the fan and tossed to its place; the hand comes back to the fan */
  const rigOf=r=>r>0&&pic&&sc.rigs&&sc.rigs[String(r)],fromFan=r=>{const g=rigOf(r),n=Math.max(1,V.counts[r]||0),f=rigFan(g,n,n+1);return{p:f.p,q:f.q,s:f.s}};
  const carryBy=(r,d)=>{const g=rigOf(r);if(!g)return false;const F=fromFan(r),T=Math.round(Math.min(640,330+90*Math.sqrt(v3.len(v3.sub(d.p,F.p)))));
-  rigGo(sc,String(r),[{p:F.p,d:170},{p:rigAbove(d.p,.03),d:T,arc:.45},{p:rigAbove(d.p,.03),d:90}],{lean:.12,reach:4.4});d.from=F;d.delay=170;d.dur=T;d.arc=.45;d.ez=null;return true};
+  rigGo(sc,String(r),[{p:F.p,d:170},{p:rigAbove(d.p,.03),d:T,arc:.45},{p:rigAbove(d.p,.03),d:90}],{lean:.12,reach:4.4,fan:1});d.from=F;d.delay=170;d.dur=T;d.arc=.45;d.ez=null;return true};
  /* my hand, held in front of me at the bottom of the screen */
  const n=V.hand.length;if(!V.mine||!V.hand.some(cd=>'c'+cardIdx(cd)===sc.csel))sc.csel=null;
  if(n){const tall=asp<.8,hs=tall?.165:.19,dd=2.4,C=jkCam(asp),t=Math.tan(C.fov/2),s=hs*2*t*dd/CDH,cw=CDW*s/(t*asp*dd),room=(2+2*C.sx)*.8,spc=Math.min(cw*.62,(room-cw*1.1)/Math.max(1,n-1)),qf=jkFace(asp);
@@ -490,7 +498,7 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
  sc.jw=V.gto!=null?V.gto:V.win!=null?rel(V.win):sc.jw;
  /* the winner of a trick gathers it: the hand goes to the middle and draws the cards to their pile */
  const keys=new Set(L.map(d=>'k:'+d.k)),leaving=[...sc.objs.values()].some(o=>o.m==='card'&&o.id.startsWith('k:c')&&!o.dying&&!o.hud&&!keys.has(o.id)),sw=sc.jw;let sweep=0;
- if(leaving&&typeof sw==='number'&&rigOf(sw)){const pile=v3.add(jkPile(sw),[0,.25,0]);rigGo(sc,String(sw),[{p:[0,.4,0],d:320,arc:.3},{p:pile,d:520,arc:.4}],{lean:.1});sweep=320}
+ if(leaving&&typeof sw==='number'&&rigOf(sw)){const pile=v3.add(jkPile(sw),[0,.25,0]);rigGo(sc,String(sw),[{p:[0,.4,0],d:320,arc:.3},{p:pile,d:520,arc:.4}],{lean:.1,fan:1});sweep=320}
  /* tricks already taken lie in front of each player: a face-down card a trick, each laid across the one before, as people keep them at a table.
     Their number stands over the pile, and a touch on a pile shows the last trick. A trick just won joins the pile when it is swept there */
  const wonNow=V.win!=null&&V.trick.length===4?rel(V.win):-1,inAt=leaving?150+sweep+430:0,C0=jkCam(asp);sc.pileD=inAt;
