@@ -426,13 +426,13 @@ const jTipLong=()=>(store.get('jktip',0)||0)<3;
 const JK=GAME.joker={title:'ჯოკერი',
  start(){this.tk=(this.tk||0)+1;this.phase='setup';castRoll();this.ids=['me',...[1,2,3].map((p,i)=>{const c=castBy(TCAST[p]);return{n:c.n,h:[20,200,120][i],cast:c.id}})]},
  nm(p){return p===0?ME.name:(this.ids&&this.ids[p]&&this.ids[p].n)||JK_BOTS[p-1]},
- save(){if(!['trump','bid','play','handover'].includes(this.phase)||!this.hands)return null;return{lastT:this.lastT||null,len:this.len,h:this.h,score:this.score,hist:this.hist,dealer:this.dealer,n:this.n,hands:this.hands,first3:this.first3,bids:this.bids,taken:this.taken,trick:this.trick,trump:this.trump,trumpCard:this.trumpCard,phase:this.phase,cur:this.cur,win:this.win,gone:[...(this.gone||[])]}},
- restore(s){if(!s||!JSEQ[s.len]||!Array.isArray(s.hands))throw 0;Object.assign(this,{len:s.len,h:s.h,score:s.score,hist:s.hist||[],dealer:s.dealer,n:s.n,hands:s.hands,first3:s.first3,bids:s.bids,taken:s.taken,trick:s.trick||[],trump:s.trump,trumpCard:s.trumpCard,phase:s.phase,cur:s.cur,win:s.win,gone:new Set(s.gone||[]),lastT:s.lastT&&Array.isArray(s.lastT.t)?s.lastT:null});
-  if(this.phase==='handover')this.later(()=>{if(this.phase==='handover')this.newHand()},1800);
+ save(){if(!['trump','bid','play','handover'].includes(this.phase)||!this.hands)return null;return{lastT:this.lastT||null,tricks:this.tricks||[],rev:this.rev||null,len:this.len,h:this.h,score:this.score,hist:this.hist,dealer:this.dealer,n:this.n,hands:this.hands,first3:this.first3,bids:this.bids,taken:this.taken,trick:this.trick,trump:this.trump,trumpCard:this.trumpCard,phase:this.phase,cur:this.cur,win:this.win,gone:[...(this.gone||[])]}},
+ restore(s){if(!s||!JSEQ[s.len]||!Array.isArray(s.hands))throw 0;Object.assign(this,{len:s.len,h:s.h,score:s.score,hist:s.hist||[],dealer:s.dealer,n:s.n,hands:s.hands,first3:s.first3,bids:s.bids,taken:s.taken,trick:s.trick||[],trump:s.trump,trumpCard:s.trumpCard,phase:s.phase,cur:s.cur,win:s.win,gone:new Set(s.gone||[]),lastT:s.lastT&&Array.isArray(s.lastT.t)?s.lastT:null,tricks:Array.isArray(s.tricks)?s.tricks:[],rev:s.rev&&Array.isArray(s.rev.tricks)?s.rev:null});
+  if(this.phase==='handover')this.later(()=>this.nextHand(),1800);
   else if(this.phase==='play'&&(this.win!=null||this.cur<0)){const w=this.win??0;this.trick=[];this.win=null;if(!this.hands[0].length){this.endHand();return}this.cur=w}
   setTimeout(()=>{if(S.game==='joker')this.step()},500)},
  begin(len){try{store.set('jktip',(store.get('jktip',0)||0)+1)}catch(e){}this.opt=typeof jkOpt==='function'?jkOpt(this.ctx):{};this.len=len;this.h=0;this.score=[0,0,0,0];this.hist=[];this.dealer=Math.floor(Math.random()*4);this.newHand()},
- newHand(){const n=JSEQ[this.len][this.h];this.n=n;this.gone=new Set();this.lastT=null;this.dealer=(this.dealer+1)%4;const d=shuffle(jDeck());
+ newHand(){const n=JSEQ[this.len][this.h];this.n=n;this.gone=new Set();this.lastT=null;this.tricks=[];this.revWait=0;this.dealer=(this.dealer+1)%4;const d=shuffle(jDeck());
   this.first3=[0,1,2,3].map(i=>d.slice(i*n,i*n+3));this.hands=[0,1,2,3].map(i=>sortHand(d.slice(i*n,(i+1)*n)));
   this.bids=[null,null,null,null];this.taken=[0,0,0,0];this.trick=[];this.win=null;this.cur=(this.dealer+1)%4;
   if(n<9){const tc=d[4*n];this.trumpCard=tc;this.trump=tc.j?null:tc.s;this.phase='bid'}else{this.trumpCard=null;this.trump=null;this.phase='trump'}
@@ -455,12 +455,15 @@ const JK=GAME.joker={title:'ჯოკერი',
  playCard(p,c,jm,js){const h=this.hands[p];h.splice(h.indexOf(c),1);const lead=!this.trick.length;if(this.gone&&!c.j)this.gone.add(c.s+c.r);
   this.trick.push({p,card:c,jm:c.j?(jm||'hi'):null,js:c.j&&lead?(js||SUITS[Math.floor(Math.random()*4)]):null});
   if(this.trick.length<4){this.cur=(p+1)%4;this.render();this.step();return}
-  const w=this.winner();this.taken[w]++;this.cur=-1;this.win=w;this.render();
+  const w=this.winner();this.taken[w]++;this.cur=-1;this.win=w;(this.tricks=this.tricks||[]).push({t:this.trick.map(e=>Object.assign({},e)),w});this.render();
   this.later(()=>{this.lastT={t:this.trick.slice(),w};this.trick=[];this.win=null;if(!this.hands[0].length){this.endHand();return}this.cur=w;this.render();this.step()},1400)},
  /* bid and made: 50 a trick plus 50; all tricks bid and taken: 100 a trick; pass and none: 50; otherwise 10 a trick; bid but took none (ხიშტი): −200, or −500 in the nine-card sections */
  pts(b,t,n,kh=200){if(t===b)return b===n?100*n:b===0?50:50*b+50;if(b>0&&t===0)return -kh;return 10*t},
- endHand(){jScore(this);if(this===JK)this.botRx();
-  if(this.h>=JSEQ[this.len].length){this.phase='over';const mx=Math.max(...this.score),win=this.score[0]===mx;gameResult('joker',win);if(typeof gEndGest==='function')gEndGest(r=>this.score[r]===mx?'cheer':'clap',[1,2,3])}else{this.phase='handover';this.later(()=>{if(this.phase==='handover')this.newHand()},3800)}this.render()},
+ endHand(){const hi=this.hist.length;this.rev={n:this.n,trump:this.trump,dealer:this.dealer,bids:this.bids.slice(),taken:this.taken.slice(),tricks:(this.tricks||[]).slice()};jScore(this);this.rev.hand=this.hist[hi]||null;this.rev.prem=this.hist[hi+1]&&this.hist[hi+1].pr?this.hist[hi+1]:null;if(this===JK)this.botRx();
+  const mine=this===JK&&this.ctx&&['bot'].includes(this.ctx.mode);if(mine)jkStatHand(this.rev,0);
+  if(this.h>=JSEQ[this.len].length){this.phase='over';const mx=Math.max(...this.score),win=this.score[0]===mx;if(mine)jkStatGame(this.score,0,false);gameResult('joker',win);if(typeof gEndGest==='function')gEndGest(r=>this.score[r]===mx?'cheer':'clap',[1,2,3])}else{this.phase='handover';this.later(()=>this.nextHand(),3800)}this.render()},
+ /* the next hand comes by itself, unless the review of this one is open: then when it is closed */
+ nextHand(){if(this.phase!=='handover')return;if($('#sheet:not(.closing):not([hidden]) .panel.jrvp')){this.revWait=1;return}this.newHand()},
  botRx(){const L=jLast(this.hist).hand;if(!L)return;const ev=[];
   for(let p=1;p<4;p++){if(L.b[p]>0&&L.t[p]===0&&Math.random()<.6)ev.push(['r'+p,4]);else if(L.b[p]===L.t[p]&&L.b[p]>=2&&Math.random()<.35)ev.push(['r'+p,Math.random()<.5?0:1])}
   if(L.b[0]>0&&L.t[0]===0&&Math.random()<.5)ev.push(['r'+(1+Math.floor(Math.random()*3)),1]);ev.slice(0,2).forEach(([w,i],n)=>this.later(()=>gRxShow(w,i),700+n*800))},
@@ -486,7 +489,7 @@ const JK=GAME.joker={title:'ჯოკერი',
    /* before the game: the table itself, the three already in their chairs (a touch on one changes who sits there), and the choice below it */
    const g3s=g3Want(),pick=`<section class="jkset${g3s?' on3d':''}"><h3>ჯოკერი ოთხ კაცზე</h3><p class="note">36 კარტი, ორი ჯოკერი. ყოველ ხელში თქვი, რამდენ ხელს წაიღებ: ზუსტად იმდენი თუ წაიღე, ქულებს მიიღებ.</p>
     <div class="jkmodes"><button class="jkmode gold" data-a="jstart" data-m="quick"><b>სწრაფი</b><span>8 ხელი · 1-დან 8 კარტამდე</span></button><button class="jkmode" data-a="jstart" data-m="full"><b>სრული</b><span>24 ხელი · ოთხი სექცია, პრემიით</span></button></div>
-    <button class="jkonl" data-a="jkonew">${ic('users')}<span><b>მეგობრებთან ონლაინ</b><small>გაშალე მაგიდა და მოიწვიე; ცარიელ ადგილზე ბოტი ჩაჯდება</small></span>${ic('chev')}</button></section>`;
+    <button class="jkonl" data-a="jkonew">${ic('users')}<span><b>მეგობრებთან ონლაინ</b><small>გაშალე მაგიდა და მოიწვიე; ცარიელ ადგილზე ბოტი ჩაჯდება</small></span>${ic('chev')}</button>${typeof jkStat==='function'&&jkStat().g?`<button class="btn ghost sm jkstb" data-a="jstat">${ic('chart')}ჩემი სტატისტიკა: ${jkStat().g} თამაში, ${jkStat().w} მოგება</button>`:''}</section>`;
    if(!g3s){GSCR.html=gShell('joker',{top,center:pick,bot:''});return}
    const tag=(p,pos)=>`<div class="seat ${pos}"${castTap(p)}><span class="sav">${avAny(this.ids[p],38)}</span><b>${esc(this.nm(p))}</b></div>`;
    const stage=`<div class="jt g3jt">${tag(2,'top')}${tag(1,'left')}${tag(3,'right')}<div class="trick" aria-hidden="true"></div><div class="g3 g3-joker${G3W.ready?'':' loading'}">${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div></div>`;
@@ -498,6 +501,7 @@ const JK=GAME.joker={title:'ჯოკერი',
   const trumpTxt=trumpChip(this.trump,this.phase==='trump');jTrumpFlash('jk'+(this.hist||[]).length+':'+this.trump,this.trump,['bid','play'].includes(this.phase));
   if(this.phase==='play')jJokerCall('jk'+this.tk+':'+this.h,this.trick,this.taken,this.win,p=>p===0?'შენ':this.nm(p));
   if(this.phase==='handover'||this.phase==='over')jHandFx('jk'+this.tk+':'+this.hist.length,this.hist,p=>p===0?'შენ':this.nm(p),p=>$(p===0?'.gx .pl.me':'.gx .seat.'+['','left','top','right'][p]));
+  if(this.hands&&this.hands[0]){if(this.phase==='trump')jSortHand(this.first3[0],null);else jSortHand(this.hands[0],this.trump)}
   const L=this.phase==='play'&&this.cur===0?this.legal(0):[];
   const hand=this.phase==='trump'&&this.cur===0?this.first3[0].map(c=>jCardHTML(c)).join('')+'<div class="card" style="opacity:.25" aria-hidden="true"></div>'.repeat(this.n-3)
    :this.hands[0].map((c,i)=>`<button class="card${c.j?' jk':''}${!c.j&&isRed(c.s)?' red':''}" data-a="jcard" data-i="${i}"${c.j?'':` data-s="${SY[c.s]}"`} aria-label="${cardName(c)}"${L.includes(c)?'':' disabled'}>${c.j?'<i>★</i>ჯოკერი':`<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span>`}</button>`).join('');
@@ -507,13 +511,13 @@ const JK=GAME.joker={title:'ჯოკერი',
   else if(this.phase==='play'){st=this.win!=null?(this.win===0?'ეს ხელი შენ წაიღე':esc(castErg(this.ids[this.win]))+' წაიღო ხელი'):this.cur===0?(g3&&jTipLong()?'შენი სვლაა. შეეხე კარტს ორჯერ ან აიტანე მაგიდაზე':'შენი სვლაა'):esc(this.nm(this.cur))+' ფიქრობს…';if(this.win==null&&this.cur!==0)quiet=1}
   else if(this.phase==='handover'||this.phase==='over'){const{hand:last,prem}=jLast(this.hist);const mn=last.p[0]+(prem?prem.p[0]:0);
    st=this.phase==='over'?(this.score[0]===Math.max(...this.score)?'მოიგე! +12 რეიტინგი, +10 მონეტა':'თამაში დასრულდა'):`ხელი დასრულდა. შენ: ${mn>0?'+':''}${mn}`+(prem?' · სექციის პრემია':'');
-   panel=''}
+   panel=this.phase==='handover'&&this.rev?`<div class="jkacts"><button class="btn ghost sm" data-a="jrev">${ic('cards')}ხელის მიმოხილვა</button></div>`:''}
   const info=`<div class="ginfo">${trumpTxt}<span>ხელი ${Math.min(this.h+1,JSEQ[this.len].length)}/${JSEQ[this.len].length} · ${this.n} კარტი</span>${jBidSum(this.bids,this.n,this.phase)}${this.lastT&&this.phase==='play'&&!g3?jLastBtn('jlast'):''}</div>`;
   const stage=`<div class="jt${g3?' g3jt':''}">${seat(2,'top')}${seat(1,'left')}${seat(3,'right')}<div class="trick" aria-label="მაგიდა">${tr}</div>${g3?`<div class="g3 g3-joker${G3W.ready?'':' loading'}">${g3Rv()}${G3W.ready?'':'<span class="g3load" aria-hidden="true"></span>'}</div>`:''}</div>`;
   let res='';if(this.phase==='over'){const mx=Math.max(...this.score),win=this.score[0]===mx,pl=[0,1,2,3].sort((a,b)=>this.score[b]-this.score[a]);
-   res=gResBox(this,{title:win?'მოიგე!':'თამაში დასრულდა',sub:win?'ყველაზე მეტი ქულა შენ დააგროვე':'გაიმარჯვა: '+esc(this.nm(pl[0])),kind:win?'win':'lose',more:`<div class="gendt">${pl.map(p=>`<span><b>${esc(this.nm(p))}</b>${this.score[p]}</span>`).join('')}</div>`+(this.ctx&&this.ctx.daily&&typeof jdMoreHTML==='function'?jdMoreHTML(this.ctx):''),again:this.ctx&&this.ctx.daily?'<button class="btn gold" data-a="gdaily">კიდევ ერთხელ</button>':'<button class="btn gold" data-a="jagain">ახალი თამაში</button>',share:win?gShareBtn('joker',(this.ctx&&this.ctx.daily?'დღის ხელი, ':'')+this.score[0]+' ქულით'):''})}
+   res=gResBox(this,{title:win?'მოიგე!':'თამაში დასრულდა',sub:win?'ყველაზე მეტი ქულა შენ დააგროვე':'გაიმარჯვა: '+esc(this.nm(pl[0])),kind:win?'win':'lose',more:`<div class="gendt">${pl.map(p=>`<span><b>${esc(this.nm(p))}</b>${this.score[p]}</span>`).join('')}</div>`+jEndBtns(this.rev?'jrev':null)+(this.ctx&&this.ctx.daily&&typeof jdMoreHTML==='function'?jdMoreHTML(this.ctx):''),again:this.ctx&&this.ctx.daily?'<button class="btn gold" data-a="gdaily">კიდევ ერთხელ</button>':'<button class="btn gold" data-a="jagain">ახალი თამაში</button>',share:win?gShareBtn('joker',(this.ctx&&this.ctx.daily?'დღის ხელი, ':'')+this.score[0]+' ქულით'):''})}
   gSaveLater(this);GSCR.html=gShell('joker',{stage,mid:stage,top:top+info+jMiniHTML(this.hist,this.score,[0,1,2,3].map(p=>this.nm(p)),this.phase==='handover','jsheet'),bot:`<div class="pl me${mine?' turn':''}"><span class="plav">${av('me',34)}</span><span class="pln"><b>${esc(ME.name)}${jDealer(0,this.dealer)}</b><span class="muted jme">${pips(0)}${jNeed(this.bids[0],this.taken[0],this.phase)}<span>${this.score[0]} ქულა</span></span></span>${jResChip(this.hist,0,this.phase)}</div>
-   <div class="hand${g3?' g3sr':''}" aria-label="შენი კარტები">${hand}</div><div class="status${mine?' mine':''}${quiet?' g3sr':''}" role="status">${st}</div>${panel}`,res});
+   <div class="hand${g3?' g3sr':''}" aria-label="შენი კარტები">${hand}</div><div class="status${mine?' mine':''}${quiet?' g3sr':''}" role="status">${st}</div>${panel}`,res});jAuto1(this);
   g3After('joker')}};
 const JK_RULES='ფერი უნდა აჰყვე. თუ ფერი არ გაქვს, კოზირი უნდა დადო. ჯოკერი ნებისმიერ დროს შეგიძლია დადო: „მაღალი“ წაიღებს ხელს, „დაბალი“ არ წაიღებს. მოგვიანებით დადებული მაღალი ჯოკერი უფრო ძლიერია. ჯოკერით დაწყებისას ითხოვ ფერს: „მაღალი“ ნიშნავს, რომ ყველამ ამ ფრის უმაღლესი კარტი უნდა დადოს და ხელი შენია, თუმცა თუ ფერი კოზირი არ არის და ვინმემ კოზირი დადო, უმაღლესი კოზირი წაიღებს. „დაბალი“ ნიშნავს, რომ ამ ფრის უმაღლესი კარტი წაიღებს. ქულები: ზუსტად ნათქვამი 50 თითო ხელზე და 50 ბონუსი, ყველა ხელის წაღება 100 თითოზე, პასი და ნული 50. მეტის ან ნაკლების წაღებისას 10 თითოზე. თუ თქვი და ვერცერთი ვერ წაიღე, ხიშტი: −200, ცხრიან სექციებში −500. ვინც სექციის ყველა ხელში ზუსტად ნათქვამს წაიღებს, პრემიას იღებს: მისი საუკეთესო ხელი ორმაგდება, დანარჩენებს კი საუკეთესო ხელი ეშლებათ.';
 A.jstart=t=>JK.begin(t.dataset.m);
@@ -521,10 +525,9 @@ A.jagain=()=>{JK.resHide=0;JK.resSnd=0;JK.start();JK.render()};
 A.jnext=()=>{if(JK.phase==='handover')JK.newHand()};
 A.jbid=t=>{if(JK.phase==='bid'&&JK.cur===0)JK.bid(0,+t.dataset.v)};
 A.jtrump=t=>{if(JK.phase==='trump'&&JK.cur===0)JK.setTrump(t.dataset.s)};
-const jkJokerSheet=(lead,a)=>sheet(head('ჯოკერი')+(lead?`<div class="form"><b>მაღალი: ვითხოვ ამ ფრის უმაღლესს და ხელს ვიღებ</b><div class="suits">${SUITS.map(s=>`<button class="${isRed(s)?'red':''}" data-a="${a}" data-m="hi" data-s="${s}" aria-label="მაღალი, ${SN[s]}">${SY[s]}</button>`).join('')}</div><b>დაბალი: ამ ფრის უმაღლესმა წაიღოს</b><div class="suits">${SUITS.map(s=>`<button class="${isRed(s)?'red':''}" data-a="${a}" data-m="lo" data-s="${s}" aria-label="დაბალი, ${SN[s]}">${SY[s]}</button>`).join('')}</div></div>`
-  :`<div class="jchoice"><button data-a="${a}" data-m="hi">მაღალი<br><small class="muted">წაიღებს ხელს</small></button><button data-a="${a}" data-m="lo">დაბალი<br><small class="muted">არ წაიღებს</small></button></div>`),'short');
+/* the joker's call is chosen at the card: jkJokerPick (joker-more.js) */
 A.jcard=t=>{if(JK.phase!=='play'||JK.cur!==0)return;const c=JK.hands[0][+t.dataset.i];if(!c||!JK.legal(0).includes(c))return;
- if(!c.j){JK.playCard(0,c);return}JK.pj=c;jkJokerSheet(!JK.trick.length,'jj')};
+ if(!c.j){JK.playCard(0,c);return}if(JK.pj===c&&jPickOpen())return;JK.pj=c;jkJokerPick(!JK.trick.length,'jj',t)};
 A.jj=t=>{closeSheet();if(JK.pj&&JK.phase==='play'&&JK.cur===0){const c=JK.pj;JK.pj=null;JK.playCard(0,c,t.dataset.m,t.dataset.s||null)}};
 A.jsheet=()=>jNoteToggle(JK.hist,JK.score||[0,0,0,0],[0,1,2,3].map(p=>JK.nm(p)));
 A.jlast=()=>jLastOpen(JK.lastT,p=>p===0?'შენ':JK.nm(p),0);

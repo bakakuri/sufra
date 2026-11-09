@@ -285,6 +285,9 @@ A.gmenu=()=>{const id=gCur(),G=GAME[id],c=G&&G.ctx,sw=on=>`<i class="sw${on?' on
   ${c&&c.mode==='bot'&&!S.page?`<button data-a="gbot">${ic('user')}<span>ბოტის დონე</span><small class="gmv">${BLV[bLvl(id)].n}</small></button>`:''}
   ${castEdit(id)?`<button data-a="gcast">${ic('users')}<span>მოთამაშეები</span><small class="gmv">${castSeatsOf(id).map(p=>esc(castBy(TCAST[p]).n)).join(', ')}</small></button>`:''}
   ${['joker','durak','bura'].includes(id)?`<button data-a="gc4" aria-pressed="${c4On()}">${ic('cards')}<span>ოთხფერიანი დასტა</span>${sw(c4On())}</button>`:''}
+  ${id==='joker'&&typeof JKSORTN!=='undefined'?`<button data-a="jksortm">${ic('cards')}<span>კარტების დალაგება</span><small class="gmv">${JKSORTN[jSortSet()]}</small></button><button data-a="jkauto1" aria-pressed="${jAuto1On()}">${ic('play')}<span>ერთადერთი სვლა თავისით</span>${sw(jAuto1On())}</button>`:''}
+  ${id==='joker'&&!S.page&&JK.rev?`<button data-a="jrev">${ic('cards')}<span>წინა ხელის მიმოხილვა</span></button>`:''}${id==='joker'&&S.page&&S.page.id==='jktable'&&typeof JO!=='undefined'&&JO.rev?`<button data-a="jkorev">${ic('cards')}<span>წინა ხელის მიმოხილვა</span></button>`:''}
+  ${id==='joker'&&typeof jkStat!=='undefined'?`<button data-a="jstat">${ic('chart')}<span>ჯოკერის სტატისტიკა</span></button>`:''}
   ${id==='bura'?`<button data-a="bupts" aria-pressed="${buShowPts()}">${ic('chart')}<span>ჩემი ქულის ჩვენება</span>${sw(buShowPts())}</button>`:''}
   ${id==='joker'&&c&&c.mode==='bot'&&!S.page?`<button data-a="ghint" aria-pressed="${jHintOn()}">${ic('help')}<span>ნათქვამის რჩევა</span>${sw(jHintOn())}</button>`:''}
   ${!S.page&&c&&['bot','local','learn'].includes(c.mode)&&(id!=='chess'||true)?`<button data-a="gvar">${ic('dice')}<span>თამაშის სახე და დრო</span></button>`:''}
