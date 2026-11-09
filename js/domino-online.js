@@ -169,7 +169,7 @@ function dmoDraw(){const el=$('#dmo');if(!el||!DMO.t||!dmoHere(DMO.id))return;co
  const c=DMO.ctx;c.mode=DMO.seat>=0?'online':'netwatch';if(s.phase==='over'){if(!c.finAt)c.finAt=performance.now()}else{c.finAt=0;c.cined=0}
  const g3=g3Want(),me=DMO.seat,base=me>=0?me:0,us=me>=0?me%2:0,host=dmoIsHost(),live=s.phase==='play',V=dmoView();
  const myTurn=dmoMine(),ok=new Set(myTurn?V.moves(0).map(m=>m.i):[]);if(DMO.sel!=null&&!ok.has(DMO.sel))DMO.sel=null;V.sel=DMO.sel;
- const seat=(r,pos)=>{const p=(base+r)%4,u=t.seats[p];return `<div class="seat ${pos}${s.cur===p&&live?' turn':''}"${u?` data-vu="${u}"`:''}>${dmoAv(p,36)}<b>${esc(dmoName(p))}</b><span class="bt">${((s.counts||[])[p])||0} ქვა${r===2&&me>=0?' · პარტნიორი':''}</span></div>`};
+ const seat=(r,pos)=>{const p=(base+r)%4,u=t.seats[p];return `<div class="seat ${pos}${s.cur===p&&live?' turn':''}"${u?` data-vu="${u}"`:''}><span class="sav">${dmoAv(p,36)}</span><b>${esc(dmoName(p))}</b><span class="bt">${((s.counts||[])[p])||0} ქვა${r===2&&me>=0?' · პარტნიორი':''}</span></div>`};
  const line=V.line();if(!g3On()&&line.length!==DMO.lineN&&DMO.lineN!=null)gSnd('tile');DMO.lineN=line.length;
  const chain=line.map(x=>dmTile(x.t,x.root?'root':'')).join('');
  const hand=me>=0?DMO.hand.map((x,i)=>dmTile(x,(DMO.sel===i?'sel':'')+(ok.has(i)?' ok':''),` data-a="dmot" data-i="${i}"${ok.has(i)?'':' disabled'}`)).join(''):'';
@@ -188,7 +188,7 @@ function dmoDraw(){const el=$('#dmo');if(!el||!DMO.t||!dmoHere(DMO.id))return;co
   :`<div class="pl"><span class="muted">შენ უყურებ. ქვები მხოლოდ მოთამაშეებს უჩანთ.</span></div>`;
  const st=dmoStatus()+(turn&&g3&&DMO.sel==null&&s.root?' · შეეხე ქვას ან გადაათრიე':'');
  const Pp=gShellParts({stage,mid:stage,top:gTop('დომინო ონლაინ',null,'back')+info,bot:`${mine}<div class="status${turn?' mine':''}" role="status">${st}</div>${panel}`,res});
- el.className='view-pad game dmo gx'+(Pp.w?' is3d':'');el.dataset.g='domino';gPatch(el,Pp.html);g3After('dmo')}
+ el.className='view-pad game dmo gx lux'+(Pp.w?' is3d':'');el.dataset.g='domino';gPatch(el,Pp.html);g3After('dmo')}
 /* the result counts once per person per game, like a game against the computer */
 function dmoResult(){const s=DMO.st;if(s&&s.phase!=='over')DMO.res=false;if(!s||s.phase!=='over'||DMO.seat<0||DMO.res)return;DMO.res=true;const k='dmores-'+DMO.id+'-'+s.dn;
  try{if(localStorage.getItem(k))return;localStorage.setItem(k,'1')}catch(e){}

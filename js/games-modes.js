@@ -74,7 +74,7 @@ const cState=()=>{const s=store.get('career',null);return s&&typeof s==='object'
 const cNext=()=>CAREER.find(x=>!cState().done[x.id])||null;
 const cOpen=x=>{const i=CAREER.indexOf(x);return i===0||!!cState().done[CAREER[i-1].id]};
 /* a career place opens for your own table once you have won there */
-function gPlaceOpen(pl){if(['court','balcony','desk'].includes(pl))return true;const x=CAREER.find(z=>z.pl===pl);return !!x&&!!cState().done[x.id]}
+function gPlaceOpen(pl){if(['court','balcony','desk','lounge'].includes(pl))return true;const x=CAREER.find(z=>z.pl===pl);return !!x&&!!cState().done[x.id]}
 PG.career={r(){const st=cState(),n=Object.keys(st.done).length,nx=cNext();
  view.innerHTML=pgHead('ეზოდან ჩემპიონატამდე')+`<div class="view-pad"><section class="tourcard"><p class="note">ექვსი მეტოქე ექვს ადგილას: ეზოდან მთაწმინდამდე. ყოველი მოგება შემდეგ მეტოქესა და ახალ ადგილს ხსნის. გავლილი ადგილი შენს მაგიდასაც შეგიძლია მისცე (მენიუ → ადგილი).</p>
   <div class="cbar"><i style="width:${Math.round(n/CAREER.length*100)}%"></i></div><p class="hint">${n===CAREER.length?'ყველა ეტაპი გავლილია. ჩემპიონი ხარ! 🏆':`გავლილია ${n} ეტაპი ${CAREER.length}-დან`}</p></section>

@@ -2510,7 +2510,6 @@ html.c4 .card[data-s="♦"],html.c4 .suits button[data-s="d"]{color:#1A55C4}
 .gx.lux .ghud .pl{background:linear-gradient(180deg,rgb(20 31 62/.86),rgb(9 14 32/.88));border:1px solid rgb(150 175 255/.2);box-shadow:inset 0 1px 0 rgb(255 255 255/.07),0 8px 22px rgb(0 0 0/.45);padding:6px 20px 6px 6px}
 .gx.lux .ghud .pl.me{border-color:rgb(226 186 98/.6);box-shadow:inset 0 1px 0 rgb(255 240 200/.1),0 0 0 1px rgb(226 186 98/.18),0 8px 24px rgb(0 0 0/.5)}
 .gx.lux .ghud .pl.me .plav{position:relative;border-radius:50%;box-shadow:0 0 0 2px #E2BA62,0 0 14px rgb(226 186 98/.35)}
-.gx.lux .ghud .pl.me .plav::after{content:"";position:absolute;right:-7px;top:-9px;width:18px;height:14px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 20'%3E%3Cpath fill='%23F2C766' d='M3 15 1.5 4.5l6.2 4.6L13 1l5.3 8.1 6.2-4.6L23 15z'/%3E%3Crect x='3' y='16' width='20' height='3' rx='1.2' fill='%23F2C766'/%3E%3C/svg%3E") center/contain no-repeat;transform:rotate(18deg);filter:drop-shadow(0 1px 2px rgb(0 0 0/.6))}
 .gx.lux .ghud .pl b{color:#F4F6FF;letter-spacing:.01em}
 .gx.lux .ghud .pl .muted{color:#B9C4E6}
 .gx.lux .status{display:flex;align-items:center;justify-content:center;gap:10px;text-align:left;padding:9px 16px;border-radius:14px;background:linear-gradient(180deg,rgb(20 31 62/.84),rgb(9 14 32/.86));border:1px solid rgb(150 175 255/.2);color:#E8EEFF;box-shadow:inset 0 1px 0 rgb(255 255 255/.06),0 6px 18px rgb(0 0 0/.35)}
@@ -3284,3 +3283,57 @@ body.wide .pspace{flex-wrap:wrap;margin:6px 0 0;padding:4px 0 2px;-webkit-mask-i
 .adgcs{display:block;width:max-content;max-width:100%;margin-top:3px;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;color:var(--muted);background:var(--sunk)}
 .adgcs.warn{color:#B4231B;background:rgb(220 60 50/.12)}
 .glock-none{padding:24px 16px;text-align:center}
+/* ---------- the night lounge's look on every table game, 3D or flat ---------- */
+.view-pad.game.gx.lux{background:radial-gradient(130% 90% at 50% 38%,#16234a 0,#0a1128 55%,#04070f 100%);
+ --muted:#B9C4E6;--surface:#111a34;--sunk:#1a2546;--line:#2a3762}
+.gx.lux .ghud.top{background:linear-gradient(rgb(4 8 20/.9),rgb(4 8 20/.5) 62%,transparent)}
+.gx.lux .ghud.bot{background:linear-gradient(transparent,rgb(4 8 20/.5) 28%,rgb(4 8 20/.88))}
+.gx.is3d.lux .ghud.bot{background:linear-gradient(transparent,rgb(4 8 20/.36) 40%,rgb(4 8 20/.62))}
+@media (min-aspect-ratio:5/4){.gx.lux .ghud.top,.gx.lux .ghud.bot{background:linear-gradient(90deg,transparent,rgb(4 8 20/.6) 16%,rgb(4 8 20/.74))}}
+/* the plates of two-player games: navy glass; the one to move rimmed in gold */
+.gx.lux .ghud .pl.turn{border-color:rgb(242 196 106/.75);box-shadow:0 0 0 1px rgb(242 196 106/.45),0 0 22px rgb(242 196 106/.28),0 8px 22px rgb(0 0 0/.45)}
+.gx.lux .pl .gclk{background:rgb(255 255 255/.08);border-color:rgb(150 175 255/.2);color:#C9D3F2}
+.gx.lux .pl .gclk.run{background:#F3E2B8;color:#1B1205}
+/* setup and panels drawn in the page (flat games, loto's choices) */
+.gx.lux .setupc{background:linear-gradient(180deg,rgb(20 28 54/.92),rgb(9 13 30/.94));border:1px solid rgb(150 175 255/.2);box-shadow:0 18px 40px rgb(0 0 0/.5);border-radius:20px;color:#EEF1FA}
+.gx.lux .setupc .note{color:#B9C4E6}
+.gx.lux .seg button[aria-pressed="true"],.gx.lux .lset .seg button[aria-pressed="true"]{background:linear-gradient(180deg,#FFE29A,#E9B44C);color:#1B1205}
+.gx.lux .gsec,.gx.lux .lroom .lpl{border-color:rgb(150 175 255/.2)}
+/* the flat tables (no 3D): a navy felt instead of the brown one */
+.gx.lux:not(.is3d) .jt:not(.g3jt){background:radial-gradient(120% 90% at 50% 45%,#1f3a7a 0,#122556 55%,#0a1636 100%);box-shadow:inset 0 0 0 2px rgb(226 186 98/.55),inset 0 0 60px rgb(0 0 0/.45)}
+/* loto at the 3D table: the barrel just drawn and the four before it in a strip under the score; my tickets below the table,
+   tighter so that the table stays in view; the others' tags say how near they are to done (red when one number is left, gold for the winner) */
+.lbar.mini{gap:8px;margin:6px auto 0;padding:5px 8px 5px 5px;border-radius:999px;width:max-content;max-width:100%;background:linear-gradient(180deg,rgb(20 31 62/.88),rgb(9 14 32/.88));border:1px solid rgb(150 175 255/.22);box-shadow:0 8px 22px rgb(0 0 0/.4)}
+.lbar.mini .lkeg{width:auto;min-width:50px;height:50px;padding:0 10px;border-radius:999px;flex-direction:row;gap:7px}
+.lbar.mini .lkeg b{font-size:28px}.lbar.mini .lkeg small{font-size:11px;max-width:96px;text-align:left;line-height:1.15}
+.lbar.mini .lkeg.wait small{max-width:80px}
+.lbar.mini .llast{flex:none;flex-wrap:nowrap;gap:4px}.lbar.mini .llast span{min-width:28px;height:28px;font-size:12.5px}
+.lbar.mini .btn{padding:6px 10px;min-height:0}
+.ltixs.l3{gap:7px;width:100%;max-width:520px;margin:0 auto}
+.ltixs.l3 .ltix{padding:6px;border-radius:10px}.ltixs.l3 .ltg{gap:2px}
+.ltixs.l3 .lc{aspect-ratio:auto;height:clamp(26px,3.6vh,36px);font-size:clamp(13px,3.8vw,18px);border-radius:5px}
+.ltixs.l3 .ltl{margin-top:3px;font-size:11px}
+.ltixs.l3.n3 .lc{height:clamp(24px,3.1vh,32px)}
+.ltixs.l3 .note{color:#B9C4E6;text-align:center;margin:4px 0}
+.g3jt.lt3 .seat.hot .bt{color:#FF8A80;font-weight:800}
+.g3jt.lt3 .seat.won{border-color:rgb(242 196 106/.9);box-shadow:0 0 0 1px rgb(242 196 106/.6),0 0 26px rgb(242 196 106/.45),0 8px 22px rgb(0 0 0/.45)}
+.g3jt.lt3 .seat.won .bt{color:#F2C46A;font-weight:800}
+.gx.lux .lset.jkset .lsh{color:#B9C4E6}
+.gx.lux .lset.jkset .jkonline{border-color:rgb(150 175 255/.2)}
+/* flat loto in the joker's dress: the room is a navy felt table with a gold edge, the barrel a cream keg on it, the others in navy glass */
+.gx.lux:not(.is3d) .lroom{padding:14px 12px 16px;border-radius:26px;background:radial-gradient(120% 90% at 50% 40%,#1f3a7a 0,#122556 55%,#0a1636 100%);box-shadow:inset 0 0 0 2px rgb(226 186 98/.55),inset 0 0 60px rgb(0 0 0/.45),0 16px 36px rgb(0 0 0/.4)}
+.gx.lux:not(.is3d) .lroom .lbar{padding:8px;border-radius:20px;background:rgb(6 10 26/.45);box-shadow:inset 0 1px 0 rgb(255 255 255/.06)}
+.gx.lux .lroom .llast span{background:rgb(20 31 62/.9);border:1px solid rgb(150 175 255/.22);color:#E6EBFA}
+.gx.lux .lroom .llast span:first-child,.gx.lux .lbar.mini .llast span:first-child{background:linear-gradient(180deg,#FFE29A,#E9B44C);color:#1B1205;border-color:transparent}
+.gx.lux .lbar.mini .llast span{background:rgb(255 255 255/.08);color:#E6EBFA}
+.gx.lux .lroom .lpl{background:linear-gradient(180deg,rgb(20 31 62/.86),rgb(9 14 32/.86));border:1px solid rgb(150 175 255/.22);box-shadow:inset 0 1px 0 rgb(255 255 255/.07)}
+.gx.lux .lroom .lpl b{color:#F4F6FF}.gx.lux .lroom .lpl small{color:#B9C4E6}
+.gx.lux .lroom .lpl.hot small{color:#FF8A80}
+.gx.lux .lroom .lpl.won{border-color:rgb(242 196 106/.85);box-shadow:0 0 0 1px rgb(242 196 106/.6),0 0 22px rgb(242 196 106/.35)}
+.gx.lux .ltix{box-shadow:inset 0 0 0 3px #C2342E,0 0 0 1px rgb(226 186 98/.5),0 8px 20px rgb(0 0 0/.4)}
+.gx.lux .ltix.done{box-shadow:inset 0 0 0 3px #2E8B57,0 0 0 3px var(--gold),0 8px 20px rgb(0 0 0/.4)}
+.gx.lux .lroom .btn.ghost{background:rgb(20 31 62/.8);border-color:rgb(150 175 255/.25);color:#E6EBFA}
+@media (max-width:700px){.ltixs.l3.n3{flex-direction:row;overflow-x:auto;scroll-snap-type:x mandatory;gap:8px;padding:0 6% 2px;margin:0 -12px;width:auto;max-width:none;scrollbar-width:none;overscroll-behavior-x:contain}
+ .ltixs.l3.n3::-webkit-scrollbar{display:none}
+ .ltixs.l3.n3 .ltix{flex:0 0 88%;scroll-snap-align:center}
+ .ltixs.l3.n3 .lc{height:clamp(26px,3.6vh,36px)}}

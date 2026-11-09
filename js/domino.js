@@ -75,7 +75,7 @@ const DM=GAME.domino={title:'დომინო',
   return pre+esc(this.nm(this.cur))+' ფიქრობს…'+(!this.root&&this.first&&this.firstT?` (${this.firstT.join('-')} მასთანაა)`:'')},
 
  render(){if(S.tab!=='games'||S.game!=='domino'||S.page)return;const c=this.ctx,g3=g3Want(),mine=this.phase==='play'&&this.cur===0,ok=new Set(mine?this.moves(0).map(m=>m.i):[]);gTurnSnd(this,mine&&ok.size>0);
-  const SE=dmSeats(this.np||4),solo=SE.length<4,seat=(p,pos)=>SE.includes(p)?`<div class="seat ${pos}${this.cur===p&&this.phase==='play'?' turn':''}"${castTap(p)}>${avAny(DMN[p],36)}<b>${esc(this.nm(p))}</b><span class="bt">${this.hands[p].length} ქვა${p===2&&!solo?' · პარტნიორი':solo?' · '+this.pts[p]:''}</span></div>`:'';
+  const SE=dmSeats(this.np||4),solo=SE.length<4,seat=(p,pos)=>SE.includes(p)?`<div class="seat ${pos}${this.cur===p&&this.phase==='play'?' turn':''}"${castTap(p)}><span class="sav">${avAny(DMN[p],36)}</span><b>${esc(this.nm(p))}</b><span class="bt">${this.hands[p].length} ქვა${p===2&&!solo?' · პარტნიორი':solo?' · '+this.pts[p]:''}</span></div>`:'';
   const line=this.line();if(!g3On()&&line.length!==this.lineN&&this.lineN!=null)gSnd('tile');this.lineN=line.length;
   const chain=line.map(x=>dmTile(x.t,x.root?'root':'')).join('');
   const hand=this.hands[0].map((t,i)=>dmTile(t,(this.sel===i?'sel':'')+(ok.has(i)?' ok':''),` data-a="dmt" data-i="${i}"${mine&&ok.has(i)?'':' disabled'}`)).join('');

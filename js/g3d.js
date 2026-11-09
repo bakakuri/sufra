@@ -250,8 +250,11 @@ function g3Cam(sc){const c=sc.cam,asp=G3D.asp||1;if(c.fixed){const f=c.fixed(asp
  if(c.fk!==key){c.fd=g3Fit(c,dir,asp,sh);c.fk=key}
  const cyT=sh.cy+(c.fay||0);if(c.fdc==null||c.snap){c.fdc=c.fd;c.cxc=sh.cx;c.cyc=cyT;c.snap=0}else{const k=.2;c.fdc+=(c.fd-c.fdc)*k;c.cxc+=(sh.cx-c.cxc)*k;c.cyc+=(cyT-c.cyc)*k;
   if(Math.abs(c.fd-c.fdc)>c.fd*.002||Math.abs(sh.cx-c.cxc)>.002||Math.abs(cyT-c.cyc)>.002)sc.camBusy=true;else{c.fdc=c.fd;c.cxc=sh.cx;c.cyc=cyT}}
- const dist=c.fdc/c.dz,eye=v3.add(c.tgt,v3.mul(dir,dist)),V=m4.look(eye,c.tgt,[0,1,0]),P=m4.persp(c.fov,asp,Math.max(.2,dist*.2),dist*3+30);P[8]=-c.cxc;P[9]=-c.cyc;
- return{eye,VP:m4.mul(P,V),dist,cx:c.cxc,cy:c.cyc}}
+ const dist=c.fdc/c.dz,eye=v3.add(c.tgt,v3.mul(dir,dist));
+ /* the eyes of a seated player turn here too (the domino table), about the eye, leaving the fitted view to come back to */
+ let lt=c.tgt,lq=null,lookM=null;const L=sc.look;if(L&&(Math.abs(L.y)>1e-4||Math.abs(L.p)>1e-4)){const F=v3.sub(c.tgt,eye),R0=v3.norm(v3.cross(F,[0,1,0]));lq=qt.mul(qt.ax(0,1,0,L.y),qt.ax(R0[0],R0[1],R0[2],L.p));lt=v3.add(eye,qt.rot(lq,F));lookM=m4.trs(v3.sub(eye,qt.rot(lq,eye)),lq,1)}
+ c.lookQ=lq;const V=m4.look(eye,lt,[0,1,0]),P=m4.persp(c.fov,asp,Math.max(.2,dist*.2),dist*3+30);P[8]=-c.cxc;P[9]=-c.cyc;
+ return{eye,VP:m4.mul(P,V),dist,cx:c.cxc,cy:c.cyc,lookM}}
 /* how much of the screen the floating panels cover, so the board sits in the free part */
 function g3Insets(sc){const cv=G3D.cv,gx=cv&&cv.isConnected&&cv.closest('.gx'),c=sc.cam;if(!gx){c.inset=null;return}const r=cv.getBoundingClientRect();if(!r.width||!r.height)return;
  const top=gx.querySelector('.ghud.top'),bot=gx.querySelector('.ghud.bot'),tr=top&&top.getBoundingClientRect();let t=0,b=0,rr=0;

@@ -2,7 +2,7 @@
    (matched with what is already on the table, so moves animate) and a list of flat marks (selection, targets, last move) */
 const G3S={},G3B={},G3U={};
 const GOLD=lin('#F4BC4C'),GOLDS=lin('#FFD27A'),RED=lin('#FF5A5F'),INK=lin('#20140c'),PALE=lin('#FFF4D6'),MINT=lin('#7CF0B4');
-function g3Show(id){const el=$('.g3',view);if(!el)return;const k=id==='jko'||id==='durak'||id==='bura'?'joker':id==='dmo'?'domino':id,pl=gPlaceOf(k),key=k==='joker'&&jkRoom()==='room'?'joker:room':pl&&pl!==GPDEF[k]?k+':'+pl:k,sc=G3S[key]||(G3S[key]=G3B[k]());sc.host=id;
+function g3Show(id){const el=$('.g3',view);if(!el)return;const k=id==='jko'||id==='durak'||id==='bura'||id==='loto'||id==='lot'?'joker':id==='dmo'?'domino':id,pl=gPlaceOf(k),key=k==='joker'&&jkRoom()==='room'?'joker:room':k==='domino'&&dmRoom()==='lounge'?'domino:lounge':pl&&pl!==GPDEF[k]?k+':'+pl:k,sc=G3S[key]||(G3S[key]=G3B[k]());sc.host=id;
  const want=G3D.intro||G3W.intro,intro=want===id;if(intro){G3D.intro=null;G3W.intro=null}
  if(!g3Mount(el,sc))return;if(sc.envK)envApply(sc);if(typeof gAmb==='function')gAmb(sc.envK||null,sc.envT,k,sc.wx&&sc.wx.k);try{G3U[id](sc)}catch(e){try{console.warn('3D sync',e)}catch(x){}}if(intro)g3StartIntro(sc);G3D.lgen=(G3D.lgen||0)+1;g3Insets(sc);g3Need()}
 const snd=(k,v)=>{if(typeof gSnd==='function')gSnd(k,v)};
@@ -179,6 +179,8 @@ const JKC={side:true};
 function jkCam(asp){const t=clamp((asp-.55)/1.0,0,1),eye=[0,lerpN(5.9,8.2,t),lerpN(8.3,12.4,t)],tgt=[0,lerpN(.2,1.5,t),lerpN(-1.6,-2.2,t)];
  const W=(G3D.cv&&G3D.cv.clientWidth)||800,side=asp>=1.25?Math.min(380,W*.4)/W:0;
  const hh=lerpN(.58,.8,t)*(1-side*.45);let fov=2*Math.atan(Math.tan(hh)/asp);fov=clamp(fov,.72,1.8);return{eye,tgt,fov,sy:lerpN(.05,0,t),sx:-side}}
+/* how far the eyes turn to look at a point, from the camera as it stands (a fixed one, or the fitted one of the domino table): positive is to the left */
+function g3TurnTo(sc,p){const c=sc.cam,C=c.fixed?c.fixed(G3D.asp||.5):sc.camNow?{eye:sc.camNow.eye,tgt:c.tgt}:null;if(!C)return 0;const f=[C.tgt[0]-C.eye[0],C.tgt[2]-C.eye[2]],d=[p[0]-C.eye[0],p[2]-C.eye[2]];return Math.abs(Math.atan2(f[1]*d[0]-f[0]*d[1],f[0]*d[0]+f[1]*d[1]))}
 /* how far the eyes turn to look at a seat: positive is to the left */
 function jkTurnTo(asp,p){const C=jkCam(asp),f=[C.tgt[0]-C.eye[0],C.tgt[2]-C.eye[2]],d=[p[0]-C.eye[0],p[2]-C.eye[2]];return Math.atan2(f[1]*d[0]-f[0]*d[1],f[0]*d[0]+f[1]*d[1])}
 /* a point on the screen (nx, ny from -1 to 1) at distance d in front of the eye, and the turn that makes a card face the eye */
@@ -512,7 +514,8 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
  if(deal&&rigOf(dealer)){const g=rigOf(dealer),T=[1,2,3,0].filter(r=>r!==dealer).map(r=>r===0?[0,.5,4]:v3.lerp(jkLocal(r,0,[0,.5,2.5]),[0,.5,0],.35)),st=[];for(let k=0;k<6;k++){st.push({p:v3.lerp(dp,T[k%T.length],.35),d:120,arc:.15},{p:dp,d:110})}rigGo(sc,String(dealer),st,{lean:.04})}
  /* a word said at the table: a nod for a number, a knock on the table for a pass */
  if(V.bids&&pic){const B0=sc.bids0||[];for(const r of[1,2,3]){const b=V.bids[(r+V.base)%4],was=B0[(r+V.base)%4];if(b!=null&&was===null){g3Wig(sc,'k:ph'+r,{ax:'x',a:.09,f:1,d:700});if(b===0&&rigOf(r)){const g=rigOf(r),P=rigP(g.f,.1,.05,1.6);rigGo(sc,String(r),[{p:rigAbove(P,.35),d:200},{p:P,d:90},{p:rigAbove(P,.3),d:110},{p:P,d:90}],{lean:.05})}}}sc.bids0=V.bids.slice()}
- sc.marks=M;g3Set(sc,L,{gone:o=>{if(o.id.startsWith('k:pn'))return{a:0,dur:140,delay:sc.pileD||0};if(o.m==='card'&&o.id.startsWith('k:c')){const w=sc.jw??0,p=w==='disc'?[3.35,.25,.85]:v3.add(jkPile(w),[0,.2,0]);return{p,a:0,dur:560,delay:150+sweep,s:1.05,q:FACEDN(w==='disc'||w===0?0:JYAW[w])}}if(o.id.startsWith('k:h'))return{a:0,dur:160};return{a:0,dur:250}}})}
+ if(V.extra)V.extra(L,M,rel);
+ sc.marks=M;g3Set(sc,L,{gone:o=>{if(o.id.startsWith('k:kg'))return{p:[o.p[0]*.6,o.p[1]+.6,o.p[2]-1.2],a:0,dur:420};if(o.id.startsWith('k:pn'))return{a:0,dur:140,delay:sc.pileD||0};if(o.m==='card'&&o.id.startsWith('k:c')){const w=sc.jw??0,p=w==='disc'?[3.35,.25,.85]:v3.add(jkPile(w),[0,.2,0]);return{p,a:0,dur:560,delay:150+sweep,s:1.05,q:FACEDN(w==='disc'||w===0?0:JYAW[w])}}if(o.id.startsWith('k:h'))return{a:0,dur:160};return{a:0,dur:250}}})}
 G3U.joker=sc=>{const G=JK;if(!G.ids)return;const V={hint:typeof jkPlayHint==='function'?(m=>m&&m.c)(jkPlayHint()):null,base:0,act:'jcard',hand:[],legal:[],counts:[0,0,0,0],taken:[0,0,0,0],trick:[],win:null,deal:null,dealer:null,cur:null,phase:G.phase,mine:false,trumpCard:null,deckN:0,ids:G.ids.map((x,i)=>i===0?{n:ME.name,k:'me'}:{n:x.n,h:x.h,k:x.n,cast:x.cast})};
  if(G.hands){const tr=G.phase==='trump'&&G.cur===0;V.hand=tr?G.first3[0]:G.phase==='trump'?[]:G.hands[0];V.legal=G.phase==='play'&&G.cur===0&&G.win==null?G.legal(0):[];V.mine=V.legal.length>0;
   V.counts=[0,1,2,3].map(p=>G.phase==='trump'?(p===0?0:3):G.hands[p].length);V.taken=G.taken||V.taken;V.trick=G.trick;V.bids=G.bids;V.win=G.win;V.cur=G.cur;V.dealer=G.dealer;V.deal=G.len+':'+G.h+':'+G.dealer;V.trumpCard=G.trumpCard;V.deckN=36-4*G.n;V.lastA=G.lastT&&G.phase==='play'?'jlast':null}
@@ -522,6 +525,61 @@ G3U.jko=sc=>{const s=JO.st,me=JO.seat,V={base:me>=0?me:0,act:'jkocard',hand:[],l
  if(s&&s.counts){V.hand=me>=0?JO.hand:[];const myTurn=me>=0&&s.cur===me&&s.win==null&&!JO.wait&&s.phase==='play';V.legal=myTurn?JK.legal.call({hands:{[me]:JO.hand},trick:s.trick,trump:s.trump},me):[];V.mine=V.legal.length>0;
   V.counts=[0,1,2,3].map(r=>s.counts[(r+V.base)%4]||0);V.taken=s.taken||V.taken;V.bids=s.bids||null;V.trick=s.trick||[];V.win=s.win;V.cur=s.cur;V.dealer=s.dealer;V.deal=s.deal;V.trumpCard=s.trumpCard;V.deckN=36-4*s.n;V.lastA=JO.lastT&&s.phase==='play'?'jkolast':null}
  jkScene(sc,V)};
+
+/* ---------- loto at the card table ----------
+   the bag stands in the middle; the player across draws each barrel with their hand and stands it in front of the bag, its number
+   turned to you; the barrels before it stand in two rows. Each of the others has their tickets on the table in front of them,
+   red counters on what came out. Your own tickets are below, to touch */
+function lotoModels(sc){if(sc.models.keg)return;
+ const at=g3T('lotokeg',()=>g3Tex((()=>{const c=cvs(1024,1024),x=c.getContext('2d');for(let v=1;v<=90;v++){const col=(v-1)%10,row=Math.floor((v-1)/10),cx=col*102.4+51.2,cy=row*102.4+51.2;
+  const g=x.createRadialGradient(cx-12,cy-14,6,cx,cy,52);g.addColorStop(0,'#FFF6E2');g.addColorStop(1,'#E9D3A6');x.fillStyle=g;x.beginPath();x.arc(cx,cy,50,0,Math.PI*2);x.fill();
+  x.lineWidth=4;x.strokeStyle='#9A6A32';x.stroke();x.fillStyle='#8E1420';x.font=`900 ${v>9?52:60}px system-ui,sans-serif`;x.textAlign='center';x.textBaseline='middle';x.fillText(String(v),cx,cy+3);
+  if(v===6||v===9){x.fillRect(cx-14,cy+30,28,4)}}return c})(),{af:true}));
+ const wood=g3Mat({t:woodTex('oak'),sh:40,sp:.25,gl:.15}),band=g3Mat({c:'#3A2414',sh:60,sp:.4,gl:.3});
+ g3Model(sc,'keg',[[gLathe([[.24,0],[.3,.06],[.33,.27],[.3,.48],[.25,.54]],24),wood],[gMerge(gXf(gTorus(.315,.025,24,5),[0,.12,0],qt.id()),gXf(gTorus(.315,.025,24,5),[0,.42,0],qt.id())),band],
+  [gXf(gDisc(.25,28),[0,.541,0],qt.id()),g3Mat({t:at,vary:true,sh:30,sp:.2,gl:.1})],[gXf(gDisc(.25,28),[0,0,0],qt.ax(1,0,0,Math.PI)),wood]],[.33,.28,.33],[0,.27,0]).land=()=>snd('wood',.7);
+ /* the bag: wine-red velvet with a gold cord, its mouth open */
+ g3Model(sc,'lbag',[[gLathe([[0,0],[.7,0],[.98,.24],[1.08,.6],[1,.96],[.74,1.2],[.5,1.3],[.56,1.42],[.66,1.5],[.6,1.53]],32),g3Mat({c:'#6E1026',sh:8,sp:.06,gl:0,rim:.55,wrap:.4})],
+  [gXf(gTorus(.5,.05,24,6),[0,1.31,0],qt.id()),goldM()],[gXf(gDisc(.58,24),[0,1.5,0],qt.id()),g3Mat({c:'#1A0408',sh:4,sp:0,gl:0})]],null);
+ g3Model(sc,'lchip',[[gLathe([[0,0],[.1,0],[.11,.02],[.1,.04],[0,.04]],16),g3Mat({c:'#C0182A',sh:80,sp:.5,gl:.3})]],null)}
+const kegUV=v=>[((v-1)%10)*.1,Math.floor((v-1)/10)*.1,.1,.1];
+/* a ticket as printed: cream paper, a red frame, its numbers in a 9 by 3 grid. A round brings new tickets, so only the last few are kept */
+const LTT=[];
+function lotoTicketTex(g){const key='ltt:'+g.flat().join('.');if(!G3T[key]){LTT.push(key);while(LTT.length>24){const o=LTT.shift();try{G3D.gl.deleteTexture(G3T[o])}catch(e){}delete G3T[o]}}
+ return{key,t:g3T(key,()=>g3Tex((()=>{const W=LTPX[0],H=LTPX[1],c=cvs(1024,512),x=c.getContext('2d');x.scale(1024/W,512/H);x.fillStyle='#FBF4E4';x.fillRect(0,0,W,H);x.lineWidth=16;x.strokeStyle='#C2342E';x.strokeRect(8,8,W-16,H-16);
+ const m=LTPX[2],cw=(W-2*m)/9,ch=(H-2*m)/3;for(let r=0;r<3;r++)for(let k=0;k<9;k++){const X=m+k*cw,Y=m+r*ch,v=g[r][k];x.fillStyle=v?'#FFFFFF':'#EFDFC0';x.fillRect(X+3,Y+3,cw-6,ch-6);
+  if(v){x.fillStyle='#2A1A12';x.font='800 64px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(String(v),X+cw/2,Y+ch/2+3)}}return c})(),{af:true}))}}
+const LTW=3.1,LTD=1.14,LTS=.75,LTR=4.3,LTA=.58,LTPX=[1024,376,32];
+/* the table's loto: X = {drawn, tix:[{p,g,has,left}], rel, caller (the seat across, from me)}.
+   The bag stands before the caller, near enough for their hand; the newest barrel stands in the middle, bigger, the twelve before it
+   in two rows nearer to me. The others' tickets lie along the rim before them (two at most each, the nearest to done), turned to be read
+   from their chairs, with a red counter on each number that came out */
+function lotoTable(sc,L,M,X){lotoModels(sc);const D=X.drawn,n=D.length,cr=X.caller,BAG=jkRim(cr,0,LTR),BQ=qt.ax(0,1,0,JYAW[cr]+.4);
+ L.push({k:'lbag',m:'lbag',p:BAG,q:BQ,s:.8,refl:false});
+ const spots=D.slice(-13).reverse().map((v,i)=>i===0?{v,p:[0,0,-.75],s:1.8}:{v,p:[((i-1)%6-2.5)*.8,0,.95+Math.floor((i-1)/6)*.95],s:1.1});
+ const neu=sc.kegN!==n;sc.kegN=n;const mouth=v3.add(BAG,[0,1.2,0]);
+ spots.forEach((o,i)=>{const d={k:'kg'+o.v,m:'keg',p:o.p,q:qt.ax(0,1,0,(o.v%7-3)*.12),s:o.s,uv:kegUV(o.v),cast:true,dur:420};
+  if(i===0&&neu&&!sc.objs.has('k:kg'+o.v)){d.from={p:mouth,q:qt.ax(1,0,0,.3),s:.8};d.arc=.9;d.dur=640;
+   /* the caller's hand goes into the bag, brings the barrel out and lets it go toward the middle */
+   const T=rigGo(sc,String(cr),[{p:v3.add(mouth,[0,.45,0]),d:300,arc:.2},{p:v3.add(mouth,[0,-.15,0]),d:170},{p:v3.add(mouth,[0,.5,0]),d:200},{p:v3.lerp(mouth,rigAbove(o.p,1.2),.5),d:300,arc:.2}],{lean:.1});d.delay=T?650:0}
+  L.push(d)});
+ if(spots[0])M.push({m:'mk',p:[0,.006,-.75],s:[2.3,1,2.3],uv:MK.blob,c:[1,.82,.4],a:.42,add:true});
+ const by={};X.tix.forEach(t=>{const r=X.rel(t.p);if(r===0&&!X.spect)return;(by[r]=by[r]||[]).push(t)});
+ for(const r in by){const ts=by[r].sort((a,b)=>a.left-b.left).slice(0,2),k=ts.length,R=+r;
+  ts.forEach((t,j)=>{const da=R===cr?(k===1?LTA:(j?-LTA:LTA)):(k===1?0:(j?-1:1)*LTA/2),c=jkRim(R,da,LTR),q=FACEUP(JYAW[R]+Math.PI-da),T=lotoTicketTex(t.g),mk='lt:'+T.key;
+   if(!sc.models[mk])g3Model(sc,mk,[[gQuad(LTW,LTD),g3Mat({t:T.t,sh:20,sp:.08,gl:0})]],[LTW/2,LTD/2,.02]);
+   const P=[c[0],.012,c[2]];L.push({k:'lt'+r+'-'+t.g[0].join('.'),m:mk,p:P,q,s:LTS,refl:false,dur:400});
+   const cw=LTW*(1-2*LTPX[2]/LTPX[0])/9*LTS,ch=LTD*(1-2*LTPX[2]/LTPX[1])/3*LTS;
+   t.g.forEach((row,ri)=>row.forEach((v,ci)=>{if(!v||!t.has(v))return;const w=v3.add(P,qt.rot(q,[(ci-4)*cw,(1-ri)*ch,.02]));
+    L.push({k:'lc'+r+'-'+t.g[0].join('.')+'-'+v,m:'lchip',p:w,s:.95,refl:false,from:{p:v3.add(w,[0,.5,0]),a:0},dur:300})}))})}}
+G3U.loto=sc=>{const G=LOTO,set=G.phase==='setup'||!G.tix||!G.drawn,drawn=set?[]:G.drawn,D=new Set(drawn);
+ jkScene(sc,{base:0,act:null,hand:[],legal:[],counts:[0,0,0,0],taken:[0,0,0,0],trick:[],win:null,deal:set?'los':'lo'+(G.tk||0),dealer:null,cur:null,phase:'loto',mine:false,trumpCard:null,deckN:0,
+  ids:[0,1,2,3].map(p=>p===0?{n:ME.name,k:'me'}:{n:cPlayers[p].n,h:cPlayers[p].h,k:'lo:'+cPlayers[p].n,cast:cPlayers[p].cast}),
+  extra:(L,M,rel)=>lotoTable(sc,L,M,{drawn,rel,caller:2,tix:set?[]:G.tix.filter(t=>t.p).map(t=>({p:t.p,g:t.g,has:v=>t.m.has(v)&&D.has(v),left:lotoLeft(t.g,v=>t.m.has(v)&&D.has(v),G.opt.mode)}))})})};
+G3U.lot=sc=>{const s=LOT.st;if(!s||!s.seed)return;const me=LOT.seat,base=me>=0?me:0,D=lotDrawn(s),Ds=new Set(D);
+ jkScene(sc,{base,act:null,hand:[],legal:[],counts:[0,0,0,0],taken:[0,0,0,0],trick:[],win:null,deal:'lot'+(s.r||0),dealer:null,cur:null,phase:'loto',mine:false,trumpCard:null,deckN:0,
+  ids:[0,1,2,3].map(p=>{const u=LOT.t&&LOT.t.seats[p];if(u){const pr=typeof PC!=='undefined'&&PC.get(u);return{n:u===ME.id?ME.name:(pr&&pr.name)||'მოთამაშე',h:pr&&pr.hue,k:u,lk:(LOT.looks&&LOT.looks[u])||(pr&&pr.look)||null}}const b=LOTBOT[p]||LOTBOT[1];return{n:b.n,h:b.h,k:'lb'+p,cast:b.cast}}),
+  extra:(L,M,rel)=>lotoTable(sc,L,M,{drawn:D,rel,caller:2,spect:me<0,tix:lotTix(s).filter(t=>t.p!==me).map(t=>({p:t.p,g:t.g,has:v=>Ds.has(v),left:lotoLeft(t.g,v=>Ds.has(v),s.mode||'row')}))})})};
 
 /* durak: the pairs on the table in two rows of three, the deck with its trump by the table's left side, the discard on the right */
 G3U.durak=sc=>{const G=DK,V={base:0,act:'dkc',hand:G.hands[0],legal:G.cur===0?G.legal(0):[],counts:[0,1,2,3].map(p=>G.hands[p].length),taken:[0,0,0,0],trick:[],win:null,deal:'dk'+G.dealN,dealer:G.np===2?2:1,cur:G.cur,phase:'play',mine:false,
@@ -590,7 +648,7 @@ G3U.egg=sc=>{const G=EG,L=[],M=[],c=G.ctx,duel=G.phase!=='pick',k=duel&&G.phase=
 /* ---------- domino ----------
    a round table with the other three sitting at it: the partner across, the two opponents on either side, toward the far side so a phone held upright sees them.
    each stands their tiles on the table in front of them; the line of play runs across the middle */
-const DL=1.12,DW=.56,DT=.19,DB=4.2,DRT=6.9,DSR=9.45,DJA=.76;
+const DL=1.12,DW=.56,DT=.19,DB=4.2,DRT=6.9,DSR=9.45,DJA=1.45;
 const DSP=[[0,DSR],[-DSR*Math.sin(DJA),-DSR*Math.cos(DJA)],[0,-DSR],[DSR*Math.sin(DJA),-DSR*Math.cos(DJA)]],DYAW=DSP.map(([x,z])=>Math.atan2(-x,-z));
 const dSeatQ=(r,lean)=>qt.mul(qt.ax(0,1,0,DYAW[r]),qt.ax(1,0,0,lean||0));
 const dLocal=(r,lean,p)=>{const v=qt.rot(dSeatQ(r,lean),p);return[DSP[r][0]+v[0],v[1],DSP[r][1]+v[2]]};
@@ -609,7 +667,8 @@ G3B.domino=()=>{const sc=g3Scene({cam:{yaw:0,pitch:.56,pp:.1,fov:.92,tgt:[0,0,-.
   fitw:[[-4.7,0,-3.6],[4.7,0,-3.6],[-4.7,0,3.4],[4.7,0,3.4],[-2.7,.9,5.7],[2.7,.9,5.7],[DSP[1][0]-1.4,5.3,DSP[1][1]],[DSP[3][0]+1.4,5.3,DSP[3][1]]],extraW:[[-1.6,6.1,-9.3],[1.6,6.1,-9.3]],dy:0,dp:0,dz:1,my:.96,mxp:1},shR:11,shC:[0,0,-1],spot:[0,0,9.5,.6],yawMax:.4,bg:[.03,.022,.02],
   light:{d:v3.norm([-.22,1,.4]),c:[2.35,2.08,1.72],sky:[.26,.22,.2],gnd:[.12,.08,.06],exp:1.0},
   anchors:[['.seat.top',[0,6.35,-DSR*.97]],['.seat.left',[DSP[1][0]*.97,6.25,DSP[1][1]*.97]],['.seat.right',[DSP[3][0]*.97,6.25,DSP[3][1]*.97]]]});
- mkModel(sc);roundRoom(sc,DRT,g3T('dfelt',()=>g3Tex(feltCv({a:'#245a73',b:'#0f2a38',ring:1}))),{room:false});envYardS(sc);sc.people=seatOf;
+ mkModel(sc);sc.cross=1;sc.rimR=DRT*1.086;if(dmRoom()==='lounge'){luxTable(sc,DRT);envLounge(sc)}else{roundRoom(sc,DRT,g3T('dfelt',()=>g3Tex(feltCv({a:'#245a73',b:'#0f2a38',ring:1}))),{room:false});envYardS(sc)}sc.people=seatOf;
+ sc.look={on:gLookSet()!=='off',y:0,p:0,uy:0,up:0,gy:0,gp:0,my:.5,mp:.3,t:0,hold:4500};
  const atl=g3T('domino',()=>g3Tex(dominoCv())),iv=g3Mat({c:'#F2EAD8',sh:90,sp:.55,gl:.55});
  const tile=[[gBox(DL,DT,DW,.04,3,null,[0]),g3Mat({t:atl,vary:true,sh:90,sp:.55,gl:.55})],[gBox(DL,DT,DW,.04,3,null,[1]),g3Mat({t:atl,uv:dmUV(28),sh:80,sp:.5,gl:.5})],[gBox(DL,DT,DW,.04,3,null,[2,3,4,5]),iv]];
  g3Model(sc,'tile',tile,[DL/2,DT/2,DW/2]).land=(o,sc)=>{snd('tile');if(o.p[1]<.2)g3Ripple(sc,[o.p[0],.01,o.p[2]],1.3)};
@@ -641,6 +700,9 @@ G3U.domino=sc=>dmScene(sc,DM,'dm',r=>({n:DMN[r].n,h:DMN[r].h,k:'d:'+DMN[r].n,cas
 /* the table with friends: the same scene, turned so that I sit at the near edge */
 G3U.dmo=sc=>{if(typeof DMO==='undefined'||!DMO.st||!DMO.st.phase)return;const base=DMO.seat>=0?DMO.seat:0;dmScene(sc,dmoView(),'dmo',r=>dmoWho((r+base)%4))};
 function dmScene(sc,G,act,who){sc.dG=G;sc.dA=act;const L=[],M=[],{out,slots}=dmLayout(G),mine=G.phase==='play'&&G.cur===0,ok=new Set(mine?G.moves(0).map(m=>m.i):[]);
+ {const SE0=typeof dmSeats==='function'?dmSeats(G.np||4):[0,1,2,3],side=SE0.includes(1)||SE0.includes(3),asp=G3D.asp||.5,Lk=sc.look;
+  if(Lk){Lk.on=gLookSet()!=='off';const a=side?g3TurnTo(sc,[DSP[1][0]*.85,0,DSP[1][1]*.85]):0;Lk.my=side&&a>.5?Math.min(1.1,a+.1):.5;if(side&&a>.6&&asp<1.1)jkLookHint();
+   const cur=G.phase==='play'&&G.cur!=null&&G.cur>0?G.cur:null,gy=Lk.on&&cur?(cur===1?.07:cur===3?-.07:0):0,gp=Lk.on&&cur===2?.03:0;if(gy!==Lk.gy||gp!==Lk.gp){Lk.gy=gy;Lk.gp=gp;g3Need()}}}
  const deal=G.round!==sc.round;if(deal)sc.round=G.round;
  const flat=(t,x,z,yaw)=>({p:[x,DT/2,z],q:qt.ax(0,1,0,yaw),uv:dmUV(dmIdx(t[0],t[1]))});
  out.forEach(o=>{const f=flat(o.t,o.x,o.z,o.yaw),key='t'+dmIdx(o.t[0],o.t[1]),d=Object.assign({k:key,m:'tile'},f);
@@ -747,13 +809,14 @@ function envRoom(sc){envSet(sc,'room');const rug=g3Mat({t:g3T('rug',()=>g3Tex(ru
  if(sc.cross){const rim=(a,y=.16)=>[5.92*Math.cos(a),y,5.92*Math.sin(a)];jugAt(sc,rim(-.79),.8);wineGlassAt(sc,rim(.7));wineGlassAt(sc,rim(.9));plateAt(sc,rim(-2.36),.75);breadAt(sc,rim(-2.36,.22),.7);hornAt(sc,rim(2.36),2.2,.62)}
  else{jugAt(sc,[4.55,0,1.25],.8);wineGlassAt(sc,[3.75,0,2.15]);wineGlassAt(sc,[4.85,0,.2]);plateAt(sc,[-4.35,0,1.05],1);breadAt(sc,[-4.35,.06,1.05],.9);hornAt(sc,[-4.6,0,2.35],2.2,.62)}envDone(sc)}
 /* ---------- the night lounge ---------- */
+const dmRoom=()=>{const v=typeof store!=='undefined'?store.get('dmroom','yard'):'yard';return v==='lounge'?'lounge':'yard'};
 const jkRoom=()=>{const v=typeof store!=='undefined'?store.get('jkroom','lounge'):'lounge';return v==='room'?'room':'lounge'};
 const gLookSet=()=>{const v=typeof store!=='undefined'?store.get('glook','auto'):'auto';return['auto','tilt','off'].includes(v)?v:'auto'};
 const goldM=()=>g3Mat({c:'#E0AE48',sh:150,sp:1.05,gl:.9}),blackM=()=>g3Mat({c:'#121318',sh:120,sp:.7,gl:.5});
 /* the table: navy felt, a rim of black lacquer with two fine gold lines, a black pedestal */
-function luxTable(sc){P3(sc,gDisc(5.45,96),g3Mat({t:g3T('luxfelt',()=>g3Tex(luxFeltCv())),sh:8,sp:.06,gl:0}),[0,0,0],null,false);
- P3(sc,gLathe([[5.4,-1.2],[5.42,-.02],[5.45,.02],[5.6,.1],[5.95,.16],[6.22,.1],[6.3,0],[6.25,-.16],[6.1,-.24],[5.8,-.3],[5.7,-1.2],[0,-1.2]],120,.6),g3Mat({c:'#15161D',sh:120,sp:.65,gl:.55}),[0,0,0]);
- P3(sc,gTorus(5.47,.04,120,6),goldM(),[0,.04,0],null,false);P3(sc,gTorus(6.28,.045,120,6),goldM(),[0,-.02,0],null,false);
+function luxTable(sc,R=5.45){const k=R/5.45;P3(sc,gDisc(R,96),g3Mat({t:g3T('luxfelt',()=>g3Tex(luxFeltCv())),sh:8,sp:.06,gl:0}),[0,0,0],null,false);
+ P3(sc,gLathe([[5.4,-1.2],[5.42,-.02],[5.45,.02],[5.6,.1],[5.95,.16],[6.22,.1],[6.3,0],[6.25,-.16],[6.1,-.24],[5.8,-.3],[5.7,-1.2],[0,-1.2]].map(([r,y])=>[r*k,y]),120,.6),g3Mat({c:'#15161D',sh:120,sp:.65,gl:.55}),[0,0,0]);
+ P3(sc,gTorus(5.47*k,.04,120,6),goldM(),[0,.04,0],null,false);P3(sc,gTorus(6.28*k,.045,120,6),goldM(),[0,-.02,0],null,false);
  P3(sc,gLathe([[0,-11],[3.2,-11],[3.3,-10.6],[1.1,-9.8],[.9,-6],[1.3,-2.2],[2.4,-1.4],[0,-1.3]],48),blackM(),[0,0,0])}
 /* a soft glow round a light, drawn after the room so it can fade at its edges */
 const glowTex=()=>g3T('glow',()=>g3Tex((()=>{const c=cvs(128,128),x=c.getContext('2d'),g=x.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,'rgba(255,255,255,.9)');g.addColorStop(.25,'rgba(255,255,255,.35)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,128,128);return c})()));
@@ -772,8 +835,8 @@ function monsteraAt(sc,p,k=1){P3(sc,gLathe([[0,0],[1.5,0],[1.9,3.6],[2.0,3.8],[0
 /* a little potted plant on the table */
 function potPlantAt(sc,p){P3(sc,gLathe([[0,0],[.42,0],[.55,.75],[.58,.8],[0,.8]],22),g3Mat({c:'#16171C',sh:90,sp:.5,gl:.4}),p);P3(sc,gTorus(.57,.03,22,5),goldM(),[p[0],p[1]+.8,p[2]],null,false);
  const leaf=g3Mat({t:g3T('monstera',()=>g3Tex(monsteraCv())),cut:true,two:true,sh:30,sp:.22,gl:.06,wrap:.35,rim:.4}),R=rng(71),LG=[];for(let i=0;i<6;i++){const a=i/6*Math.PI*2+R(),s=1.1+R()*.5,q=qt.mul(qt.ax(0,1,0,-a+Math.PI/2),qt.ax(1,0,0,-1.1+R()*.5)),b=[p[0]+Math.cos(a)*.2,p[1]+.8,p[2]+Math.sin(a)*.2];LG.push(gXf(gQuad(s,s),v3.add(b,qt.rot(q,[0,s*.42,0])),q))}P3(sc,gMerge(...LG),leaf,[0,0,0],null,false)}
-function envLounge(sc){envSet(sc,'lounge');const panel=g3Mat({t:g3T('luxpanel',()=>g3Tex(luxPanelCv(),{rep:true})),uv:[0,0,6,4],sh:40,sp:.15,gl:.1});
- P3(sc,gPlane(90,90,10,10),g3Mat({t:woodTex('walnut'),c:'#5A5560',sh:40,sp:.2,gl:.12}),[0,-11,0],null,false);
+function envLounge(sc,o={}){envSet(sc,'lounge');const panel=g3Mat({t:g3T('luxpanel',()=>g3Tex(luxPanelCv(),{rep:true})),uv:[0,0,6,4],sh:40,sp:.15,gl:.1}),floorM=g3Mat({t:woodTex('walnut'),c:'#5A5560',sh:40,sp:.2,gl:.12});
+ if(!o.board)P3(sc,gPlane(90,90,10,10),floorM,[0,-11,0],null,false);
  wallQ(sc,panel,[0,9,-20],60,40,0);wallQ(sc,panel,[-20,9,0],60,40,Math.PI/2);wallQ(sc,panel,[20,9,0],60,40,-Math.PI/2);
  /* the city behind the glass, at the back on the right and down the right wall */
  wallQ(sc,envMat(sc,'luxcity',d=>luxCityCv(d),{unlit:true}),[9.8,7.5,-19.8],20.4,22,0);wallQ(sc,envMat(sc,'luxcity2',d=>luxCityCv(d,317),{unlit:true}),[19.8,7.5,-5.5],27,22,-Math.PI/2);
@@ -782,9 +845,17 @@ function envLounge(sc){envSet(sc,'lounge');const panel=g3Mat({t:g3T('luxpanel',(
  /* the Georgian rug in a dark frame, behind the far chair */
  P3(sc,gBox(7.3,12.9,.3,.08,2),g3Mat({c:'#1B1511',sh:60,sp:.35,gl:.25}),[-2.6,8.2,-19.75],null,false);wallQ(sc,g3Mat({t:g3T('rug',()=>g3Tex(rugCv())),sh:4,sp:.02,gl:0}),[-2.6,8.2,-19.55],6.5,12.1,0);
  ringLampAt(sc,[8.8,11.8,-12]);globeLampAt(sc,[-9.8,11.4,-14]);monsteraAt(sc,[13.2,-11,-13.5],1.2);monsteraAt(sc,[-14.5,-11,-12.5],1.05);
+ /* a board game here (nardi, chess, checkers) stands on a long table: navy felt, a black lacquered edge with a gold line, the lantern and the mug at its far corners */
+ if(o.board){const felt=g3Mat({t:g3T('navyfelt',()=>g3Tex(feltCv({a:'#22407F',b:'#0B1936'}))),uv:[0,0,1/3,1/3],sh:8,sp:.06,gl:0}),edge=g3Mat({c:'#15161D',sh:120,sp:.65,gl:.55});
+  envTable(sc,{w:o.w||22,d:o.d||16,top:felt,edge,floor:floorM});const W=(o.w||22)/2,D=(o.d||16)/2;
+  for(const z of[-D+.02,D-.02])P3(sc,gBox(o.w||22,.05,.06,.02,1),goldM(),[0,.01,z],null,false);for(const x of[-W+.02,W-.02])P3(sc,gBox(.06,.05,o.d||16,.02,1),goldM(),[x,.01,0],null,false);
+  const T=[W-1.6,0,-D+1.7],brass=g3Mat({c:'#8A6428',sh:90,sp:.6,gl:.35});P3(sc,gBox(.66,.96,.66,.05,2),g3Mat({c:'#1E140C',e:'#6A3410',sh:120,sp:.9,gl:.6}),[T[0],.53,T[2]]);P3(sc,gEll(.12,.2,.12,[0,0,0],null,10),g3Mat({c:'#FFE7B0',e:'#FFC060',unlit:true}),[T[0],.5,T[2]],null,false);
+  P3(sc,gBox(.78,.08,.78,.03,1),brass,[T[0],1.06,T[2]]);P3(sc,gLathe([[0,0],[.3,0],[0,.32]],12),brass,[T[0],1.1,T[2]]);P3(sc,gBox(.78,.08,.78,.03,1),brass,[T[0],.04,T[2]]);haloAt(sc,[T[0],.6,T[2]+.55],2.4,'#FFB870');
+  const G=[-W+1.6,0,-D+1.8];P3(sc,gLathe([[0,0],[.44,0],[.47,.05],[.47,1.05],[.42,1.05],[.42,.12],[0,.12]],28),g3Mat({t:g3T('mug',()=>g3Tex(mugCv())),sh:110,sp:.7,gl:.45}),G,qt.ax(0,1,0,.4));
+  potPlantAt(sc,[W-1.4,0,D-1.6]);envDone(sc);return}
  /* on the table: the card box, a gold dish, a mug with the crown, a lantern and a little plant. At a table with a player at each hand
     (sc.cross) the sides are taken by their cards, so the things stand on the rim between the seats and the card box stays away */
- const X=sc.cross,rim=a=>[5.92*Math.cos(a),.16,5.92*Math.sin(a)],D=X?rim(2.36):[-4.2,0,2.55],G=X?rim(.79):[4.5,0,1.4],T=X?rim(-.79):[4.85,0,-.15],Pp=X?rim(-2.36):[-4.85,0,1.25],at=(B,dx,dy,dz)=>[B[0]+dx,B[1]+dy,B[2]+dz];
+ const X=sc.cross,RR=sc.rimR||5.92,rim=a=>[RR*Math.cos(a),.16,RR*Math.sin(a)],D=X?rim(2.36):[-4.2,0,2.55],G=X?rim(.79):[4.5,0,1.4],T=X?rim(-.79):[4.85,0,-.15],Pp=X?rim(-2.36):[-4.85,0,1.25],at=(B,dx,dy,dz)=>[B[0]+dx,B[1]+dy,B[2]+dz];
  if(!X){const box=g3Mat({c:'#14161C',sh:90,sp:.5,gl:.35});P3(sc,gBox(1.25,.42,1.7,.07,2),box,[-4.35,.21,-.5],qt.ax(0,1,0,.55));P3(sc,gPlane(1.12,1.56),g3Mat({t:g3T('cardbox',()=>g3Tex(cardBoxCv())),sh:60,sp:.4,gl:.3}),[-4.35,.425,-.5],qt.ax(0,1,0,.55),false)}
  P3(sc,gLathe([[0,0],[.5,0],[.64,.1],[.6,.13],[.46,.05],[0,.05]],32),g3Mat({c:'#16203A',sh:120,sp:.6,gl:.35}),D);P3(sc,gTorus(.62,.025,32,5),goldM(),at(D,0,.115,0),null,false);
  P3(sc,gLathe([[0,0],[.44,0],[.47,.05],[.47,1.05],[.42,1.05],[.42,.12],[0,.12]],28),g3Mat({t:g3T('mug',()=>g3Tex(mugCv())),sh:110,sp:.7,gl:.45}),G,qt.ax(0,1,0,-.35));P3(sc,gTorus(.25,.06,14,6),g3Mat({c:'#12203E',sh:110,sp:.7,gl:.45}),at(G,.48*Math.cos(.35),.55,.48*Math.sin(.35)),qt.mul(qt.ax(0,1,0,-.35),qt.ax(1,0,0,Math.PI/2)));
@@ -792,8 +863,8 @@ function envLounge(sc){envSet(sc,'lounge');const panel=g3Mat({t:g3T('luxpanel',(
  P3(sc,gMerge(...[[-.36,-.36],[.36,-.36],[-.36,.36],[.36,.36]].map(([dx,dz])=>gXf(gBox(.045,1.0,.045,.015,1),[dx,0,dz],qt.id()))),brass,at(T,0,.53,0));haloAt(sc,at(T,0,.6,.55),2.4,'#FFB870');
  potPlantAt(sc,Pp);envDone(sc)}
 /* a touch on the name of a player at the edge of the screen (out of the picture) turns the eyes to them for a while */
-document.addEventListener('click',e=>{const el=e.target.closest&&e.target.closest('.g3jt .seat.g3l,.g3jt .seat.g3r');const sc=G3D.sc;if(!el||!sc||!sc.look||!sc.look.on||!sc.cam.fixed||!sc.anchors)return;
- const an=sc.anchors.find(([sel])=>{try{return el.matches(sel)}catch(x){return false}});if(!an)return;const C=sc.cam.fixed(G3D.asp||.5),f=[C.tgt[0]-C.eye[0],C.tgt[2]-C.eye[2]],d=[an[1][0]-C.eye[0],an[1][2]-C.eye[2]];
+document.addEventListener('click',e=>{const el=e.target.closest&&e.target.closest('.g3jt .seat.g3l,.g3jt .seat.g3r');const sc=G3D.sc;if(!el||!sc||!sc.look||!sc.look.on||!sc.anchors||!(sc.cam.fixed||sc.camNow))return;
+ const an=sc.anchors.find(([sel])=>{try{return el.matches(sel)}catch(x){return false}});if(!an)return;const C=sc.cam.fixed?sc.cam.fixed(G3D.asp||.5):{eye:sc.camNow.eye,tgt:sc.cam.tgt},f=[C.tgt[0]-C.eye[0],C.tgt[2]-C.eye[2]],d=[an[1][0]-C.eye[0],an[1][2]-C.eye[2]];
  const L=sc.look,a=Math.atan2(f[1]*d[0]-f[0]*d[1],f[0]*d[0]+f[1]*d[1])*.92;
  e.stopPropagation();L.uy=clamp(a-L.gy,-L.my,L.my);L.up=0;L.t=performance.now();L.fast=L.t+900;g3Need();if(typeof snd==='function')snd('card',.3)},true);
 /* the first time the players sit out of the picture: how to look at them */
@@ -920,7 +991,7 @@ function envCity(sc,g){envSet(sc,'out');const T=GTBL[g]||GTBL.chess,top=g3Mat({t
  envTable(sc,Object.assign({top,edge,floor:g3Mat({t:g3T('tiles',()=>g3Tex(tilesCv(),{rep:true})),sh:10,sp:.05,gl:0})},T));
  wallQ(sc,envMat(sc,'city',cityCv,{unlit:true}),[0,7,-46],150,72);railAt(sc,[0,-11,-18],60,0,7);lampPostAt(sc,[-22,-11,-12]);lampPostAt(sc,[22,-11,-12]);(gNewYear()?colorLightsAt:stringLightsAt)(sc,[-22,11,-17],[22,11,-17]);
  teaGlassAt(sc,[T.cx+9.6,0,4.6]);teaGlassAt(sc,[T.cx+10.4,0,3.2]);wxSetup(sc,{w:52,h:32,y0:-11,z0:-30,z1:12});envDone(sc)}
-const GPLACE={court:{f:sc=>envCourt(sc),n:'ძველი თბილისის ეზო'},balcony:{f:sc=>envBalcony(sc),n:'ხის აივანი'},desk:{f:sc=>envDesk(sc),n:'მაგიდა წიგნებთან'},sea:{f:envSea,n:'ბათუმის ბულვარი'},valley:{f:envValley,n:'სიღნაღის აივანი'},city:{f:envCity,n:'მთაწმინდა'}};
+const GPLACE={court:{f:sc=>envCourt(sc),n:'ძველი თბილისის ეზო'},lounge:{f:sc=>envLounge(sc,{board:true}),n:'ღამის ლაუნჯი'},balcony:{f:sc=>envBalcony(sc),n:'ხის აივანი'},desk:{f:sc=>envDesk(sc),n:'მაგიდა წიგნებთან'},sea:{f:envSea,n:'ბათუმის ბულვარი'},valley:{f:envValley,n:'სიღნაღის აივანი'},city:{f:envCity,n:'მთაწმინდა'}};
 const GPDEF={nardi:'court',shashi:'balcony',chess:'desk'};
 /* which place a board stands in: a career game brings its own; otherwise the place picked in the menu (once it is open), or the usual one */
 function gPlaceOf(g){if(!GPDEF[g])return null;const G=GAME[g],c=G&&G.ctx;if(c&&c.place&&GPLACE[c.place])return c.place;const v=typeof store!=='undefined'?store.get('gplace:'+g,null):null;return v&&GPLACE[v]&&(typeof gPlaceOpen!=='function'||gPlaceOpen(v))?v:GPDEF[g]}

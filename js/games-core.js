@@ -25,7 +25,7 @@ function castSync(){for(const p of[1,2,3]){const c=castBy(TCAST[p]);if(!c)contin
   if(typeof DMN!=='undefined')DMN[p]={n:c.n,h:DMN[p]&&DMN[p].h||150,cast:c.id};
   if(typeof JK!=='undefined'&&JK.ids&&JK.ids[p]&&typeof JK.ids[p]==='object')JK.ids[p]={n:c.n,h:JK.ids[p].h,cast:c.id}}}
 /* the card games whose players are the cast; a saved game keeps its people */
-const CASTG=['joker','durak','bura','domino'];
+const CASTG=['joker','durak','bura','domino','loto'];
 function castResume(a){if(!Array.isArray(a)||a.length!==3||!a.every(castBy)||new Set(a).size!==3)return;a=castFreeIds(a);TCAST[1]=a[0];TCAST[2]=a[1];TCAST[3]=a[2];castSync()}
 /* the character picked for someone who has not chosen one: from who they are, the same on every phone */
 const castPool=fem=>fem==null?CASTI:CASTI.filter(c=>(c[0]==='f')===!!fem);
@@ -79,7 +79,8 @@ function gKids(a,b){let ac=a.firstChild,bc=b.firstChild;
  while(ac){const na=ac.nextSibling;if(!gKeep(ac))a.removeChild(ac);ac=na}}
 /* the same for a box whose contents are drawn again (the online tables) */
 function gPatch(el,h){if(!el.firstChild){el.innerHTML=h;return}const t=document.createElement('div');t.innerHTML=h;try{gKids(el,t)}catch(e){el.innerHTML=h}}
-function gShell(id,o){const P=gShellParts(o);return `<div class="view-pad game gx${P.w?' is3d':''}${P.w&&['joker','durak','bura'].includes(id)?' lux':''}" data-g="${id}">${P.html}</div>`}
+/* every table game wears the night lounge's look (navy glass, thin light borders, gold for what is mine), in 3D and flat alike */
+function gShell(id,o){const P=gShellParts(o);return `<div class="view-pad game gx lux${P.w?' is3d':''}" data-g="${id}">${P.html}</div>`}
 /* a player's plate. while it is their move a gold ring turns around the avatar; an opponent who is thinking shows three dots */
 const plThink='<span class="think" aria-label="ფიქრობს"><i></i><i></i><i></i></span>';
 const plCard=(c,s,turn,plx)=>{const k=c.clk,v=k?clkLeft(c,s):0;return `<div class="pl${s===c.side?' me':''}${turn?' turn':''}" data-side="${s}"><span class="plav${k?' pclk':''}"${k?` style="--ck:${clkFrac(c,v)}"`:''}>${avAny(c.avs[s],34)}</span><span class="pln"><b>${esc(c.names[s])}${turn&&!(s===c.side&&isPlayer(c))?plThink:''}</b><span class="muted">${plSub(c,s)}</span></span>${k?`<span class="gclk${turn&&k.n>=1&&!c.finished?' run':''}${v<3e4?' low':''}" data-clk="${s}" role="timer" aria-label="დარჩენილი დრო">${clkFmt(v)}</span>`:''}${plx?plx(s):''}</div>`};
@@ -276,11 +277,11 @@ const gCur=()=>S.page&&S.page.id==='jktable'?'joker':S.page&&S.page.id==='dmtabl
 A.gmenu=()=>{const id=gCur(),G=GAME[id],c=G&&G.ctx,sw=on=>`<i class="sw${on?' on':''}" aria-hidden="true"></i>`,rules=id==='joker'?JK_RULES:GRULES[id]||'';
  navMark('gmenu',()=>A.gmenu());
  sheet(head('თამაში')+`<div class="gmenu">
-  ${id==='loto'?`<button data-a="lotosay" aria-pressed="${lotoSayOn()}">${ic('mic')}<span>რიცხვების გახმოვანება</span>${sw(lotoSayOn())}</button>`:`<button data-a="g3tog" aria-pressed="${g3Want()}">${ic('cube')}<span>3D დაფა</span>${sw(g3Want())}</button>`}
+  ${id==='loto'?`<button data-a="lotosay" aria-pressed="${lotoSayOn()}">${ic('mic')}<span>რიცხვების გახმოვანება</span>${sw(lotoSayOn())}</button>`:''}${`<button data-a="g3tog" aria-pressed="${g3Want()}">${ic('cube')}<span>3D დაფა</span>${sw(g3Want())}</button>`}
   ${id==='joker'&&JK.lastT&&JK.phase==='play'?`<button data-a="jlast">${ic('cards')}<span>ბოლო ხელი</span><small class="gmv">ან შეეხე გროვას</small></button>`:''}${S.page&&S.page.id==='jktable'&&typeof JO!=='undefined'&&JO.lastT&&JO.st&&JO.st.phase==='play'?`<button data-a="jkolast">${ic('cards')}<span>ბოლო ხელი</span><small class="gmv">ან შეეხე გროვას</small></button>`:''}
   <button data-a="gfull" aria-pressed="${!!document.fullscreenElement}">${ic('full')}<span>სრული ეკრანი</span>${sw(!!document.fullscreenElement)}</button>
   <button data-a="gsnd" aria-pressed="${GS.on}">${ic('mic')}<span>ხმა და ვიბრაცია</span>${sw(GS.on)}</button>
-  ${g3Want()&&id!=="loto"?`<button data-a="genvm">${ic('tree')}<span>მაგიდა და გარემო</span><small class="gmv">გრაფიკა, სტილი, ამინდი…</small></button>`:''}
+  ${g3Want()?`<button data-a="genvm">${ic('tree')}<span>მაგიდა და გარემო</span><small class="gmv">გრაფიკა, სტილი, ამინდი…</small></button>`:''}
   ${c&&c.mode==='bot'&&!S.page?`<button data-a="gbot">${ic('user')}<span>ბოტის დონე</span><small class="gmv">${BLV[bLvl(id)].n}</small></button>`:''}
   ${castEdit(id)?`<button data-a="gcast">${ic('users')}<span>მოთამაშეები</span><small class="gmv">${castSeatsOf(id).map(p=>esc(castBy(TCAST[p]).n)).join(', ')}</small></button>`:''}
   ${['joker','durak','bura'].includes(id)?`<button data-a="gc4" aria-pressed="${c4On()}">${ic('cards')}<span>ოთხფერიანი დასტა</span>${sw(c4On())}</button>`:''}
@@ -306,7 +307,8 @@ A.genvm=()=>{const id=gCur(),sw=on=>`<i class="sw${on?' on':''}" aria-hidden="tr
   ${g3Want()?`<button data-a="gqual">${ic('gear')}<span>გრაფიკა</span><small class="gmv">${GQN[gqSet()]}${gqSet()==='auto'?', '+GQN[gqLevel()].toLowerCase():''}</small></button>`:''}
   ${g3Want()&&GSTY[id]?`<button data-a="gsty">${ic('star')}<span>სტილი</span><small class="gmv">${GSTY[id].find(x=>x[0]===gStyle(id))[1]}</small></button>`:''}
   ${g3Want()?`<button data-a="genv">${ic('clock')}<span>დღე თუ საღამო</span><small class="gmv">${GEN[genvSet()]}</small></button>`:''}
-  ${g3Want()&&['joker','durak','bura'].includes(id)?`<button data-a="jkroom">${ic('home')}<span>ოთახი</span><small class="gmv">${JKROOMN[jkRoomSet()]}</small></button><button data-a="gcam">${ic('eye')}<span>კამერა</span><small class="gmv">${GLOOKN[gLookSet2()]}</small></button>`:''}
+  ${g3Want()&&['joker','durak','bura','loto'].includes(id)?`<button data-a="jkroom">${ic('home')}<span>ოთახი</span><small class="gmv">${JKROOMN[jkRoomSet()]}</small></button><button data-a="gcam">${ic('eye')}<span>კამერა</span><small class="gmv">${GLOOKN[gLookSet2()]}</small></button>`:''}
+  ${g3Want()&&(id==='domino'||S.page&&S.page.id==='dmtable')?`<button data-a="dmroom">${ic('home')}<span>ოთახი</span><small class="gmv">${DMROOMN[dmRoomSet()]}</small></button><button data-a="gcam">${ic('eye')}<span>კამერა</span><small class="gmv">${GLOOKN[gLookSet2()]}</small></button>`:''}
   ${g3Want()&&['chess','shashi','nardi'].includes(id)?`<button data-a="gppl" aria-pressed="${gPplOn()}">${ic('users')}<span>მეტოქე მაგიდასთან</span>${sw(gPplOn())}</button>`:''}
   ${g3Want()&&CASTP.includes(id)?`<button data-a="gcaststy2" aria-pressed="${store.get('gcast','pic')!=='3d'}">${ic('user')}<span>ნახატი პერსონაჟები</span>${sw(store.get('gcast','pic')!=='3d')}</button>`:''}
   ${g3Want()&&['chess','shashi','nardi','domino'].includes(id)?`<button data-a="ghands" aria-pressed="${gHandsOn()}">${ic('user')}<span>ჩემი ხელები</span>${sw(gHandsOn())}</button>`:''}
@@ -582,7 +584,7 @@ A.gcastpick=t=>{const c=t.dataset.c;if(!castBy(c))return;const cur=TCAST[CASTSEL
 A.gcastroll=()=>{const pool=shuffle(CAST_FREE.slice());TCAST[1]=pool[0];TCAST[2]=pool[1];TCAST[3]=pool[2];castChanged(false)};
 A.gcastr=()=>{const on=!castRandOn();store.set('jkcastr',on);if(!on)store.set('jkcast',TCAST.slice(1));castRedrawSheet()};
 /* the games with people at the table, and the switch between the drawn characters and the sculpted figures (the table menu has it too) */
-const CASTP=['joker','durak','bura','domino','chess','shashi','nardi','egg'];
+const CASTP=['joker','durak','bura','domino','loto','chess','shashi','nardi','egg'];
 A.gcaststy2=t=>{const on=store.get('gcast','pic')==='3d';store.set('gcast',on?'pic':'3d');gSwFlip(t,on);gRedraw();if(typeof g3Need==='function')g3Need()};
 A.gcaststy=t=>{store.set('gcast',t.dataset.v==='3d'?'3d':'pic');castRedrawSheet();gRedraw();if(typeof g3Need==='function')g3Need()};
 const JKROOMN={lounge:'ღამის ლაუნჯი',room:'ძველი ოთახი ხალიჩით'},GLOOKN={auto:'თვალებით',tilt:'თვალებით და ტელეფონის მოტრიალებით',off:'გაჩერებული'};
@@ -590,6 +592,11 @@ const jkRoomSet=()=>store.get('jkroom','lounge')==='room'?'room':'lounge';
 const gLookSet2=()=>{const v=store.get('glook','auto');return GLOOKN[v]?v:'auto'};
 A.jkroom=()=>{const cur=jkRoomSet();sheet(head('ოთახი')+`<div class="gmenu">${Object.keys(JKROOMN).map(k=>`<button data-a="jkroomset" data-v="${k}"${k===cur?' aria-pressed="true"':''}>${ic(k===cur?'check':'home')}<span><b>${JKROOMN[k]}</b><br><small class="muted">${{lounge:'მუქი ლურჯი მაგიდა ოქროსფრით, მინის კედლის მიღმა ღამის ქალაქი',room:'მწვანე მაუდი, კედელზე ქართული ხალიჩა'}[k]}</small></span></button>`).join('')}</div>`,'short')};
 A.jkroomset=t=>{store.set('jkroom',t.dataset.v==='room'?'room':'lounge');closeSheet();gRedraw()};
+/* the domino table's room: the yard as it always was, or the night lounge of the card table */
+const DMROOMN={yard:'ეზო',lounge:'ღამის ლაუნჯი'};
+const dmRoomSet=()=>store.get('dmroom','yard')==='lounge'?'lounge':'yard';
+A.dmroom=()=>{const cur=dmRoomSet();sheet(head('ოთახი')+`<div class="gmenu">${Object.keys(DMROOMN).map(k=>`<button data-a="dmroomset" data-v="${k}"${k===cur?' aria-pressed="true"':''}>${ic(k===cur?'check':'home')}<span><b>${DMROOMN[k]}</b><br><small class="muted">${{yard:'ეზოს ფიცრები, ფირუზისფერი მაუდი',lounge:'მუქი ლურჯი მაგიდა ოქროსფრით, მინის კედლის მიღმა ღამის ქალაქი'}[k]}</small></span></button>`).join('')}</div>`,'short')};
+A.dmroomset=t=>{store.set('dmroom',t.dataset.v==='lounge'?'lounge':'yard');closeSheet();gRedraw()};
 A.gcam=()=>{const cur=gLookSet2();sheet(head('კამერა')+`<div class="gmenu">${Object.keys(GLOOKN).map(k=>`<button data-a="glookset" data-v="${k}"${k===cur?' aria-pressed="true"':''}>${ic(k===cur?'check':'eye')}<span><b>${GLOOKN[k]}</b><br><small class="muted">${{auto:'ვისი სვლაცაა, იქით გაიხედავ. თითის გასმით მაგიდის გარშემო მიმოიხედავ',tilt:'იგივე, და ტელეფონს საითაც მიატრიალებ, იქით გაიხედავ, როგორც თავის მიბრუნებით',off:'კადრი არ მოძრაობს'}[k]}</small></span></button>`).join('')}</div>`,'short')};
 A.glookset=async t=>{const v=t.dataset.v;if(!GLOOKN[v])return;
  if(v==='tilt'){const D=window.DeviceOrientationEvent;if(!D){toast('ამ მოწყობილობას დახრის სენსორი არ აქვს');return}if(typeof D.requestPermission==='function'){try{if(await D.requestPermission()!=='granted'){toast('დახრაზე წვდომა არ მოგვცა');return}}catch(e){toast('დახრაზე წვდომა ვერ მივიღეთ');return}}}
