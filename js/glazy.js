@@ -3,7 +3,7 @@
    What everyone needs stays in the first load: the game list and lobby presence (online friends, challenges), game messages
    in chats, cups. The files come in their old order, one after another, from the same version as the page */
 const GLZ={files:['games-engines','domino','cards2','games-modes','loto','egg','joker-online','joker-more','domino-online','gvoice','games-side','corr','gstudy','glive','gquest','ghub','casino','cs-slot','cs-table','cs-fast','gaccess','glock'],p:null,ready:false,adm:null};
-const GLZ_PG=['admin','aviator','bj','career','corrs','dmtable','gkind','jktable','lotable','mines','plinko','replay','roulette','slot','fleece','batumi'];
+const GLZ_PG=['admin','aviator','bj','career','corrs','dmtable','gkind','jktable','jklobby','jktop','lotable','mines','plinko','replay','roulette','slot','fleece','batumi'];
 function glScripts(files){const v=(($('script[src*="/js/core.js"]')||{}).src||'').split('v=')[1]||'';
  return new Promise((res,rej)=>{let left=files.length,bad=false;
   for(const f of files){const s=document.createElement('script');s.src=`/js/${f}.js${v?'?v='+v:''}`;s.async=false;

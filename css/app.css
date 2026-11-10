@@ -3688,3 +3688,22 @@ html.eco .lmp,html.eco .lm-on,html.eco .lm-empty,html.eco .lm-modes{-webkit-back
 .gx:not(.is3d) .hand .card:not(:disabled){translate:0 calc(var(--d) * var(--d) * 1.1px - 10px)}
 .gx:not(.is3d) .hand:has(.card:not(:disabled)) .card:disabled{filter:brightness(.62) saturate(.7)}
 .gx .jt .card.fc::after,.gx .hand .card.fc::after{display:none}
+/* ---------- joker, stage 4: the lobby, the rating, the public switch ---------- */
+.jklob .jlsec{margin-bottom:18px}
+.jklob .jlsec h3{margin:0 0 8px;font-size:16px}
+.jklob .jkmodes{grid-template-columns:repeat(3,minmax(0,1fr))}
+.jklob .jkmodes .jkmode[data-m="nines"]{grid-column:auto}
+.jlrow{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;margin-bottom:8px;border-radius:14px;background:var(--card,rgb(255 255 255/.05));border:1px solid var(--line,rgb(255 255 255/.1));color:inherit;text-align:left}
+.jlrow .jlav{display:flex;flex:none}.jlrow .jlav>*{margin-left:-8px;box-shadow:0 0 0 2px var(--bg,#111)}.jlrow .jlav>*:first-child{margin-left:0}
+.jlrow .jltx{flex:1;min-width:0;display:flex;flex-direction:column}.jlrow .jltx small{opacity:.7;font-size:12px}
+.jlrow>svg:last-child{width:18px;height:18px;opacity:.6;flex:none}
+.jtop{list-style:none;margin:12px 0;padding:0}
+.jtop li{display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid var(--line,rgb(255 255 255/.08))}
+.jtop li.me{background:rgb(77 141 255/.12);border-radius:10px}
+.jtop .jtn{width:26px;text-align:center;font-weight:800;opacity:.75}.jtop li:nth-child(-n+3) .jtn{color:#E0A21C;opacity:1}
+.jtop .jtx{flex:1;min-width:0;display:flex;flex-direction:column}.jtop .jtx small{opacity:.65;font-size:12px}
+.jtop em{font-style:normal;font-weight:800;font-variant-numeric:tabular-nums}
+.jkpub{display:flex;align-items:center;gap:8px;width:100%;margin:10px 0 0;padding:9px 12px;border-radius:12px;background:rgb(255 255 255/.06);border:1px dashed rgb(255 255 255/.22);color:inherit;text-align:left;font-size:13px}
+.jkpub[aria-pressed="true"]{border-style:solid;border-color:rgb(110 225 150/.55);background:rgb(46 160 90/.16)}
+.jkpub svg{width:16px;height:16px;flex:none}
+.jklob .jkmode b{font-size:15px;white-space:nowrap}.jklob .jkmode span{font-size:11.5px}

@@ -29,6 +29,9 @@ for(let g=0;g<360;g++){const len=LEN[g%3],lv=[1+g%5,1+(g+1)%5,1+(g+2)%5,1+(g+3)%
   const L=R('JSON.stringify(jLast(JK.hist))'),{hand}=JSON.parse(L);hands++;
   ok(hand.t.reduce((a,b)=>a+b,0)===n,'all tricks taken');const sec=R(`jSec('${len}',${h})`),kh=len==='nines'||sec%2?500:200;
   hand.p.forEach((x,p)=>ok(x===ptsRef(hand.b[p],hand.t[p],n,kh),'points '+JSON.stringify(hand)+' kh'+kh))}
+  /* every premium row checked against the rule: whoever made every bid of a section gets their best hand there, the others lose theirs */
+ {const H=R('JSON.stringify(JK.hist)'),hist=JSON.parse(H);hist.forEach((r,i)=>{if(!r.pr)return;const rows=hist.filter(x=>!x.pr&&x.s===r.s),all=[0,1,2,3].map(p=>rows.every(x=>x.b[p]===x.t[p])),best=[0,1,2,3].map(p=>Math.max(0,...rows.map(x=>x.p[p]))),any=all.some(Boolean);
+  ok(JSON.stringify(r.p)===JSON.stringify([0,1,2,3].map(p=>all[p]?best[p]:any?-best[p]:0)),'premium '+JSON.stringify(r))})}
  ok(R('JK.phase')==='over','the game ends after its last hand ('+len+')');const sc=R('JK.score.slice()');const sum=R('JK.hist.reduce((a,r)=>a.map((x,i)=>x+r.p[i]),[0,0,0,0])');ok(JSON.stringify(sc)===JSON.stringify(sum),'score is the sum of the sheet');
  const mx=Math.max(...sc);sc.forEach((x,p)=>{lvGames[lv[p]]++;lvPts[lv[p]]+=x;if(x===mx)lvWins[lv[p]]++});games++}
 console.log(`${games} games, ${hands} hands, ${tricks} tricks`);
