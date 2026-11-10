@@ -3585,3 +3585,85 @@ html.eco .lmp,html.eco .lm-on,html.eco .lm-empty,html.eco .lm-modes{-webkit-back
 .appdl-steps{margin:8px 0 0;padding-left:20px;display:grid;gap:7px;font-size:14px;line-height:1.45}
 .lsh-app{margin:10px 0 0}
 .linkbtn{display:inline;padding:0;background:none;border:0;color:var(--wine);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
+/* ---------- joker, stage 1: one info card, bid/taken badges, the bid and trump pads ---------- */
+.gx .ginfo.jinfo2{flex-wrap:nowrap;align-items:flex-start}
+.gx .ginfo.jinfo2>.jhc{display:inline-flex;align-items:center;gap:9px;height:auto;padding:4px 12px 4px 4px;border-radius:13px;background:linear-gradient(180deg,rgb(22 34 66/.84),rgb(10 16 34/.86));border:1px solid rgb(150 175 255/.22);box-shadow:0 0 0 1.5px rgb(255 214 107/.42),0 6px 16px rgb(0 0 0/.35);max-width:min(62vw,240px)}
+.gx .jhc .tsu{display:grid;place-items:center;flex:none;width:34px;height:44px;border-radius:7px;background:linear-gradient(180deg,#FFFFFF,#F1ECE2);box-shadow:inset 0 0 0 1px rgb(0 0 0/.12),0 3px 8px rgb(0 0 0/.35);font-style:normal}
+.gx .jhc .tsu svg{width:25px;height:25px}
+.gx .jhc .tsu .tq{font-size:20px;font-weight:800;line-height:1;color:#8A93AE}
+.gx .jhl{display:flex;flex-direction:column;min-width:0;line-height:1.22}
+.gx .jhl>b{font-size:14.5px;font-weight:800;color:#F4F6FF}
+.gx .jhl>small{font-size:11px;font-weight:600;color:#B9C4E6;white-space:nowrap}
+.gx .jhl>.jhb{font-style:normal;font-size:11px;font-weight:700;color:#DDE5FF;white-space:nowrap}
+.gx .jhl>.jhb b{font-weight:800}.gx .jhl>.jhb.over b{color:#FF8A80}.gx .jhl>.jhb.under b{color:#8CC4FF}
+.gx .ghud.top:has(.jsm.strip) .ginfo.jinfo2{padding-right:0}
+.gbig .gx .jhc .tsu{width:40px;height:52px}.gbig .gx .jhc .tsu svg{width:30px;height:30px}.gbig .gx .jhl>b{font-size:17px}.gbig .gx .jhl>small,.gbig .gx .jhl>.jhb{font-size:12.5px}
+/* taken / said, big enough to read from across the table: green when it is exactly made, red when over */
+.gx .bt.jtb{display:inline-flex;align-items:baseline;justify-content:center;gap:0;min-width:34px;padding:1px 8px;border-radius:999px;background:rgb(255 255 255/.1);border:1px solid rgb(255 255 255/.16);color:#E6ECFF;font-size:13px;font-weight:800;letter-spacing:0;font-variant-numeric:tabular-nums;line-height:1.35}
+.gx .jt .seat .bt.jtb,.gx .jme .bt.jtb{font-size:13px;color:#E6ECFF;letter-spacing:0;padding:1px 8px;background:rgb(255 255 255/.1)}
+.gx .seat .bt.jtb b,.gx .bt.jtb b{grid-column:auto;max-width:none;overflow:visible;font-size:inherit;color:inherit;font-weight:800;line-height:inherit}
+.gx .bt.jtb i{font-style:normal;font-weight:600;opacity:.55;margin:0 2px}
+.gx .bt.jtb em{font-style:normal;margin-left:3px}
+.gx .bt.jtb.z{font-size:11.5px;font-weight:700}
+.gx .jt .seat .bt.jtb.ok,.gx .jme .bt.jtb.ok,.gx .bt.jtb.ok{background:rgb(46 160 90/.32);border-color:rgb(110 225 150/.55);color:#C9F7DA}
+.gx .jt .seat .bt.jtb.over,.gx .jme .bt.jtb.over,.gx .bt.jtb.over{background:rgb(190 45 45/.34);border-color:rgb(255 120 110/.55);color:#FFD6D0}
+.gx .jt .seat .bt.jtb.wait,.gx .bt.jtb.wait{opacity:.6}
+/* the bid pad */
+.gx .jbp{display:grid;grid-template-columns:repeat(var(--c,5),minmax(0,1fr));gap:7px;width:100%;max-width:min(100%,430px);align-self:center}
+.gx .jbp button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:0;height:52px;padding:0;border-radius:14px;color:#EAF0FF;background:linear-gradient(180deg,rgb(30 46 86/.94),rgb(12 19 42/.95));border:1px solid rgb(150 175 255/.26);box-shadow:inset 0 1px 0 rgb(255 255 255/.09),0 6px 14px rgb(0 0 0/.3);font-variant-numeric:tabular-nums;transition:transform .12s}
+.gx .jbp button b{font-size:21px;font-weight:800;line-height:1}
+.gx .jbp button small{font-size:10.5px;font-weight:700;opacity:.82;line-height:1;white-space:nowrap}
+.gx .jbp button.hint{border-color:#3D86FF;background:linear-gradient(180deg,#2457B8,#173E8A);box-shadow:0 0 0 1px #3D86FF,0 0 20px rgb(61 134 255/.5),inset 0 1px 0 rgb(255 255 255/.15)}
+.gx .jbp button:disabled{opacity:1;background:rgb(60 14 14/.35);border:1px dashed rgb(255 140 130/.5);box-shadow:none;color:rgb(255 200 190/.8)}
+.gx .jbp button:disabled b{text-decoration:line-through;text-decoration-thickness:2px}
+.gx .jbp button:disabled small{font-size:9.5px}
+.gx .jbp button:not(:disabled):hover{border-color:#4D8DFF}
+.gx .jbp button:not(:disabled):active{transform:scale(.94)}
+@media (max-width:360px){.gx .jbp{gap:5px}.gx .jbp button{height:48px}.gx .jbp button b{font-size:19px}}
+/* the trump pad: four suits with their names, no trump under them */
+.gx .jtp{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;width:100%;max-width:min(100%,430px);align-self:center}
+.gx .jtp button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;height:68px;padding:0;border-radius:14px;background:linear-gradient(180deg,#FFFFFF,#EDE6D8);border:1px solid rgb(0 0 0/.12);box-shadow:inset 0 -2px 0 rgb(0 0 0/.08),0 6px 14px rgb(0 0 0/.38);color:#2A2320;transition:transform .12s}
+.gx .jtp button i{display:block;width:30px;height:30px}.gx .jtp button i svg{width:100%;height:100%}
+.gx .jtp button span{font-size:12.5px;font-weight:800}
+.gx .jtp button.hint{box-shadow:0 0 0 2.5px #3D86FF,0 0 22px rgb(61 134 255/.6)}
+.gx .jtp .jtp0{grid-column:1/-1;height:44px;flex-direction:row;background:linear-gradient(180deg,rgb(30 46 86/.94),rgb(12 19 42/.95));border:1px solid rgb(150 175 255/.26);color:#EAF0FF;font-size:14px;font-weight:800;box-shadow:0 6px 14px rgb(0 0 0/.3)}
+.gx .jtp .jtp0.hint{box-shadow:0 0 0 2px #3D86FF,0 0 20px rgb(61 134 255/.5)}
+.gx .jtp button:active{transform:scale(.95)}
+/* the look hint: small, under the top bar, not over the table */
+.jklh{top:calc(env(safe-area-inset-top,0px) + 62px);transform:translateX(-50%);padding:5px 6px 5px 12px;border-radius:13px;font-size:12px;max-width:min(calc(100vw - 32px),340px)}
+.jklh>span svg{width:15px;height:15px}.jklhx{width:26px;height:26px}
+/* ---------- joker, stage 2: the whole game on the sheet, the podium, the sweep ---------- */
+.jnote .jn-sec{height:calc(var(--c)*1.35);align-items:end}
+.jnote .jn-sec .jn-st{grid-column:2/-1;padding-left:6px;font-size:15px;font-style:italic;color:rgb(31 60 152/.72);letter-spacing:.02em;white-space:nowrap}
+.jnote .jn-fut .jn-m{font-family:var(--f-body);font-size:13px;font-weight:600;color:rgb(31 60 152/.32)}
+.jnote .jn-fut.cur{background:linear-gradient(90deg,rgb(255 214 107/.42),rgb(255 214 107/.18));box-shadow:inset 3px 0 0 #E0A21C}
+.jnote .jn-fut.cur .jn-m{color:#9A6A08;font-weight:800}
+.jnote .jn-pr .jn-c.pos>i:first-child{margin-left:2px}
+.jnote .jn-pr .jn-c.pos::before{content:"";position:absolute;left:50%;top:50%;width:min(92%,64px);height:calc(var(--c)*1.55);border:2px solid #C9871A;border-radius:50%;transform:translate(-50%,-50%) rotate(-6deg);opacity:.85}
+.jnote .jn-c.kh::after{background:#D3122E;opacity:.9;height:2.5px}
+.jnote .jn-c.mk sup{color:#1C7A3A;opacity:.85}
+.jnote .jn-star{font-style:normal;color:#C9871A;font-size:.8em;margin-left:3px;vertical-align:.15em}
+/* the podium at the end of the game */
+.jpod{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:8px;width:100%;max-width:340px;margin:44px auto 0}
+.jpd{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px 0;border-radius:14px 14px 0 0;background:linear-gradient(180deg,rgb(40 58 110/.9),rgb(16 24 50/.95));border:1px solid rgb(150 175 255/.22);border-bottom:0;min-width:0}
+.jpd.r1{min-height:156px;background:linear-gradient(180deg,rgb(120 86 20/.95),rgb(54 36 8/.96));border-color:rgb(242 196 106/.6);box-shadow:0 0 26px rgb(242 196 106/.25)}
+.jpd.r2{min-height:128px}.jpd.r3{min-height:110px}
+.jpd .jpa{position:relative;display:block;margin-top:-30px}
+.jpd .jpa .av{box-shadow:0 0 0 2px #fff,0 4px 12px rgb(0 0 0/.45)}
+.jpd.r1 .jpa .av{box-shadow:0 0 0 3px #F2C46A,0 0 18px rgb(242 196 106/.55)}
+.jpd .jpc{position:absolute;left:50%;top:-20px;transform:translateX(-50%);font-style:normal;font-size:20px;color:#F2C46A;text-shadow:0 2px 6px rgb(0 0 0/.5)}
+.jpd b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:#F4F6FF}
+.jpd em{font-style:normal;font-size:17px;font-weight:800;color:#7EE0A6;font-variant-numeric:tabular-nums}
+.jpd em.neg,.jpd4 em.neg{color:#FF8A80}
+.jpd .jps{margin-top:auto;padding:4px 0 6px;font-size:22px;font-weight:900;color:rgb(255 255 255/.75)}
+.jpd.r1 .jps{color:#FFE3A1}
+.jpd.me{outline:2px solid #4D8DFF;outline-offset:2px}
+.jpd4{display:flex;align-items:center;gap:10px;width:100%;max-width:340px;margin:8px auto 0;padding:7px 12px;border-radius:12px;background:rgb(255 255 255/.06);border:1px solid rgb(255 255 255/.1)}
+.jpd4 span{font-weight:900;opacity:.7}.jpd4 b{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.jpd4 em{font-style:normal;font-weight:800;color:#7EE0A6}
+.jpd4.me{outline:2px solid #4D8DFF}
+/* the trick slides to whoever took it (the flat table; the 3D one does it in 3D) */
+.gx:not(.is3d) .jt .trick.sw .card{animation:jsw .5s .8s cubic-bezier(.5,0,.75,0) forwards}
+.gx:not(.is3d) .jt .trick.sw0 .card{--tx:0;--ty:120px}.gx:not(.is3d) .jt .trick.sw1 .card{--tx:-140px;--ty:0}
+.gx:not(.is3d) .jt .trick.sw2 .card{--tx:0;--ty:-130px}.gx:not(.is3d) .jt .trick.sw3 .card{--tx:140px;--ty:0}
+@keyframes jsw{to{translate:var(--tx) var(--ty);scale:.55;opacity:0}}
+@media (prefers-reduced-motion:reduce){.gx:not(.is3d) .jt .trick.sw .card{animation:none}}

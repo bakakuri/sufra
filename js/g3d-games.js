@@ -476,10 +476,10 @@ function jkScene(sc,V){const L=[],M=[],rel=p=>(p-V.base+4)%4,asp=G3D.asp||.5;sc.
  const n=V.hand.length;if(!V.mine||!V.hand.some(cd=>'c'+cardIdx(cd)===sc.csel))sc.csel=null;
  if(n){const tall=asp<.8,hs=tall?.165:.19,dd=2.4,C=jkCam(asp),t=Math.tan(C.fov/2),s=hs*2*t*dd/CDH,cw=CDW*s/(t*asp*dd),room=(2+2*C.sx)*.8,spc=Math.min(cw*.62,(room-cw*1.1)/Math.max(1,n-1)),qf=jkFace(asp);
   V.hand.forEach((cd,i)=>{const ok=V.legal.includes(cd),key='c'+cardIdx(cd),sel=sc.csel===key||!!V.sel&&V.sel.includes(i),nx=C.sx+(i-(n-1)/2)*spc,lift=V.legal.length?(sel?.5:ok?.13:-.03):0,
-    ny=-1+hs*1.06-(nx-C.sx)*(nx-C.sx)*.07+lift*hs*2,p=jkScr(asp,nx,ny,dd-i*.004),d={k:key,m:'card',p,q:qt.mul(qf,qt.ax(0,0,1,-(nx-C.sx)*.2)),s,uv:cardUV(cardIdx(cd)),dim:V.legal.length&&!ok?.5:1,pick:V.mine&&ok?{i,k:key}:null,drag:V.mine&&ok&&!V.tap1,glow:sel?[.12,.09,.03]:V.hint===cd?[.05,.16,.1]:null,refl:false,cast:false,dur:420,hud:1};
+    ny=-1+hs*1.06-(nx-C.sx)*(nx-C.sx)*(n>=6?.11:.07)+lift*hs*2,p=jkScr(asp,nx,ny,dd-i*.004),d={k:key,m:'card',p,q:qt.mul(qf,qt.ax(0,0,1,-(nx-C.sx)*(n>=6?.3:.2))),s,uv:cardUV(cardIdx(cd)),dim:V.legal.length&&!ok?.5:1,pick:V.mine&&ok?{i,k:key}:null,drag:V.mine&&ok&&!V.tap1,glow:sel?[.12,.09,.03]:V.hint===cd?[.05,.16,.1]:null,refl:false,cast:false,dur:420,hud:1};
    if(deal){d.from={p:dp,q:FACEDN(0),s:.9};d.delay=i*70;d.dur=560}L.push(d)})}
  /* my two hands (as in the board games): they wait below the picture and come up to lay my card */
- const myc=V.ctx||(typeof GAME!=='undefined'&&S.game&&GAME[S.game]&&GAME[S.game].ctx)||{mode:'online'};mhPush(sc,L,{on:mhShow(myc),yaw:0,y:-1.6,S:1.4,rest:[[-3.4,8.6],[3.4,8.6]]});
+ const myc=V.ctx||(typeof GAME!=='undefined'&&S.game&&GAME[S.game]&&GAME[S.game].ctx)||{mode:'online'};mhPush(sc,L,{on:mhShow(myc),yaw:0,y:-1.6,S:1.0,rest:[[-3.4,8.6],[3.4,8.6]],slim:1});
  const mineBy=d=>{if(!sc.mh)return false;const o=sc.objs.get('k:'+d.k),F=o&&!o.dying?{p:o.p.slice(),q:o.q.slice(),s:o.s}:{p:jkScr(asp,.08,-.62,2.6),q:jkFace(asp),s:.62},T=Math.round(Math.min(620,300+90*Math.sqrt(v3.len(v3.sub(d.p,F.p)))));
   mhCarry(sc,[{p:F.p},{p:d.p,d:T,arc:.4}],{s:1});d.from=F;d.delay=340;d.dur=T;d.arc=.4;return true};
  /* the trick, each card in front of whoever played it, all turned to read from my chair */
@@ -868,7 +868,7 @@ document.addEventListener('click',e=>{const el=e.target.closest&&e.target.closes
  const L=sc.look,a=Math.atan2(f[1]*d[0]-f[0]*d[1],f[0]*d[0]+f[1]*d[1])*.92;
  e.stopPropagation();L.uy=clamp(a-L.gy,-L.my,L.my);L.up=0;L.t=performance.now();L.fast=L.t+900;g3Need();if(typeof snd==='function')snd('card',.3)},true);
 /* the first time the players sit out of the picture: how to look at them */
-function jkLookHint(){if(JKC.hint||(typeof store!=='undefined'&&store.get('jklh',0)>=2))return;JKC.hint=1;try{store.set('jklh',(store.get('jklh',0)||0)+1)}catch(e){}
+function jkLookHint(){if(JKC.hint||(typeof store!=='undefined'&&store.get('jklh',0)>=1))return;JKC.hint=1;try{store.set('jklh',(store.get('jklh',0)||0)+1)}catch(e){}
  setTimeout(()=>{if(!G3D.cv||!G3D.cv.isConnected)return;const tilt=!!window.DeviceOrientationEvent&&gLookSet()!=='tilt'&&matchMedia('(pointer:coarse)').matches,d=document.createElement('div');d.className='jklh';d.setAttribute('role','status');
   d.innerHTML=`<span>${ic('eye')}გვერდით მსხდომებს შეხედავ თითის გასმით${tilt?' ან ტელეფონის მოტრიალებით':''}</span>${tilt?'<button class="btn sm gold" data-a="jklooktilt">მოტრიალებით</button>':''}<button class="jklhx" data-a="jklhx" aria-label="დახურვა">${ic('x')}</button>`;
   document.body.appendChild(d);const t0=Date.now(),iv=setInterval(()=>{if(!d.isConnected||!G3D.cv||!G3D.cv.isConnected||Date.now()-t0>9000){clearInterval(iv);d.remove()}},400)},1600)}
@@ -919,15 +919,15 @@ function g3Portrait(look){const lk=oppLook(look),k=lkKey(lk);if(G3PIC.has(k))ret
    they rest at the near edge of the table and reach in when I move: take the piece, carry it, put it down and come back;
    for the dice they swing up and throw. a move made by dragging needs no hand, the finger already did it */
 const myHandsOn=()=>typeof store==='undefined'||store.get('ghands',true)!==false;
-function mhModels(sc){const lk=oppLook(typeof myLook==='function'?myLook():{}),key=lk.skin+'|'+lk.shirt;if(sc.mhKey===key)return;sc.mhKey=key;
+function mhModels(sc,slim){const lk=oppLook(typeof myLook==='function'?myLook():{}),key=lk.skin+'|'+lk.shirt+(slim?'|s':'');if(sc.mhKey===key)return;sc.mhKey=key;
  const skin=g3Mat({c:lk.skin,sh:14,sp:.12,gl:.03}),knit=g3Mat({c:hex(lk.shirt),t:g3T('knit',()=>g3Tex(knitCv(),{rep:true})),uv:[0,0,4,3],sh:6,sp:.05,gl:0});
- for(const s of[-1,1]){const hand=gXf(handGeo(-s),[0,0,0],qt.ax(0,1,0,Math.PI)),arm=gMerge(gCap([0,.04,.1],[s*.34,.66,3.7],.29,.42,12),gXf(gTorus(.34,.1,18,6),[0,.04,.22],qt.ax(1,0,0,Math.PI/2)));
+ for(const s of[-1,1]){const hand=gXf(handGeo(-s),[0,0,0],qt.ax(0,1,0,Math.PI)),arm=slim?gMerge(gCap([0,.04,.1],[s*.46,.88,5.2],.22,.31,12),gXf(gTorus(.24,.075,18,6),[0,.04,.2],qt.ax(1,0,0,Math.PI/2))):gMerge(gCap([0,.04,.1],[s*.34,.66,3.7],.29,.42,12),gXf(gTorus(.34,.1,18,6),[0,.04,.22],qt.ax(1,0,0,Math.PI/2)));
   g3Model(sc,'mh'+s,[[hand,skin],[arm,knit]],null)}}
 /* the hands are shown when this phone is the one playing: against the computer, online, or two people sharing it */
 const mhShow=c=>!!c&&(c.mode==='local'||isPlayer(c))&&!c.gone;
 const mhMover=(c,turnNow)=>c.mode==='local'||turnNow===-c.side;
 /* rest: [left, right] as [x, z] in my own frame (z toward me); y: the table top; S: how big */
-function mhPush(sc,L,o){sc.mh=null;if(!o.on||!myHandsOn())return;mhModels(sc);const q0=qt.ax(0,1,0,o.yaw||0),H={q0,S:o.S,rest:{},rq:{}};
+function mhPush(sc,L,o){sc.mh=null;if(!o.on||!myHandsOn())return;mhModels(sc,o.slim);const q0=qt.ax(0,1,0,o.yaw||0),H={q0,S:o.S,rest:{},rq:{}};
 /* at rest my hands wait below the bottom of the picture (hanging under the table they looked lost); they come up into view only to move something */
  for(const s of[-1,1]){const r=o.rest[s<0?0:1],p=v3.add(qt.rot(q0,[r[0]*1.15,0,r[1]+2.6*o.S]),[0,o.y-1.2*o.S,0]),q=qt.mul(q0,qt.ax(0,1,0,s*.26));H.rest[s]=p;H.rq[s]=q;L.push({k:'mh'+s,m:'mh'+s,p,q,s:o.S,refl:false,dur:450})}sc.mh=H}
 /* where the wrist goes so that the fingertips are over a point */
