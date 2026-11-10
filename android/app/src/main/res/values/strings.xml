@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="appName">Peera</string>
+    <string name="launchUrl">https://www.peera.my/?src=app</string>
+    <string name="providerAuthority">my.peera.app.fileprovider</string>
+    <string name="assetStatements">[{\"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": {\"namespace\": \"web\", \"site\": \"https://www.peera.my\"}}]</string>
+</resources>

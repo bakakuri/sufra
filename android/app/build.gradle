@@ -1,0 +1,42 @@
+plugins { id 'com.android.application' }
+
+def run = (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as int
+def ks = System.getenv('PEERA_KS')
+
+android {
+    namespace 'my.peera.app'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'my.peera.app'
+        minSdk 24
+        targetSdk 35
+        versionCode run
+        versionName "1.${run}"
+    }
+    signingConfigs {
+        release {
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv('PEERA_KS_PASS')
+                keyAlias 'peera'
+                keyPassword System.getenv('PEERA_KS_PASS')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (ks) signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    lint { checkReleaseBuilds false; abortOnError false }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.4'
+    implementation 'com.google.androidbrowserhelper:locationdelegation:1.1.2'
+}

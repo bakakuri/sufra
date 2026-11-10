@@ -1,0 +1,2 @@
+// Peera for Android: the site in a Trusted Web Activity (Chrome), plus live location in the background
+plugins { id 'com.android.application' version '8.9.1' apply false }

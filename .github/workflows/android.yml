@@ -1,0 +1,58 @@
+# Builds the Android app (android/) and puts it in the release "android-build": peera.apk when the signing key is
+# in the repository secrets (PEERA_KEYSTORE as base64, PEERA_KEYSTORE_PASSWORD), otherwise peera-unsigned.apk with
+# apksigner.jar so it can be signed elsewhere. The build log is always attached.
+name: Android app
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Signing key
+        env:
+          KS: ${{ secrets.PEERA_KEYSTORE }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > "$RUNNER_TEMP/peera.jks"
+            echo "PEERA_KS=$RUNNER_TEMP/peera.jks" >> "$GITHUB_ENV"
+          fi
+      - name: Build
+        working-directory: android
+        shell: bash
+        env:
+          PEERA_KS_PASS: ${{ secrets.PEERA_KEYSTORE_PASSWORD }}
+        run: |
+          set -o pipefail
+          gradle --no-daemon --stacktrace :app:assembleRelease 2>&1 | tee build.log
+      - name: Publish
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p out
+          cp android/build.log out/build.log || echo "no log" > out/build.log
+          O=android/app/build/outputs/apk/release
+          if [ -f $O/app-release.apk ]; then cp $O/app-release.apk out/peera.apk; fi
+          if [ -f $O/app-release-unsigned.apk ]; then
+            cp $O/app-release-unsigned.apk out/peera-unsigned.apk
+            BT=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+            cp "${BT}lib/apksigner.jar" out/apksigner.jar || true
+          fi
+          echo "commit ${{ github.sha }} run ${{ github.run_number }} $(date -u +%FT%TZ)" > out/build.txt
+          gh release delete android-build -y --cleanup-tag || true
+          gh release create android-build out/* --target "${{ github.sha }}" --prerelease \
+            --title "Android build ${{ github.run_number }}" --notes "Peera for Android, run ${{ github.run_number }}"
