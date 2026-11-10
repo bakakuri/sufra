@@ -9,8 +9,19 @@
 /* global maplibregl */
 Object.assign(ERR,{minor_public:'18 წლამდე ლოკაციას მხოლოდ მეგობრებს უზიარებ',bad_location:'მდებარეობა ვერ დადგინდა'});
 
+/* ---- inside the Android app (my.peera.app: Chrome opens the site for it as a Trusted Web Activity) ----
+   There the place can be shared with the app closed: the app's own service sends it. The site gives the phone a secret
+   of its own (loc_device_token) through peera://loc/start, and the app starts the share with the first place it finds.
+   A share kept by a phone (dev_at) is never refreshed by a page, on that phone or on any other device */
+const ANDROID=/Android/i.test(navigator.userAgent);
+const INAPP=(()=>{try{const q=new URLSearchParams(location.search),app=q.get('src')==='app';
+ if(app||/^android-app:\/\/my\.peera\.app/.test(document.referrer||'')){sessionStorage.setItem('inapp','1');try{localStorage.setItem('hasapp','1')}catch(e){}}
+ if(app){q.delete('src');history.replaceState(history.state,'',location.pathname+(q.toString()?'?'+q:'')+location.hash)}
+ return sessionStorage.getItem('inapp')==='1'}catch(e){return false}})();
+const appIntent=(op,qs)=>`intent://loc/${op}${qs?'?'+qs:''}#Intent;scheme=peera;package=my.peera.app;end`;
+
 /* ---- sharing one's own place: runs on every page while it is on ---- */
-const LOC={on:null,watch:null,fix:null,sent:null,sentAt:0,t:null,busy:false};
+const LOC={on:null,watch:null,fix:null,sent:null,sentAt:0,t:null,busy:false,dev:false,devAt:0,devT:0};
 const LOC_MIN=[[15,'15 წთ'],[60,'1 სთ'],[480,'8 სთ'],[0,'სანამ გავთიშავ']];
 const geoKm=(a,b)=>{const r=Math.PI/180,x=Math.sin((b[0]-a[0])*r/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin((b[1]-a[1])*r/2)**2;return 12742*Math.asin(Math.min(1,Math.sqrt(x)))};
 const locGet=()=>new Promise((res,rej)=>{if(!navigator.geolocation)return rej({code:-1});navigator.geolocation.getCurrentPosition(res,rej,{enableHighAccuracy:true,maximumAge:10000,timeout:20000})});
@@ -19,31 +30,39 @@ const locErr=e=>e&&e.code===1?'ლოკაციაზე წვდომა �
 function locLeft(o=LOC.on){if(!o||!o.expires_at)return null;const m=Math.max(1,Math.ceil((new Date(o.expires_at)-Date.now())/60000));return m>=60?Math.floor(m/60)+' სთ'+(m%60?' '+m%60+' წთ':''):m+' წთ'}
 const locMine=()=>LOC.fix?[LOC.fix.coords.latitude,LOC.fix.coords.longitude]:null;
 const locNum=v=>v==null||!isFinite(v)?null:v;
-function locWatch(){if(LOC.watch!=null||!LOC.on||!navigator.geolocation)return;
+function locWatch(){if(LOC.watch!=null||!LOC.on||LOC.dev||!navigator.geolocation)return;
  LOC.watch=navigator.geolocation.watchPosition(p=>{LOC.fix=p;locTick();if(S.page&&S.page.id==='map')lmMeMove()},e=>{if(e.code===1){locUnwatch();toast(locErr(e));locBadge()}},{enableHighAccuracy:true,maximumAge:5000,timeout:30000});
  clearInterval(LOC.t);LOC.t=setInterval(()=>{locTick();locBadge()},15000);locBadge()}
 function locUnwatch(){if(LOC.watch!=null){try{navigator.geolocation.clearWatch(LOC.watch)}catch(e){}LOC.watch=null}clearInterval(LOC.t);LOC.t=null}
 /* sent when it moved (every 8 seconds at most) or, standing still, every 45 seconds, so friends see it is still live */
-async function locTick(){if(!LOC.on)return;if(LOC.on.expires_at&&new Date(LOC.on.expires_at)<=Date.now()){locEnded();return}
+async function locTick(){if(!LOC.on||LOC.dev)return;if(LOC.on.expires_at&&new Date(LOC.on.expires_at)<=Date.now()){locEnded();return}
  const p=LOC.fix;if(!p||LOC.busy)return;const c=p.coords,now=Date.now(),moved=LOC.sent?geoKm([LOC.sent.lat,LOC.sent.lng],[c.latitude,c.longitude])*1000:1e9;
  if(now-LOC.sentAt<(moved>=15?8000:45000))return;LOC.busy=true;
  try{const r=await rpc('loc_update',{p_lat:c.latitude,p_lng:c.longitude,p_acc:Math.round(locNum(c.accuracy)||0),p_heading:locNum(c.heading)==null?null:Math.round(c.heading),p_speed:locNum(c.speed)});
   if(r&&r.on===false){locEnded();return}
   if(r&&!r.skip){LOC.sent={lat:c.latitude,lng:c.longitude};LOC.sentAt=now}if(r&&LOC.on)LOC.on.expires_at=r.expires_at??null}catch(e){}finally{LOC.busy=false}}
-function locEnded(){const was=!!LOC.on;locUnwatch();LOC.on=null;LOC.sent=null;locBadge();if(was)toast('ლაივ ლოკაციის გაზიარება დასრულდა');if(S.page&&S.page.id==='map')lmRows()}
+function locEnded(){const was=!!LOC.on;locUnwatch();locDevOff();LOC.on=null;LOC.sent=null;locBadge();if(was)toast('ლაივ ლოკაციის გაზიარება დასრულდა');if(S.page&&S.page.id==='map')lmRows()}
 /* start sharing, or change how: who sees it, for how long, how exactly */
 async function locStart(o){let p;try{p=await locGet()}catch(e){toast(locErr(e));return false}
  const c=p.coords;let r;try{r=await rpc('loc_share',{p_lat:c.latitude,p_lng:c.longitude,p_acc:Math.round(locNum(c.accuracy)||0),p_audience:o.aud,p_minutes:o.min,p_approx:!!o.approx})}catch(e){toast(errMsg(e));return false}
  LOC.on=r;LOC.fix=p;LOC.sent={lat:c.latitude,lng:c.longitude};LOC.sentAt=Date.now();store.set('lshare',{aud:o.aud,min:o.min,approx:!!o.approx});locWatch();locBadge();return true}
-async function locStop(){try{await rpc('loc_stop')}catch(e){toast(errMsg(e));return false}locUnwatch();LOC.on=null;LOC.sent=null;locBadge();if(S.page&&S.page.id==='map')lmRows();return true}
+async function locStop(){const dev=LOC.dev;try{await rpc('loc_stop')}catch(e){toast(errMsg(e));return false}
+ /* the phone's service stops at once (otherwise at its next update, within a minute) */
+ if(dev&&INAPP)try{location.href=appIntent('stop')}catch(e){}
+ locUnwatch();locDevOff();LOC.on=null;LOC.sent=null;locBadge();if(S.page&&S.page.id==='map')lmRows();return true}
+/* a share kept by a phone: the page only looks now and then whether it still runs */
+function locDevOn(r){LOC.dev=true;locUnwatch();clearInterval(LOC.devT);LOC.devT=setInterval(()=>{if(!document.hidden)locSync()},60000)}
+function locDevOff(){LOC.dev=false;LOC.devAt=0;clearInterval(LOC.devT);LOC.devT=0}
+async function locSync(){if(!ME||ME.offline)return null;let r;try{r=await q(sb.from('live_locations').select('audience,approx,started_at,expires_at,dev_at').eq('user_id',ME.id).maybeSingle())}catch(e){return null}
+ if(!r||(r.expires_at&&new Date(r.expires_at)<=Date.now())){if(LOC.on&&(!LOC.dev||Date.now()-LOC.devAt>90000))locEnded();return null}
+ LOC.on=Object.assign({on:true},r);if(r.dev_at)locDevOn(r);else if(LOC.dev&&Date.now()-LOC.devAt>90000){locDevOff();locWatch()}locBadge();return r}
 /* after a reload: a share that still runs goes on by itself if the phone already allows the location, otherwise it waits for a tap */
 async function locResume(){if(!ME||ME.offline||!pageOk('map'))return;
- try{const r=await q(sb.from('live_locations').select('audience,approx,started_at,expires_at').eq('user_id',ME.id).maybeSingle());
-  if(!r||(r.expires_at&&new Date(r.expires_at)<=Date.now()))return;LOC.on=Object.assign({on:true},r);
+ try{const r=await locSync();if(!r||r.dev_at)return;
   let st='prompt';try{st=(await navigator.permissions.query({name:'geolocation'})).state}catch(e){}
   if(st==='granted')locWatch();locBadge()}catch(e){}}
 /* the pin in the top bar while sharing; grey when the place is not being refreshed */
-function locBadge(){const el=$('#lpin');if(el){el.innerHTML=LOC.on?`<button class="ibtn lpin${LOC.watch==null?' paused':''}" data-a="page" data-p="map" aria-label="${LOC.watch==null?'ლაივ ლოკაცია: განახლება შეჩერებულია':'ლაივ ლოკაცია ჩართულია'}">${ic('locate')}<i aria-hidden="true"></i></button>`:'';if(typeof fitTop==='function')fitTop()}
+function locBadge(){const el=$('#lpin'),paused=LOC.watch==null&&!LOC.dev;if(el){el.innerHTML=LOC.on?`<button class="ibtn lpin${paused?' paused':''}" data-a="page" data-p="map" aria-label="${paused?'ლაივ ლოკაცია: განახლება შეჩერებულია':'ლაივ ლოკაცია ჩართულია'}">${ic('locate')}<i aria-hidden="true"></i></button>`:'';if(typeof fitTop==='function')fitTop()}
  if(S.page&&S.page.id==='map')lmBar()}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)return;if(LOC.on){LOC.sentAt=0;locTick()}if(S.page&&S.page.id==='map')lmRows()});
 
@@ -52,17 +71,30 @@ A.lmshare=()=>{const o=Object.assign({aud:'friends',min:60,approx:false},store.g
  const minor=(age(ME.birthday)??99)<18;if(minor)o.aud='friends';if(!LOC_MIN.some(([m])=>m===o.min))o.min=60;S.lsh=Object.assign(o,{touched:false});
  const seg=(k,opts,cur)=>`<div class="seg lsseg" role="group" aria-label="${k==='aud'?'ვინ დაინახოს':k==='min'?'რამდენ ხანს':'სიზუსტე'}">${opts.map(([v,l,dis])=>`<button type="button" data-a="lsopt" data-k="${k}" data-v="${v}" aria-pressed="${String(v)===String(cur)}"${dis?' disabled':''}>${l}</button>`).join('')}</div>`;
  sheet(head('ლაივ ლოკაცია')+`<div class="ph-body lsh"><p class="lsh-lead">${ic('locate')}<span>შენი ადგილი რუკაზე შენთან ერთად იმოძრავებს, სანამ Peera გახსნილი გაქვს.</span></p>
+  ${INAPP?'<p class="note lsh-app">აპი დახურულიც ზიარდება. სანამ ჩართულია, ტელეფონის ზედა ზოლში შეტყობინება ჩანს, ღილაკით „გაჩერება“.</p>':ANDROID?'<p class="note lsh-app">აპის დახურვის შემდეგაც რომ ზიარდებოდეს, <button class="linkbtn" data-a="install">დააყენე Peera Android-ისთვის</button>.</p>':''}
   <p class="lslbl">ვინ დაინახოს</p>${seg('aud',[['friends','მეგობრებმა'],['public','ყველამ',minor]],o.aud)}${minor?'<p class="note">18 წლამდე ლოკაციას მხოლოდ მეგობრებს უზიარებ.</p>':''}
   <p class="lslbl">რამდენ ხანს</p>${seg('min',LOC_MIN,o.min)}
   <p class="lslbl">სიზუსტე</p>${seg('approx',[['0','ზუსტი'],['1','მიახლოებით, ~1 კმ']],o.approx?'1':'0')}
   <p class="note lsh-note">გაზიარებულ ლოკაციას საიტის ადმინისტრაციაც ხედავს. ისტორია არ ინახება: გათიშვისას შენი ადგილი იშლება.</p></div>
-  <div class="ph-foot">${LOC.on?'<button class="btn ghost danger" data-a="lmstop">გაჩერება</button>':'<button class="btn ghost" data-a="close">გაუქმება</button>'}<span class="sp"></span><button class="btn" id="ls_go">${ic('locate')}${LOC.on?'შენახვა':'გაზიარება'}</button></div>`,'short');
+  <div class="ph-foot">${LOC.on?'<button class="btn ghost danger" data-a="lmstop">გაჩერება</button>':'<button class="btn ghost" data-a="close">გაუქმება</button>'}<span class="sp"></span>${INAPP?`<a class="btn" id="ls_go" role="button" aria-disabled="true">${ic('locate')}${LOC.on?'შენახვა':'გაზიარება'}</a>`:`<button class="btn" id="ls_go">${ic('locate')}${LOC.on?'შენახვა':'გაზიარება'}</button>`}</div>`,'short');
+ if(INAPP){lsApp();return}
  $('#ls_go').onclick=async()=>{const b=$('#ls_go');b.disabled=true;const s=S.lsh,ok=await locStart({aud:s.aud,min:+s.min,approx:s.approx});if(!b.isConnected)return;b.disabled=false;if(!ok)return;closeSheet();
   toast(s.aud==='public'?'შენი ლოკაცია ყველას უჩანს':'შენი ლოკაცია მეგობრებს უჩანს');if(S.page&&S.page.id==='map'){lmRows();lmGoMe()}else openPage('map')}};
 A.lsopt=t=>{const s=S.lsh;if(!s||t.disabled)return;const k=t.dataset.k,v=t.dataset.v;
  if(k==='aud'){s.aud=v;if(!s.touched){s.approx=v==='public';$$('[data-a="lsopt"][data-k="approx"]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===(s.approx?'1':'0'))))}}
  else if(k==='min')s.min=+v;else{s.approx=v==='1';s.touched=true}
- $$(`[data-a="lsopt"][data-k="${k}"]`).forEach(b=>b.setAttribute('aria-pressed',String(b===t)))};
+ $$(`[data-a="lsopt"][data-k="${k}"]`).forEach(b=>b.setAttribute('aria-pressed',String(b===t)));lsHref()};
+/* in the app the button is a link to the app itself (a real tap, so Chrome lets it open the app): the secret for this
+   phone is fetched as the sheet opens, the choices ride along */
+function lsHref(){const b=$('#ls_go'),s=S.lsh;if(!INAPP||!b||b.tagName!=='A'||!s)return;
+ if(!s.tok){b.removeAttribute('href');b.setAttribute('aria-disabled','true');return}
+ b.href=appIntent('start',`t=${encodeURIComponent(s.tok)}&a=${s.aud}&m=${+s.min}&x=${s.approx?1:0}`);b.removeAttribute('aria-disabled')}
+function lsApp(){const s=S.lsh,b=$('#ls_go');s.tok=null;
+ rpc('loc_device_token').then(t=>{if(S.lsh===s){s.tok=t;lsHref()}}).catch(e=>{if(S.lsh===s)toast(errMsg(e))});
+ b.onclick=e=>{if(!s.tok){e.preventDefault();return}/* the link opens the app, which asks for the location and starts */
+  LOC.devAt=Date.now();LOC.on={on:true,audience:s.aud,approx:!!s.approx,expires_at:+s.min?new Date(Date.now()+s.min*6e4).toISOString():null};locDevOn();locBadge();
+  store.set('lshare',{aud:s.aud,min:+s.min,approx:!!s.approx});setTimeout(()=>closeSheet(),400);
+  [5000,12000,25000,45000,80000].forEach(ms=>setTimeout(()=>{locSync().then(()=>{if(S.page&&S.page.id==='map')lmRows()})},ms))}}
 A.lmstop=async()=>{if(await locStop()){closeSheet();toast('ლაივ ლოკაცია გაითიშა')}};
 A.lmresume=()=>{if(!LOC.on)return;locWatch();toast('ვადგენ შენს მდებარეობას…')};
 
@@ -125,6 +157,7 @@ async function lmRows(){if(!S.page||S.page.id!=='map')return;const tok=++LM.tok;
  try{rows=await rpc('live_map')}catch(e){if(tok===LM.tok&&!LM.loaded){LM.loaded=true;lmPeople(true)}return}
  rows=Array.isArray(rows)?rows:[];try{await loadProfiles(rows.map(r=>r.user_id))}catch(e){}
  if(tok!==LM.tok||!S.page||S.page.id!=='map')return;LM.rows=rows;LM.loaded=true;
+ if(LOC.on&&LOC.dev&&Date.now()-LOC.devAt>90000&&!rows.some(r=>r.user_id===ME.id))locEnded();
  lmDraw()}
 function lmDraw(){if(!S.page||S.page.id!=='map')return;lmPeople();lmBar();const map=LM.map;if(!map)return;const seen=new Set();
  for(const r of LM.rows){const id=r.user_id;seen.add(id);const pos=lmPos(r);let m=LM.mk.get(id);
@@ -162,8 +195,8 @@ function lmPeople(failed){const el=$('#lmppl');if(!el)return;if(!LM.loaded){el.i
 /* my own sharing, above the strip */
 function lmBar(){const el=$('#lmbar');if(!el)return;const sb=$('#lmsb');if(sb)sb.textContent=LOC.on?'ჩემი ლოკაცია':'გაზიარება';
  if(!LOC.on){el.innerHTML=`<button class="lm-cta" data-a="lmshare">${ic('locate')}<span><b>ლაივ ლოკაციის გაზიარება</b><small>მეგობრები დაინახავენ, სად ხარ ახლა</small></span></button>`;return}
- const paused=LOC.watch==null,left=locLeft();
- el.innerHTML=`<div class="lm-on${paused?' paused':''}"><i class="lm-pulse" aria-hidden="true"></i><button class="lm-onx" data-a="lmshare" aria-label="გაზიარების შეცვლა"><b>${paused?'განახლება შეჩერებულია':'შენი ლოკაცია ჩანს'}</b><small>${LOC.on.audience==='public'?'ყველას':'მეგობრებს'}${LOC.on.approx?' · მიახლოებით':''} · ${left?left+' დარჩა':'სანამ გათიშავ'}</small></button>${paused?'<button class="btn sm" data-a="lmresume">გაგრძელება</button>':''}<button class="btn sm danger" data-a="lmstop">გაჩერება</button></div>`}
+ const paused=LOC.watch==null&&!LOC.dev,left=locLeft();
+ el.innerHTML=`<div class="lm-on${paused?' paused':''}"><i class="lm-pulse" aria-hidden="true"></i><button class="lm-onx" data-a="lmshare" aria-label="გაზიარების შეცვლა"><b>${paused?'განახლება შეჩერებულია':'შენი ლოკაცია ჩანს'}</b><small>${LOC.dev?'ფონზეც · ':''}${LOC.on.audience==='public'?'ყველას':'მეგობრებს'}${LOC.on.approx?' · მიახლოებით':''} · ${left?left+' დარჩა':'სანამ გათიშავ'}</small></button>${paused?'<button class="btn sm" data-a="lmresume">გაგრძელება</button>':''}<button class="btn sm danger" data-a="lmstop">გაჩერება</button></div>`}
 /* a person on the map: when it was, how far, until when; their profile, a message, following them, the way there */
 A.lmpeek=t=>lmPeek(t.dataset.u);
 function lmPeek(id){const r=LM.rows.find(x=>x.user_id===id);if(!r)return;const p=prof(id),me=id===ME.id,live=lmLive(r),mine=locMine()||S.geo||null;

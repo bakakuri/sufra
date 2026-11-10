@@ -1,5 +1,5 @@
 /* Peera service worker: app shell offline, fonts cache, web push */
-const V='202611100152';
+const V='202611100859';
 const SHELL='sufra-shell-'+V,RUNTIME='sufra-rt-1';
 const ASSETS=['/','/manifest.webmanifest','/icons/icon-192.png','/icons/icon-512.png','/icons/badge-96.png','/icons/logo.svg',
  '/css/base.css?v='+V,'/css/app.css?v='+V,'/css/casino.css?v='+V,
@@ -7,7 +7,9 @@ const ASSETS=['/','/manifest.webmanifest','/icons/icon-192.png','/icons/icon-512
 self.addEventListener('install',e=>{e.waitUntil(caches.open(SHELL).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('sufra-shell-')&&k!==SHELL).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{const r=e.request;if(r.method!=='GET')return;const u=new URL(r.url);
- if(r.mode==='navigate'){e.respondWith(fetch(r).then(res=>{const cp=res.clone();caches.open(SHELL).then(c=>c.put('/',cp));return res}).catch(()=>caches.match('/')));return}
+ /* the Android app's file and its proof of ownership go straight to the network, never into the cache */
+ if(u.origin===location.origin&&/^\/(app|\.well-known)\//.test(u.pathname))return;
+ if(r.mode==='navigate'){e.respondWith(fetch(r).then(res=>{if(res.ok&&/text\/html/.test(res.headers.get('content-type')||'')){const cp=res.clone();caches.open(SHELL).then(c=>c.put('/',cp))}return res}).catch(()=>caches.match('/')));return}
  /* video loops are fetched in ranges; the cache cannot serve those, so they go to the network */
  if(/\.(mp4|webm)$/.test(u.pathname))return;
  /* libraries named by their version (the map): kept across app versions, fetched once */

@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "my.peera.app",
+      "sha256_cert_fingerprints": [
+        "8F:23:23:79:0B:F6:24:C1:9F:70:E8:F4:00:7D:FD:8A:B5:E3:6B:96:0D:EB:30:41:FA:DC:D6:71:AE:74:36:53"
+      ]
+    }
+  }
+]

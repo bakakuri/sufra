@@ -82,7 +82,18 @@ async function enablePush(){if(!('serviceWorker' in navigator)||!('PushManager' 
  const j=sub.toJSON();await sb.from('push_subs').delete().eq('endpoint',j.endpoint);await q(sb.from('push_subs').insert({user_id:ME.id,endpoint:j.endpoint,p256dh:j.keys.p256dh,auth:j.keys.auth}));store.set('push',true);toast('შეტყობინებები ჩართულია');return true}
 async function disablePush(){try{const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(sub){await sb.from('push_subs').delete().eq('endpoint',sub.endpoint);await sub.unsubscribe()}}catch(e){}store.set('push',false);toast('შეტყობინებები გამორთულია')}
 A.pushtog=async t=>{const on=t.getAttribute('aria-checked')==='true';t.disabled=true;try{const ok=on?(await disablePush(),false):await enablePush();t.setAttribute('aria-checked',String(!!ok))}catch(e){toast(errMsg(e))}t.disabled=false};
-A.install=async()=>{if(S.installEvt){S.installEvt.prompt();const r=await S.installEvt.userChoice;if(r.outcome==='accepted')toast('Peera დაყენდა');S.installEvt=null;return}
+/* Android: the app itself (an .apk from this site; it shares the place with the app closed too). Elsewhere: the site
+   added to the home screen */
+const APK={url:'/app/peera.apk',info:null};
+function apkSheet(){const v=APK.info;
+ sheet(head('Peera Android-ისთვის')+`<div class="ph-body appdl"><div class="appdl-top"><img src="/icons/icon-192.png" width="56" height="56" alt=""><span><b>Peera</b><small>Android 7 და ახალი${v&&v.name?` · ვერსია ${esc(v.name)}`:''}${v&&v.mb?` · ${esc(String(v.mb))} მბ`:''}</small></span></div>
+  <ul class="appdl-list"><li>${ic('locate')}<span>ლაივ ლოკაცია აპის დახურვის შემდეგაც</span></li><li>${ic('bell')}<span>შეტყობინებები, ზარები და ფოტოები, როგორც საიტზე</span></li><li>${ic('phone')}<span>ხატულა ტელეფონის ეკრანზე, მისამართის ზოლის გარეშე</span></li></ul>
+  <a class="btn appdl-go" href="${APK.url}" download="Peera.apk">${ic('download')}ჩამოტვირთვა</a>
+  <p class="lslbl">როგორ დავაყენო</p><ol class="appdl-steps"><li>ჩამოტვირთვის შემდეგ გახსენი ფაილი <b>Peera.apk</b> (შეტყობინებებში ან „ჩამოტვირთვებში“).</li><li>ტელეფონი იკითხავს, დაუშვას თუ არა დაყენება ამ წყაროდან: ჩართე „ამ წყაროდან დაშვება“ და დაბრუნდი.</li><li>დააჭირე „დაყენება“. აპი Play Store-დან არ არის, ამიტომ Play Protect-მა შეიძლება გკითხოს: აირჩიე „მაინც დაყენება“.</li><li>გახსენი Peera ეკრანიდან და შედი ისე, როგორც საიტზე.</li></ol>
+  <p class="note">ახალი ვერსია იმავე გზით დგება, ძველზე, მონაცემები არ იკარგება.</p></div>`,'short');
+ if(!APK.info)fetch('/app/version.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&!APK.info){APK.info=j;const s=$('.appdl-top small');if(s)s.textContent=`Android 7 და ახალი${j.name?' · ვერსია '+j.name:''}${j.mb?' · '+j.mb+' მბ':''}`}}).catch(()=>{})}
+A.install=async()=>{if(ANDROID&&!INAPP){apkSheet();return}if(INAPP){toast('უკვე აპში ხარ');return}
+ if(S.installEvt){S.installEvt.prompt();const r=await S.installEvt.userChoice;if(r.outcome==='accepted')toast('Peera დაყენდა');S.installEvt=null;return}
  if(window.matchMedia('(display-mode: standalone)').matches){toast('Peera უკვე დაყენებულია');return}
  sheet(head('ტელეფონზე დაყენება')+`<div class="ph-body"><p><b>iPhone / iPad (Safari):</b> დააჭირე გაზიარების ღილაკს და აირჩიე „Add to Home Screen“ (მთავარ ეკრანზე დამატება).</p><p><b>Android (Chrome):</b> მენიუ ⋮ → „Install app“ ან „Add to Home screen“.</p><p><b>კომპიუტერი (Chrome, Edge):</b> მისამართის ველის მარჯვნივ დაყენების ღილაკი.</p></div>`,'short')};
 PG.verify={async r(){view.innerHTML=pgHead('ვერიფიკაცია')+`<div id="vb">${skel(1)}</div>`;let last=null;try{last=await q(sb.from('verification_requests').select('status,created_at').eq('user_id',ME.id).order('created_at',{ascending:false}).limit(1).maybeSingle())}catch(e){}
