@@ -1419,13 +1419,16 @@ button.gbig>i svg{width:13px;height:13px}
 .svcard small{font-size:12px;line-height:1.35;color:var(--muted);margin:3px 12px 12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;height:calc(2 * 1.35em)}
 @media (prefers-reduced-motion:reduce){.svlive.red::before{animation:none}}
 /* the services as a cover flow (js/home.js cfInit): cards stand in the middle of the strip and are moved by transforms */
-.svtrack.cf{position:relative;display:block;overflow:hidden;height:calc(var(--cfw,150px) * .64 + 104px);padding:0;perspective:1000px;perspective-origin:50% 42%;touch-action:pan-y;user-select:none;-webkit-user-select:none;scroll-snap-type:none;outline:none}
+.svtrack.cf{position:relative;display:block;overflow:hidden;height:calc(var(--cfw,150px) * .8 + 24px);padding:0;perspective:1000px;perspective-origin:50% 42%;touch-action:pan-y;user-select:none;-webkit-user-select:none;scroll-snap-type:none;outline:none}
 .svtrack.cf:focus-visible{box-shadow:inset 0 0 0 2px var(--wine)}
 .svtrack.cf::after{content:"";position:absolute;left:50%;bottom:2px;width:calc(var(--cfw,150px) * 1.3);height:16px;transform:translateX(-50%);background:radial-gradient(closest-side,rgb(0 0 0/.22),transparent);pointer-events:none;z-index:0}
 .cf .svcard{position:absolute;top:6px;left:50%;width:var(--cfw,150px);margin-left:calc(var(--cfw,150px) / -2);flex:none;transform-origin:50% 50%;backface-visibility:hidden;-webkit-backface-visibility:hidden;will-change:transform,opacity;transition:box-shadow .25s;-webkit-tap-highlight-color:transparent}
 .cf .svcard[hidden]{display:none}
 .cf .svcard::after{content:"";position:absolute;inset:0;border-radius:inherit;background:#05070F;opacity:var(--sh,0);pointer-events:none}
-.cf .svcard .svart{height:calc(var(--cfw,150px) * .64)}
+.cf .svcard{border:0}
+.cf .svcard .svart{height:calc(var(--cfw,150px) * .8)}
+/* the name is written on the picture, over a dark fade at its foot */
+.cf .svcard .svtt{position:absolute;left:0;right:0;bottom:0;z-index:1;margin:0;padding:26px 12px 11px;background:linear-gradient(180deg,transparent,rgb(6 8 18/.42) 38%,rgb(6 8 18/.72));color:#fff;font-size:15px;font-weight:800;font-stretch:92%;line-height:1.2;text-align:left;text-shadow:0 1px 6px rgb(0 0 0/.45);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cf .svcard.on{box-shadow:0 2px 6px rgb(20 24 48/.08),0 16px 34px rgb(20 24 48/.18)}
 .cf .svcard:active{transform:none}
 @media (hover:hover){.cf .svcard:not(.on):hover{box-shadow:0 1px 2px rgb(20 24 48/.04),0 6px 18px rgb(20 24 48/.06)}.cf .svcard:not(.on):hover .svart svg{transform:none}}
@@ -3555,3 +3558,19 @@ html.eco .lmp,html.eco .lm-on,html.eco .lm-empty,html.eco .lm-modes{-webkit-back
 .mwal{width:auto;margin:12px 16px 0}
 .tdot.gold{background:var(--gold)}
 @media (prefers-reduced-motion:reduce){.cwal.bonus .cwal-i::after{animation:none}}
+
+/* the tab bar: seven places, messages in the middle as a big raised button */
+.tabs .tab .tl{font-size:10.5px;font-stretch:88%;letter-spacing:-.1px}
+@media (max-width:390px){.tabs .tab .tl{font-size:10px;font-stretch:80%}}
+.tab.tmid{color:var(--wine)}
+.tab.tmid .tl{font-weight:700}
+.tab .tmidb,.tab .dot{overflow:visible;max-width:none}
+.tmidb{position:relative;display:grid;place-items:center;width:56px;height:56px;margin-top:-32px;border-radius:50%;background:linear-gradient(150deg,color-mix(in srgb,var(--wine) 82%,#fff),var(--wine) 45%,color-mix(in srgb,var(--wine) 60%,#C026D3));color:#fff;box-shadow:0 0 0 5px var(--bg),0 10px 24px color-mix(in srgb,var(--wine) 45%,transparent);transition:transform .25s var(--ease-spring)}
+.tmidb>svg{width:27px;height:27px;stroke-width:2.1}
+.tab.tmid:active .tmidb{transform:scale(.92)}
+@media (hover:hover){.tab.tmid:hover .tmidb{transform:translateY(-2px)}}
+.tmidb .dot{top:-3px;right:-4px;box-shadow:0 0 0 2px var(--bg);background:var(--nope);color:#fff}
+#app.media .tmidb{box-shadow:0 0 0 4px rgb(10 8 12/.55),0 10px 24px rgb(0 0 0/.4)}
+#app.media .tab.tmid{color:#fff}
+.tab .dot.tcount{top:2px;left:calc(50% + 5px);right:auto;min-width:16px;height:16px;font-size:9.5px;padding:0 4px;box-shadow:0 0 0 2px var(--surface)}
+.pghead.tabhead{padding-left:16px}

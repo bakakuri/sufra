@@ -1,15 +1,16 @@
 /* shell: top bar, tabs, create button, realtime, deep links, install, back button */
 if(typeof featWrap==='function')featWrap();
-const TABS=[['home','მთავარი','home'],['study','სწავლა','book'],['date','გაცნობა','heart'],['clips','კლიპები','clips'],['games','თამაშები','dice'],['me','პროფილი','user']];
-const SVC=[['schedule','cal','ლექციების ცხრილი'],['exams','clock','გამოცდები და დავალებები'],['notes','book','კონსპექტები'],['classmates','school','კლასელები და კურსელები'],['tips','help','სასწავლო რჩევები'],['rooms','video','სასწავლო ოთახი'],['rooms','mic','დისკუსია','birja'],['rooms','live','ლაივი','live'],['groups','users','ჯგუფები'],['friends','users','მეგობრები'],['map','globe','ლაივ რუკა'],['events','cal','შეხვედრები'],['jobs','school','ვაკანსიები და CV'],['pages','mega','არხები და გვერდები'],['albums','image','ალბომები'],['market','store','ბაზრობა'],['shop','coin','მაღაზია'],['places','map','ადგილები'],['sport','trophy','მატჩის ოთახი'],['help','help','დახმარება'],['rides','pin','ერთად წავიდეთ'],['namedays','cal','სახელის დღეები'],['tree','tree','ოჯახის ხე'],['calendar','gift','კალენდარი'],['tour','trophy','ტურნირი'],['saved','bookmark','შენახული'],['storyarch','archive','ისტორიების არქივი'],['drafts','clock','დრაფტები'],['coins','coin','მონეტები'],['verify','shield','ვერიფიკაცია'],['settings','gear','პარამეტრები']];
+/* the tab bar: messages sit in the middle as a big raised button (they open the chats, they are not a tab of their own);
+   friends took the place of study, which is in the services menu now */
+const TABS=[['home','მთავარი','home'],['friends','მეგობრები','users'],['date','გაცნობა','heart'],['chats','მიმოწერა','msg'],['clips','კლიპები','clips'],['games','თამაშები','dice'],['me','პროფილი','user']];
+const TABMID='chats';
+const SVC=[['study','school','სწავლა'],['schedule','cal','ლექციების ცხრილი'],['exams','clock','გამოცდები და დავალებები'],['notes','book','კონსპექტები'],['classmates','school','კლასელები და კურსელები'],['tips','help','სასწავლო რჩევები'],['rooms','video','სასწავლო ოთახი'],['rooms','mic','დისკუსია','birja'],['rooms','live','ლაივი','live'],['groups','users','ჯგუფები'],['friends','users','მეგობრები'],['map','globe','ლაივ რუკა'],['events','cal','შეხვედრები'],['jobs','school','ვაკანსიები და CV'],['pages','mega','არხები და გვერდები'],['albums','image','ალბომები'],['market','store','ბაზრობა'],['shop','coin','მაღაზია'],['places','map','ადგილები'],['sport','trophy','მატჩის ოთახი'],['help','help','დახმარება'],['rides','pin','ერთად წავიდეთ'],['namedays','cal','სახელის დღეები'],['tree','tree','ოჯახის ხე'],['calendar','gift','კალენდარი'],['tour','trophy','ტურნირი'],['saved','bookmark','შენახული'],['storyarch','archive','ისტორიების არქივი'],['drafts','clock','დრაფტები'],['coins','coin','მონეტები'],['verify','shield','ვერიფიკაცია'],['settings','gear','პარამეტრები']];
 /* the day in Georgia (UTC+4 all year): the daily bonus turns over at midnight in Tbilisi */
 const today=()=>new Date(Date.now()+4*36e5).toISOString().slice(0,10);
 
 function renderTop(){if(!ME)return;$('#top').innerHTML=`<button class="logo" data-a="home" aria-label="Peera, მთავარზე დაბრუნება">${kLogo()}</button><span class="sp"></span>
  <span class="hicons"><span id="lpin" class="lpinw"></span><button class="ibtn" data-a="search" aria-label="ძიება">${ic('search')}</button>
- <button class="ibtn" data-a="chats" aria-label="მიმოწერა">${ic('msg')}<span class="dot" id="dm" hidden></span></button>
  <button class="ibtn" data-a="notifs" aria-label="შეტყობინებები">${ic('bell')}<span class="dot" id="dn" hidden></span></button>
- <button class="ibtn" data-a="page" data-p="friends" aria-label="მეგობრები">${ic('users')}<span class="dot" id="df" hidden></span></button>
  <button class="ibtn" data-a="guests" aria-label="სტუმრები">${ic('eye')}<span class="dot" id="dg" hidden></span></button>
  <button class="ibtn" data-a="menu" aria-label="სერვისები">${ic('grid')}</button></span>`;if(typeof locBadge==='function')locBadge();renderBadges();fitTop()}
 /* the header keeps every button on narrow phones: the name under the logo gets smaller, then only the mark stays */
@@ -19,10 +20,12 @@ function fitTop(){const t=$('#top');if(!t)return;const run=()=>{t.classList.remo
  if(TOPRO){TOPRO.disconnect();TOPRO.observe(t);$$('#top .hicons').forEach(e=>TOPRO.observe(e))}
  if(document.fonts&&!fitTop.f){fitTop.f=1;document.fonts.ready.then(()=>fitTop())}}
 const visTabs=()=>TABS.filter(t=>typeof tabOk!=='function'||tabOk(t[0]));
-function renderTabs(){const v=visTabs(),el=$('#tabs');el.style.setProperty('--tn',v.length);el.innerHTML='<span class="tabind" aria-hidden="true"></span>'+v.map(([k,l,i])=>`<button class="tab" data-tab="${k}" aria-current="${k===S.tab}">${ic(i)}<span>${l}</span><i class="tdot" hidden></i></button>`).join('')}
+function renderTabs(){const v=visTabs(),el=$('#tabs');el.style.setProperty('--tn',v.length);el.innerHTML='<span class="tabind" aria-hidden="true"></span>'+v.map(([k,l,i])=>k===TABMID?
+ `<button class="tab tmid" data-tab="${k}" aria-label="${l}"><span class="tmidb">${ic(i)}<span class="dot" id="dm" hidden></span></span><span class="tl">${l}</span></button>`:
+ `<button class="tab" data-tab="${k}" aria-current="${k===S.tab}">${ic(i)}<span class="tl">${l}</span>${k==='friends'?'<span class="dot tcount" id="df" hidden></span>':'<i class="tdot" hidden></i>'}</button>`).join('');renderBadges()}
 function renderBadges(){const set=(id,n)=>{const d=$('#'+id);if(!d)return;const was=d.hidden?0:parseInt(d.textContent,10)||0;d.hidden=!n;d.textContent=n>99?'99+':String(n);if(n>was)pop(d)};
  set('dn',S.unreadNotes);set('dm',S.unreadMsgs);set('dn2',S.unreadNotes);set('dm2',S.unreadMsgs);set('df',typeof PENDING_IN!=='undefined'?PENDING_IN.size:0);set('dg',S.newGuests||0);
- const me=$('.tab[data-tab="me"] .tdot');if(me){const pend=typeof PENDING_IN!=='undefined'&&PENDING_IN.size>0,bon=bonusWaits();me.hidden=!(pend||bon);me.classList.toggle('gold',bon&&!pend)}
+ const me=$('.tab[data-tab="me"] .tdot');if(me){const bon=typeof bonusWaits==='function'&&bonusWaits();me.hidden=!bon;me.classList.toggle('gold',bon)}
  const tot=(S.unreadNotes||0)+(S.unreadMsgs||0);document.title=tot?`(${tot}) Peera`:'Peera';
  try{if(tot&&navigator.setAppBadge)navigator.setAppBadge(tot);else if(navigator.clearAppBadge)navigator.clearAppBadge()}catch(e){}}
 
@@ -33,7 +36,8 @@ function go(tab,dx){if(!R[tab])tab='home';const oi=TABS.findIndex(t=>t[0]===S.ta
  navStep();
  R[tab]();updateFab();markSide();
  const d=dx!=null?dx:(oi===ni&&!wasPage?0:Math.sign(ni-oi||1)*24);if(d)enterView(d)}
-{const op=openPage;openPage=function(...a){closePV(true);const r=op.apply(this,a);updateFab();markSide();return r}}
+{const op=openPage;openPage=function(...a){if(a[0]==='friends'&&R.friends){go('friends');return}closePV(true);const r=op.apply(this,a);updateFab();markSide();return r}}
+R.friends=()=>{PG.friends.r();$('.pghead [data-a="back"]',view)?.remove();$('.pghead',view)?.classList.add('tabhead')};
 function updateFab(){const f=$('#fab');if(f)f.hidden=document.body.classList.contains('wide')||!!S.page||!['home','me'].includes(S.tab)}
 A.home=()=>{if(S.tab==='home'&&!S.page){view.scrollTo({top:0,behavior:RM()?'auto':'smooth'});return}go('home')};
 
@@ -67,7 +71,7 @@ A.cgchat=()=>A.newgroupchat();
 const WIDE=matchMedia('(min-width:1000px)');
 function renderSide(){const on=WIDE.matches&&!!ME;document.body.classList.toggle('wide',on);if(!on){$('#sidel')?.remove();$('#sider')?.remove();return}
  let L=$('#sidel');if(!L){L=document.createElement('aside');L.id='sidel';L.className='side-l';L.setAttribute('aria-label','ნავიგაცია');document.body.appendChild(L)}
- L.innerHTML=`<button class="logo" data-a="home" aria-label="Peera">${kLogo()}</button><nav class="snavs">${visTabs().map(([k,l,i])=>`<button class="snav" data-tab2="${k}">${ic(i)}<span>${l}</span></button>`).join('')}
+ L.innerHTML=`<button class="logo" data-a="home" aria-label="Peera">${kLogo()}</button><nav class="snavs">${visTabs().filter(t=>t[0]!==TABMID).map(([k,l,i])=>`<button class="snav" data-tab2="${k}">${ic(i)}<span>${l}</span></button>`).join('')}
   <button class="snav" data-a="chats">${ic('msg')}<span>მიმოწერა</span><i class="sdot" id="dm2" hidden></i></button><button class="snav" data-a="notifs">${ic('bell')}<span>შეტყობინებები</span><i class="sdot" id="dn2" hidden></i></button>
   <span class="snavsep"></span>${SVC.filter(x=>pageOk(x[0])).slice(0,8).map(([p,i,l,a])=>`<button class="snav sm" data-a="${R[p]&&!PG[p]?'tabgo':'page'}" data-p="${p}"${a?` data-arg="${a}"`:''}>${ic(i)}<span>${l}</span></button>`).join('')}<button class="snav sm" data-a="menu">${ic('grid')}<span>ყველა სერვისი</span></button></nav>
   <button class="btn wide" data-a="create">${ic('plus')}შექმნა</button><button class="smine" data-tab2="me">${av('me',40)}<span class="grow"><b>${esc(ME.name)}</b><small>${ME.username?'@'+esc(ME.username):'პროფილი'}</small></span></button>`;
@@ -93,7 +97,7 @@ function listenNotes(){sb.channel('notes-'+ME.id).on('postgres_changes',{event:'
 async function onNote(n){const r=n.ref||{};if(n.actor)try{await loadProfiles([n.actor])}catch(e){}
  const who=n.actor?`${av(n.actor,36)}<span class="grow"><b>${esc(pname(n.actor))}</b>`:kAv(36)+'<span class="grow">';
  if(n.kind==='message'){if(S.openConv===r.conv)return;S.unreadMsgs++;renderBadges();banner(`${who}<span>${esc(r.text||'ახალი შეტყობინება')}</span></span>`,()=>openChat(+r.conv));return}
- if(n.kind==='friend_req'&&n.actor){PENDING_IN.add(n.actor);if(S.page?.id==='friends')rp()}else if(n.kind==='friend_ok'&&n.actor){FRIENDS.add(n.actor);PENDING_OUT.delete(n.actor)}else if(n.kind==='verified'){ME.verified=true}
+ if(n.kind==='friend_req'&&n.actor){PENDING_IN.add(n.actor);if(S.page?.id==='friends')rp();else if(!S.page&&S.tab==='friends')R.friends()}else if(n.kind==='friend_ok'&&n.actor){FRIENDS.add(n.actor);PENDING_OUT.delete(n.actor)}else if(n.kind==='verified'){ME.verified=true}
  S.unreadNotes++;renderBadges();
  banner(`${who}<span>${esc((NOTE_TXT[n.kind]||(()=>'ახალი შეტყობინება'))(r))}</span></span>`,()=>{const t=document.createElement('button');t.dataset.k=n.kind;t.dataset.r=JSON.stringify(r);t.dataset.u=n.actor||'';A.note(t)})}
 
@@ -123,7 +127,7 @@ window.addEventListener('online',()=>{toast('კავშირი აღდგ�
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ME){countUnread();touchSeen()}});
 
 /* global input */
-$('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;if(b.dataset.tab==='games'){gOpenHub();return}if(b.dataset.tab===S.tab&&!S.page&&view.scrollTop>10){view.scrollTo({top:0,behavior:RM()?'auto':'smooth'});return}go(b.dataset.tab)});
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;if(b.dataset.tab===TABMID){A.chats();return}if(b.dataset.tab==='games'){gOpenHub();return}if(b.dataset.tab===S.tab&&!S.page&&view.scrollTop>10){view.scrollTo({top:0,behavior:RM()?'auto':'smooth'});return}go(b.dataset.tab)});
 document.addEventListener('click',e=>{if(!e.target.closest('.rwrap'))$$('.picker').forEach(x=>x.remove());const t=e.target.closest('[data-a]');if(!t)return;const f=A[t.dataset.a];if(!f){/* an action of the games or the admin panel, touched before they came */if(typeof GLZ!=='undefined'&&t.dataset.a&&(!GLZ.ready||ME&&ME.role==='admin'&&!PG.admin))(GLZ.ready?glAdmin():glLoad()).then(()=>{const g=A[t.dataset.a];if(g&&t.isConnected)g(t,e)}).catch(()=>{});return}if(t.tagName==='A')e.preventDefault();try{const r=f(t,e);if(r&&r.catch)r.catch(x=>{toast(errMsg(x));errBug(x,t.dataset.a)})}catch(x){toast(errMsg(x));errBug(x,t.dataset.a)}});
 $('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeSheet()});
 $('#layer').addEventListener('click',e=>{if(e.target.id==='layer')closeLayer()});
