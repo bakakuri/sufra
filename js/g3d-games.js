@@ -430,7 +430,7 @@ G3B.joker=()=>{const sc=g3Scene({cam:{fixed:jkCam,tgt:[0,0,0],fov:1,dy:0,dp:0,dz
  return sc};
 /* the card faces come in two decks; switching in the menu swaps the picture on the cards already on the table */
 const jkC4=()=>typeof c4On==='function'&&c4On();
-const jkAtlas=()=>{const c4=jkC4(),st=gStyleOf('joker');return g3T('cards2'+(c4?'q':'')+(st==='geo'?'g':''),()=>g3Tex(cardsCv(c4,st),{af:true}))};
+const jkAtlas=()=>{const c4=jkC4(),st=gStyleOf('joker');return g3T('cards3'+(c4?'q':'')+(st==='geo'?'g':''),()=>g3Tex(cardsCv(c4,st),{af:true}))};
 function jkDeck(sc){const c4=jkC4()+':'+gStyleOf('joker');if(sc.c4===c4)return;sc.c4=c4;const t=jkAtlas();for(const m of['card','deck'])if(sc.models[m])sc.models[m].parts.forEach(p=>{p.mat.t=t})}
 /* what the people at the table do for a reaction: the head nods, shakes or tips back; laughing and a toast move the whole body */
 const GEST={clap:{h:{ax:'x',a:.1,f:2,d:1800},k:{ax:'y',a:.5,f:4,abs:1,b:.12,bf:4,d:1800}},nod:{h:{ax:'x',a:.2,f:2,d:1100}},laugh:{h:{ax:'x',a:.1,f:5,d:1300,b:.09,bf:10},bd:{b:.09,bf:10,d:1300}},wow:{h:{ax:'x',a:-.32,f:.5,d:1300}},cheer:{h:{ax:'x',a:.16,f:1.5,d:1500,b:.24,bf:3},bd:{b:.24,bf:3,d:1500}},shake:{h:{ax:'y',a:.3,f:3,d:1200}}};

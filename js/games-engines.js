@@ -337,7 +337,65 @@ function jLastOpen(L,nm,base){if(!L||!L.t||L.t.length<4)return;const pos=['b','l
 const jLastBtn=a=>`<button class="jlt" data-a="${a}" aria-label="ბოლო ხელის ნახვა">${ic('cards')}<span>ბოლო ხელი</span></button>`;
 function jDeck(){const d=[];for(const s of SUITS)for(let r=6;r<=14;r++)if(!(r===6&&(s==='s'||s==='c')))d.push({s,r});d.push({j:1},{j:2});return d}
 const sortHand=h=>h.sort((a,b)=>(a.j?99:SUITS.indexOf(a.s)*20+a.r)-(b.j?99:SUITS.indexOf(b.s)*20+b.r));
-const jCardHTML=(c,extra='')=>c.j?`<div class="card jk"${extra}><i>★</i>ჯოკერი</div>`:`<div class="card${isRed(c.s)?' red':''}" data-s="${SY[c.s]}"${extra}><span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span></div>`;
+/* ---------- the court cards of the Peera deck: painted half-figures, the same at both ends ----------
+   the king with a crown, a beard and a mantle over the chokha; the queen in a white veil over the chikhti-kopi, with braids;
+   the jack in a papakhi with a drinking horn. Each suit dresses them in its own colour; used by the 3D atlas and the flat cards */
+const JCOAT={h:'#9E1B32',d:'#B5401E',s:'#1F2B4A',c:'#18402D'},JCOAT4={h:'#9E1B32',d:'#1E4FA0',s:'#1F2B4A',c:'#1B6A3A'};
+function jCourtPaint(x,r,s,X,Y,W,H,o={}){const coat=(o.c4?JCOAT4:JCOAT)[s],gold='#D9A93E',dk='#2A1E18',skin='#F1C9A2',shirt='#F4E8CC',hh=H/2,u=W/100;
+ x.save();x.beginPath();x.rect(X,Y,W,H);x.clip();
+ const P=(pts,fill,stroke,lw)=>{x.beginPath();pts.forEach(([a,b],i)=>i?x.lineTo(a*u,b*u):x.moveTo(a*u,b*u));x.closePath();if(fill){x.fillStyle=fill;x.fill()}if(stroke){x.strokeStyle=stroke;x.lineWidth=(lw||1.4)*u;x.stroke()}};
+ const E=(cx,cy,rx,ry,fill,stroke)=>{x.beginPath();x.ellipse(cx*u,cy*u,rx*u,ry*u,0,0,Math.PI*2);if(fill){x.fillStyle=fill;x.fill()}if(stroke){x.strokeStyle=stroke;x.lineWidth=1.2*u;x.stroke()}};
+ const R=(a,b,w,h,fill)=>{x.fillStyle=fill;x.fillRect(a*u,b*u,w*u,h*u)};
+ /* drawn in a 100-unit-wide frame, scaled up so the figure fills the tall half (the coat runs out at the sides) */
+ const k=Math.max(1,Math.min(1.6,hh/u/112));
+ const half=()=>{x.save();x.translate(50*u,0);x.scale(k,k);x.translate(-50*u,0);const B=hh/u/k;/* B: the half's height in units (the centre line) */
+  const face=(cy,rx,ry)=>{E(50,cy,rx,ry,skin,'rgba(90,50,30,.35)');x.fillStyle=dk;for(const ex of[44.5,55.5]){x.beginPath();x.arc(ex*u,(cy-1.5)*u,1.25*u,0,Math.PI*2);x.fill()}
+   x.strokeStyle='rgba(60,35,20,.75)';x.lineWidth=1.1*u;for(const ex of[44.5,55.5]){x.beginPath();x.moveTo((ex-3)*u,(cy-5)*u);x.quadraticCurveTo(ex*u,(cy-6.5)*u,(ex+3)*u,(cy-5)*u);x.stroke()}
+   x.strokeStyle='rgba(140,70,50,.6)';x.beginPath();x.moveTo(50*u,(cy-1)*u);x.quadraticCurveTo(48.5*u,(cy+3)*u,50.5*u,(cy+3.5)*u);x.stroke()};
+  const body=(top,col)=>{P([[20,top],[80,top],[92,B],[8,B]],col,'rgba(0,0,0,.35)',1);P([[41,top],[59,top],[50,top+22]],shirt);
+   x.strokeStyle=gold;x.lineWidth=1.6*u;x.beginPath();x.moveTo(41*u,top*u);x.lineTo(50*u,(top+22)*u);x.lineTo(59*u,top*u);x.stroke()};
+  const gazyri=(top)=>{for(const side of[-1,1])for(let i=0;i<5;i++){const gx=50+side*(15+i*5.2)-1.4;R(gx,top+6,2.8,11,gold);R(gx-.3,top+5,3.4,2,dk)}};
+  if(r===13){/* the king */
+   P([[22,66],[78,66],[96,B],[4,B]],'#5E0F24');/* the mantle */
+   for(let k=0;k<9;k++)E(10+k*10,67,5.5,3.6,'#F6F1E6','rgba(0,0,0,.18)');
+   body(68,coat);gazyri(68);
+   face(42,13.5,15.5);
+   x.beginPath();x.moveTo(37*u,46*u);x.quadraticCurveTo(36*u,66*u,50*u,70*u);x.quadraticCurveTo(64*u,66*u,63*u,46*u);x.quadraticCurveTo(57*u,55*u,50*u,54*u);x.quadraticCurveTo(43*u,55*u,37*u,46*u);x.fillStyle='#5B3A22';x.fill();
+   x.beginPath();x.moveTo(50*u,49*u);x.bezierCurveTo(44*u,46*u,38*u,50*u,35*u,47*u);x.bezierCurveTo(39*u,53*u,46*u,52*u,50*u,51*u);x.bezierCurveTo(54*u,52*u,61*u,53*u,65*u,47*u);x.bezierCurveTo(62*u,50*u,56*u,46*u,50*u,49*u);x.fillStyle='#4A2E1A';x.fill();
+   P([[33,30],[31,12],[40,21],[50,7],[60,21],[69,12],[67,30]],gold,'#8A6418',1);R(33,27,34,5,'#B8862C');
+   for(const[a,c]of[[40,'#C8102E'],[50,'#1E6FD6'],[60,'#C8102E']])E(a,29.5,2,2,c);E(50,9,2.2,2.2,'#F6F1E6');
+   x.strokeStyle=gold;x.lineWidth=2.6*u;x.beginPath();x.moveTo(84*u,64*u);x.lineTo(78*u,(B)*u);x.stroke();E(84.5,61,4,4,gold,'#8A6418')}
+  else if(r===12){/* the queen */
+   x.beginPath();x.moveTo(27*u,30*u);x.bezierCurveTo(24*u,8*u,76*u,8*u,73*u,30*u);x.bezierCurveTo(80*u,48*u,86*u,62*u,88*u,74*u);x.lineTo(12*u,74*u);x.bezierCurveTo(14*u,62*u,20*u,48*u,27*u,30*u);x.fillStyle='rgba(255,255,255,.96)';x.fill();x.strokeStyle='rgba(120,120,140,.5)';x.lineWidth=1*u;x.stroke();
+   body(70,coat);
+   x.strokeStyle=gold;x.lineWidth=1.4*u;for(const a of[44,56]){x.beginPath();x.moveTo(a*u,92*u);x.lineTo((a<50?40:60)*u,B*u);x.stroke()}
+   for(let k=0;k<4;k++)E(50,96+k*6,1.4,1.4,gold);
+   for(const a of[36.5,63.5]){x.fillStyle='#3B2416';x.beginPath();x.ellipse(a*u,66*u,3.6*u,17*u,0,0,Math.PI*2);x.fill();x.strokeStyle='rgba(255,255,255,.22)';x.lineWidth=.8*u;for(let k=0;k<5;k++){x.beginPath();x.moveTo((a-3)*u,(54+k*6)*u);x.lineTo((a+3)*u,(57+k*6)*u);x.stroke()}}
+   x.fillStyle='#3B2416';x.beginPath();x.ellipse(50*u,33*u,14*u,8*u,0,Math.PI,0);x.fill();
+   face(43,12.5,15);x.fillStyle='#C2384A';x.beginPath();x.ellipse(50*u,50.6*u,3*u,1.3*u,0,0,Math.PI*2);x.fill();
+   x.fillStyle='#5E0F24';x.beginPath();x.moveTo(35*u,30*u);x.quadraticCurveTo(50*u,22*u,65*u,30*u);x.lineTo(65*u,24*u);x.quadraticCurveTo(50*u,16*u,35*u,24*u);x.closePath();x.fill();
+   for(let k=0;k<7;k++)E(37+k*4.3,26.5+Math.abs(k-3)*.45,1.2,1.2,'#F4E3B0');
+   E(76,98,5,5,'#C8102E');E(76,98,2.2,2.2,'#F27C8A');x.strokeStyle='#2E7D32';x.lineWidth=1.4*u;x.beginPath();x.moveTo(76*u,103*u);x.lineTo(72*u,(B)*u);x.stroke()}
+  else{/* the jack */
+   body(66,coat);gazyri(66);
+   face(40,12,14);x.fillStyle='#4A2E1A';x.beginPath();x.moveTo(50*u,47*u);x.bezierCurveTo(46*u,45.5*u,42*u,47.5*u,40*u,46*u);x.bezierCurveTo(43*u,50*u,47*u,49*u,50*u,48.5*u);x.bezierCurveTo(53*u,49*u,57*u,50*u,60*u,46*u);x.bezierCurveTo(58*u,47.5*u,54*u,45.5*u,50*u,47*u);x.fill();
+   x.beginPath();x.moveTo(35*u,29*u);x.quadraticCurveTo(34*u,9*u,50*u,9*u);x.quadraticCurveTo(66*u,9*u,65*u,29*u);x.closePath();x.fillStyle='#2B211C';x.fill();
+   x.strokeStyle='rgba(255,255,255,.16)';x.lineWidth=.9*u;for(let k=0;k<14;k++){const a=37+k*2;x.beginPath();x.moveTo(a*u,(13+(k%3))*u);x.lineTo((a+1)*u,(27-(k%2))*u);x.stroke()}
+   R(34,27,32,4,'#3A2E28');
+   x.beginPath();x.moveTo(70*u,96*u);x.quadraticCurveTo(90*u,86*u,86*u,60*u);x.lineTo(94*u,58*u);x.quadraticCurveTo(98*u,90*u,74*u,101*u);x.closePath();x.fillStyle='#8A5A2B';x.fill();x.strokeStyle='#4A2E14';x.lineWidth=1*u;x.stroke();
+   x.fillStyle='#C9CDD6';x.beginPath();x.ellipse(90*u,59*u,4.2*u,1.6*u,-.2,0,Math.PI*2);x.fill();E(71,97,4.5,4,skin,'rgba(90,50,30,.35)')}
+  R(-20,B-1.2,140,1.2,'rgba(0,0,0,.25)');x.restore()};
+ x.translate(X,Y);half();x.translate(W,H);x.rotate(Math.PI);half();x.restore()}
+/* the flat cards use the same painting: twelve small pictures made once, as CSS classes (fc11s ... fc13d), on a parchment panel */
+const JCSS={k:null};
+function jCourtCSS(){const c4=c4On(),k=c4?'q':'n';if(JCSS.k===k)return;JCSS.k=k;let css='';
+ for(const s of SUITS)for(const r of[11,12,13]){const c=document.createElement('canvas'),W=96,H=200;c.width=W;c.height=H;const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#FBEFD2');g.addColorStop(.5,'#F3DFB2');g.addColorStop(1,'#FBEFD2');x.fillStyle=g;x.fillRect(0,0,W,H);
+  jCourtPaint(x,r,s,0,0,W,H,{c4});x.strokeStyle=c4?SC4[s]:isRed(s)?'#CE1430':'#17110E';x.lineWidth=3;x.strokeRect(1.5,1.5,W-3,H-3);
+  let url='';try{url=c.toDataURL('image/webp',.86);if(!/^data:image\/webp/.test(url))url=c.toDataURL()}catch(e){}css+=`.card .fci.fc${r}${s}{background-image:url(${url})}`}
+ let el=document.getElementById('jcourt');if(!el){el=document.createElement('style');el.id='jcourt';document.head.appendChild(el)}el.textContent=css}
+const jFci=c=>!c.j&&c.r>=11&&c.r<=13?(jCourtCSS(),`<i class="fci fc${c.r}${c.s}" aria-hidden="true"></i>`):'';
+const jCardHTML=(c,extra='')=>c.j?`<div class="card jk${c.j===2?' jk2':''}"${extra}><i>★</i>ჯოკერი</div>`:`<div class="card${isRed(c.s)?' red':''}${c.r>=11&&c.r<=13?' fc':''}" data-s="${SY[c.s]}"${extra}>${jFci(c)}<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span></div>`;
 const cardName=c=>c.j?'ჯოკერი':rkTxt(c.r)+' '+SN[c.s];
 const JSEQ={quick:[1,2,3,4,5,6,7,8],full:[1,2,3,4,5,6,7,8,9,9,9,9,8,7,6,5,4,3,2,1,9,9,9,9]};
 /* the full game has four sections: 1 to 8, four nines, 8 to 1, four nines; the quick game is one section */
@@ -525,7 +583,7 @@ const JK=GAME.joker={title:'ჯოკერი',
   if(this.hands&&this.hands[0]){if(this.phase==='trump')jSortHand(this.first3[0],null);else jSortHand(this.hands[0],this.trump)}
   const L=this.phase==='play'&&this.cur===0?this.legal(0):[];
   const hand=this.phase==='trump'&&this.cur===0?this.first3[0].map(c=>jCardHTML(c)).join('')+'<div class="card" style="opacity:.25" aria-hidden="true"></div>'.repeat(this.n-3)
-   :this.hands[0].map((c,i)=>`<button class="card${c.j?' jk':''}${!c.j&&isRed(c.s)?' red':''}" data-a="jcard" data-i="${i}"${c.j?'':` data-s="${SY[c.s]}"`} aria-label="${cardName(c)}"${L.includes(c)?'':' disabled'}>${c.j?'<i>★</i>ჯოკერი':`<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span>`}</button>`).join('');
+   :this.hands[0].map((c,i)=>`<button class="card${c.j?' jk'+(c.j===2?' jk2':''):''}${!c.j&&isRed(c.s)?' red':''}${!c.j&&c.r>=11&&c.r<=13?' fc':''}" data-a="jcard" data-i="${i}"${c.j?'':` data-s="${SY[c.s]}"`} aria-label="${cardName(c)}"${L.includes(c)?'':' disabled'}>${c.j?'<i>★</i>ჯოკერი':`${jFci(c)}<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span>`}</button>`).join('');
   let panel='',st='',quiet=0;
   if(this.phase==='trump'){if(this.cur===0){st='პირველი სამი კარტით აირჩიე კოზირი';panel=jTrumpPad('jtrump',jHintOn()?this.botTrump(0):undefined)}else st=esc(this.nm(this.cur))+' ირჩევს კოზირს…'}
   else if(this.phase==='bid'){if(this.cur===0){const f=this.forbidden(0),hn=jHintOn()?jHint(this.hands[0],this.trump,this.n,f):-1;st='რამდენს წაიღებ?'+(f>=0?` დამრიგებელი ხარ, ${f}-ს ვერ იტყვი`:'');panel=jBidPad(this.n,f,hn,'jbid')}else{st=esc(this.nm(this.cur))+' ამბობს…';quiet=1}}

@@ -84,11 +84,13 @@ function cardsCv(c4,style){const geoS=style==='geo',c=cvs(CATL,CATL),x=c.getCont
    corner();x.save();x.translate(CW,CH_);x.rotate(Math.PI);corner();x.restore();
    if(r<=10){for(const[u,v]of PIPL[r]){const px=80+u*96,py=46+v*268;x.save();x.translate(px,py);if(v>.55)x.rotate(Math.PI);suitPath(x,s,0,0,31);x.restore()}}
    else if(r===14){suitPath(x,s,CW/2,CH_/2,104);x.save();x.globalAlpha=.33;x.strokeStyle=col;x.lineWidth=3;x.beginPath();x.arc(CW/2,CH_/2,68,0,Math.PI*2);x.stroke();x.restore()}
-   else if(geoS){/* the Georgian deck: a parchment panel with interlace, and a crown, a tiara or a feathered cap over the letter */
-    const g=x.createLinearGradient(0,60,0,300);g.addColorStop(0,'#FFF4DC');g.addColorStop(1,'#F2DDB0');x.fillStyle=g;rrect(x,82,40,92,280,12);x.fill();x.strokeStyle=col;x.lineWidth=3;x.stroke();
-    ornBand(x,90,50,76,16,col);ornBand(x,90,294,76,16,col);courtIcon(x,r,128,CH_/2-44,col);x.fillStyle=col;x.font=`700 70px ${F}`;x.fillText(t,128,CH_/2+42);suitPath(x,s,128,CH_/2+88,26)}
-   else{const g=x.createLinearGradient(0,60,0,300);g.addColorStop(0,'#FBEFD2');g.addColorStop(1,'#F0D9A6');x.fillStyle=g;rrect(x,86,46,84,268,10);x.fill();x.strokeStyle=col;x.lineWidth=3;x.stroke();x.lineWidth=1.2;rrect(x,92,52,72,256,6);x.stroke();
-    x.fillStyle=col;x.font=`700 80px ${F}`;x.fillText(t,128,CH_/2+18);suitPath(x,s,128,CH_/2+74,28);suitPath(x,s,128,CH_/2-78,28)}})}
+   else{/* the court cards: a painted king, queen or jack in the suit's colours on a parchment panel, the same at both ends;
+       the Georgian deck frames it with interlace bands */
+    const g=x.createLinearGradient(0,30,0,330);g.addColorStop(0,geoS?'#FFF4DC':'#FBEFD2');g.addColorStop(.5,geoS?'#F2DDB0':'#F0D9A6');g.addColorStop(1,geoS?'#FFF4DC':'#FBEFD2');
+    x.fillStyle=g;rrect(x,80,26,96,308,10);x.fill();
+    if(typeof jCourtPaint==='function'){if(geoS){jCourtPaint(x,r,s,82,46,92,268,{c4});ornBand(x,84,30,88,14,col);ornBand(x,84,316,88,14,col)}else jCourtPaint(x,r,s,82,28,92,304,{c4})}
+    else{x.fillStyle=col;x.font=`700 80px ${F}`;x.fillText(t,128,CH_/2+18)}
+    x.strokeStyle=col;x.lineWidth=3;rrect(x,80,26,96,308,10);x.stroke();suitPath(x,s,96,46,16);x.save();x.translate(CW,CH_);x.rotate(Math.PI);suitPath(x,s,96,46,16);x.restore()}})}
  for(const j of[1,2])face(35+j,()=>{const col=j===1?'#CE1430':'#1F2F6B',g=x.createRadialGradient(CW/2,CH_/2,10,CW/2,CH_/2,150);g.addColorStop(0,j===1?'#FFE3EA':'#E2E8FF');g.addColorStop(1,'#FFFDF8');x.fillStyle=g;x.fillRect(0,0,CW,CH_);
   if(geoS){borjgali(x,CW/2,CH_/2-24,72,col);x.fillStyle=col;x.font=`700 34px ${F}`;x.textAlign='center';x.fillText('ჯოკერი',CW/2,CH_/2+76)}
   else{jesterAt(x,CW/2+16,CH_/2+18,.82,j===1?['#D62A3A','#F4C430','#2A6FD6']:['#2A6FD6','#3DAA5C','#8E44AD']);x.fillStyle=col;x.font=`800 27px ${FS}`;x.textAlign='center';[...'ჯოკერი'].forEach((ch,i)=>x.fillText(ch,34,128+i*31))}x.fillStyle=col;
@@ -102,7 +104,9 @@ function cardsCv(c4,style){const geoS=style==='geo',c=cvs(CATL,CATL),x=c.getCont
  else face(38,()=>{x.fillStyle='#7A1430';x.fillRect(0,0,CW,CH_);x.strokeStyle='rgba(232,190,100,.9)';x.lineWidth=4;rrect(x,16,16,CW-32,CH_-32,14);x.stroke();
   x.save();rrect(x,24,24,CW-48,CH_-48,10);x.clip();x.strokeStyle='rgba(232,190,100,.28)';x.lineWidth=2;for(let k=-CH_;k<CW+CH_;k+=22){x.beginPath();x.moveTo(k,0);x.lineTo(k+CH_,CH_);x.stroke();x.beginPath();x.moveTo(k+CH_,0);x.lineTo(k,CH_);x.stroke()}x.restore();
   x.fillStyle='#7A1430';x.beginPath();x.arc(CW/2,CH_/2,62,0,Math.PI*2);x.fill();x.strokeStyle='rgba(232,190,100,.95)';x.lineWidth=4;x.stroke();x.lineWidth=1.5;x.beginPath();x.arc(CW/2,CH_/2,54,0,Math.PI*2);x.stroke();
-  x.fillStyle=goldFill(x,CH_/2-34,CH_/2+30);crownPath(x,CW/2,CH_/2+2,70)});
+  /* the Peera mark in the middle */
+  x.fillStyle=goldFill(x,CH_/2-40,CH_/2+40);x.font=`800 92px ${F}`;x.textAlign='center';x.textBaseline='middle';x.fillText('P',CW/2+3,CH_/2+6);
+  x.font=`700 15px ${FS}`;x.fillStyle='rgba(232,190,100,.9)';x.fillText('PEERA',CW/2,CH_/2+86);x.fillText('PEERA',CW/2,CH_/2-86)});
  return c}
 /* dice faces: ivory with carved pips, the one in red */
 function diceCv(){const c=cvs(512,256),x=c.getContext('2d');for(let v=1;v<=6;v++){const X=((v-1)%4)*128,Y=Math.floor((v-1)/4)*128;x.fillStyle='#F6EFE0';x.fillRect(X,Y,128,128);

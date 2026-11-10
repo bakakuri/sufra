@@ -200,7 +200,7 @@ function joDraw(){const el=$('#jko');if(!el||!JO.t||!joHere(JO.id))return;const 
  const myTurn=me>=0&&s.cur===me&&s.win==null&&!JO.wait;
  const L=myTurn&&s.phase==='play'?JK.legal.call({hands:{[me]:JO.hand},trick:s.trick,trump:s.trump},me):[];
  let hand='';if(me>=0){hand=s.phase==='trump'?JO.hand.map(c=>jCardHTML(c)).join('')+(s.cur===me?'<div class="card" style="opacity:.25" aria-hidden="true"></div>'.repeat(Math.max(0,s.n-JO.hand.length)):'')
-  :JO.hand.map((c,i)=>`<button class="card${c.j?' jk':''}${!c.j&&isRed(c.s)?' red':''}" data-a="jkocard" data-i="${i}"${c.j?'':` data-s="${SY[c.s]}"`} aria-label="${cardName(c)}"${L.includes(c)?'':' disabled'}>${c.j?'<i>★</i>ჯოკერი':`<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span>`}</button>`).join('')}
+  :JO.hand.map((c,i)=>`<button class="card${c.j?' jk'+(c.j===2?' jk2':''):''}${!c.j&&isRed(c.s)?' red':''}${!c.j&&c.r>=11&&c.r<=13?' fc':''}" data-a="jkocard" data-i="${i}"${c.j?'':` data-s="${SY[c.s]}"`} aria-label="${cardName(c)}"${L.includes(c)?'':' disabled'}>${c.j?'<i>★</i>ჯოკერი':`${jFci(c)}<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span>`}</button>`).join('')}
  let panel='';
  if(myTurn&&s.phase==='trump')panel=jTrumpPad('jkotrump',jHintOn()?JK.botTrump.call({first3:{[me]:JO.hand}},me):undefined);
  else if(myTurn&&s.phase==='bid'){const f=JK.forbidden.call({dealer:s.dealer,n:s.n,bids:s.bids},me);panel=jBidPad(s.n,f,jHintOn()?jHint(JO.hand,s.trump,s.n,f):-1,'jkobid')}

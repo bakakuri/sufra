@@ -3667,3 +3667,10 @@ html.eco .lmp,html.eco .lm-on,html.eco .lm-empty,html.eco .lm-modes{-webkit-back
 .gx:not(.is3d) .jt .trick.sw2 .card{--tx:0;--ty:-130px}.gx:not(.is3d) .jt .trick.sw3 .card{--tx:140px;--ty:0}
 @keyframes jsw{to{translate:var(--tx) var(--ty);scale:.55;opacity:0}}
 @media (prefers-reduced-motion:reduce){.gx:not(.is3d) .jt .trick.sw .card{animation:none}}
+/* ---------- joker, stage 3: the court figures on the flat cards, the second joker in blue ---------- */
+.card.fc{position:relative;overflow:hidden}
+.card .fci{position:absolute;left:30%;right:10%;top:9%;bottom:9%;border-radius:4px;background:center/100% 100% no-repeat;pointer-events:none;box-shadow:0 0 0 1px rgb(0 0 0/.08)}
+.card.fc>span{position:relative;z-index:1}
+.gx .hand .card.fc .fci{left:34%;right:8%}
+.card.jk2{color:#1F2F6B}
+.card.jk2 i{color:#2A6FD6}
