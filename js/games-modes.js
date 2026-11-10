@@ -12,7 +12,7 @@ const botAv=ch=>({n:ch.n.replace(BOTP,'')[0],h:ch.h,look:ch.lk,cast:ch.cast});
 const G2P=['nardi','shashi','chess'];
 /* a new level picked in the menu brings its person to the table at once */
 {const set=A.gbotset;A.gbotset=t=>{set(t);const id=gCur(),G=GAME[id],c=G&&G.ctx;if(c&&c.mode==='bot'&&G2P.includes(id)){const ch=botChar(id);c.names[-c.side]=ch.n;c.avs[-c.side]=botAv(ch);G.render()}}}
-A.gbot=()=>{const id=gCur();if(!id)return;const lv=bLvl(id),two=G2P.includes(id);sheet(head('ბოტის დონე')+`<div class="gmenu">${[1,2,3,4].map(v=>`<button data-a="gbotset" data-v="${v}"${v===lv?' aria-pressed="true"':''}>${two?avAny(botAv(BOTC[v]),34):ic(v===lv?'check':'user')}<span><b>${two?BOTC[v].n+' · ':''}${BLV[v].n}</b><br><small class="muted">${two?BOTC[v].d:BLV[v].d}</small></span>${v===lv?ic('check'):''}</button>`).join('')}</div>`,'short')};
+A.gbot=()=>{const id=gCur();if(!id)return;const lv=bLvl(id),two=G2P.includes(id);sheet(head('ბოტის დონე')+`<div class="gmenu">${[1,2,3,4,...(id==='joker'?[5]:[])].map(v=>`<button data-a="gbotset" data-v="${v}"${v===lv?' aria-pressed="true"':''}>${two?avAny(botAv(BOTC[v]),34):ic(v===lv?'check':'user')}<span><b>${two?BOTC[v].n+' · ':''}${BLV[v].n}</b><br><small class="muted">${two?BOTC[v].d:BLV[v].d}</small></span>${v===lv?ic('check'):''}</button>`).join('')}</div>`,'short')};
 
 /* ---------- talk at the table ----------
    the computer's players say a word when something happens: a checker hit, a check, a double six, a last tile.

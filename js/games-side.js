@@ -12,12 +12,12 @@ function gSideDomino(hist,names,tot){if(!hist||!hist.length)return '';let a=0,b=
  const rows=hist.map((h,i)=>{if(h.win===0)a+=h.pts;else if(h.win===1)b+=h.pts;return `<tr><td class="n">${i+1}.</td><td>${h.kind==='block'?'ჩაიკეტა':'დომინო'}</td><td>${h.win<0||h.win==null?'ფრე':esc(names[h.win])+' +'+h.pts}</td><td class="t">${tot?tot(a,b):''}</td></tr>`}).join('');
  return `<h4>ხელები</h4><div class="gsl"><table class="gsmv dm">${rows}</table></div>`}
 function gSideHTML(){
- if(S.page&&S.page.id==='jktable'){const s=JO.st;return s&&s.hist&&s.hist.length?`<h4>ქულების ფურცელი</h4><div class="gsl">${jNoteHTML(s.hist,s.score||[0,0,0,0],[0,1,2,3].map(joShort))}</div>`:''}
+ if(S.page&&S.page.id==='jktable'){const s=JO.st;return s&&s.hist&&JSEQ[s.len]?`<h4>ქულების ფურცელი</h4><div class="gsl">${jNoteHTML(s.hist,s.score||[0,0,0,0],[0,1,2,3].map(joShort),{len:s.len,h:s.phase==='over'?99:s.h,prem:!s.opt||s.opt.prem!==false})}</div>`:''}
  if(S.page&&S.page.id==='dmtable'){const s=DMO.st;if(!s||!s.hist)return '';const me=DMO.seat>=0,us=me?DMO.seat%2:0,nm=!me?['I წყვილი','II წყვილი']:us===0?['ჩვენ','მეტოქეები']:['მეტოქეები','ჩვენ'];
   return gSideDomino(s.hist,nm,(a,b)=>us===0?a+':'+b:b+':'+a)}
  if(S.page||S.tab!=='games'||!S.game)return '';const G=GAME[S.game];if(!G||!G.ctx)return '';
  if(S.game==='chess')return gSideChess(G);
- if(S.game==='joker')return G.hist&&G.hist.length?`<h4>ქულების ფურცელი</h4><div class="gsl">${jNoteHTML(G.hist,G.score,[0,1,2,3].map(p=>G.nm(p)))}</div>`:'';
+ if(S.game==='joker')return G.hist&&JSEQ[G.len]&&G.phase!=='setup'?`<h4>ქულების ფურცელი</h4><div class="gsl">${jNoteHTML(G.hist,G.score,[0,1,2,3].map(p=>G.nm(p)),{len:G.len,h:G.phase==='over'?99:G.h,prem:!G.opt||G.opt.prem!==false})}</div>`:'';
  if(S.game==='domino'){if((G.np||4)<4){const SE=dmSeats(G.np),h=gSideDomino(G.hist,[0,1,2,3].map(p=>p?G.nm(p):'შენ'),null);return h&&`<p class="gsp">${SE.map(p=>`${esc(p?G.nm(p):'შენ')}: <b>${G.pts[p]}</b>`).join(' · ')}</p>`+h}
   return gSideDomino(G.hist,['ჩვენ','მეტოქეები'],(a,b)=>a+':'+b)}
  if(S.game==='nardi'){const c=G.ctx;if(!(c.match>1))return '';const me=c.side,ms=c.ms||{1:0,'-1':0};
@@ -26,7 +26,7 @@ function gSideHTML(){
 function gSide(){const gx=$('.gx',view);if(!gx)return;const bot=$('.ghud.bot',gx);if(!bot)return;let el=$('.gside',bot);
  const h=gWide()?gSideHTML():'';if(!h){if(el)el.remove();return}
  if(!el){el=document.createElement('section');el.className='gside';el.setAttribute('aria-label','თამაშის მსვლელობა');bot.prepend(el)}
- el.innerHTML=h;const sc=$('.gsl',el);if(sc)sc.scrollTop=sc.scrollHeight}
+ el.innerHTML=h;const sc=$('.gsl',el);if(sc){const c=sc.querySelector('.jn-fut.cur');sc.scrollTop=c?Math.max(0,c.offsetTop-sc.offsetTop-sc.clientHeight*.55):sc.scrollHeight}}
 {const gv=gview;gview=function(...a){const r=gv.apply(this,a);try{gSide()}catch(e){}return r}}
 {const jd=joDraw;joDraw=function(...a){const r=jd.apply(this,a);try{gSide()}catch(e){}return r}}
 {const dd=dmoDraw;dmoDraw=function(...a){const r=dd.apply(this,a);try{gSide()}catch(e){}return r}}

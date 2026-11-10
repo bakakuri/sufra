@@ -3674,3 +3674,17 @@ html.eco .lmp,html.eco .lm-on,html.eco .lm-empty,html.eco .lm-modes{-webkit-back
 .gx .hand .card.fc .fci{left:34%;right:8%}
 .card.jk2{color:#1F2F6B}
 .card.jk2 i{color:#2A6FD6}
+/* ---------- joker, stage 5: the flat table refreshed, the hand in an arc, three game lengths ---------- */
+.jkmodes .jkmode[data-m="nines"]{grid-column:1/-1}
+.gx:not(.is3d) .jt{grid-template-rows:auto minmax(230px,1fr) 10px;border:1px solid rgb(226 186 98/.55);box-shadow:inset 0 0 0 6px rgb(0 0 0/.16),inset 0 0 70px rgb(0 0 0/.45),0 12px 30px rgb(0 0 0/.35)}
+.gx:not(.is3d) .jt::before{content:"";position:absolute;inset:12px;border-radius:13px;border:1px solid rgb(226 186 98/.28);pointer-events:none}
+.gx:not(.is3d) .jt::after{content:"♛";position:absolute;left:50%;top:54%;transform:translate(-50%,-50%);font-size:64px;line-height:1;color:rgb(226 186 98/.1);pointer-events:none}
+.gx:not(.is3d) .jt .trick{min-height:220px;z-index:1}
+.gx:not(.is3d) .jt .trick .p0{transform:translate(-50%,-10%)}
+.gx:not(.is3d) .jt .trick .p2{transform:translate(-50%,-90%)}
+.gx:not(.is3d) .jt .trick .card{box-shadow:0 6px 14px rgb(0 0 0/.4)}
+.gx:not(.is3d) .jt .seat{z-index:1}
+.gx:not(.is3d) .hand .card{--d:calc(var(--i,0) - (var(--n,1) - 1) / 2);transform-origin:50% 120%;rotate:calc(var(--d) * 3.2deg);translate:0 calc(var(--d) * var(--d) * 1.1px);transition:translate .15s,rotate .15s,filter .15s}
+.gx:not(.is3d) .hand .card:not(:disabled){translate:0 calc(var(--d) * var(--d) * 1.1px - 10px)}
+.gx:not(.is3d) .hand:has(.card:not(:disabled)) .card:disabled{filter:brightness(.62) saturate(.7)}
+.gx .jt .card.fc::after,.gx .hand .card.fc::after{display:none}

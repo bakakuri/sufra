@@ -397,17 +397,17 @@ function jCourtCSS(){const c4=c4On(),k=c4?'q':'n';if(JCSS.k===k)return;JCSS.k=k;
 const jFci=c=>!c.j&&c.r>=11&&c.r<=13?(jCourtCSS(),`<i class="fci fc${c.r}${c.s}" aria-hidden="true"></i>`):'';
 const jCardHTML=(c,extra='')=>c.j?`<div class="card jk${c.j===2?' jk2':''}"${extra}><i>★</i>ჯოკერი</div>`:`<div class="card${isRed(c.s)?' red':''}${c.r>=11&&c.r<=13?' fc':''}" data-s="${SY[c.s]}"${extra}>${jFci(c)}<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span></div>`;
 const cardName=c=>c.j?'ჯოკერი':rkTxt(c.r)+' '+SN[c.s];
-const JSEQ={quick:[1,2,3,4,5,6,7,8],full:[1,2,3,4,5,6,7,8,9,9,9,9,8,7,6,5,4,3,2,1,9,9,9,9]};
+const JSEQ={quick:[1,2,3,4,5,6,7,8],full:[1,2,3,4,5,6,7,8,9,9,9,9,8,7,6,5,4,3,2,1,9,9,9,9],nines:[9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9]};
 /* the full game has four sections: 1 to 8, four nines, 8 to 1, four nines; the quick game is one section */
-const jSec=(len,h)=>len==='full'?(h<8?0:h<12?1:h<20?2:3):0;
-const jSecEnd=(len,h)=>len==='full'?[7,11,19,23].includes(h):h===7;
+const jSec=(len,h)=>len==='full'?(h<8?0:h<12?1:h<20?2:3):len==='nines'?Math.min(3,Math.floor(h/4)):0;
+const jSecEnd=(len,h)=>len==='full'?[7,11,19,23].includes(h):len==='nines'?h%4===3:h===7;
 /* a section premium: whoever made every bid of a section doubles their best hand there, and the others lose their best hand */
 function jPremium(hist,sec){const rows=hist.filter(r=>!r.pr&&r.s===sec);if(!rows.length)return[0,0,0,0];
  const all=[0,1,2,3].map(p=>rows.every(r=>r.b[p]===r.t[p])),best=[0,1,2,3].map(p=>Math.max(0,...rows.map(r=>r.p[p]))),any=all.some(Boolean);
  return[0,1,2,3].map(p=>all[p]?best[p]:any?-best[p]:0)}
 /* score one hand (and the premium when a section ends); shared by the game against the computer and the online table */
 /* house rules can change the ხიშტი and switch the section premium off */
-function jScore(E){const sec=jSec(E.len,E.h),o=E.opt||{},kh=o.kh==='200'?200:o.kh==='500'?500:o.kh==='0'?0:sec%2?500:200,pts=[0,1,2,3].map(p=>JK.pts(E.bids[p],E.taken[p],E.n,kh));pts.forEach((x,p)=>E.score[p]+=x);
+function jScore(E){const sec=jSec(E.len,E.h),o=E.opt||{},kh=o.kh==='200'?200:o.kh==='500'?500:o.kh==='0'?0:E.len==='nines'||sec%2?500:200,pts=[0,1,2,3].map(p=>JK.pts(E.bids[p],E.taken[p],E.n,kh));pts.forEach((x,p)=>E.score[p]+=x);
  E.hist.push({n:E.n,b:E.bids.slice(),t:E.taken.slice(),p:pts,s:sec});
  if(o.prem!==false&&jSecEnd(E.len,E.h)){const pr=jPremium(E.hist,sec);if(pr.some(Boolean)){pr.forEach((x,p)=>E.score[p]+=x);E.hist.push({pr:1,n:0,s:sec,b:[],t:[],p:pr})}}E.h++}
 const jLast=hist=>{const n=hist.length,l=hist[n-1];return l&&l.pr?{hand:hist[n-2],prem:l}:{hand:l,prem:null}};
@@ -417,8 +417,8 @@ const jLast=hist=>{const n=hist.length,l=hist[n-1];return l&&l.pr?{hand:hist[n-2
 const jInk=s=>[...String(s)].map((ch,i)=>{if(ch===' ')return ' ';const h=(ch.charCodeAt(0)*7+i*13)%17;return `<i style="--r:${((h%7)-3)*1.3}deg;--y:${((h%5)-2)*.7}px">${esc(ch)}</i>`}).join('');
 /* the whole game is ruled on the paper from the start: the hands still to come wait in pencil with their cards in the margin,
    the one being played is marked; each section of the full game has its name; a star by a name while that player has made every bid of the section */
-const JSECN=['1-დან 8-მდე','ცხრიანები','8-დან 1-მდე','ცხრიანები'];
-function jNoteHTML(hist,score,names,o={}){const rows=[],run=[0,0,0,0];hist=hist||[];const seq=o.len&&JSEQ[o.len],full=o.len==='full',sec0=r=>`<div class="jn-r jn-sec"><span class="jn-m"></span><span class="jn-st">${jInk(JSECN[r])}</span></div>`;
+const JSECN=['1-დან 8-მდე','ცხრიანები','8-დან 1-მდე','ცხრიანები'],JSECN9=['პირველი ოთხი','მეორე ოთხი','მესამე ოთხი','მეოთხე ოთხი'];
+function jNoteHTML(hist,score,names,o={}){const rows=[],run=[0,0,0,0];hist=hist||[];const seq=o.len&&JSEQ[o.len],full=o.len==='full'||o.len==='nines',sec0=r=>`<div class="jn-r jn-sec"><span class="jn-m"></span><span class="jn-st">${jInk((o.len==='nines'?JSECN9:JSECN)[r])}</span></div>`;
  let ls=-1,k=0;const sub=()=>`<div class="jn-r jn-sub"><span class="jn-m"></span>${run.map(x=>`<span class="jn-c${x<0?' neg':''}">${jInk(x)}</span>`).join('')}</div>`;
  hist.forEach((h,ix)=>{h.p.forEach((x,p)=>run[p]+=x);const nw=o.hl&&ix>=hist.length-(hist[hist.length-1]&&hist[hist.length-1].pr?2:1)?' new':'';
   if(full&&!h.pr&&h.s!==ls){rows.push(sec0(h.s));ls=h.s}
@@ -511,7 +511,7 @@ const JK=GAME.joker={title:'ჯოკერი',
   else if(this.phase==='play'&&(this.win!=null||this.cur<0)){const w=this.win??0;this.trick=[];this.win=null;if(!this.hands[0].length){this.endHand();return}this.cur=w}
   setTimeout(()=>{if(S.game==='joker')this.step()},500)},
  begin(len){try{store.set('jktip',(store.get('jktip',0)||0)+1)}catch(e){}this.opt=typeof jkOpt==='function'?jkOpt(this.ctx):{};this.len=len;this.h=0;this.score=[0,0,0,0];this.hist=[];this.dealer=Math.floor(Math.random()*4);this.newHand()},
- newHand(){const n=JSEQ[this.len][this.h];this.n=n;this.gone=new Set();this.lastT=null;this.tricks=[];this.revWait=0;this.dealer=(this.dealer+1)%4;const d=shuffle(jDeck());
+ newHand(){const n=JSEQ[this.len][this.h];this.n=n;this.gone=new Set();this.voids=[0,1,2,3].map(()=>new Set());this.jg=0;this.lastT=null;this.tricks=[];this.revWait=0;this.dealer=(this.dealer+1)%4;const d=shuffle(jDeck());
   this.first3=[0,1,2,3].map(i=>d.slice(i*n,i*n+3));this.hands=[0,1,2,3].map(i=>sortHand(d.slice(i*n,(i+1)*n)));
   this.bids=[null,null,null,null];this.taken=[0,0,0,0];this.trick=[];this.win=null;this.cur=(this.dealer+1)%4;
   if(n<9){const tc=d[4*n];this.trumpCard=tc;this.trump=tc.j?null:tc.s;this.phase='bid'}else{this.trumpCard=null;this.trump=null;this.phase='trump'}
@@ -531,7 +531,8 @@ const JK=GAME.joker={title:'ჯოკერი',
  winner(t){t=t||this.trick;const lead=t[0],suit=lead.card.j?lead.js:lead.card.s,trumped=!!this.trump&&t.some(e=>!e.card.j&&e.card.s===this.trump);let best=0,bv=-Infinity;
   t.forEach((e,i)=>{let v;if(e.card.j)v=e.jm==='hi'?(i===0&&trumped&&lead.js!==this.trump?99:1000+i):-1;else if(this.trump&&e.card.s===this.trump)v=100+e.card.r;else if(e.card.s===suit)v=e.card.r;else v=0;if(v>bv){bv=v;best=i}});
   return bv<=0?t[0].p:t[best].p},
- playCard(p,c,jm,js){const h=this.hands[p];h.splice(h.indexOf(c),1);const lead=!this.trick.length;if(this.gone&&!c.j)this.gone.add(c.s+c.r);
+ playCard(p,c,jm,js){const h=this.hands[p];h.splice(h.indexOf(c),1);const lead=!this.trick.length;if(this.gone&&!c.j)this.gone.add(c.s+c.r);if(c.j)this.jg=(this.jg||0)+1;
+  if(!lead&&!c.j&&this.voids){const L0=this.trick[0],su=L0.card.j?L0.js:L0.card.s;if(su&&c.s!==su){this.voids[p].add(su);if(this.trump&&c.s!==this.trump)this.voids[p].add(this.trump)}}
   this.trick.push({p,card:c,jm:c.j?(jm||'hi'):null,js:c.j&&lead?(js||SUITS[Math.floor(Math.random()*4)]):null});
   if(this.trick.length<4){this.cur=(p+1)%4;this.render();this.step();return}
   const w=this.winner();this.taken[w]++;this.cur=-1;this.win=w;(this.tricks=this.tricks||[]).push({t:this.trick.map(e=>Object.assign({},e)),w});this.render();
@@ -552,8 +553,24 @@ const JK=GAME.joker={title:'ჯოკერი',
   if(lv>=3)e=jEst(hand,this.trump);
   else for(const c of hand){if(c.j)e+=1;else if(this.trump&&c.s===this.trump)e+=c.r>=13?.9:c.r>=11?.55:.3;else e+=c.r===14?.7:c.r===13?.3:0}
   if(lv===1)e+=Math.random()*2.4-1.2;
-  let b=Math.max(0,Math.min(n,Math.round(e)));if(b===this.forbidden(p))b=b>0?b-1:b+1;return Math.min(n,b)},
+  if(lv>=5){const said=this.bids.filter(x=>x!=null),os=said.reduce((a,x)=>a+x,0);if(said.length){const room=n-os;e+=(room-e)*.18*said.length/3}}
+  let b=Math.max(0,Math.min(n,Math.round(e)));if(b===this.forbidden(p)){const f=b;b=lv>=5?(e>=f&&f<n?f+1:f>0?f-1:f+1):b>0?b-1:b+1}return Math.min(n,b)},
+ /* the expert's play: a card is sure when every higher card of its suit is gone or in its own hand, no joker is still out with the others,
+    and nobody still to play can trump it; it leads sure cards when it needs tricks, wins a trick with the cheapest card that will hold,
+    and throws its dangerous high cards while it wants no more */
+ botPlay5(p){const L=this.legal(p),hand=this.hands[p],need=this.bids[p]-this.taken[p],t=this.trick,nj=L.filter(c=>!c.j),jk=L.find(c=>c.j),gone=this.gone||new Set(),V=this.voids||[];
+  const jOut=2-(this.jg||0)-hand.filter(c=>c.j).length,after=[1,2,3].map(k=>(p+k)%4).slice(0,3-t.length),byV=(a,b)=>this.val(a)-this.val(b);
+  const top=c=>[...Array(14-c.r)].every((_,k)=>{const r=c.r+1+k;return gone.has(c.s+r)||hand.some(h=>!h.j&&h.s===c.s&&h.r===r)});
+  const noRuff=(c,who)=>!this.trump||c.s===this.trump||who.every(q=>!V[q]||!V[q].has(c.s)||V[q].has(this.trump));
+  const holds=c=>{if(c.j)return true;if(jOut>0)return false;const tr=this.trump&&c.s===this.trump;if(t.length){const cur=this.winner([...t,{p,card:c,jm:null,js:null}]);if(cur!==p)return false}
+   const su=t.length?(t[0].card.j?t[0].js:t[0].card.s):c.s;if(c.s!==su&&!tr)return false;return top(c)&&(tr||noRuff(c,after))};
+  if(!t.length){if(need>0){const sure=nj.filter(holds).sort(byV);if(sure.length)return{c:sure[sure.length-1]};if(jk&&need>=hand.length)return{c:jk,jm:'hi',js:this.trump||SUITS[0]};return null}
+   const safe=nj.filter(c=>!holds(c)).sort(byV);if(safe.length)return{c:safe[0]};return null}
+  const wins=c=>this.winner([...t,{p,card:c,jm:null,js:null}])===p;
+  if(need>0){const w=nj.filter(wins).sort(byV);if(!w.length)return null;if(t.length===3)return{c:w[0]};const h=w.filter(holds);return{c:(h.length?h:w)[0]}}
+  const lose=nj.filter(c=>!wins(c)).sort(byV);if(lose.length)return{c:lose[lose.length-1]};return null},
  botPlay(p){const L=this.legal(p),need=this.bids[p]-this.taken[p],t=this.trick,nj=L.filter(c=>!c.j),jk=L.find(c=>c.j),lv=this===JK?(this.ctx&&this.ctx.lvl||bLvl('joker')):3;
+  if(lv>=5){const m=this.botPlay5(p);if(m)return m}
   if(lv===1&&Math.random()<.45){const c=L[Math.floor(Math.random()*L.length)];return c.j?{c,jm:Math.random()<.5?'hi':'lo',js:this.trump||SUITS[Math.floor(Math.random()*4)]}:{c}}
   /* the top level leads a card nobody can beat any more: every higher card of its suit is already played or in its own hand */
   if(lv>=4&&!t.length&&this.gone){const hand=this.hands[p],sure=c=>!c.j&&(!this.trump||c.s===this.trump||this.gone.size>=20)&&[...Array(14-c.r)].every((_,k)=>{const r=c.r+1+k;return this.gone.has(c.s+r)||hand.some(h=>!h.j&&h.s===c.s&&h.r===r)});
@@ -567,7 +584,7 @@ const JK=GAME.joker={title:'ჯოკერი',
   if(this.phase==='setup'){
    /* before the game: the table itself, the three already in their chairs (a touch on one changes who sits there), and the choice below it */
    const g3s=g3Want(),pick=`<section class="jkset${g3s?' on3d':''}"><h3>ჯოკერი ოთხ კაცზე</h3><p class="note">36 კარტი, ორი ჯოკერი. ყოველ ხელში თქვი, რამდენ ხელს წაიღებ: ზუსტად იმდენი თუ წაიღე, ქულებს მიიღებ.</p>
-    <div class="jkmodes"><button class="jkmode gold" data-a="jstart" data-m="quick"><b>სწრაფი</b><span>8 ხელი · 1-დან 8 კარტამდე</span></button><button class="jkmode" data-a="jstart" data-m="full"><b>სრული</b><span>24 ხელი · ოთხი სექცია, პრემიით</span></button></div>
+    <div class="jkmodes"><button class="jkmode gold" data-a="jstart" data-m="quick"><b>სწრაფი</b><span>8 ხელი · 1-დან 8 კარტამდე</span></button><button class="jkmode" data-a="jstart" data-m="full"><b>სრული</b><span>24 ხელი · ოთხი სექცია, პრემიით</span></button><button class="jkmode" data-a="jstart" data-m="nines"><b>ცხრიანები</b><span>16 ხელი · ყოველთვის 9 კარტი, ხიშტი −500</span></button></div>
     <button class="jkonl" data-a="jkonew">${ic('users')}<span><b>მეგობრებთან ონლაინ</b><small>გაშალე მაგიდა და მოიწვიე; ცარიელ ადგილზე ბოტი ჩაჯდება</small></span>${ic('chev')}</button>${typeof jkStat==='function'&&jkStat().g?`<button class="btn ghost sm jkstb" data-a="jstat">${ic('chart')}ჩემი სტატისტიკა: ${jkStat().g} თამაში, ${jkStat().w} მოგება</button>`:''}</section>`;
    if(!g3s){GSCR.html=gShell('joker',{top,center:pick,bot:''});return}
    const tag=(p,pos)=>`<div class="seat ${pos}"${castTap(p)}><span class="sav">${avAny(this.ids[p],38)}</span><b>${esc(this.nm(p))}</b></div>`;
@@ -583,7 +600,7 @@ const JK=GAME.joker={title:'ჯოკერი',
   if(this.hands&&this.hands[0]){if(this.phase==='trump')jSortHand(this.first3[0],null);else jSortHand(this.hands[0],this.trump)}
   const L=this.phase==='play'&&this.cur===0?this.legal(0):[];
   const hand=this.phase==='trump'&&this.cur===0?this.first3[0].map(c=>jCardHTML(c)).join('')+'<div class="card" style="opacity:.25" aria-hidden="true"></div>'.repeat(this.n-3)
-   :this.hands[0].map((c,i)=>`<button class="card${c.j?' jk'+(c.j===2?' jk2':''):''}${!c.j&&isRed(c.s)?' red':''}${!c.j&&c.r>=11&&c.r<=13?' fc':''}" data-a="jcard" data-i="${i}"${c.j?'':` data-s="${SY[c.s]}"`} aria-label="${cardName(c)}"${L.includes(c)?'':' disabled'}>${c.j?'<i>★</i>ჯოკერი':`${jFci(c)}<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span>`}</button>`).join('');
+   :this.hands[0].map((c,i,A)=>`<button class="card${c.j?' jk'+(c.j===2?' jk2':''):''}${!c.j&&isRed(c.s)?' red':''}${!c.j&&c.r>=11&&c.r<=13?' fc':''}" style="--i:${i};--n:${A.length}" data-a="jcard" data-i="${i}"${c.j?'':` data-s="${SY[c.s]}"`} aria-label="${cardName(c)}"${L.includes(c)?'':' disabled'}>${c.j?'<i>★</i>ჯოკერი':`${jFci(c)}<span>${rkTxt(c.r)}</span><span class="s2">${SY[c.s]}</span>`}</button>`).join('');
   let panel='',st='',quiet=0;
   if(this.phase==='trump'){if(this.cur===0){st='პირველი სამი კარტით აირჩიე კოზირი';panel=jTrumpPad('jtrump',jHintOn()?this.botTrump(0):undefined)}else st=esc(this.nm(this.cur))+' ირჩევს კოზირს…'}
   else if(this.phase==='bid'){if(this.cur===0){const f=this.forbidden(0),hn=jHintOn()?jHint(this.hands[0],this.trump,this.n,f):-1;st='რამდენს წაიღებ?'+(f>=0?` დამრიგებელი ხარ, ${f}-ს ვერ იტყვი`:'');panel=jBidPad(this.n,f,hn,'jbid')}else{st=esc(this.nm(this.cur))+' ამბობს…';quiet=1}}
@@ -599,7 +616,7 @@ const JK=GAME.joker={title:'ჯოკერი',
    <div class="hand${g3?' g3sr':''}" aria-label="შენი კარტები">${hand}</div><div class="status${mine?' mine':''}${quiet?' g3sr':''}" role="status">${st}</div>${panel}`,res});jAuto1(this);
   g3After('joker')}};
 const JK_RULES='ფერი უნდა აჰყვე. თუ ფერი არ გაქვს, კოზირი უნდა დადო. ჯოკერი ნებისმიერ დროს შეგიძლია დადო: „მაღალი“ წაიღებს ხელს, „დაბალი“ არ წაიღებს. მოგვიანებით დადებული მაღალი ჯოკერი უფრო ძლიერია. ჯოკერით დაწყებისას ითხოვ ფერს: „მაღალი“ ნიშნავს, რომ ყველამ ამ ფრის უმაღლესი კარტი უნდა დადოს და ხელი შენია, თუმცა თუ ფერი კოზირი არ არის და ვინმემ კოზირი დადო, უმაღლესი კოზირი წაიღებს. „დაბალი“ ნიშნავს, რომ ამ ფრის უმაღლესი კარტი წაიღებს. ქულები: ზუსტად ნათქვამი 50 თითო ხელზე და 50 ბონუსი, ყველა ხელის წაღება 100 თითოზე, პასი და ნული 50. მეტის ან ნაკლების წაღებისას 10 თითოზე. თუ თქვი და ვერცერთი ვერ წაიღე, ხიშტი: −200, ცხრიან სექციებში −500. ვინც სექციის ყველა ხელში ზუსტად ნათქვამს წაიღებს, პრემიას იღებს: მისი საუკეთესო ხელი ორმაგდება, დანარჩენებს კი საუკეთესო ხელი ეშლებათ.';
-A.jstart=t=>JK.begin(t.dataset.m);
+A.jstart=t=>JK.begin(JSEQ[t.dataset.m]?t.dataset.m:'quick');
 A.jagain=()=>{JK.resHide=0;JK.resSnd=0;JK.start();JK.render()};
 A.jnext=()=>{if(JK.phase==='handover')JK.newHand()};
 A.jbid=t=>{if(JK.phase==='bid'&&JK.cur===0)JK.bid(0,+t.dataset.v)};
@@ -642,8 +659,8 @@ A.ghint=t=>{const on=!jHintOn();store.set('jkhint',on);gSwFlip(t,on);gRedraw()};
 
 /* ---------- how well the computer plays: four levels per game, chosen in the game menu ----------
    chess and checkers think in a background worker, so the board keeps moving while the bot searches */
-const BLV=[null,{n:'ახალბედა',d:'ხშირად ცდება, კარგია სწავლისთვის'},{n:'მოყვარული',d:'საშუალო სირთულე, მშვიდი პარტიისთვის'},{n:'გამოცდილი',d:'უფრო შორს ითვლის და იშვიათად ცდება'},{n:'ოსტატი',d:'ყველაზე ძლიერი, დრო სჭირდება საფიქრად'}];
-const bLvl=g=>{const v=(store.get('blv',{})||{})[g];return v>=1&&v<=4?v:2};
+const BLV=[null,{n:'ახალბედა',d:'ხშირად ცდება, კარგია სწავლისთვის'},{n:'მოყვარული',d:'საშუალო სირთულე, მშვიდი პარტიისთვის'},{n:'გამოცდილი',d:'უფრო შორს ითვლის და იშვიათად ცდება'},{n:'ოსტატი',d:'ყველაზე ძლიერი, დრო სჭირდება საფიქრად'},{n:'ექსპერტი',d:'ჯოკერში: ითვლის გასულ კარტებს და ჯოკერებს, ახსოვს, ვის რომელი ფერი აღარ აქვს'}];
+const bLvl=g=>{const v=(store.get('blv',{})||{})[g];return v>=1&&v<=(g==='joker'?5:4)?v:2};
 /* chess: negamax with alpha-beta, captures searched to quiet positions, moves ordered by what they take, deeper each round until time runs out */
 function chOrder(ms,st,first){const val=m=>(st.b[m.t]?10*(CPV[st.b[m.t].toLowerCase()]||1e4)-(CPV[st.b[m.f].toLowerCase()]||0):0)+(m.pr?800:0)+(first&&m.f===first.f&&m.t===first.t?1e7:0);ms.sort((a,b)=>val(b)-val(a));return ms}
 function chQS(st,al,be,d,T){const side=st.turn;if(chKing(st.b,side)<0)return -1e5;const sp=side*chEval(st.b);if(d<=0||sp>=be)return sp;if(sp>al)al=sp;
