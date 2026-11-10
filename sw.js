@@ -1,15 +1,17 @@
 /* Peera service worker: app shell offline, fonts cache, web push */
-const V='202611092124';
+const V='202611100104';
 const SHELL='sufra-shell-'+V,RUNTIME='sufra-rt-1';
 const ASSETS=['/','/manifest.webmanifest','/icons/icon-192.png','/icons/icon-512.png','/icons/badge-96.png','/icons/logo.svg',
  '/css/base.css?v='+V,'/css/app.css?v='+V,'/css/casino.css?v='+V,
- ...['lib-icons','lib-lang','lib-motion','core','stickers','emoji','namedays','auth','feed','home','people','chat','community','rooms','sport','rides','jobs','places','toasts','help','family','dating','gsound','games-core','games-engines','domino','cards2','games-modes','loto','egg','settings','coins','shop','firststeps','albums','extras','kitchen','joker-online','joker-more','domino-online','gvoice','games-side','corr','gstudy','glive','gquest','ghub','casino','cs-slot','cs-table','cs-fast','gaccess','cups','promo','admin','study','glock','glazy','app','g3d','g3d-art','g3d-games','g3d-casino','emoji-data'].map(f=>`/js/${f}.js?v=${V}`)];
+ ...['lib-icons','lib-lang','lib-motion','core','stickers','emoji','namedays','auth','feed','home','people','chat','community','rooms','sport','rides','jobs','places','toasts','help','family','dating','gsound','games-core','games-engines','domino','cards2','games-modes','loto','egg','settings','coins','shop','firststeps','albums','extras','kitchen','joker-online','joker-more','domino-online','gvoice','games-side','corr','gstudy','glive','gquest','ghub','casino','cs-slot','cs-table','cs-fast','gaccess','cups','promo','admin','study','glock','livemap','glazy','app','g3d','g3d-art','g3d-games','g3d-casino','emoji-data'].map(f=>`/js/${f}.js?v=${V}`)];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(SHELL).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('sufra-shell-')&&k!==SHELL).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{const r=e.request;if(r.method!=='GET')return;const u=new URL(r.url);
  if(r.mode==='navigate'){e.respondWith(fetch(r).then(res=>{const cp=res.clone();caches.open(SHELL).then(c=>c.put('/',cp));return res}).catch(()=>caches.match('/')));return}
  /* video loops are fetched in ranges; the cache cannot serve those, so they go to the network */
  if(/\.(mp4|webm)$/.test(u.pathname))return;
+ /* libraries named by their version (the map): kept across app versions, fetched once */
+ if(u.origin===location.origin&&u.pathname.startsWith('/js/vendor/')){e.respondWith(caches.open(RUNTIME).then(c=>c.match(r).then(hit=>hit||fetch(r).then(res=>{if(res.ok)c.put(r,res.clone());return res}))));return}
  if(u.origin===location.origin){e.respondWith(caches.match(r).then(hit=>hit||fetch(r).then(res=>{if(res.ok&&/^\/(js|css|icons)\//.test(u.pathname)){const cp=res.clone();caches.open(SHELL).then(c=>c.put(r,cp))}return res})));return}
  if(/fonts\.(googleapis|gstatic)\.com$|cdn\.jsdelivr\.net$|cdnjs\.cloudflare\.com$/.test(u.hostname)){e.respondWith(caches.open(RUNTIME).then(c=>c.match(r).then(hit=>{const net=fetch(r).then(res=>{if(res.ok||res.type==='opaque')c.put(r,res.clone());return res}).catch(()=>hit);return hit||net})));return}
  /* everything else (Supabase API, storage, realtime) goes straight to the network */});
