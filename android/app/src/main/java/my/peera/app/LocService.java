@@ -80,6 +80,10 @@ public class LocService extends Service implements LocationListener {
             on = true;
             listen();
             main.postDelayed(beat, 20000);
+        } else {
+            /* started again from the site (other choices, a new secret): the new share starts with the next place */
+            sentAt = 0;
+            maybeSend();
         }
         return START_STICKY;
     }
