@@ -28,8 +28,13 @@ function coinsInit(){if(!ME||ME.offline)return;coinsLoad().catch(()=>{});
 async function coinCheck(){const old=ME.coins||0;let my;try{my=await rpc('my_coins')}catch(e){return}if(!my)return;
  CN.my=my;CN.t=Date.now();ME.coins_cash=my.cash;const d=(my.coins||0)-old;if(d)setCoins(my.coins);if(d>0)coinPing(d);
  if(S.page?.id==='coins')drawCoins()}
-function coinPing(n){const c=$('.coinchip'),r=c?c.getBoundingClientRect():null,b=document.createElement('span');b.className='coinping';b.setAttribute('aria-hidden','true');
- b.innerHTML=`+${nf(n)} ${ic('coin')}`;if(r&&r.width){b.style.left=(r.left+r.width/2)+'px';b.style.top=(r.bottom+4)+'px'}else{b.style.left='50%';b.style.top='calc(env(safe-area-inset-top) + 56px)'}
+/* the wallet (it was a chip in the top bar): the balance, and a word when today's bonus is waiting */
+const bonusWaits=()=>!!ME&&!ME.offline&&ME.last_bonus!==today();
+function walletHTML(cls){return `<button class="cwal ${cls||''}${bonusWaits()?' bonus':''}" data-a="page" data-p="coins" aria-label="მონეტები: ${nf(ME.coins)}"><span class="cwal-i">${ic('coin')}</span><span class="grow"><b>მონეტები</b><small class="cwal-s">${bonusWaits()?'დღის ბონუსი გელოდება':'ისტორია, წესები, მაღაზია'}</small></span><span class="coinv">${ME.coins??0}</span></button>`}
+function walletBonusOff(){$$('.cwal.bonus').forEach(w=>{w.classList.remove('bonus');const s=$('.cwal-s',w);if(s)s.textContent='ისტორია, წესები, მაღაზია'});if(typeof renderBadges==='function')renderBadges()}
+function coinPing(n){const vis=x=>{if(!x)return null;const q=x.getBoundingClientRect();return q.width&&q.bottom>0&&q.top<innerHeight?q:null};
+ const r=vis($('.cwal'))||vis($('.tab[data-tab="me"]'))||vis($('#sidel .smine')),b=document.createElement('span');b.className='coinping';b.setAttribute('aria-hidden','true');
+ b.innerHTML=`+${nf(n)} ${ic('coin')}`;if(r){b.style.left=(r.left+r.width/2)+'px';b.style.top=(r.top>innerHeight/2?r.top-34:r.bottom+4)+'px'}else{b.style.left='50%';b.style.top='calc(env(safe-area-inset-top) + 56px)'}
  document.body.appendChild(b);setTimeout(()=>b.remove(),1600)}
 
 /* while the promotion runs, a page says what it pays */
@@ -69,7 +74,7 @@ function drawCoins(){const el=$('#cnb');if(!el||!CN.my)return;const m=CN.my,rate
 async function coinHist(){let rows=[];try{rows=await q(sb.from('coin_log').select('amount,label,created_at,cash,n').eq('user_id',ME.id).order('created_at',{ascending:false}).limit(40))}catch(e){}
  const el=$('#chist');if(!el)return;
  el.innerHTML=rows.map(r=>`<div><span>${esc(r.label)}${r.n>1?` <small class="cn">×${r.n}</small>`:''} <small class="muted">${ago(r.created_at)}</small></span><span class="${r.amount>0?'plus':'minus'}">${r.amount>0?'+':''}${nf(r.amount)}</span></div>`).join('')||'<p class="muted">ჯერ ცარიელია.</p>'}
-A.bonus=async t=>{t.disabled=true;try{const r=await rpc('daily_bonus'),b=r&&typeof r==='object'?r:{coins:r,got:5};ME.last_bonus=today();setCoins(b.coins);$('.coinchip')?.classList.remove('bonus');
+A.bonus=async t=>{t.disabled=true;try{const r=await rpc('daily_bonus'),b=r&&typeof r==='object'?r:{coins:r,got:5};ME.last_bonus=today();setCoins(b.coins);walletBonusOff();
  toast(`+${b.got||0} მონეტა${b.streak===7?' · 7 დღე ზედიზედ!':''}`);burst(t);if(b.streak===7)confetti();coinsLoad(true).then(drawCoins).catch(()=>{})}catch(e){t.disabled=false;toast(errMsg(e))}};
 A.cretry=()=>PG.coins.r();
 A.cngo=t=>{const k=(CPAGE[t.dataset.k]||[])[2];if(!k)return;if(k==='chat')return A.chats();if(['home','clips','games','me'].includes(k))return go(k);openPage(k)};

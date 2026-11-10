@@ -6,7 +6,6 @@ const SVC=[['schedule','cal','ლექციების ცხრილი'],[
 const today=()=>new Date(Date.now()+4*36e5).toISOString().slice(0,10);
 
 function renderTop(){if(!ME)return;$('#top').innerHTML=`<button class="logo" data-a="home" aria-label="Peera, მთავარზე დაბრუნება">${kLogo()}</button><span class="sp"></span>
- <button class="coinchip${ME.last_bonus===today()?'':' bonus'}" data-a="page" data-p="coins" aria-label="მონეტები">${ic('coin')}<span id="coinv">${ME.coins??0}</span></button>
  <span class="hicons"><span id="lpin" class="lpinw"></span><button class="ibtn" data-a="search" aria-label="ძიება">${ic('search')}</button>
  <button class="ibtn" data-a="chats" aria-label="მიმოწერა">${ic('msg')}<span class="dot" id="dm" hidden></span></button>
  <button class="ibtn" data-a="notifs" aria-label="შეტყობინებები">${ic('bell')}<span class="dot" id="dn" hidden></span></button>
@@ -17,13 +16,13 @@ function renderTop(){if(!ME)return;$('#top').innerHTML=`<button class="logo" dat
 let TOPRO=null;
 function fitTop(){const t=$('#top');if(!t)return;const run=()=>{t.classList.remove('lsm','ltight');if(t.scrollWidth<=t.clientWidth+1)return;t.classList.add('lsm');if(t.scrollWidth<=t.clientWidth+1)return;t.classList.remove('lsm');t.classList.add('ltight')};run();
  if(!TOPRO&&window.ResizeObserver){let f=0;TOPRO=new ResizeObserver(()=>{if(!f)f=requestAnimationFrame(()=>{f=0;run()})});}
- if(TOPRO){TOPRO.disconnect();TOPRO.observe(t);$$('#top .coinchip,#top .hicons').forEach(e=>TOPRO.observe(e))}
+ if(TOPRO){TOPRO.disconnect();TOPRO.observe(t);$$('#top .hicons').forEach(e=>TOPRO.observe(e))}
  if(document.fonts&&!fitTop.f){fitTop.f=1;document.fonts.ready.then(()=>fitTop())}}
 const visTabs=()=>TABS.filter(t=>typeof tabOk!=='function'||tabOk(t[0]));
 function renderTabs(){const v=visTabs(),el=$('#tabs');el.style.setProperty('--tn',v.length);el.innerHTML='<span class="tabind" aria-hidden="true"></span>'+v.map(([k,l,i])=>`<button class="tab" data-tab="${k}" aria-current="${k===S.tab}">${ic(i)}<span>${l}</span><i class="tdot" hidden></i></button>`).join('')}
 function renderBadges(){const set=(id,n)=>{const d=$('#'+id);if(!d)return;const was=d.hidden?0:parseInt(d.textContent,10)||0;d.hidden=!n;d.textContent=n>99?'99+':String(n);if(n>was)pop(d)};
  set('dn',S.unreadNotes);set('dm',S.unreadMsgs);set('dn2',S.unreadNotes);set('dm2',S.unreadMsgs);set('df',typeof PENDING_IN!=='undefined'?PENDING_IN.size:0);set('dg',S.newGuests||0);
- const me=$('.tab[data-tab="me"] .tdot');if(me)me.hidden=!(typeof PENDING_IN!=='undefined'&&PENDING_IN.size);
+ const me=$('.tab[data-tab="me"] .tdot');if(me){const pend=typeof PENDING_IN!=='undefined'&&PENDING_IN.size>0,bon=bonusWaits();me.hidden=!(pend||bon);me.classList.toggle('gold',bon&&!pend)}
  const tot=(S.unreadNotes||0)+(S.unreadMsgs||0);document.title=tot?`(${tot}) Peera`:'Peera';
  try{if(tot&&navigator.setAppBadge)navigator.setAppBadge(tot);else if(navigator.clearAppBadge)navigator.clearAppBadge()}catch(e){}}
 
@@ -41,7 +40,7 @@ A.home=()=>{if(S.tab==='home'&&!S.page){view.scrollTo({top:0,behavior:RM()?'auto
 /* services menu and the create sheet */
 A.menu=()=>{navMark('menu',A.menu);const svc=SVC.filter(x=>pageOk(x[0]));if(isStaff())svc.push(['admin','shield','ადმინ პანელი']);
  const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
- sheet(head('სერვისები')+`<div class="svc">${svc.map(([p,i,l,a])=>`<button data-a="${R[p]&&!PG[p]?'tabgo':'page'}" data-p="${p}"${a?` data-arg="${a}"`:''}>${ic(i)}${l}</button>`).join('')}${standalone?'':`<button data-a="install">${ic('download')}აპად დაყენება</button>`}<button data-a="rules">${ic('flag')}წესები</button></div>`,'short')};
+ sheet(head('სერვისები')+walletHTML('mwal')+`<div class="svc">${svc.map(([p,i,l,a])=>`<button data-a="${R[p]&&!PG[p]?'tabgo':'page'}" data-p="${p}"${a?` data-arg="${a}"`:''}>${ic(i)}${l}</button>`).join('')}${standalone?'':`<button data-a="install">${ic('download')}აპად დაყენება</button>`}<button data-a="rules">${ic('flag')}წესები</button></div>`,'short')};
 const CREATE=[['cpost','edit','პოსტი','ტექსტი, ფოტო, ჰეშთეგი'],['cnote','book','კონსპექტი','ფოტო, ტექსტი, საგანი'],['clesson','cal','ლექცია ცხრილში','დღე, დრო, აუდიტორია'],['cexam','clock','გამოცდა ან დავალება','ვადით'],['croom','video','სასწავლო ოთახი','ვიდეო-შეხვედრა კურსელებთან'],['cbirja','mic','დისკუსია','ხმოვანი ოთახი თემაზე'],['cphoto','image','ფოტო','ფილტრით და ჭრით'],['cclip','clips','კლიპი','მოკლე ვერტიკალური ვიდეო'],['cpoll','poll','გამოკითხვა','მეგობრების აზრი'],['cstory','story','ისტორია','ქრება 24 საათში'],['cevent','cal','შეხვედრა','ლექცია, ექსკურსია, წვეულება'],['clisting','store','განცხადება','გაყიდე ან გააჩუქე'],['cgroup','users','ჯგუფი','საერთო ინტერესით'],['cpage','mega','არხი ან გვერდი','ბიზნესი და რეკლამა'],['cgchat','msg','ჯგუფური ჩატი','რამდენიმე მეგობართან'],['clive','live','ლაივი','პირდაპირი ეთერი'],['cplace','map','ადგილი','კაფე, ბიბლიოთეკა, სივრცე'],['chelp','help','დახმარების თხოვნა','სისხლი, ცხოველი, მოხალისე'],['cride','pin','მგზავრობა','ადგილები მანქანაში'],['cjob','school','ვაკანსია','მოძებნე თანამშრომელი']];
 A.create=()=>(navMark('create',A.create),sheet(head('შექმნა')+`<div class="createg">${CREATE.filter(x=>createOk(x[0])).map(([a,i,l,s])=>`<button data-a="${a}"><span class="cgi">${ic(i)}</span><b>${l}</b><small>${s}</small></button>`).join('')}</div>`,'short'));
 A.cpost=()=>compose();

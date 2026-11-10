@@ -1,5 +1,6 @@
 /* settings, coins, verification, push, install, rules, privacy, export, delete */
-function setCoins(n){if(!ME||n==null||isNaN(n))return;const c=$('#coinv');const old=ME.coins||0;ME.coins=n;if(c){animNum(c,old,n);const ch=c.closest('.coinchip');ch.classList.remove('bump');void ch.offsetWidth;ch.classList.add('bump')}}
+function setCoins(n){if(!ME||n==null||isNaN(n))return;const old=ME.coins||0;ME.coins=n;
+ $$('.coinv').forEach(c=>{animNum(c,old,n);const ch=c.closest('.cwal');if(ch){ch.classList.remove('bump');void ch.offsetWidth;ch.classList.add('bump')}})}
 /* settings: one short page of groups. Each group opens its own page, so one back comes straight back here */
 const chev=()=>`<span class="chev" aria-hidden="true">${ic('back')}</span>`;
 const sIc=(i,c)=>`<span class="sic"${c?` style="--c:${c}"`:''}>${ic(i)}</span>`;

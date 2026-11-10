@@ -25,19 +25,66 @@ const SVART={
  friends:['#06B6D4','#3B82F6',`${svPerson(60,50,24,'#93C5FD')}${svPerson(96,56,19,'#FBCFE8')}<circle cx="118" cy="26" r="11" fill="#22C55E"/><path d="M118 20.5v11M112.5 26h11" stroke="${SVW}" stroke-width="3.2" stroke-linecap="round"/><circle cx="26" cy="22" r="5" fill="${SVW}" fill-opacity=".4"/>`],
  calendar:['#EF4444','#F472B6',`<rect x="46" y="42" width="58" height="40" rx="7" fill="${SVW}"/><rect x="41" y="30" width="68" height="16" rx="6" fill="${SVW}"/><rect x="71" y="30" width="8" height="52" fill="#F472B6"/><path d="M75 30c-12-16-26-6-15 0zM75 30c12-16 26-6 15 0z" fill="#F472B6"/><ellipse cx="124" cy="28" rx="9" ry="11" fill="${SVW}" fill-opacity=".85"/><path d="M124 39q-3 10 2 22" stroke="${SVW}" stroke-opacity=".7" stroke-width="1.5" fill="none"/><ellipse cx="24" cy="34" rx="7" ry="9" fill="#FDE68A"/><path d="M24 43q3 9-1 18" stroke="${SVW}" stroke-opacity=".7" stroke-width="1.5" fill="none"/>`]};
 const svArt=p=>{const a=SVART[p];return a?`<svg viewBox="0 0 150 96" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">${a[2]}</svg>`:''};
-const svcCard=([p,i,l,d])=>{const a=SVART[p]||['#6366F1','#8B5CF6',''];return `<button class="svcard" data-a="page" data-p="${p}" style="--g1:${a[0]};--g2:${a[1]}"><span class="svart">${svArt(p)||`<span class="svico">${ic(i)}</span>`}<em class="svlive${p==='rooms'?' red':''}" data-k="${p}" hidden></em></span><b>${l}</b><small>${d}</small></button>`};
+const svcInner=([p,i,l,d])=>{const t=CF.cnt[p];return `<span class="svart">${svArt(p)||`<span class="svico">${ic(i)}</span>`}<em class="svlive${p==='rooms'?' red':''}" data-k="${p}"${t?'':' hidden'}>${t?esc(t):''}</em></span><b>${l}</b><small>${d}</small>`};
 let SVC_N={at:0,data:null};
 async function svcCounts(){const el=$('#svtrack');if(!el)return;
  try{if(!SVC_N.data||Date.now()-SVC_N.at>180000){SVC_N={at:Date.now(),data:await rpc('service_counts')}}}catch(e){return}
  const d=Object.assign({},SVC_N.data||{},{friends:typeof PENDING_IN!=='undefined'?PENDING_IN.size:0});
- SHORT.forEach(([p,,,,,f])=>{const x=$(`.svlive[data-k="${p}"]`,el),n=+d[p]||0;if(!x||!f)return;x.hidden=!n;if(n)x.textContent=f(n)})}
-/* a slow slideshow: one card at a time while the strip is on screen; a touch stops it for good */
-function svcAuto(){const tr=$('#svtrack');if(!tr||RM()||ECO())return;let on=true,vis=true,t=0;const stop=()=>{on=false;clearInterval(t)};
- ['pointerdown','wheel','keydown','touchstart'].forEach(k=>tr.addEventListener(k,stop,{passive:true,once:true}));
- try{new IntersectionObserver(es=>{vis=es[0].isIntersecting}).observe(tr)}catch(e){}
- t=setInterval(()=>{if(!tr.isConnected){clearInterval(t);return}if(!on||!vis||document.hidden||S.page||S.tab!=='home')return;const c=$('.svcard',tr);if(!c)return;const step=c.offsetWidth+10;
-  if(tr.scrollLeft+tr.clientWidth>=tr.scrollWidth-4)tr.scrollTo({left:0,behavior:'smooth'});else tr.scrollBy({left:step,behavior:'smooth'})},3200)}
-A.svscroll=t=>{const tr=$('#svtrack');if(!tr)return;tr.dispatchEvent(new Event('wheel'));const c=$('.svcard',tr);tr.scrollBy({left:(+t.dataset.d)*((c?c.offsetWidth+10:150)*2),behavior:RM()?'auto':'smooth'})};
+ SHORT.forEach(([p,,,,,f])=>{if(!f)return;const n=+d[p]||0;CF.cnt[p]=n?f(n):'';const x=$(`.svlive[data-k="${p}"]`,el);if(!x)return;x.hidden=!n;if(n)x.textContent=f(n)})}
+/* the services as a cover flow: the middle card straight, three on each side turned toward it. A swipe (or the wheel,
+   the arrows, a tap on a side card) turns it and the nearest card comes to the middle; a tap on the middle card opens it.
+   At most nine cards are drawn at a time (seven seen, one more fading in on each side), however many services there are;
+   with seven or more it goes round and round. Until it is touched it turns by itself, slowly, while it is on screen */
+const CF={p:0,items:[],slots:[],raf:0,drag:null,moved:0,el:null,W:150,first:104,S:34,h:4,loop:true,auto:0,cnt:{},snapT:0};
+const cfMod=(k,n)=>((k%n)+n)%n;
+function cfInit(){const el=$('#svtrack');if(!el)return;CF.el=el;CF.items=SHORT.filter(x=>pageOk(x[0]));const n=CF.items.length;
+ CF.loop=n>=7;CF.h=CF.loop?Math.min(4,Math.floor((n-1)/2)):4;if(!CF.loop)CF.p=Math.max(0,Math.min(n-1,Math.round(CF.p)));else CF.p=Math.round(CF.p);
+ cancelAnimationFrame(CF.raf);el.innerHTML='';CF.slots=[];
+ for(let i=0;i<9;i++){const b=document.createElement('button');b.type='button';b.className='svcard';b.hidden=true;el.appendChild(b);CF.slots.push({el:b,k:null})}
+ if(!n)return;cfMeasure();cfRender();cfWire(el);
+ try{CF.ro&&CF.ro.disconnect();CF.ro=new ResizeObserver(()=>{if(el.isConnected){cfMeasure();cfRender()}});CF.ro.observe(el)}catch(e){}
+ cfAuto()}
+/* the places: the middle card, the first side card a little behind it, the next ones closer together toward the edge */
+function cfMeasure(){const el=CF.el;if(!el)return;const cw=el.clientWidth||360,W=Math.round(Math.max(128,Math.min(176,cw*.38)));CF.W=W;el.style.setProperty('--cfw',W+'px');
+ CF.first=W/2+W*.2;CF.S=Math.max(16,Math.min(70,(cw/2-CF.first-W*.2)/2))}
+const cfX=a=>a<=1?a*CF.first:CF.first+(a-1)*CF.S;
+function cfRender(){const el=CF.el;if(!el||!el.isConnected)return;const n=CF.items.length,p=CF.p,c=Math.round(p);
+ const want=[];for(let k=Math.floor(p)-CF.h;k<=Math.ceil(p)+CF.h;k++){if(Math.abs(k-p)>CF.h+.001)continue;if(!CF.loop&&(k<0||k>=n))continue;want.push(k)}
+ while(want.length>9)want.splice(Math.abs(want[0]-p)>Math.abs(want[want.length-1]-p)?0:want.length-1,1);
+ const free=CF.slots.filter(s=>!want.includes(s.k));
+ for(const k of want){let s=CF.slots.find(x=>x.k===k);
+  if(!s){s=free.shift();const it=CF.items[cfMod(k,n)],a=SVART[it[0]]||['#6366F1','#8B5CF6',''];s.k=k;s.el.innerHTML=svcInner(it);s.el.style.setProperty('--g1',a[0]);s.el.style.setProperty('--g2',a[1])}
+  const d=k-p,ad=Math.abs(d),sg=Math.sign(d),t=Math.min(ad,1),b=s.el,on=k===c,it=CF.items[cfMod(k,n)];
+  b.hidden=false;b.style.transform=`translate3d(${(sg*cfX(ad)).toFixed(1)}px,0,${(-t*90-Math.max(0,ad-1)*40).toFixed(1)}px) rotateY(${(-sg*t*55).toFixed(2)}deg) scale(${(1-t*.08).toFixed(3)})`;
+  b.style.opacity=ad<=3?'1':String(Math.max(0,4-ad).toFixed(3));b.style.zIndex=String(100-Math.round(ad*10));b.style.setProperty('--sh',(t*.16+Math.max(0,ad-1)*.07).toFixed(3));
+  b.classList.toggle('on',on);b.tabIndex=on?0:-1;b.setAttribute('aria-hidden',String(ad>3));
+  if(on){b.dataset.a='page';b.dataset.p=it[0];delete b.dataset.k;b.setAttribute('aria-label',it[2])}else{b.dataset.a='cfto';b.dataset.k=String(k);delete b.dataset.p;b.setAttribute('aria-label',`${it[2]} (გადახვევა)`)}}
+ for(const s of free){s.k=null;s.el.hidden=true}}
+function cfGo(k,ms){const n=CF.items.length;if(!n)return;if(!CF.loop)k=Math.max(0,Math.min(n-1,k));cancelAnimationFrame(CF.raf);
+ const p0=CF.p,dist=k-p0;if(!dist){cfRender();return}const dur=RM()?0:(ms||Math.min(620,260+Math.abs(dist)*110)),t0=performance.now();
+ if(!dur){CF.p=k;cfRender();return}
+ const step=now=>{const u=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-u,3);CF.p=p0+dist*e;cfRender();if(u<1)CF.raf=requestAnimationFrame(step);else{CF.p=k;cfRender()}};CF.raf=requestAnimationFrame(step)}
+function cfStop(){clearInterval(CF.auto);CF.auto=0}
+function cfWire(el){if(el._cf)return;el._cf=1;const STEP=()=>CF.first*.85;
+ el.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;cfStop();cancelAnimationFrame(CF.raf);CF.drag={x:e.clientX,y:e.clientY,p:CF.p,id:e.pointerId,lock:null,hist:[[performance.now(),e.clientX]]}});
+ el.addEventListener('pointermove',e=>{const d=CF.drag;if(!d||e.pointerId!==d.id)return;const dx=e.clientX-d.x,dy=e.clientY-d.y;
+  if(!d.lock){if(Math.abs(dx)>6&&Math.abs(dx)>Math.abs(dy)){d.lock='x';try{el.setPointerCapture(e.pointerId)}catch(x){}}else if(Math.abs(dy)>8){d.lock='y';CF.drag=null;cfGo(Math.round(CF.p));return}else return}
+  CF.p=d.p-dx/STEP();if(!CF.loop)CF.p=Math.max(-.35,Math.min(CF.items.length-.65,CF.p));d.hist.push([performance.now(),e.clientX]);if(d.hist.length>6)d.hist.shift();cfRender()});
+ const end=e=>{const d=CF.drag;if(!d||e.pointerId!==d.id)return;CF.drag=null;if(d.lock!=='x')return;CF.moved=Date.now();
+  const h=d.hist,a=h[0],b=h[h.length-1],v=b[0]-a[0]>0?(b[1]-a[1])/(b[0]-a[0]):0;/* px per ms; a flick goes on a few cards */
+  let k=Math.round(CF.p-v*220/STEP());const c=Math.round(d.p);k=Math.max(c-4,Math.min(c+4,k));cfGo(k)};
+ el.addEventListener('pointerup',end);el.addEventListener('pointercancel',e=>{const d=CF.drag;if(d&&e.pointerId===d.id){CF.drag=null;cfGo(Math.round(CF.p))}});
+ /* a swipe is not a tap */
+ el.addEventListener('click',e=>{if(Date.now()-CF.moved<350){e.stopPropagation();e.preventDefault()}},true);
+ el.addEventListener('wheel',e=>{if(Math.abs(e.deltaX)<=Math.abs(e.deltaY))return;e.preventDefault();cfStop();cancelAnimationFrame(CF.raf);CF.p+=e.deltaX/STEP();
+  if(!CF.loop)CF.p=Math.max(0,Math.min(CF.items.length-1,CF.p));cfRender();clearTimeout(CF.snapT);CF.snapT=setTimeout(()=>cfGo(Math.round(CF.p)),140)},{passive:false});
+ el.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();cfStop();cfGo(Math.round(CF.p)+(e.key==='ArrowRight'?1:-1));requestAnimationFrame(()=>$('.svcard.on',el)?.focus({preventScroll:true}))}})}
+A.cfto=t=>{cfStop();cfGo(+t.dataset.k)};
+function cfAuto(){cfStop();const el=CF.el;if(!el||RM()||ECO()||CF.items.length<2)return;let vis=true;
+ try{new IntersectionObserver(es=>{vis=es[0].isIntersecting}).observe(el)}catch(e){}
+ CF.auto=setInterval(()=>{if(!el.isConnected){cfStop();return}if(!vis||document.hidden||S.page||S.tab!=='home'||CF.drag)return;
+  const n=CF.items.length,c=Math.round(CF.p);cfGo(CF.loop||c<n-1?c+1:0,650)},3600)}
+A.svscroll=t=>{cfStop();cfGo(Math.round(CF.p)+(+t.dataset.d))};
 const FEED={done:false,loading:false,cursor:null,ads:[],adsShown:new Set(),count:0,seen:new Set()};
 /* a post and its plain reposts show once in the feed */
 const feedKey=p=>p.repost_of&&!String(p.body||'').trim()?p.repost_of:p.id;
@@ -45,12 +92,12 @@ const score=p=>{const s=STAT.get(p.id)||blankStat(p.id),h=(Date.now()-new Date(p
 const firstName=()=>esc(String(ME.name||'').split(' ')[0]);
 R.home=()=>{
  view.innerHTML=`<div id="annc"></div><div class="stories" id="stories" role="list">${'<span class="story sk" aria-hidden="true"><span class="ring seen"><span class="av" style="--s:58px"></span></span><span></span></span>'.repeat(5)}</div>
- <section class="svstrip" aria-label="სერვისები"><div class="svhd"><h3>სერვისები</h3><span class="sp"></span><button class="ibtn sm svarr" data-a="svscroll" data-d="-1" aria-label="წინა">${ic('back')}</button><button class="ibtn sm svarr nx" data-a="svscroll" data-d="1" aria-label="შემდეგი">${ic('back')}</button><button class="svall" data-a="menu">ყველა</button></div><div class="svtrack" id="svtrack">${SHORT.filter(x=>pageOk(x[0])).map(svcCard).join('')}</div></section>
+ <section class="svstrip" aria-label="სერვისები"><div class="svhd"><h3>სერვისები</h3><span class="sp"></span><button class="ibtn sm svarr" data-a="svscroll" data-d="-1" aria-label="წინა">${ic('back')}</button><button class="ibtn sm svarr nx" data-a="svscroll" data-d="1" aria-label="შემდეგი">${ic('back')}</button><button class="svall" data-a="menu">ყველა</button></div><div class="svtrack cf" id="svtrack" tabindex="0" role="group" aria-roledescription="კარუსელი" aria-label="სერვისები: გადაფურცლე გვერდზე, შუა ბარათი იხსნება"></div></section>
  <div id="fsteps"></div><div id="memo"></div>
  <button class="compose cbtn" data-a="compose">${av('me')}<span class="cph">რა ხდება, ${firstName()}?</span><span class="cq" aria-hidden="true">${ic('image')}${ic('poll')}</span></button>
  <div class="feedbar"><div class="seg feedsw" role="group" aria-label="ფიდის რეჟიმი">${[['for','შენთვის'],['friends','მეგობრები'],['new','ახალი']].map(([k,l])=>`<button data-a="feed" data-f="${k}" aria-pressed="${S.feed===k}">${l}</button>`).join('')}</div><button class="ibtn sq" data-a="topics" aria-label="ჩემი თემები" title="ჩემი თემები">${ic('star')}</button></div>
  <div id="feed">${skel(3)}</div><div id="more" class="morebox" aria-live="polite"></div>`;
- drawBanner();loadStories();loadFirstSteps();loadMemories();loadFeed(true);svcCounts();svcAuto();
+ drawBanner();loadStories();loadFirstSteps();loadMemories();loadFeed(true);cfInit();svcCounts();
  /* the next ten come when the eighth of the last ten is on the screen; the end of the list is a fallback for a fast flick */
  FEED.io&&FEED.io.disconnect();FEED.io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting))loadFeed(false)},{root:view,rootMargin:'0px 0px 120px 0px'});FEED.io.observe($('#more'))};
 const FEED_N=10,FEED_AT=8;
