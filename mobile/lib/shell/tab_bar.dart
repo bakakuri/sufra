@@ -118,7 +118,7 @@ class PeeraTabBar extends StatelessWidget {
                     stops: const [0, .45, 1],
                   ),
                   border: Border.all(color: c.bg, width: 5),
-                  boxShadow: [BoxShadow(color: c.accent.withValues(alpha: .45), blurRadius: 24, offset: const Offset(0, 10))],
+                  boxShadow: [BoxShadow(color: c.accent.withValues(alpha: .28), blurRadius: 14, offset: const Offset(0, 5))],
                 ),
                 child: Stack(clipBehavior: Clip.none, children: [PIcon(t.icon, size: 25, color: Colors.white, stroke: 2.1), _badge(context, i)]),
               ),

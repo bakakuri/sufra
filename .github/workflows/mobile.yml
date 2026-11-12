@@ -59,7 +59,7 @@ jobs:
           PEERA_KS_PASS: ${{ secrets.PEERA_KEYSTORE_PASSWORD }}
         run: |
           set -o pipefail
-          flutter build apk --release --build-number=${{ github.run_number }} 2>&1 | tee ../out/build.txt
+          flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --build-number=${{ github.run_number }} 2>&1 | tee ../out/build.txt
       - name: Publish
         if: always()
         working-directory: .
@@ -67,9 +67,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           [ -d mobile/test/goldens ] && (cd mobile/test && zip -qr "$GITHUB_WORKSPACE/out/goldens.zip" goldens) || true
-          A=mobile/build/app/outputs/flutter-apk/app-release.apk
-          if [ -f $A ]; then
-            if [ -n "$PEERA_KS" ]; then cp $A out/peera-dev.apk; else cp $A out/peera-dev-ci.apk; fi
+          O=mobile/build/app/outputs/flutter-apk
+          if ls $O/app-*-release.apk >/dev/null 2>&1; then
+            S=$([ -n "$PEERA_KS" ] && echo "" || echo "-ci")
+            [ -f $O/app-arm64-v8a-release.apk ] && cp $O/app-arm64-v8a-release.apk out/peera-dev-arm64$S.apk
+            [ -f $O/app-armeabi-v7a-release.apk ] && cp $O/app-armeabi-v7a-release.apk out/peera-dev-arm32$S.apk
             BT=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
             cp "${BT}lib/apksigner.jar" out/apksigner.jar || true
           fi
