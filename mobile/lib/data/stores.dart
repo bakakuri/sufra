@@ -261,7 +261,8 @@ class StoryStore extends Store {
       final i = g.list.indexWhere((x) => x.id == s.id);
       if (i >= 0) g.list[i] = s.seenNow();
     }
-    changed();
+    // the viewer marks a story as it builds; the bar under it redraws right after
+    Future.microtask(changed);
     api.storySeen(s.id).catchError((_) {});
   }
 

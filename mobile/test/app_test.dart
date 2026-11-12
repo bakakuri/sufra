@@ -63,6 +63,8 @@ void main() {
     expect(s.index, 0);
 
     // a post's comments, then back
+    await t.ensureVisible(find.byKey(const ValueKey('comments-101')));
+    await settle(t);
     await t.tap(find.byKey(const ValueKey('comments-101')));
     await settle(t);
     expect(find.byType(PostScreen), findsOneWidget);
@@ -121,6 +123,8 @@ void main() {
   testWidgets('comments: read them, answer one', (t) async {
     phone(t);
     final api = await shell(t);
+    await t.ensureVisible(find.byKey(const ValueKey('comments-101')));
+    await settle(t);
     await t.tap(find.byKey(const ValueKey('comments-101')));
     await settle(t);
     expect(find.text('ჯვრის მონასტერთან ახლოს 🙂'), findsOneWidget);

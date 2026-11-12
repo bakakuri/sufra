@@ -56,6 +56,8 @@ void main() {
       await shell(t, mode: m);
       await t.drag(find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first, const Offset(0, -560));
       await settle(t);
+      await t.ensureVisible(find.byKey(const ValueKey('react-102')));
+      await settle(t);
       await t.tap(find.byKey(const ValueKey('react-102')));
       await settle(t);
       await _shot(t, '06-reactions-$k');
@@ -64,7 +66,9 @@ void main() {
     testWidgets('post and comments ($k)', (t) async {
       phone(t);
       await shell(t, mode: m);
-      await t.tap(find.byKey(const ValueKey('comments-101')));
+      await t.ensureVisible(find.byKey(const ValueKey('comments-101')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('comments-101')));
       await settle(t);
       FocusManager.instance.primaryFocus?.unfocus();
       await t.drag(find.byType(Scrollable).first, const Offset(0, -420));
