@@ -165,7 +165,7 @@ ThemeData peeraTheme(Brightness b) {
         foregroundColor: c.onAccent,
         minimumSize: const Size.fromHeight(52),
         shape: RoundedRectangleBorder(borderRadius: r),
-        textStyle: const TextStyle(fontFamily: fontBody, fontSize: 16, fontWeight: FontWeight.w700),
+        textStyle: const TextStyle(fontFamily: fontBody, fontFamilyFallback: fontFallback, fontSize: 16, fontWeight: FontWeight.w700),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -174,16 +174,16 @@ ThemeData peeraTheme(Brightness b) {
         minimumSize: const Size.fromHeight(48),
         side: BorderSide(color: c.line),
         shape: RoundedRectangleBorder(borderRadius: r),
-        textStyle: const TextStyle(fontFamily: fontBody, fontSize: 15, fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(fontFamily: fontBody, fontFamilyFallback: fontFallback, fontSize: 15, fontWeight: FontWeight.w600),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(foregroundColor: c.accent, textStyle: const TextStyle(fontFamily: fontBody, fontWeight: FontWeight.w600)),
+      style: TextButton.styleFrom(foregroundColor: c.accent, textStyle: const TextStyle(fontFamily: fontBody, fontFamilyFallback: fontFallback, fontWeight: FontWeight.w600)),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: c.ink,
-      contentTextStyle: TextStyle(fontFamily: fontBody, color: c.bg, fontSize: 14),
+      contentTextStyle: TextStyle(fontFamily: fontBody, fontFamilyFallback: fontFallback, color: c.bg, fontSize: 14),
       shape: RoundedRectangleBorder(borderRadius: r),
     ),
     cardTheme: CardThemeData(

@@ -80,7 +80,7 @@ class PeeraTabBar extends StatelessWidget {
           const SizedBox(height: 3),
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(t.label, maxLines: 1, style: TextStyle(fontSize: 10.5, fontWeight: on ? FontWeight.w700 : FontWeight.w500, color: col, height: 1.1)),
+            child: Text(t.label, maxLines: 1, style: TextStyle(fontFamily: fontLogo, fontFamilyFallback: fontFallback, fontSize: 11.5, fontWeight: on ? FontWeight.w700 : FontWeight.w400, color: col, height: 1.1)),
           ),
         ]),
       ),
@@ -100,7 +100,7 @@ class PeeraTabBar extends StatelessWidget {
         // the round button stands out above the bar; the bar keeps its height
         child: Stack(clipBehavior: Clip.none, alignment: Alignment.topCenter, children: [
           Positioned(
-            top: -20,
+            top: -26,
             child: AnimatedScale(
               scale: on ? 1 : .92,
               duration: const Duration(milliseconds: 220),
@@ -130,7 +130,7 @@ class PeeraTabBar extends StatelessWidget {
             bottom: 7,
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text(t.label, maxLines: 1, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: c.accent, height: 1.1)),
+              child: Text(t.label, maxLines: 1, style: TextStyle(fontFamily: fontLogo, fontFamilyFallback: fontFallback, fontSize: 11.5, fontWeight: FontWeight.w700, color: c.accent, height: 1.1)),
             ),
           ),
         ]),

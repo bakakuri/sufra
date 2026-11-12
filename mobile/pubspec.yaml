@@ -36,5 +36,8 @@ flutter:
           weight: 800
     - family: NotoSansGeorgianCondensed
       fonts:
+        - asset: assets/fonts/NotoSansGeorgian-Condensed.ttf
+        - asset: assets/fonts/NotoSansGeorgian-CondensedBold.ttf
+          weight: 700
         - asset: assets/fonts/NotoSansGeorgian-CondensedExtraBold.ttf
           weight: 800

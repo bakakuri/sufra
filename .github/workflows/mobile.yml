@@ -45,8 +45,18 @@ jobs:
       - name: Tests and screen pictures
         if: always()
         run: set -o pipefail; flutter test --update-goldens --reporter expanded 2>&1 | tee ../out/test.txt
+      - name: Signing key
+        env:
+          KS: ${{ secrets.PEERA_KEYSTORE }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > "$RUNNER_TEMP/peera.jks"
+            echo "PEERA_KS=$RUNNER_TEMP/peera.jks" >> "$GITHUB_ENV"
+          fi
       - name: APK
         if: env.SKELETON != '1'
+        env:
+          PEERA_KS_PASS: ${{ secrets.PEERA_KEYSTORE_PASSWORD }}
         run: |
           set -o pipefail
           flutter build apk --release --build-number=${{ github.run_number }} 2>&1 | tee ../out/build.txt
@@ -59,7 +69,7 @@ jobs:
           [ -d mobile/test/goldens ] && (cd mobile/test && zip -qr "$GITHUB_WORKSPACE/out/goldens.zip" goldens) || true
           A=mobile/build/app/outputs/flutter-apk/app-release.apk
           if [ -f $A ]; then
-            cp $A out/peera-dev-ci.apk
+            if [ -n "$PEERA_KS" ]; then cp $A out/peera-dev.apk; else cp $A out/peera-dev-ci.apk; fi
             BT=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
             cp "${BT}lib/apksigner.jar" out/apksigner.jar || true
           fi

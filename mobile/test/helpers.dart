@@ -13,7 +13,10 @@ Future<void> loadFonts() async {
     ge.addFont(rootBundle.load('assets/fonts/NotoSansGeorgian-$w.ttf'));
   }
   await ge.load();
-  final cond = FontLoader('NotoSansGeorgianCondensed')..addFont(rootBundle.load('assets/fonts/NotoSansGeorgian-CondensedExtraBold.ttf'));
+  final cond = FontLoader('NotoSansGeorgianCondensed');
+  for (final w in ['', 'Bold', 'ExtraBold']) {
+    cond.addFont(rootBundle.load('assets/fonts/NotoSansGeorgian-Condensed$w.ttf'));
+  }
   await cond.load();
   final la = FontLoader('NotoSans');
   for (final f in ['NotoSans-Regular.ttf', 'NotoSans-Bold.ttf']) {
