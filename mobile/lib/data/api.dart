@@ -9,7 +9,7 @@ import 'models.dart';
 import 'photos.dart';
 
 /// shown beside the app's errors in the admin panel
-const appVersion = '0.3.2';
+const appVersion = '0.3.3';
 
 /// Everything the app reads and writes, from the same tables and functions the site uses.
 /// The screens only see this; the tests answer it from memory.

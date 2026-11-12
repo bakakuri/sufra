@@ -28,6 +28,10 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- push notifications register by the app's Firebase installation id (the old token way fails on some phones) -->
+        <meta-data
+            android:name="firebase_messaging_installation_id_enabled"
+            android:value="true" />
         <!-- push notifications: their channel (made in MainActivity), the white Peera mark in the status bar, its colour -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"

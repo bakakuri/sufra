@@ -46,7 +46,7 @@ abstract class PushService {
   void dispose();
 }
 
-/// Firebase Cloud Messaging. The server sends to every phone in push_subs ("fcm:<token>").
+/// Firebase Cloud Messaging. The server sends to every phone in push_subs ("fcm:<installation id>").
 /// Anything that goes wrong is written to the admin panel's error log, so it can be seen and fixed.
 class FcmPush implements PushService {
   final _subs = <StreamSubscription<Object?>>[];
@@ -82,11 +82,16 @@ class FcmPush implements PushService {
       final n = m.notification;
       if (n != null) onForeground?.call(n.title ?? '', n.body ?? '', PushTarget.fromData(m.data));
     }));
-    _subs.add(fm.onTokenRefresh.listen((t) {
-      _token = t;
-      api.savePushToken(t).catchError((Object e) => _log('save', e));
+    // the phone's address for notifications is its Firebase installation id (FID), given once registration is done
+    _subs.add(fm.onRegistered.listen((fid) {
+      _token = fid;
+      _retry?.cancel();
+      api.savePushToken(fid).catchError((Object e) => _log('save', e));
     }));
-    // the phone is registered whatever the answer to the question: once notifications are switched on they arrive
+    _subs.add(fm.onUnregistered.listen((fid) {
+      api.removePushToken(fid).catchError((_) {});
+    }));
+    // registered whatever the answer to the question: once notifications are switched on they arrive
     await _register();
     try {
       final s = await fm.requestPermission();
@@ -108,14 +113,9 @@ class FcmPush implements PushService {
   Timer? _retry;
 
   Future<void> _register() async {
-    final api = _api;
-    if (api == null || !_ready || _token != null) return;
+    if (_api == null || !_ready || _token != null) return;
     try {
-      final t = await FirebaseMessaging.instance.getToken();
-      if (t == null) throw StateError('no token');
-      await api.savePushToken(t);
-      _token = t;
-      _retry?.cancel();
+      await FirebaseMessaging.instance.register();
     } catch (e, st) {
       _tries++;
       // the first time, also what the phone itself says at each step (the plugin passes on only the last words)
@@ -127,7 +127,7 @@ class FcmPush implements PushService {
           why = 'diagnose: $d';
         }
       }
-      _log('token #$_tries', '$e${why.isEmpty ? '' : ' | $why'}', st);
+      _log('register #$_tries', '$e${why.isEmpty ? '' : ' | $why'}', st);
       // Google's service is sometimes not ready yet: again after 20 s, 1 min, 3 min, 10 min
       const waits = [20, 60, 180, 600];
       if (_tries <= waits.length) {
@@ -160,11 +160,10 @@ class FcmPush implements PushService {
   Future<void> stop(PeeraApi api) async {
     if (!_ready) return;
     try {
-      final fm = FirebaseMessaging.instance;
-      final t = _token ?? await fm.getToken();
+      final t = _token;
       if (t != null) await api.removePushToken(t);
-      await fm.deleteToken();
       _token = null;
+      await FirebaseMessaging.instance.unregister();
     } catch (_) {}
   }
 

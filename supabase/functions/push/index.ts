@@ -59,14 +59,15 @@ async function fcmToken(sa: ServiceAccount): Promise<string> {
   return fcmAuth.token;
 }
 
-// one phone; true when its token is no longer valid (app removed or signed out) and the row should go
-async function sendFcm(sa: ServiceAccount, token: string, m: { title: string; body: string; url: string; tag: string; kind: string }): Promise<boolean> {
+// one phone; true when its address is no longer valid (app removed or signed out) and the row should go.
+// The app registers by its Firebase installation id (no colon in it); an older registration token has one.
+async function sendFcm(sa: ServiceAccount, to: string, m: { title: string; body: string; url: string; tag: string; kind: string }): Promise<boolean> {
   const r = await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
     method: "POST",
     headers: { authorization: `Bearer ${await fcmToken(sa)}`, "content-type": "application/json" },
     body: JSON.stringify({
       message: {
-        token,
+        ...(to.includes(":") ? { token: to } : { fid: to }),
         notification: { title: m.title, body: m.body },
         data: { url: m.url, kind: m.kind, tag: m.tag },
         android: { priority: "HIGH", ttl: "3600s", notification: { channel_id: "peera", tag: m.tag, sound: "default", color: "#4F46E5" } },

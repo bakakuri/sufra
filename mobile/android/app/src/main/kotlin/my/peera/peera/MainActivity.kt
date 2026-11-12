@@ -66,10 +66,12 @@ class MainActivity : FlutterActivity() {
                         out.append("fis: ${chain(e)}; ")
                     }
                     try {
-                        val t = Tasks.await(FirebaseMessaging.getInstance().token, 30, TimeUnit.SECONDS)
-                        out.append("fcm ok ${t.take(10)}; ")
+                        val fid = Tasks.await(FirebaseInstallations.getInstance().id, 30, TimeUnit.SECONDS)
+                        out.append("fid ${fid.take(6)}; ")
+                        Tasks.await(FirebaseMessaging.getInstance().register(), 30, TimeUnit.SECONDS)
+                        out.append("register ok; ")
                     } catch (e: Exception) {
-                        out.append("fcm: ${chain(e)}; ")
+                        out.append("register: ${chain(e)}; ")
                     }
                     runOnUiThread { result.success(out.toString()) }
                 }.start()
