@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../profile/profile.dart';
+import '../push/push.dart';
 import 'api.dart';
 import 'models.dart';
 
@@ -231,6 +232,9 @@ class AppState {
   final PostStore posts;
   late final FriendStore friends;
   late final ChatStore chats;
+
+  /// notifications to the phone, when the app has them (not in the tests)
+  PushService? push;
   /// a message that just came for a conversation that is not on screen (shown as a banner at the top)
   final banner = ValueNotifier<({int conv, String actor, String text})?>(null);
   StreamSubscription<Map<String, dynamic>>? _notes;
@@ -263,6 +267,7 @@ class AppState {
     });
     // back from the background: whatever came meanwhile
     _life = AppLifecycleListener(onResume: () {
+      push?.refresh();
       api.touchSeen().catchError((_) {});
       chats.load();
       friends.load().catchError((_) {});

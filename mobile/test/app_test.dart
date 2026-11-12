@@ -252,6 +252,13 @@ void main() {
     expect(find.text('მარიამ · ახალი კომენტარი: სუპერ!'), findsOneWidget);
 
     await _tab(t, 'me');
+    // notifications switched off on the phone: the profile says so and opens the setting
+    expect(find.text('შეტყობინებები გამორთულია'), findsNothing);
+    push.on.value = false;
+    await t.pump();
+    expect(find.text('შეტყობინებები გამორთულია'), findsOneWidget);
+    await t.tap(find.text('ჩართვა'));
+    expect(push.calls, contains('settings'));
     await t.tap(find.byTooltip('გასვლა'));
     await settle(t);
     await t.tap(find.widgetWithText(TextButton, 'გასვლა'));

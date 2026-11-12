@@ -57,7 +57,9 @@ class HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
-    app = AppState(widget.api)..start();
+    app = AppState(widget.api)
+      ..push = _push
+      ..start();
     app.banner.addListener(_showBanner);
     _push?.start(app.api, onOpen: _openFromPush, onForeground: _pushWhileOpen);
   }

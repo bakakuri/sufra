@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 
 import '../data/api.dart';
 
@@ -25,9 +27,18 @@ class PushTarget {
 
 /// Notifications that reach the phone while the app is closed. The tests leave it out.
 abstract class PushService {
-  /// asks once for permission, registers this phone for the signed-in person, and reports taps;
+  /// whether the phone lets the app show notifications (null until known)
+  ValueListenable<bool?> get enabled;
+
+  /// registers this phone for the signed-in person, asks once for permission, and reports taps;
   /// [onForeground] gets the ones that arrive while the app is open (the phone does not show those itself)
   Future<void> start(PeeraApi api, {required void Function(PushTarget) onOpen, void Function(String title, String body, PushTarget? to)? onForeground});
+
+  /// looks again (back from the phone's settings)
+  Future<void> refresh();
+
+  /// the phone's notification settings for this app
+  Future<void> openSettings();
 
   /// this phone stops receiving the person's notifications (on sign-out)
   Future<void> stop(PeeraApi api);
@@ -36,43 +47,108 @@ abstract class PushService {
 }
 
 /// Firebase Cloud Messaging. The server sends to every phone in push_subs ("fcm:<token>").
+/// Anything that goes wrong is written to the admin panel's error log, so it can be seen and fixed.
 class FcmPush implements PushService {
   final _subs = <StreamSubscription<Object?>>[];
+  final _enabled = ValueNotifier<bool?>(null);
+  static const _system = MethodChannel('peera/system');
+  PeeraApi? _api;
+  String? _token;
+  bool _ready = false;
+
+  @override
+  ValueListenable<bool?> get enabled => _enabled;
+
+  void _log(String step, Object e, [StackTrace? st]) {
+    _api?.logError('push $step: $e', stack: '${st ?? ''}').catchError((_) {});
+  }
 
   @override
   Future<void> start(PeeraApi api, {required void Function(PushTarget) onOpen, void Function(String title, String body, PushTarget? to)? onForeground}) async {
+    _api = api;
     try {
       await Firebase.initializeApp();
-      final fm = FirebaseMessaging.instance;
-      final perm = await fm.requestPermission();
-      if (perm.authorizationStatus == AuthorizationStatus.denied) return;
-      final token = await fm.getToken();
-      if (token != null) await api.savePushToken(token);
-      _subs.add(fm.onTokenRefresh.listen((t) => api.savePushToken(t).catchError((_) {})));
-      _subs.add(FirebaseMessaging.onMessageOpenedApp.listen((m) {
-        final to = PushTarget.fromData(m.data);
-        if (to != null) onOpen(to);
-      }));
-      _subs.add(FirebaseMessaging.onMessage.listen((m) {
-        final n = m.notification;
-        if (n != null) onForeground?.call(n.title ?? '', n.body ?? '', PushTarget.fromData(m.data));
-      }));
-      // the app was closed and started by a tap on a notification
+    } catch (e, st) {
+      _log('firebase', e, st);
+      return;
+    }
+    _ready = true;
+    final fm = FirebaseMessaging.instance;
+    _subs.add(FirebaseMessaging.onMessageOpenedApp.listen((m) {
+      final to = PushTarget.fromData(m.data);
+      if (to != null) onOpen(to);
+    }));
+    _subs.add(FirebaseMessaging.onMessage.listen((m) {
+      final n = m.notification;
+      if (n != null) onForeground?.call(n.title ?? '', n.body ?? '', PushTarget.fromData(m.data));
+    }));
+    _subs.add(fm.onTokenRefresh.listen((t) {
+      _token = t;
+      api.savePushToken(t).catchError((Object e) => _log('save', e));
+    }));
+    // the phone is registered whatever the answer to the question: once notifications are switched on they arrive
+    await _register();
+    try {
+      final s = await fm.requestPermission();
+      _enabled.value = s.authorizationStatus == AuthorizationStatus.authorized || s.authorizationStatus == AuthorizationStatus.provisional;
+    } catch (e, st) {
+      _log('permission', e, st);
+    }
+    if (_token == null) await _register();
+    // the app was closed and started by a tap on a notification
+    try {
       final first = await fm.getInitialMessage();
       final to = first == null ? null : PushTarget.fromData(first.data);
       if (to != null) onOpen(to);
-    } catch (_) {
-      // no Google services on the phone, or no network: the app works without notifications
+    } catch (e, st) {
+      _log('open', e, st);
+    }
+  }
+
+  Future<void> _register() async {
+    final api = _api;
+    if (api == null || !_ready) return;
+    try {
+      final t = await FirebaseMessaging.instance.getToken();
+      if (t == null) {
+        _log('token', 'none');
+        return;
+      }
+      await api.savePushToken(t);
+      _token = t;
+    } catch (e, st) {
+      _log('token', e, st);
+    }
+  }
+
+  @override
+  Future<void> refresh() async {
+    if (!_ready) return;
+    try {
+      final s = await FirebaseMessaging.instance.getNotificationSettings();
+      _enabled.value = s.authorizationStatus == AuthorizationStatus.authorized || s.authorizationStatus == AuthorizationStatus.provisional;
+    } catch (_) {}
+    if (_token == null) await _register();
+  }
+
+  @override
+  Future<void> openSettings() async {
+    try {
+      await _system.invokeMethod<bool>('notificationSettings');
+    } catch (e) {
+      _log('settings', e);
     }
   }
 
   @override
   Future<void> stop(PeeraApi api) async {
+    if (!_ready) return;
     try {
       final fm = FirebaseMessaging.instance;
-      final t = await fm.getToken();
+      final t = _token ?? await fm.getToken();
       if (t != null) await api.removePushToken(t);
       await fm.deleteToken();
+      _token = null;
     } catch (_) {}
   }
 
@@ -82,5 +158,6 @@ class FcmPush implements PushService {
       s.cancel();
     }
     _subs.clear();
+    _enabled.dispose();
   }
 }

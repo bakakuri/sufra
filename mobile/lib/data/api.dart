@@ -8,6 +8,9 @@ import '../profile/profile.dart';
 import 'models.dart';
 import 'photos.dart';
 
+/// shown beside the app's errors in the admin panel
+const appVersion = '0.3.1';
+
 /// Everything the app reads and writes, from the same tables and functions the site uses.
 /// The screens only see this; the tests answer it from memory.
 abstract class PeeraApi {
@@ -53,6 +56,9 @@ abstract class PeeraApi {
   /// this phone, for push notifications (a row of push_subs, beside the browsers the site registers)
   Future<void> savePushToken(String token);
   Future<void> removePushToken(String token);
+
+  /// a problem on the phone, into the admin panel's error log (the site writes its own there too)
+  Future<void> logError(String msg, {String stack = ''});
 }
 
 class SupaApi implements PeeraApi {
@@ -344,4 +350,15 @@ class SupaApi implements PeeraApi {
 
   @override
   Future<void> removePushToken(String token) => sb.from('push_subs').delete().eq('endpoint', 'fcm:$token');
+
+  @override
+  Future<void> logError(String msg, {String stack = ''}) => sb.from('client_errors').insert({
+        'user_id': myId,
+        'msg': msg.length > 500 ? msg.substring(0, 500) : msg,
+        'src': 'app',
+        'stack': stack.length > 4000 ? stack.substring(0, 4000) : stack,
+        'page': 'android',
+        'ua': 'Peera app',
+        'ver': appVersion,
+      });
 }

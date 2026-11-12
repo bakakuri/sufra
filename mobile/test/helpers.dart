@@ -134,6 +134,16 @@ class FakeAuth implements AuthApi {
 /// Notifications without Firebase: the test plays the taps
 class FakePush implements PushService {
   final calls = <String>[];
+  final on = ValueNotifier<bool?>(true);
+
+  @override
+  ValueListenable<bool?> get enabled => on;
+
+  @override
+  Future<void> refresh() async => calls.add('refresh');
+
+  @override
+  Future<void> openSettings() async => calls.add('settings');
   void Function(PushTarget)? open;
   void Function(String, String, PushTarget?)? whileOpen;
 

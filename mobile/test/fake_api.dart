@@ -218,4 +218,6 @@ class FakeApi implements PeeraApi {
   Future<void> savePushToken(String token) async => calls.add('push+ $token');
   @override
   Future<void> removePushToken(String token) async => calls.add('push- $token');
+  @override
+  Future<void> logError(String msg, {String stack = ''}) async => calls.add('error $msg');
 }
