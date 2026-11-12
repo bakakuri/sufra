@@ -1,0 +1,69 @@
+# The native app (mobile/, Flutter). Each push that touches it: analyze, tests, pictures of the screens
+# (test/goldens, light and dark), and the Android APK. Everything lands in the release "mobile-build":
+# peera-dev-ci.apk (signed with a throwaway key; re-signed elsewhere with the Peera key using the attached apksigner.jar), goldens.zip, the logs.
+# The very first run, before mobile/android exists, makes the platform folders with `flutter create` and
+# publishes them as skeleton.zip so they can be added to the repository.
+name: Mobile app
+on:
+  push:
+    branches: [main]
+    paths: ['mobile/**', '.github/workflows/mobile.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Platform folders (first run only)
+        run: |
+          mkdir -p ../out
+          if [ ! -d android ]; then
+            flutter create --org my.peera --project-name peera --platforms android,ios -a kotlin -i swift "$RUNNER_TEMP/skel"
+            (cd "$RUNNER_TEMP/skel" && zip -qr "$GITHUB_WORKSPACE/out/skeleton.zip" android ios .metadata .gitignore)
+            echo "SKELETON=1" >> "$GITHUB_ENV"
+          fi
+      - name: Versions
+        run: flutter --version | tee ../out/flutter-version.txt
+      - name: Packages
+        run: set -o pipefail; flutter pub get 2>&1 | tee ../out/pub.txt
+      - name: Analyze
+        run: set -o pipefail; flutter analyze --no-fatal-infos 2>&1 | tee ../out/analyze.txt
+      - name: Tests and screen pictures
+        if: always()
+        run: set -o pipefail; flutter test --update-goldens --reporter expanded 2>&1 | tee ../out/test.txt
+      - name: APK
+        if: env.SKELETON != '1'
+        run: |
+          set -o pipefail
+          flutter build apk --release --build-number=${{ github.run_number }} 2>&1 | tee ../out/build.txt
+      - name: Publish
+        if: always()
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -d mobile/test/goldens ] && (cd mobile/test && zip -qr "$GITHUB_WORKSPACE/out/goldens.zip" goldens) || true
+          A=mobile/build/app/outputs/flutter-apk/app-release.apk
+          if [ -f $A ]; then
+            cp $A out/peera-dev-ci.apk
+            BT=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+            cp "${BT}lib/apksigner.jar" out/apksigner.jar || true
+          fi
+          echo "commit ${{ github.sha }} run ${{ github.run_number }} $(date -u +%FT%TZ)" > out/build-info.txt
+          gh release delete mobile-build -y --cleanup-tag || true
+          gh release create mobile-build out/* --target "${{ github.sha }}" --prerelease \
+            --title "Mobile build ${{ github.run_number }}" --notes "Peera native app (Flutter), run ${{ github.run_number }}"

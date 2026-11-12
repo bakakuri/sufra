@@ -1,0 +1,40 @@
+name: peera
+description: Peera — the native app (Android now, iPhone from the same code later).
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  supabase_flutter: ^2.8.0
+  path_parsing: ^1.1.0
+  url_launcher: ^6.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: NotoSansGeorgian
+      fonts:
+        - asset: assets/fonts/NotoSansGeorgian-Regular.ttf
+        - asset: assets/fonts/NotoSansGeorgian-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSansGeorgian-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/NotoSansGeorgian-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/NotoSansGeorgian-ExtraBold.ttf
+          weight: 800
+    - family: NotoSansGeorgianCondensed
+      fonts:
+        - asset: assets/fonts/NotoSansGeorgian-CondensedExtraBold.ttf
+          weight: 800
