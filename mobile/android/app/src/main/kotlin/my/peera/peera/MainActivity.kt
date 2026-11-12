@@ -10,6 +10,10 @@ import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import com.google.android.gms.tasks.Tasks
+import com.google.firebase.installations.FirebaseInstallations
+import com.google.firebase.messaging.FirebaseMessaging
+import java.util.concurrent.TimeUnit
 
 class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,6 +40,39 @@ class MainActivity : FlutterActivity() {
                     startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                     result.success(true)
                 }
+                // why registering for notifications failed: each step with the whole chain of causes
+                "pushDiagnose" -> Thread {
+                    val out = StringBuilder()
+                    fun chain(e: Throwable?): String {
+                        val parts = mutableListOf<String>()
+                        var x = e
+                        while (x != null && parts.size < 6) {
+                            parts.add("${x.javaClass.simpleName}: ${x.message}")
+                            x = x.cause
+                        }
+                        return parts.joinToString(" <- ")
+                    }
+                    try {
+                        val gms = packageManager.getPackageInfo("com.google.android.gms", 0)
+                        out.append("gms ${gms.versionName}; ")
+                    } catch (e: Exception) {
+                        out.append("gms missing; ")
+                    }
+                    out.append("android ${Build.VERSION.SDK_INT} ${Build.MANUFACTURER} ${Build.MODEL}; ")
+                    try {
+                        val t = Tasks.await(FirebaseInstallations.getInstance().getToken(false), 30, TimeUnit.SECONDS)
+                        out.append("fis ok ${t.token.length}; ")
+                    } catch (e: Exception) {
+                        out.append("fis: ${chain(e)}; ")
+                    }
+                    try {
+                        val t = Tasks.await(FirebaseMessaging.getInstance().token, 30, TimeUnit.SECONDS)
+                        out.append("fcm ok ${t.take(10)}; ")
+                    } catch (e: Exception) {
+                        out.append("fcm: ${chain(e)}; ")
+                    }
+                    runOnUiThread { result.success(out.toString()) }
+                }.start()
                 else -> result.notImplemented()
             }
         }

@@ -66,3 +66,11 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // the same Firebase the plugins use (firebase_core 5.1: BoM 35.1.0), so MainActivity can ask it directly
+    // why a phone could not register for notifications
+    implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-installations")
+}

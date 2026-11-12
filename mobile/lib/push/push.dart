@@ -94,7 +94,6 @@ class FcmPush implements PushService {
     } catch (e, st) {
       _log('permission', e, st);
     }
-    if (_token == null) await _register();
     // the app was closed and started by a tap on a notification
     try {
       final first = await fm.getInitialMessage();
@@ -105,19 +104,36 @@ class FcmPush implements PushService {
     }
   }
 
+  int _tries = 0;
+  Timer? _retry;
+
   Future<void> _register() async {
     final api = _api;
-    if (api == null || !_ready) return;
+    if (api == null || !_ready || _token != null) return;
     try {
       final t = await FirebaseMessaging.instance.getToken();
-      if (t == null) {
-        _log('token', 'none');
-        return;
-      }
+      if (t == null) throw StateError('no token');
       await api.savePushToken(t);
       _token = t;
+      _retry?.cancel();
     } catch (e, st) {
-      _log('token', e, st);
+      _tries++;
+      // the first time, also what the phone itself says at each step (the plugin passes on only the last words)
+      String why = '';
+      if (_tries == 1) {
+        try {
+          why = await _system.invokeMethod<String>('pushDiagnose') ?? '';
+        } catch (d) {
+          why = 'diagnose: $d';
+        }
+      }
+      _log('token #$_tries', '$e${why.isEmpty ? '' : ' | $why'}', st);
+      // Google's service is sometimes not ready yet: again after 20 s, 1 min, 3 min, 10 min
+      const waits = [20, 60, 180, 600];
+      if (_tries <= waits.length) {
+        _retry?.cancel();
+        _retry = Timer(Duration(seconds: waits[_tries - 1]), _register);
+      }
     }
   }
 
@@ -154,6 +170,7 @@ class FcmPush implements PushService {
 
   @override
   void dispose() {
+    _retry?.cancel();
     for (final s in _subs) {
       s.cancel();
     }
