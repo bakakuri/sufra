@@ -6,6 +6,7 @@ import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/post_screen.dart';
 import 'package:peera/main.dart';
 import 'package:peera/people/person_screen.dart';
+import 'package:peera/push/push.dart';
 import 'package:peera/shell/home_shell.dart';
 import 'package:peera/shell/tab_bar.dart';
 
@@ -214,6 +215,49 @@ void main() {
     await _back(t);
     expect(find.byType(ChatScreen), findsNothing);
     expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 0);
+  });
+
+  test('a notification knows what it opens', () {
+    expect(PushTarget.fromData({'url': '/#chat-12', 'kind': 'message'})!.conv, 12);
+    expect(PushTarget.fromData({'url': '/#post-34', 'kind': 'comment'})!.post, 34);
+    expect(PushTarget.fromData({'url': '/#notifications', 'kind': 'friend_req'})!.tab, 'friends');
+    expect(PushTarget.fromData({'url': '/#date', 'kind': 'match'}), isNull);
+  });
+
+  testWidgets('notifications: this phone is registered, a tap opens its place, sign-out stops them', (t) async {
+    phone(t);
+    final push = FakePush();
+    final api = await shell(t, push: push);
+    expect(push.calls, ['start']);
+    expect(api.calls, contains('push+ tok'));
+
+    push.open!(const PushTarget(conv: 1));
+    await settle(t);
+    expect(find.byType(ChatScreen), findsOneWidget);
+    await _back(t);
+    expect(find.byType(ChatScreen), findsNothing);
+
+    push.open!(const PushTarget(post: 101));
+    await settle(t);
+    expect(find.byType(PostScreen), findsOneWidget);
+    await _back(t);
+
+    push.open!(const PushTarget(tab: 'friends'));
+    await settle(t);
+    expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 1);
+
+    // with the app open: a line at the bottom
+    push.whileOpen!('Peera', 'მარიამ · ახალი კომენტარი: სუპერ!', const PushTarget(post: 101));
+    await t.pump();
+    expect(find.text('მარიამ · ახალი კომენტარი: სუპერ!'), findsOneWidget);
+
+    await _tab(t, 'me');
+    await t.tap(find.byTooltip('გასვლა'));
+    await settle(t);
+    await t.tap(find.widgetWithText(TextButton, 'გასვლა'));
+    await settle(t);
+    expect(push.calls, contains('stop'));
+    expect(api.calls, contains('push- tok'));
   });
 
   testWidgets('sign in checks the fields, then calls the server', (t) async {

@@ -49,6 +49,10 @@ abstract class PeeraApi {
   Stream<Map<String, dynamic>> liveNotes();
 
   Future<void> touchSeen();
+
+  /// this phone, for push notifications (a row of push_subs, beside the browsers the site registers)
+  Future<void> savePushToken(String token);
+  Future<void> removePushToken(String token);
 }
 
 class SupaApi implements PeeraApi {
@@ -332,4 +336,12 @@ class SupaApi implements PeeraApi {
     if (pv is Map && pv['online'] == false) return;
     await sb.from('profiles').update({'last_seen': DateTime.now().toUtc().toIso8601String()}).eq('id', myId);
   }
+
+  @override
+  Future<void> savePushToken(String token) => sb
+      .from('push_subs')
+      .upsert({'user_id': myId, 'endpoint': 'fcm:$token', 'p256dh': '', 'auth': ''}, onConflict: 'endpoint', ignoreDuplicates: true);
+
+  @override
+  Future<void> removePushToken(String token) => sb.from('push_subs').delete().eq('endpoint', 'fcm:$token');
 }

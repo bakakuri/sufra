@@ -214,4 +214,8 @@ class FakeApi implements PeeraApi {
   Stream<Map<String, dynamic>> liveNotes() => notes.stream;
   @override
   Future<void> touchSeen() async {}
+  @override
+  Future<void> savePushToken(String token) async => calls.add('push+ $token');
+  @override
+  Future<void> removePushToken(String token) async => calls.add('push- $token');
 }

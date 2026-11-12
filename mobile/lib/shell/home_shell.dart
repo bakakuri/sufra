@@ -8,9 +8,11 @@ import '../chat/chats_tab.dart';
 import '../data/api.dart';
 import '../data/stores.dart';
 import '../feed/feed_tab.dart';
+import '../feed/post_screen.dart';
 import '../people/friends_tab.dart';
 import '../profile/profile.dart';
 import '../profile/profile_tab.dart';
+import '../push/push.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'soon_screen.dart';
@@ -21,9 +23,12 @@ import 'tab_bar.dart';
 /// first the open screen inside the tab, then back to the main tab, and on the main tab it asks for a second press.
 /// Screens opened over the whole app (a conversation, a post) are closed first, by the app's own navigator.
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key, required this.me, required this.api, required this.onSignOut, this.onRefresh, this.exit});
+  const HomeShell({super.key, required this.me, required this.api, required this.onSignOut, this.onRefresh, this.exit, this.push});
   final Profile me;
   final PeeraApi api;
+
+  /// notifications to the phone (none in the tests)
+  final PushService? push;
   final Future<void> Function() onSignOut;
   final Future<void> Function()? onRefresh;
 
@@ -41,6 +46,9 @@ class HomeShellState extends State<HomeShell> {
   final _scaffold = GlobalKey<ScaffoldState>();
   DateTime? _armed;
   late final AppState app;
+
+  /// the one made with this shell (the sign-in may rebuild the widget with a fresh one; that one is not used)
+  late final PushService? _push = widget.push;
   OverlayEntry? _banner;
   Timer? _bannerTimer;
 
@@ -51,11 +59,51 @@ class HomeShellState extends State<HomeShell> {
     super.initState();
     app = AppState(widget.api)..start();
     app.banner.addListener(_showBanner);
+    _push?.start(app.api, onOpen: _openFromPush, onForeground: _pushWhileOpen);
+  }
+
+  /// a tapped notification: its conversation or post opens over the app, a friend request opens the friends tab
+  void _openFromPush(PushTarget to) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final ctx = _scaffold.currentContext;
+      if (ctx == null || !mounted) return;
+      if (to.conv != null) {
+        await openChat(ctx, to.conv!);
+      } else if (to.post != null) {
+        final p = await app.api.post(to.post!).catchError((_) => null);
+        if (p == null || !ctx.mounted) return;
+        await app.posts.load([p]);
+        if (ctx.mounted) await openPage(ctx, PostScreen(post: p), full: true);
+      } else if (to.tab != null) {
+        final i = tabs.indexWhere((t) => t.id == to.tab);
+        if (i >= 0 && i != index) setState(() => index = i);
+      }
+    });
+    WidgetsBinding.instance.scheduleFrame();
+  }
+
+  /// with the app open the phone shows nothing itself: messages already have their card at the top,
+  /// the rest comes as a line at the bottom that opens what it is about
+  void _pushWhileOpen(String title, String body, PushTarget? to) {
+    if (!mounted || to?.conv != null || body.isEmpty) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(body, maxLines: 2, overflow: TextOverflow.ellipsis),
+        duration: const Duration(seconds: 4),
+        action: to == null ? null : SnackBarAction(label: 'ნახვა', onPressed: () => _openFromPush(to)),
+      ));
+  }
+
+  Future<void> _signOut() async {
+    await _push?.stop(app.api);
+    await widget.onSignOut();
   }
 
   @override
   void dispose() {
     _hideBanner();
+    _push?.dispose();
     app.banner.removeListener(_showBanner);
     app.dispose();
     super.dispose();
@@ -135,7 +183,7 @@ class HomeShellState extends State<HomeShell> {
       case 'chats':
         return const ChatsTab();
       case 'me':
-        return ProfileTab(me: widget.me, onSignOut: widget.onSignOut, onRefresh: widget.onRefresh);
+        return ProfileTab(me: widget.me, onSignOut: _signOut, onRefresh: widget.onRefresh);
     }
     return SoonScreen(tab: t, me: widget.me);
   }

@@ -8,6 +8,8 @@ import 'package:peera/data/photos.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/main.dart';
 import 'package:peera/profile/profile.dart';
+import 'package:peera/push/push.dart';
+import 'package:peera/data/api.dart';
 import 'package:peera/shell/home_shell.dart';
 import 'package:peera/ui/net_image.dart';
 
@@ -71,9 +73,9 @@ void phone(WidgetTester t, {double w = 390, double h = 844}) {
 }
 
 /// The signed-in app on the fake server.
-Future<FakeApi> shell(WidgetTester t, {ThemeMode mode = ThemeMode.light, VoidCallback? exit, FakeApi? api}) async {
+Future<FakeApi> shell(WidgetTester t, {ThemeMode mode = ThemeMode.light, VoidCallback? exit, FakeApi? api, PushService? push}) async {
   final a = api ?? FakeApi();
-  await t.pumpWidget(PeeraApp(mode: mode, home: HomeShell(me: nino, api: a, onSignOut: () async {}, exit: exit)));
+  await t.pumpWidget(PeeraApp(mode: mode, home: HomeShell(me: nino, api: a, push: push, onSignOut: () async {}, exit: exit)));
   await settle(t);
   return a;
 }
@@ -127,4 +129,28 @@ class FakeAuth implements AuthApi {
   Future<Profile?> myProfile() async => nino;
   @override
   Future<void> signOut() async => calls.add('out');
+}
+
+/// Notifications without Firebase: the test plays the taps
+class FakePush implements PushService {
+  final calls = <String>[];
+  void Function(PushTarget)? open;
+  void Function(String, String, PushTarget?)? whileOpen;
+
+  @override
+  Future<void> start(PeeraApi api, {required void Function(PushTarget) onOpen, void Function(String title, String body, PushTarget? to)? onForeground}) async {
+    calls.add('start');
+    open = onOpen;
+    whileOpen = onForeground;
+    await api.savePushToken('tok');
+  }
+
+  @override
+  Future<void> stop(PeeraApi api) async {
+    calls.add('stop');
+    await api.removePushToken('tok');
+  }
+
+  @override
+  void dispose() => calls.add('dispose');
 }

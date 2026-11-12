@@ -3,4 +3,6 @@
     <color name="ic_launcher_background">#6265F0</color>
     <color name="launch_light">#F5F6FA</color>
     <color name="launch_dark">#0C0E14</color>
+    <!-- the tint of the small notification icon -->
+    <color name="peera_accent">#4F46E5</color>
 </resources>
