@@ -126,6 +126,35 @@ void main() {
       await _shot(t, '15-chat-$k');
     });
 
+    testWidgets('clips ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('tab-clips')));
+      await settle(t);
+      await _shot(t, '17-clips-$k');
+    });
+
+    testWidgets('a story ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('story-u2')));
+      await settle(t);
+      await _shot(t, '18-story-$k');
+    });
+
+    testWidgets('a new clip ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('tab-clips')));
+      await settle(t);
+      await t.tap(find.byTooltip('კლიპის ატვირთვა'));
+      await settle(t);
+      await t.enterText(find.byType(TextField), 'გუდაური, პირველი თოვლი ❄️');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await settle(t);
+      await _shot(t, '19-new-clip-$k');
+    });
+
     testWidgets('search ($k)', (t) async {
       phone(t);
       await shell(t, mode: m);

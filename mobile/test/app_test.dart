@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:peera/auth/auth_screen.dart';
 import 'package:peera/chat/chat_screen.dart';
+import 'package:peera/clips/clip_composer.dart';
+import 'package:peera/clips/clip_feed.dart';
+import 'package:peera/stories/stories.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/post_screen.dart';
 import 'package:peera/main.dart';
@@ -215,6 +218,88 @@ void main() {
     await _back(t);
     expect(find.byType(ChatScreen), findsNothing);
     expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 0);
+  });
+
+  testWidgets('clips: one to a screen, ❤️ and comments, back goes one step', (t) async {
+    phone(t);
+    final api = await shell(t);
+    await _tab(t, 'clips');
+    expect(find.textContaining('გუდაურში'), findsOneWidget);
+    // მარიამ's clip already has my ❤️; გიორგი's does not
+    await t.tap(find.byKey(const ValueKey('clip-like-301')));
+    await settle(t);
+    expect(api.calls, contains('react 301 ❤️'));
+    expect(find.text('133'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('clip-comments-301')));
+    await settle(t);
+    expect(find.text('პოსტი'), findsOneWidget);
+    await _back(t);
+    expect(find.textContaining('გუდაურში'), findsOneWidget);
+    // swipe up: the next clip
+    await t.fling(find.byType(ClipFeed), const Offset(0, -500), 1500);
+    await settle(t);
+    expect(find.textContaining('ბათუმის'), findsOneWidget);
+    await _back(t);
+    expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 0);
+  });
+
+  testWidgets('a new clip: chosen, made ready, published at the top', (t) async {
+    phone(t);
+    final api = await shell(t);
+    await _tab(t, 'clips');
+    await t.tap(find.byTooltip('კლიპის ატვირთვა'));
+    await settle(t);
+    expect(find.byType(ClipComposer), findsOneWidget);
+    expect(find.textContaining('9.0 მბ'), findsOneWidget);
+    await t.enterText(find.byType(TextField), 'ჩემი პირველი კლიპი');
+    await t.tap(find.text('გამოქვეყნება'));
+    await settle(t);
+    expect(api.calls, containsAll(['video 720x1280', 'clip ჩემი პირველი კლიპი']));
+    expect(find.byType(ClipComposer), findsNothing);
+    expect(find.text('ჩემი პირველი კლიპი'), findsOneWidget);
+  });
+
+  testWidgets('stories: watched, answered, closed with back', (t) async {
+    phone(t);
+    final api = await shell(t);
+    expect(find.byType(StoriesBar), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('story-u2')));
+    await settle(t);
+    expect(find.byType(StoryViewer), findsOneWidget);
+    // გიორგი's first one was seen: it starts at the second
+    expect(api.calls, contains('seen 402'));
+    await t.tap(find.byKey(const ValueKey('story-react-❤️')));
+    await settle(t);
+    expect(api.calls, contains('story react 402 ❤️'));
+    await t.enterText(find.byType(TextField), 'რა ლამაზია!');
+    await t.tap(find.byKey(const ValueKey('story-send')));
+    await settle(t);
+    expect(api.calls, contains('story reply 402 რა ლამაზია!'));
+    await _back(t);
+    expect(find.byType(StoryViewer), findsNothing);
+    expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 0);
+  });
+
+  testWidgets('my story: a photo added, then who saw it', (t) async {
+    phone(t);
+    final api = await shell(t);
+    await t.tap(find.byKey(const ValueKey('story-me')));
+    await settle(t);
+    await t.tap(find.text('ფოტო გალერეიდან'));
+    await settle(t);
+    expect(api.calls, containsAll(['story photo', 'story https://t/hills.jpg']));
+    await t.tap(find.byKey(const ValueKey('story-me')));
+    await settle(t);
+    expect(find.byType(StoryViewer), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('story-views')));
+    await settle(t);
+    expect(find.text('ნახვები · 2'), findsOneWidget);
+    // back closes the list first, then the stories
+    await _back(t);
+    expect(find.text('ნახვები · 2'), findsNothing);
+    expect(find.byType(StoryViewer), findsOneWidget);
+    await _back(t);
+    expect(find.byType(StoryViewer), findsNothing);
   });
 
   test('a notification knows what it opens', () {

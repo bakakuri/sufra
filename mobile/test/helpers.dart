@@ -7,11 +7,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:peera/auth/auth_api.dart';
 import 'package:peera/data/photos.dart';
 import 'package:peera/feed/compose_screen.dart';
+import 'package:peera/media/player.dart';
+import 'package:peera/media/video_tools.dart';
 import 'package:peera/main.dart';
 import 'package:peera/profile/profile.dart';
 import 'package:peera/push/push.dart';
 import 'package:peera/data/api.dart';
 import 'package:peera/shell/home_shell.dart';
+import 'package:peera/stories/stories.dart';
 import 'package:peera/ui/net_image.dart';
 
 import 'fake_api.dart';
@@ -51,6 +54,57 @@ void useTestImages() {
   netImage = (u) => MemoryImage(pic(u.split('/').last.replaceAll('.jpg', '')));
   photoSource = (camera) async => camera ? [pic('food')] : [pic('sunset'), pic('hills')];
   photoPrep = (b) async => PreparedPhoto(b, 640, 480);
+  makePlayer = (u, {bool loop = true}) => FakePlayer();
+  storyClock = false;
+  videoPicker = () async => '/phone/clip.mp4';
+  videoPrep = (path, progress) async {
+    progress(.5);
+    progress(1);
+    return const VideoReady(path: '/phone/clip.mp4', poster: '/phone/poster.jpg', w: 720, h: 1280, dur: 14, bytes: 9 * 1024 * 1024);
+  };
+}
+
+/// A video that is always ready, a third of the way in, and draws nothing (the poster under it shows)
+class FakePlayer extends Player {
+  bool _playing = false;
+  @override
+  bool get ready => true;
+  @override
+  bool get playing => _playing;
+  @override
+  bool get buffering => false;
+  @override
+  bool get failed => false;
+  @override
+  bool get started => false;
+  @override
+  bool get ended => false;
+  @override
+  Duration get position => const Duration(seconds: 5);
+  @override
+  Duration get duration => const Duration(seconds: 15);
+  @override
+  Size get size => const Size(720, 1280);
+  @override
+  Future<void> prepare() async {}
+  @override
+  Future<void> play() async {
+    _playing = true;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> pause() async {
+    _playing = false;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> rewind() => pause();
+  @override
+  Future<void> mute(bool on) async {}
+  @override
+  Widget view() => const SizedBox.expand();
 }
 
 /// Waits for the screen, the pictures on it included (they are decoded outside the test's clock).

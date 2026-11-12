@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../profile/profile.dart';
 import 'models.dart';
 import 'photos.dart';
+import '../media/video_tools.dart';
 
 /// shown beside the app's errors in the admin panel
 const appVersion = '0.3.3';
@@ -59,6 +61,27 @@ abstract class PeeraApi {
 
   /// a problem on the phone, into the admin panel's error log (the site writes its own there too)
   Future<void> logError(String msg, {String stack = ''});
+
+  /// short videos (posts marked as clips), newest first
+  Future<List<Post>> clips({String? before, int limit = 12});
+
+  /// a video and its poster, uploaded
+  Future<Media> uploadVideo(VideoReady v);
+
+  /// a clip: the video and a few words
+  Future<Post> createClip(String body, Media video);
+
+  /// the stories of the last day that I may see, each marked when I have seen it
+  Future<List<Story>> stories();
+  Future<void> storySeen(int id);
+  Future<String> uploadStoryPhoto(PreparedPhoto p);
+  Future<void> addStory(String url, {bool video = false});
+  Future<void> deleteStory(int id);
+
+  /// a reaction or an answer goes to the author's chat too, as on the site
+  Future<void> reactStory(Story s, String emoji);
+  Future<void> replyStory(Story s, String text);
+  Future<List<StoryWatcher>> storyViewers(int id);
 }
 
 class SupaApi implements PeeraApi {
@@ -361,4 +384,83 @@ class SupaApi implements PeeraApi {
         'ua': 'Peera app',
         'ver': appVersion,
       });
+
+  @override
+  Future<List<Post>> clips({String? before, int limit = 12}) async {
+    var q = _posts().eq('is_clip', true).eq('hidden', false);
+    if (before != null) q = q.lt('created_at', before);
+    final list = await _hydrate(await q.order('created_at', ascending: false).limit(limit));
+    return list.where((p) => p.media.any((m) => m.isVideo)).toList();
+  }
+
+  Future<String> _putFile(File f, String ext, String type) async {
+    final path = '$myId/${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}-${_id(6)}.$ext';
+    await sb.storage.from('media').upload(path, f, fileOptions: FileOptions(contentType: type, cacheControl: '31536000', upsert: false));
+    return sb.storage.from('media').getPublicUrl(path);
+  }
+
+  @override
+  Future<Media> uploadVideo(VideoReady v) async {
+    final mov = v.path.toLowerCase().endsWith('.mov');
+    final poster = v.poster == null ? null : _putFile(File(v.poster!), 'jpg', 'image/jpeg').then<String?>((x) => x, onError: (_) => null);
+    final url = await _putFile(File(v.path), mov ? 'mov' : 'mp4', mov ? 'video/quicktime' : 'video/mp4');
+    return Media(url: url, type: 'video', w: v.w, h: v.h, poster: poster == null ? null : await poster, dur: v.dur > 0 ? double.parse(v.dur.toStringAsFixed(1)) : null);
+  }
+
+  @override
+  Future<Post> createClip(String body, Media video) async => Post.fromJson(await sb
+      .from('posts')
+      .insert({'author': myId, 'body': body, 'media': [video.toJson()], 'is_clip': true})
+      .select(postSel)
+      .single());
+
+  @override
+  Future<List<Story>> stories() async {
+    final rows = await sb
+        .from('stories')
+        .select('id,author,media_url,media_type,created_at,audience,post_id')
+        .gt('expires_at', DateTime.now().toUtc().toIso8601String())
+        .order('created_at')
+        .limit(200);
+    if (rows.isEmpty) return [];
+    final ids = rows.map((r) => asInt(r['id'])).toList();
+    final seen = {
+      for (final r in await sb.from('story_views').select('story_id').eq('user_id', myId).inFilter('story_id', ids.take(300).toList())) asInt(r['story_id']),
+    };
+    return [for (final r in rows) Story.fromJson(r, seen: seen.contains(asInt(r['id'])))];
+  }
+
+  @override
+  Future<void> storySeen(int id) => sb.from('story_views').upsert({'story_id': id, 'user_id': myId}, onConflict: 'story_id,user_id');
+
+  @override
+  Future<String> uploadStoryPhoto(PreparedPhoto p) => _put(p.full);
+
+  @override
+  Future<void> addStory(String url, {bool video = false}) =>
+      sb.from('stories').insert({'author': myId, 'media_url': url, 'media_type': video ? 'video' : 'image', 'audience': 'all'});
+
+  @override
+  Future<void> deleteStory(int id) => sb.from('stories').delete().eq('id', id);
+
+  Future<void> _storyToChat(Story s, String body, String act) async {
+    final conv = await startDm(s.author);
+    await sb.from('messages').insert({'conv_id': conv, 'sender': myId, 'body': body, 'kind': 'text', 'media': {'story': s.id, 'act': act}});
+  }
+
+  @override
+  Future<void> reactStory(Story s, String emoji) async {
+    await sb.from('story_reactions').upsert({'story_id': s.id, 'user_id': myId, 'emoji': emoji}, onConflict: 'story_id,user_id');
+    await _storyToChat(s, emoji, 'react');
+  }
+
+  @override
+  Future<void> replyStory(Story s, String text) => _storyToChat(s, text, 'reply');
+
+  @override
+  Future<List<StoryWatcher>> storyViewers(int id) async {
+    final views = await sb.from('story_views').select('user_id,seen_at').eq('story_id', id).order('seen_at', ascending: false);
+    final rx = {for (final r in await sb.from('story_reactions').select('user_id,emoji').eq('story_id', id)) '${r['user_id']}': '${r['emoji']}'};
+    return [for (final v in views) if ('${v['user_id']}' != myId) StoryWatcher('${v['user_id']}', rx['${v['user_id']}'])];
+  }
 }

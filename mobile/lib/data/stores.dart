@@ -218,6 +218,62 @@ class ChatStore extends Store {
   }
 }
 
+/// The stories bar: everyone's stories of the last day, by person; mine first, then the ones not seen yet, friends before others.
+class StoryStore extends Store {
+  StoryStore(this.api, this.people, this.friends);
+  final PeeraApi api;
+  final People people;
+  final FriendStore friends;
+  List<StoryGroup> groups = [];
+  bool loaded = false;
+
+  StoryGroup? get mine => groups.where((g) => g.author == api.myId).firstOrNull;
+  List<StoryGroup> get others => [for (final g in groups) if (g.author != api.myId) g];
+
+  Future<void> load() async {
+    try {
+      final list = await api.stories();
+      final by = <String, List<Story>>{};
+      for (final s in list) {
+        (by[s.author] ??= []).add(s);
+      }
+      final f = friends.friends.toSet(), me = api.myId;
+      final g = [for (final e in by.entries) StoryGroup(e.key, e.value)];
+      int rank(StoryGroup x) => x.author == me ? 0 : (x.seen ? 2 : 1);
+      g.sort((a, b) {
+        final r = rank(a).compareTo(rank(b));
+        if (r != 0) return r;
+        return (f.contains(b.author) ? 1 : 0).compareTo(f.contains(a.author) ? 1 : 0);
+      });
+      groups = g;
+      loaded = true;
+      changed();
+      await people.ensure(by.keys);
+    } catch (_) {
+      loaded = true;
+      changed();
+    }
+  }
+
+  void seen(Story s) {
+    if (s.seen || s.author == api.myId) return;
+    for (final g in groups) {
+      final i = g.list.indexWhere((x) => x.id == s.id);
+      if (i >= 0) g.list[i] = s.seenNow();
+    }
+    changed();
+    api.storySeen(s.id).catchError((_) {});
+  }
+
+  void removed(int id) {
+    for (final g in groups) {
+      g.list.removeWhere((x) => x.id == id);
+    }
+    groups = [for (final g in groups) if (g.list.isNotEmpty) g];
+    changed();
+  }
+}
+
 /// Everything the signed-in screens share. Made once per sign-in, by the shell.
 class AppState {
   AppState(this.api)
@@ -225,6 +281,7 @@ class AppState {
         posts = PostStore(api) {
     friends = FriendStore(api, people);
     chats = ChatStore(api, people);
+    stories = StoryStore(api, people, friends);
   }
 
   final PeeraApi api;
@@ -232,6 +289,10 @@ class AppState {
   final PostStore posts;
   late final FriendStore friends;
   late final ChatStore chats;
+  late final StoryStore stories;
+
+  /// the tab on screen (a playing clip stops when another tab opens)
+  final tab = ValueNotifier<int>(0);
 
   /// notifications to the phone, when the app has them (not in the tests)
   PushService? push;
@@ -280,6 +341,8 @@ class AppState {
     _seen?.cancel();
     _life?.dispose();
     banner.dispose();
+    tab.dispose();
+    stories.dispose();
     people.dispose();
     posts.dispose();
     friends.dispose();

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../chat/chat_screen.dart';
+import '../clips/clips_tab.dart';
 import '../chat/chats_tab.dart';
 import '../data/api.dart';
 import '../data/stores.dart';
@@ -78,7 +79,10 @@ class HomeShellState extends State<HomeShell> {
         if (ctx.mounted) await openPage(ctx, PostScreen(post: p), full: true);
       } else if (to.tab != null) {
         final i = tabs.indexWhere((t) => t.id == to.tab);
-        if (i >= 0 && i != index) setState(() => index = i);
+        if (i >= 0 && i != index) {
+          setState(() => index = i);
+          app.tab.value = i;
+        }
       }
     });
     WidgetsBinding.instance.scheduleFrame();
@@ -153,6 +157,7 @@ class HomeShellState extends State<HomeShell> {
       return;
     }
     setState(() => index = i);
+    app.tab.value = i;
   }
 
   /// one back step; true when the app should close
@@ -164,6 +169,7 @@ class HomeShellState extends State<HomeShell> {
     }
     if (index != 0) {
       setState(() => index = 0);
+      app.tab.value = 0;
       return false;
     }
     final now = DateTime.now();
@@ -184,6 +190,8 @@ class HomeShellState extends State<HomeShell> {
         return const FriendsTab();
       case 'chats':
         return const ChatsTab();
+      case 'clips':
+        return const ClipsTab();
       case 'me':
         return ProfileTab(me: widget.me, onSignOut: _signOut, onRefresh: widget.onRefresh);
     }

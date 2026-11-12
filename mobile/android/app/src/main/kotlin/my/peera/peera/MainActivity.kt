@@ -28,6 +28,10 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // videos before upload: size, poster frame, a lighter copy
+        val video = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "peera/video")
+        val tools = VideoTools(this, video)
+        video.setMethodCallHandler { call, result -> tools.handle(call, result) }
         // "ჩართვა" on the profile: the phone's own notification settings for this app
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "peera/system").setMethodCallHandler { call, result ->
             when (call.method) {

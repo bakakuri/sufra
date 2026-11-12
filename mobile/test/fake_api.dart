@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:peera/data/api.dart';
 import 'package:peera/data/models.dart';
 import 'package:peera/data/photos.dart';
+import 'package:peera/media/video_tools.dart';
 import 'package:peera/profile/profile.dart';
 
 import 'helpers.dart';
@@ -44,6 +45,18 @@ class FakeApi implements PeeraApi {
       Chat(convId: 2, members: [mariam.id], lastBody: 'კარგი, მერე მომწერე', lastKind: 'text', lastSender: nino.id, lastAt: ago(90)),
       Chat(convId: 4, members: [luka.id], lastKind: 'voice', lastSender: luka.id, lastAt: ago(60 * 50)),
       Chat(convId: 5, members: [dato.id], lastBody: 'მადლობა!', lastKind: 'text', lastSender: dato.id, lastAt: ago(60 * 24 * 9), archived: true),
+    ]);
+    clipPosts.addAll([
+      Post(id: 301, author: giorgi.id, ap: giorgi, createdAt: ago(40), cursor: '', body: 'გუდაურში პირველი თოვლი ❄️ #ზამთარი', media: const [Media(url: 'https://t/clip1.mp4', type: 'video', w: 720, h: 1280, poster: 'https://t/hills.jpg', dur: 14)]),
+      Post(id: 302, author: mariam.id, ap: mariam, createdAt: ago(300), cursor: '', body: 'ბათუმის ბულვარი საღამოს', media: const [Media(url: 'https://t/clip2.mp4', type: 'video', w: 720, h: 1280, poster: 'https://t/sea.jpg', dur: 22)]),
+    ]);
+    _stats[301] = PostStats(reactions: {'❤️': 128, '😮': 4}, comments: 9);
+    _stats[302] = PostStats(reactions: {'❤️': 41}, mine: '❤️', comments: 2);
+    storyList.addAll([
+      Story(id: 401, author: giorgi.id, url: 'https://t/sunset.jpg', createdAt: ago(90), seen: true),
+      Story(id: 402, author: giorgi.id, url: 'https://t/hills.jpg', createdAt: ago(30)),
+      Story(id: 403, author: mariam.id, url: 'https://t/sea.jpg', createdAt: ago(200)),
+      Story(id: 404, author: luka.id, url: 'https://t/food.jpg', createdAt: ago(500), seen: true),
     ]);
     final y = DateTime(now.year, now.month, now.day).subtract(const Duration(hours: 4));
     var id = 500;
@@ -220,4 +233,51 @@ class FakeApi implements PeeraApi {
   Future<void> removePushToken(String token) async => calls.add('push- $token');
   @override
   Future<void> logError(String msg, {String stack = ''}) async => calls.add('error $msg');
+  final clipPosts = <Post>[];
+  final storyList = <Story>[];
+
+  @override
+  Future<List<Post>> clips({String? before, int limit = 12}) async => before == null ? [...clipPosts] : const [];
+  @override
+  Future<Media> uploadVideo(VideoReady v) async {
+    calls.add('video ${v.w}x${v.h}');
+    return Media(url: 'https://t/clip.mp4', type: 'video', w: v.w, h: v.h, poster: 'https://t/sunset.jpg', dur: v.dur);
+  }
+
+  @override
+  Future<Post> createClip(String body, Media video) async {
+    calls.add('clip $body');
+    final p = Post(id: _id++, author: nino.id, ap: nino, createdAt: DateTime.now(), cursor: '', body: body, media: [video]);
+    clipPosts.insert(0, p);
+    return p;
+  }
+
+  @override
+  Future<List<Story>> stories() async => [...storyList];
+  @override
+  Future<void> storySeen(int id) async => calls.add('seen $id');
+  @override
+  Future<String> uploadStoryPhoto(PreparedPhoto p) async {
+    calls.add('story photo');
+    return 'https://t/hills.jpg';
+  }
+
+  @override
+  Future<void> addStory(String url, {bool video = false}) async {
+    calls.add('story $url');
+    storyList.add(Story(id: _id++, author: nino.id, url: url, createdAt: DateTime.now(), video: video));
+  }
+
+  @override
+  Future<void> deleteStory(int id) async {
+    calls.add('unstory $id');
+    storyList.removeWhere((s) => s.id == id);
+  }
+
+  @override
+  Future<void> reactStory(Story s, String emoji) async => calls.add('story react ${s.id} $emoji');
+  @override
+  Future<void> replyStory(Story s, String text) async => calls.add('story reply ${s.id} $text');
+  @override
+  Future<List<StoryWatcher>> storyViewers(int id) async => [StoryWatcher(giorgi.id, '❤️'), StoryWatcher(mariam.id, null)];
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
 import '../people/search_screen.dart';
+import '../stories/stories.dart';
 import '../ui/format.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
@@ -71,6 +72,7 @@ class FeedTabState extends State<FeedTab> {
         if (!app.friends.loaded) await app.friends.load();
         authors = [me.id, ...app.friends.friends];
       }
+      if (reset) app.stories.load();
       final rows = await app.api.feed(authors: authors, before: reset ? null : posts.lastOrNull?.cursor, limit: widget.pageSize);
       await app.posts.load(rows);
       if (!mounted || g != _gen) return;
@@ -122,6 +124,7 @@ class FeedTabState extends State<FeedTab> {
       body: RefreshIndicator(
         onRefresh: () => load(true),
         child: CustomScrollView(controller: scroll, physics: const AlwaysScrollableScrollPhysics(), slivers: [
+          const SliverToBoxAdapter(child: StoriesBar()),
           SliverToBoxAdapter(child: _Prompt(onWrite: _write, onPhoto: () => _write(photos: true))),
           SliverToBoxAdapter(
             child: Padding(

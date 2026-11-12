@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../clips/clip_feed.dart';
 import '../config.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
@@ -216,7 +217,7 @@ class _GalleryState extends State<_Gallery> with SingleTickerProviderStateMixin 
 
   void _tap(Media m, int i) {
     if (m.isVideo) {
-      launchUrl(Uri.parse(m.url), mode: LaunchMode.externalApplication);
+      openPage(context, ClipViewer(posts: [widget.post]), full: true);
       return;
     }
     final photos = widget.post.media.where((x) => !x.isVideo).toList();

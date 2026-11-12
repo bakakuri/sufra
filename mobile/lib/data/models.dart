@@ -8,10 +8,13 @@ Map<String, dynamic>? _map(Object? v) => v is Map ? Map<String, dynamic>.from(v)
 
 /// A photo or a video of a post or a message, as the site stores it: the full file, a ~1080 copy (md) and a ~480 one (sm).
 class Media {
-  const Media({required this.url, this.type = 'image', this.w = 0, this.h = 0, this.md, this.sm, this.poster});
+  const Media({required this.url, this.type = 'image', this.w = 0, this.h = 0, this.md, this.sm, this.poster, this.dur});
   final String url, type;
   final int w, h;
   final String? md, sm, poster;
+
+  /// a video's length in seconds, when known
+  final double? dur;
 
   bool get isVideo => type == 'video';
 
@@ -34,6 +37,7 @@ class Media {
       md: _web(j['md']),
       sm: _web(j['sm']),
       poster: _web(j['poster']),
+      dur: asNum(j['dur']),
     );
   }
 
@@ -46,6 +50,8 @@ class Media {
         if (h > 0) 'h': h,
         if (md != null) 'md': md,
         if (sm != null) 'sm': sm,
+        if (poster != null) 'poster': poster,
+        if (dur != null) 'dur': dur,
       };
 }
 
@@ -332,3 +338,50 @@ class Counts {
   const Counts(this.friends, this.posts);
   final int friends, posts;
 }
+
+/// One story: a photo or a video for a day.
+class Story {
+  const Story({required this.id, required this.author, required this.url, required this.createdAt, this.video = false, this.postId, this.close = false, this.seen = false});
+  final int id;
+  final String author, url;
+  final DateTime createdAt;
+  final bool video, close, seen;
+  final int? postId;
+
+  Story seenNow() => Story(id: id, author: author, url: url, createdAt: createdAt, video: video, postId: postId, close: close, seen: true);
+
+  factory Story.fromJson(Map<String, dynamic> j, {bool seen = false}) => Story(
+        id: asInt(j['id']),
+        author: '${j['author'] ?? ''}',
+        url: '${j['media_url'] ?? ''}',
+        createdAt: asTime(j['created_at']),
+        video: j['media_type'] == 'video',
+        postId: j['post_id'] == null ? null : asInt(j['post_id']),
+        close: j['audience'] == 'close',
+        seen: seen,
+      );
+}
+
+/// Someone's stories, oldest first, and whether you have seen them all.
+class StoryGroup {
+  StoryGroup(this.author, this.list);
+  final String author;
+  final List<Story> list;
+  bool get seen => list.every((s) => s.seen);
+
+  /// where to start: the first one not seen yet
+  int get firstUnseen {
+    final i = list.indexWhere((s) => !s.seen);
+    return i < 0 ? 0 : i;
+  }
+}
+
+/// Who saw a story of mine, and the reaction they left.
+class StoryWatcher {
+  const StoryWatcher(this.user, this.reaction);
+  final String user;
+  final String? reaction;
+}
+
+/// The reactions under a story (the site's SV_RX)
+const storyReactions = ['❤️', '😂', '😮', '😢', '🔥', '👏', '🍷'];
