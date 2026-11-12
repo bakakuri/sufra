@@ -317,7 +317,6 @@ class _ClipPageState extends State<ClipPage> with SingleTickerProviderStateMixin
                 _SideBtn(
                   icon: 'send',
                   label: 'გაზიარება',
-                  text: 'გაზიარება',
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: '$siteUrl/#post-${p.id}'));
                     toast(context, 'ბმული დაკოპირდა — ჩასვი სადაც გინდა');

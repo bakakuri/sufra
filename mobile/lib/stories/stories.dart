@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -34,7 +36,7 @@ class StoriesBar extends StatelessWidget {
               _Ring(
                 key: const ValueKey('story-me'),
                 p: me,
-                label: 'შენი ისტორია',
+                label: mine == null ? 'დამატება' : 'შენი',
                 state: mine == null ? _RingState.none : (mine.seen ? _RingState.seen : _RingState.fresh),
                 plus: true,
                 onTap: () => mine == null ? addStory(context) : openStories(context, [mine, ...others], 0),
@@ -187,6 +189,18 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   final _sent = <String>{};
   bool held = false;
   double drag = 0;
+
+  /// a short line in the middle ("❤️ გაეგზავნა"), so nothing covers the answer field
+  String? note;
+  Timer? _noteTimer;
+
+  void _flash(String t) {
+    _noteTimer?.cancel();
+    setState(() => note = t);
+    _noteTimer = Timer(const Duration(milliseconds: 1600), () {
+      if (mounted) setState(() => note = null);
+    });
+  }
   late final AppState app;
   bool _started = false;
 
@@ -205,6 +219,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
 
   @override
   void dispose() {
+    _noteTimer?.cancel();
     clock.dispose();
     video?.removeListener(_videoTick);
     video?.dispose();
@@ -291,14 +306,14 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   Future<void> _react(String e) async {
     HapticFeedback.lightImpact();
     if (!_sent.add('${s.id}$e')) {
-      toast(context, '${reactionGlyph(e)} უკვე გაგზავნილია');
+      _flash('${reactionGlyph(e)} უკვე გაგზავნილია');
       return;
     }
     final ok = await attempt(context, () => app.api.reactStory(s, e));
     if (!ok) {
       _sent.remove('${s.id}$e');
     } else if (mounted) {
-      toast(context, '${reactionGlyph(e)} გაეგზავნა — ნახავ ჩატში');
+      _flash('${reactionGlyph(e)} გაეგზავნა — ნახავ ჩატში');
     }
   }
 
@@ -307,7 +322,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     if (t.isEmpty) return;
     reply.clear();
     focus.unfocus();
-    if (await attempt(context, () => app.api.replyStory(s, t)) && mounted) toast(context, 'პასუხი გაიგზავნა — ნახავ ჩატში');
+    if (await attempt(context, () => app.api.replyStory(s, t)) && mounted) _flash('პასუხი გაიგზავნა — ნახავ ჩატში');
   }
 
   Future<void> _viewers() async {
@@ -479,6 +494,21 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                   ),
                 ]),
               ),
+              if (note != null)
+                Positioned(
+                  left: 24,
+                  right: 24,
+                  top: MediaQuery.sizeOf(context).height * .42,
+                  child: IgnorePointer(
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(color: const Color(0xCC000000), borderRadius: BorderRadius.circular(20)),
+                        child: Text(note!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
+                      ),
+                    ),
+                  ),
+                ),
               if (s.postId != null)
                 Positioned(
                   left: 0,
