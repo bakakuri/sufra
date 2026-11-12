@@ -1,4 +1,5 @@
-// Sends web push for a new notification row. Called by a database trigger with a shared secret header.
+// Sends push for a new notification row: web push to browsers, and Firebase Cloud Messaging to the phone app
+// (its devices are push_subs rows whose endpoint is "fcm:<token>"). Called by a database trigger with a shared secret header.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import webpush from "npm:web-push@3.6.7";
 
@@ -13,6 +14,68 @@ async function config() {
     webpush.setVapidDetails(cfg.vapid_subject, cfg.vapid_public, cfg.vapid_private);
   }
   return cfg!;
+}
+
+// Firebase: the server key lives in private.config (fcm_service_account), read through push_config like the VAPID keys
+type ServiceAccount = { project_id: string; private_key: string; client_email: string; token_uri: string };
+let fcmSA: ServiceAccount | null | undefined;
+let fcmAuth: { token: string; until: number } | null = null;
+
+function b64u(b: ArrayBuffer | string): string {
+  const bytes = typeof b === "string" ? new TextEncoder().encode(b) : new Uint8Array(b);
+  let s = "";
+  for (const x of bytes) s += String.fromCharCode(x);
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function serviceAccount(c: Record<string, string>): ServiceAccount | null {
+  if (fcmSA === undefined) {
+    try {
+      fcmSA = c.fcm_service_account ? JSON.parse(c.fcm_service_account) as ServiceAccount : null;
+    } catch {
+      fcmSA = null;
+    }
+  }
+  return fcmSA;
+}
+
+// a Google access token for sending, made from the service account and kept for its hour
+async function fcmToken(sa: ServiceAccount): Promise<string> {
+  if (fcmAuth && fcmAuth.until > Date.now() + 60_000) return fcmAuth.token;
+  const now = Math.floor(Date.now() / 1000);
+  const head = b64u(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const claim = b64u(JSON.stringify({ iss: sa.client_email, scope: "https://www.googleapis.com/auth/firebase.messaging", aud: sa.token_uri, iat: now, exp: now + 3600 }));
+  const der = Uint8Array.from(atob(sa.private_key.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "")), (ch) => ch.charCodeAt(0));
+  const key = await crypto.subtle.importKey("pkcs8", der, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(`${head}.${claim}`));
+  const r = await fetch(sa.token_uri, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: `${head}.${claim}.${b64u(sig)}` }),
+  });
+  const j = await r.json();
+  if (!j.access_token) throw new Error(`fcm auth ${r.status}`);
+  fcmAuth = { token: j.access_token, until: Date.now() + (j.expires_in ?? 3600) * 1000 };
+  return fcmAuth.token;
+}
+
+// one phone; true when its token is no longer valid (app removed or signed out) and the row should go
+async function sendFcm(sa: ServiceAccount, token: string, m: { title: string; body: string; url: string; tag: string; kind: string }): Promise<boolean> {
+  const r = await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${await fcmToken(sa)}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      message: {
+        token,
+        notification: { title: m.title, body: m.body },
+        data: { url: m.url, kind: m.kind, tag: m.tag },
+        android: { priority: "HIGH", ttl: "3600s", notification: { channel_id: "peera", tag: m.tag, sound: "default", color: "#4F46E5" } },
+      },
+    }),
+  });
+  if (r.ok) return false;
+  const t = await r.text();
+  return r.status === 404 || /UNREGISTERED/.test(t) || (r.status === 400 && /registration token/i.test(t));
 }
 
 // the "good idea" reaction is stored as 🍷 and shown as a light bulb
@@ -131,10 +194,19 @@ Deno.serve(async (req) => {
       if (a?.name) name = a.name;
     }
     const ref = (n.ref ?? {}) as Record<string, string>;
-    const payload = JSON.stringify({ title: "Peera", body: text(n.kind, name, ref), url: route(n.kind, ref), tag: `${n.kind}-${ref.conv ?? ref.post ?? n.id}` });
+    const body = text(n.kind, name, ref), url = route(n.kind, ref), tag = `${n.kind}-${ref.conv ?? ref.post ?? n.id}`;
+    const payload = JSON.stringify({ title: "Peera", body, url, tag });
     const { data: subs } = await sb.from("push_subs").select("id,endpoint,p256dh,auth").eq("user_id", n.user_id);
     await Promise.all((subs ?? []).map(async (s) => {
       try {
+        if (s.endpoint.startsWith("fcm:")) {
+          const sa = serviceAccount(c);
+          if (!sa) return;
+          // a message reads like a chat: the sender above, the words below
+          const m = n.kind === "message" ? { title: name, body: String(ref.text ?? "") || "ახალი შეტყობინება" } : { title: "Peera", body };
+          if (await sendFcm(sa, s.endpoint.slice(4), { ...m, url, tag, kind: n.kind })) await sb.from("push_subs").delete().eq("id", s.id);
+          return;
+        }
         await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 3600 });
       } catch (e) {
         const code = (e as { statusCode?: number }).statusCode;
