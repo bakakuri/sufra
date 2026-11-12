@@ -543,7 +543,7 @@ Future<String?> pickReaction(BuildContext context, Rect? anchor) {
             color: c.surface,
             elevation: 8,
             shadowColor: Colors.black38,
-            borderRadius: BorderRadius.circular(30),
+            shape: StadiumBorder(side: BorderSide(color: c.line)),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
