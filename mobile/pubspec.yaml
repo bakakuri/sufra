@@ -1,7 +1,7 @@
 name: peera
 description: Peera — the native app (Android now, iPhone from the same code later).
 publish_to: none
-version: 0.1.0+1
+version: 0.2.0+1
 
 environment:
   sdk: ^3.5.0
@@ -14,6 +14,9 @@ dependencies:
   supabase_flutter: ^2.8.0
   path_parsing: ^1.1.0
   url_launcher: ^6.3.0
+  image_picker: ^1.1.2
+  image: ^4.2.0
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:

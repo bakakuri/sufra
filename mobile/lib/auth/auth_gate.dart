@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../data/api.dart';
 import '../profile/profile.dart';
 import '../shell/home_shell.dart';
 import '../ui/theme.dart';
@@ -13,8 +14,11 @@ import 'onboarding_screen.dart';
 
 /// Signed out: the sign-in screen. Signed in: the profile is loaded; not finished: onboarding; otherwise the app.
 class AuthGate extends StatefulWidget {
-  const AuthGate({super.key, required this.api});
+  const AuthGate({super.key, required this.api, required this.data});
   final AuthApi api;
+
+  /// the app's reading and writing, made fresh for each signed-in person
+  final PeeraApi Function() data;
   @override
   State<AuthGate> createState() => _AuthGateState();
 }
@@ -82,7 +86,7 @@ class _AuthGateState extends State<AuthGate> {
     final p = me;
     if (p == null) return _Retry(error: error ?? '', onRetry: _load, onSignOut: widget.api.signOut);
     if (!p.onboarded) return OnboardingScreen(api: widget.api, me: p, onDone: _load);
-    return HomeShell(me: p, onSignOut: widget.api.signOut, onRefresh: _load);
+    return HomeShell(key: ValueKey('shell-${p.id}'), me: p, api: widget.data(), onSignOut: widget.api.signOut, onRefresh: _load);
   }
 }
 

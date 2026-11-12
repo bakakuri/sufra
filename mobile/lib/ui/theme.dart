@@ -109,7 +109,7 @@ const fontBody = 'NotoSansGeorgian';
 const fontLogo = 'NotoSansGeorgianCondensed';
 
 /// Latin letters (e-mails, @names) fall back to these: the system's own font on a phone, Noto Sans in the screenshots.
-const fontFallback = ['NotoSans', 'Roboto'];
+const fontFallback = ['NotoSans', 'Roboto', 'NotoColorEmoji'];
 
 ThemeData peeraTheme(Brightness b) {
   final c = b == Brightness.dark ? PeeraColors.dark : PeeraColors.light;

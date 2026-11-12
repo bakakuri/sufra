@@ -5,12 +5,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'auth/auth_api.dart';
 import 'auth/auth_gate.dart';
 import 'config.dart';
+import 'data/api.dart';
 import 'ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(url: supaUrl, anonKey: supaAnonKey);
-  runApp(PeeraApp(home: AuthGate(api: SupaAuthApi())));
+  runApp(PeeraApp(home: AuthGate(api: SupaAuthApi(), data: SupaApi.new)));
 }
 
 /// The app's frame: Georgian, the site's colours, light or dark as the phone is set.
