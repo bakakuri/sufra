@@ -1,13 +1,49 @@
 // Pictures of the screens at phone size, light and dark: test/goldens/*.png.
 // They are written with `flutter test --update-goldens` (the build does that) and are there to be looked at.
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:peera/auth/auth_screen.dart';
 import 'package:peera/auth/onboarding_screen.dart';
+import 'package:peera/data/stores.dart';
+import 'package:peera/joker/engine.dart';
+import 'package:peera/joker/session.dart';
+import 'package:peera/joker/table_screen.dart';
 import 'package:peera/main.dart';
 import 'package:peera/profile/profile.dart';
 
+import 'fake_api.dart';
 import 'helpers.dart';
+
+/// a Joker table at a chosen moment: the bots (level 4) play every seat until [at] says stop
+Future<JokerSession> _joker(WidgetTester t, ThemeMode m, String len, int seed, bool Function(JokerGame) at) async {
+  final g = JokerGame.start(len, rng: Random(seed));
+  var guard = 0;
+  while (!at(g) && g.phase != 'over' && guard++ < 5000) {
+    switch (g.phase) {
+      case 'trump':
+        g.setTrump(g.botTrump(g.cur));
+      case 'bid':
+        g.bid(g.cur, g.botBid(g.cur, 4));
+      case 'play':
+        if (g.win != null) {
+          g.collect();
+        } else {
+          final mv = g.botPlay(g.cur, 4);
+          g.play(g.cur, mv.c, jm: mv.jm, js: mv.js);
+        }
+      case 'handover':
+        g.nextHand();
+    }
+  }
+  final s = JokerSession()
+    ..g = g
+    ..seats = ['f1', 'm1', 'f2'];
+  await t.pumpWidget(PeeraApp(mode: m, home: AppScope(app: AppState(FakeApi()), me: nino, child: JokerTableScreen(session: s))));
+  await settle(t);
+  return s;
+}
 
 Future<void> _shot(WidgetTester t, String name) => expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/$name.png'));
 
@@ -157,6 +193,50 @@ void main() {
       FocusManager.instance.primaryFocus?.unfocus();
       await settle(t);
       await _shot(t, '19-new-clip-$k');
+    });
+
+    testWidgets('joker tab ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('tab-joker')));
+      await settle(t);
+      await _shot(t, '20-joker-$k');
+    });
+
+    testWidgets('joker: my bid ($k)', (t) async {
+      phone(t);
+      await _joker(t, m, 'quick', 5, (g) => g.phase == 'bid' && g.cur == 0 && g.n >= 5);
+      await _shot(t, '21-joker-bid-$k');
+    });
+
+    testWidgets('joker: my move ($k)', (t) async {
+      phone(t);
+      await _joker(t, m, 'quick', 11, (g) => g.phase == 'play' && g.cur == 0 && g.win == null && g.trick.length == 2 && g.n >= 6 && g.lastT != null);
+      await _shot(t, '22-joker-play-$k');
+    });
+
+    testWidgets('joker: the score sheet ($k)', (t) async {
+      phone(t);
+      await _joker(t, m, 'full', 3, (g) => g.h == 13 && g.phase == 'bid' && g.cur == 0);
+      await t.tap(find.byTooltip('ქულების ფურცელი'));
+      await settle(t);
+      await _shot(t, '23-joker-sheet-$k');
+    });
+
+    testWidgets('joker: the trump of a nine-card hand ($k)', (t) async {
+      phone(t);
+      await _joker(t, m, 'nines', 8, (g) => g.phase == 'trump' && g.cur == 0);
+      await _shot(t, '24-joker-trump-$k');
+    });
+
+    testWidgets('joker: the end ($k)', (t) async {
+      phone(t);
+      final s = await _joker(t, m, 'quick', 2, (g) => false);
+      s.reward = 10;
+      s.g!.score[0] = s.g!.score.reduce(max) + 40;
+      s.setHint(true); // the table draws again
+      await settle(t);
+      await _shot(t, '25-joker-over-$k');
     });
 
     testWidgets('search ($k)', (t) async {

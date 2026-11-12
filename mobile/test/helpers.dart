@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:peera/auth/auth_api.dart';
 import 'package:peera/data/photos.dart';
 import 'package:peera/feed/compose_screen.dart';
+import 'package:peera/joker/session.dart';
 import 'package:peera/media/player.dart';
 import 'package:peera/media/video_tools.dart';
 import 'package:peera/main.dart';
@@ -16,6 +18,7 @@ import 'package:peera/data/api.dart';
 import 'package:peera/shell/home_shell.dart';
 import 'package:peera/stories/stories.dart';
 import 'package:peera/ui/net_image.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_api.dart';
 
@@ -55,6 +58,8 @@ void useTestImages() {
   photoSource = (camera) async => camera ? [pic('food')] : [pic('sunset'), pic('hills')];
   photoPrep = (b) async => PreparedPhoto(b, 640, 480);
   makePlayer = (u, {bool loop = true}) => FakePlayer();
+  SharedPreferences.setMockInitialValues({});
+  jokerRandom = () => Random(7);
   storyClock = false;
   videoPicker = () async => '/phone/clip.mp4';
   videoPrep = (path, progress) async {

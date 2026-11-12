@@ -7,11 +7,15 @@ import 'package:peera/clips/clip_feed.dart';
 import 'package:peera/stories/stories.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/post_screen.dart';
+import 'package:peera/joker/engine.dart';
+import 'package:peera/joker/table_screen.dart';
 import 'package:peera/main.dart';
 import 'package:peera/people/person_screen.dart';
 import 'package:peera/push/push.dart';
 import 'package:peera/shell/home_shell.dart';
 import 'package:peera/shell/tab_bar.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'helpers.dart';
 
@@ -356,6 +360,154 @@ void main() {
     expect(api.calls, contains('push- tok'));
   });
 
+  testWidgets('joker: a quick game against the bots; back leaves the table, the game goes on from the tab', (t) async {
+    phone(t);
+    SharedPreferences.setMockInitialValues({});
+    final api = await shell(t);
+    await _tab(t, 'joker');
+    expect(find.text('ჯოკერი ოთხ კაცზე'), findsOneWidget);
+    expect(find.text('თამაშები'), findsNothing);
+    await t.tap(find.byKey(const ValueKey('joker-new-quick')));
+    await settle(t);
+    expect(find.byType(JokerTableScreen), findsOneWidget);
+    final s = t.widget<JokerTableScreen>(find.byType(JokerTableScreen)).session;
+    final g = s.g!;
+    expect(g.len, 'quick');
+
+    /// the bots move by themselves; this waits for my turn (or [until])
+    Future<void> wait({bool Function()? until}) async {
+      for (var i = 0; i < 80; i++) {
+        if (until != null ? until() : s.myTurn) return;
+        await t.pump(const Duration(milliseconds: 500));
+      }
+      fail('the table stopped: ${g.phase} ${g.cur}');
+    }
+
+    Future<void> playHand() async {
+      final h0 = g.h;
+      while (g.h == h0) {
+        await wait(until: () => s.myTurn || g.h != h0);
+        if (g.h != h0) break;
+        await t.pump();
+        if (g.phase == 'trump') {
+          await t.tap(find.byKey(const ValueKey('jtrump-h')));
+        } else if (g.phase == 'bid') {
+          final f = g.forbidden(0);
+          expect(find.byKey(const ValueKey('joker-status')), findsOneWidget);
+          await t.tap(find.byKey(ValueKey('jbid-${f == 0 ? 1 : 0}')));
+        } else {
+          final c = g.legal(0).first;
+          await t.tap(find.byKey(ValueKey('jcard-${c.key}')));
+          await t.pumpAndSettle();
+          if (c.joker) {
+            await t.tap(find.byKey(ValueKey(g.trick.isEmpty ? 'jcall-hi-h' : 'jcall-hi')));
+          }
+        }
+        await t.pump();
+      }
+    }
+
+    await playHand();
+    expect(g.h, 1);
+    expect(g.hist.length, greaterThanOrEqualTo(1));
+    expect(find.byKey(const ValueKey('pips-0')), findsOneWidget);
+
+    // back: the table closes, the game waits on the tab
+    await _back(t);
+    expect(find.byType(JokerTableScreen), findsNothing);
+    expect(find.byKey(const ValueKey('joker-current')), findsOneWidget);
+    final before = jsonOf(g);
+    await t.pump(const Duration(seconds: 5));
+    expect(jsonOf(g), before, reason: 'the bots wait while the table is closed');
+
+    // on again, one more hand; a joker or not, the cards played are the ones allowed
+    await t.tap(find.byKey(const ValueKey('joker-continue')));
+    await settle(t);
+    await playHand();
+    expect(g.h, 2);
+
+    // the sheet over the table is one step back
+    await t.tap(find.byTooltip('ქულების ფურცელი'));
+    await settle(t);
+    expect(find.text('ქულების ფურცელი'), findsWidgets);
+    await _back(t);
+    expect(find.byType(JokerTableScreen), findsOneWidget);
+    await _back(t);
+    expect(find.byType(JokerTableScreen), findsNothing);
+    // and from the tab back to the feed, never out
+    await _back(t);
+    expect(find.byKey(const ValueKey('joker-current')), findsNothing);
+    expect(api.calls.where((c) => c.startsWith('game ')), isEmpty);
+  });
+
+  testWidgets('joker: the game is kept on the phone and continues after the app is opened again', (t) async {
+    phone(t);
+    SharedPreferences.setMockInitialValues({});
+    await shell(t);
+    await _tab(t, 'joker');
+    await t.tap(find.byKey(const ValueKey('joker-new-nines')));
+    await settle(t);
+    final s1 = t.widget<JokerTableScreen>(find.byType(JokerTableScreen)).session;
+    for (var i = 0; i < 40 && !s1.myTurn; i++) {
+      await t.pump(const Duration(milliseconds: 500));
+    }
+    final saved = jsonOf(s1.g!);
+    await _back(t);
+    // a new start of the app: the game is read back
+    await t.pumpWidget(const SizedBox());
+    await shell(t);
+    await _tab(t, 'joker');
+    await settle(t);
+    expect(find.byKey(const ValueKey('joker-current')), findsOneWidget);
+    expect(find.textContaining('ცხრიანები · ხელი'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('joker-continue')));
+    await settle(t);
+    final s2 = t.widget<JokerTableScreen>(find.byType(JokerTableScreen)).session;
+    expect(jsonOf(s2.g!), saved);
+    await _back(t);
+    // given up: it is gone
+    await t.tap(find.byKey(const ValueKey('joker-quit')));
+    await settle(t);
+    await t.tap(find.text('დასრულება').last);
+    await settle(t);
+    expect(find.byKey(const ValueKey('joker-current')), findsNothing);
+  });
+
+  testWidgets('joker: a won game is told to the server once, and the coins it brought are shown', (t) async {
+    phone(t);
+    SharedPreferences.setMockInitialValues({});
+    final api = await shell(t);
+    await _tab(t, 'joker');
+    await t.tap(find.byKey(const ValueKey('joker-new-quick')));
+    await settle(t);
+    final s = t.widget<JokerTableScreen>(find.byType(JokerTableScreen)).session;
+    await _back(t);
+    // the last hand is scored and I have the most points
+    s.g!
+      ..score = [900, 100, 50, -200]
+      ..h = 8
+      ..cur = -1
+      ..phase = 'over';
+    await t.tap(find.byKey(const ValueKey('joker-continue')));
+    await settle(t);
+    expect(find.byKey(const ValueKey('joker-over')), findsOneWidget);
+    expect(find.text('მოიგე!'), findsOneWidget);
+    expect(find.text('+10 მონეტა'), findsOneWidget);
+    expect(api.calls.where((c) => c == 'game joker won').length, 1);
+    // opened again: not told twice
+    await _back(t);
+    expect(find.text('შედეგის ნახვა'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('joker-continue')));
+    await settle(t);
+    expect(api.calls.where((c) => c.startsWith('game ')).length, 1);
+    // a new game from the end
+    await t.tap(find.byKey(const ValueKey('joker-again')));
+    await settle(t);
+    expect(s.g!.phase, isNot('over'));
+    expect(s.reward, isNull);
+    await _back(t);
+  });
+
   testWidgets('sign in checks the fields, then calls the server', (t) async {
     phone(t);
     final api = FakeAuth();
@@ -390,3 +542,5 @@ void main() {
     expect(find.textContaining('დადასტურების ბმული'), findsOneWidget);
   });
 }
+
+String jsonOf(JokerGame g) => g.toJson().toString();

@@ -233,6 +233,12 @@ class FakeApi implements PeeraApi {
   Future<void> removePushToken(String token) async => calls.add('push- $token');
   @override
   Future<void> logError(String msg, {String stack = ''}) async => calls.add('error $msg');
+  @override
+  Future<({int coins, int reward})> gameResult(String game, bool win) async {
+    calls.add('game $game ${win ? 'won' : 'lost'}');
+    return (coins: 1210, reward: win ? 10 : 0);
+  }
+
   final clipPosts = <Post>[];
   final storyList = <Story>[];
 

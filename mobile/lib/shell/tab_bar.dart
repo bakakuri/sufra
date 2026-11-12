@@ -15,7 +15,7 @@ const tabs = [
   PTab('date', 'გაცნობა', 'heart'),
   PTab('chats', 'მიმოწერა', 'msg'),
   PTab('clips', 'კლიპები', 'clips'),
-  PTab('games', 'თამაშები', 'dice'),
+  PTab('joker', 'ჯოკერი', 'cards'),
   PTab('me', 'პროფილი', 'user'),
 ];
 const tabMid = 3;

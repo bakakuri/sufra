@@ -49,6 +49,8 @@ const _ic = <String, String>{
   'vol': '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
   'voloff': '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
   'pause': '<rect x="6.5" y="5" width="3.6" height="14" rx="1.2" fill="1"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.2" fill="1"/>',
+  'cards': '<rect x="4" y="5" width="11" height="15" rx="2"/><path d="M15 7l4.5 1.2-3 12-3-.8"/>',
+  'note': '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',
   'heartfill': '<path d="M12 20s-7-4.4-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.6-9 9-9 9z" fill="1"/>',
 };
 

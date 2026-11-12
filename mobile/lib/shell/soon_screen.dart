@@ -15,7 +15,6 @@ const _what = <String, (String, String)>{
   'date': ('გაცნობა', 'ახალი ხალხი, მოწონებები და დამთხვევები.'),
   'chats': ('მიმოწერა', 'მესიჯები, ხმოვანი შეტყობინებები, ფოტოები და ზარები.'),
   'clips': ('კლიპები', 'მოკლე ვიდეოები ვერტიკალურად.'),
-  'games': ('თამაშები', 'ჯოკერი, ნარდი, დომინო, შაში, ჭადრაკი და სხვა.'),
 };
 
 /// The first version of the app has its frame; the tab's own screens come in the next phases.

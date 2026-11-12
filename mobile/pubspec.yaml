@@ -1,7 +1,7 @@
 name: peera
 description: Peera — the native app (Android now, iPhone from the same code later).
 publish_to: none
-version: 0.3.3+1
+version: 0.4.0+1
 
 environment:
   sdk: ^3.5.0
@@ -20,6 +20,7 @@ dependencies:
   firebase_core: ^5.0.0
   firebase_messaging: ^17.0.0
   video_player: ^2.14.1
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:
@@ -28,6 +29,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/joker/
   fonts:
     - family: NotoSansGeorgian
       fonts:

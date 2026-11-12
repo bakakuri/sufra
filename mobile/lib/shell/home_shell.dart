@@ -10,6 +10,7 @@ import '../data/api.dart';
 import '../data/stores.dart';
 import '../feed/feed_tab.dart';
 import '../feed/post_screen.dart';
+import '../joker/joker_tab.dart';
 import '../people/friends_tab.dart';
 import '../profile/profile.dart';
 import '../profile/profile_tab.dart';
@@ -192,6 +193,8 @@ class HomeShellState extends State<HomeShell> {
         return const ChatsTab();
       case 'clips':
         return const ClipsTab();
+      case 'joker':
+        return const JokerTab();
       case 'me':
         return ProfileTab(me: widget.me, onSignOut: _signOut, onRefresh: widget.onRefresh);
     }

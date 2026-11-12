@@ -11,7 +11,7 @@ import 'photos.dart';
 import '../media/video_tools.dart';
 
 /// shown beside the app's errors in the admin panel
-const appVersion = '0.3.3';
+const appVersion = '0.4.0';
 
 /// Everything the app reads and writes, from the same tables and functions the site uses.
 /// The screens only see this; the tests answer it from memory.
@@ -82,6 +82,9 @@ abstract class PeeraApi {
   Future<void> reactStory(Story s, String emoji);
   Future<void> replyStory(Story s, String text);
   Future<List<StoryWatcher>> storyViewers(int id);
+
+  /// a game against the computer is over (as on the site): a win may bring the day's coins; the server decides how many
+  Future<({int coins, int reward})> gameResult(String game, bool win);
 }
 
 class SupaApi implements PeeraApi {
@@ -384,6 +387,13 @@ class SupaApi implements PeeraApi {
         'ua': 'Peera app',
         'ver': appVersion,
       });
+
+  @override
+  Future<({int coins, int reward})> gameResult(String game, bool win) async {
+    final r = await sb.rpc('game_result', params: {'p_game': game, 'p_win': win});
+    final m = r is Map ? r : const {};
+    return (coins: asInt(m['coins']), reward: asInt(m['reward']));
+  }
 
   @override
   Future<List<Post>> clips({String? before, int limit = 12}) async {
