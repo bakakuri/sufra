@@ -16,7 +16,7 @@ class FakeApi implements PeeraApi {
     _posts.addAll([
       _p(101, giorgi, ago(12), 'მცხეთიდან დაბრუნებისას ასეთი მზის ჩასვლა დაგვხვდა 🌄 #საქართველო', [img('sunset', 640, 480), img('hills', 480, 600)]),
       _p(102, mariam, ago(130),
-          'დღეს პირველად ვცადე ქართული ტრადიციული პურის გამოცხობა თონეში. ბებიამ მასწავლა ყველაფერი: როგორ მოვზილო ცომი, რამდენ ხანს დავტოვო ამოსასვლელად და როგორ მივაკრა თონის კედელზე ისე, რომ არ ჩამოვარდეს.\n\nპირველი ორი ჩამომივარდა 😅 მაგრამ მესამე უკვე იდეალური გამოვიდა.\n\nვინც გინდათ, რეცეპტს გამოგიგზავნით!'),
+          'დღეს პირველად ვცადე ქართული ტრადიციული პურის გამოცხობა თონეში. ბებიამ მასწავლა ყველაფერი: როგორ მოვზილო ცომი, რამდენ ხანს დავტოვო ამოსასვლელად და როგორ მივაკრა თონის კედელზე ისე, რომ არ ჩამოვარდეს.\n\nპირველი ორი ჩამომივარდა 😅 მაგრამ მესამე უკვე იდეალური გამოვიდა.\n\nვინც გინდათ, რეცეპტს გამოგიგზავნით!', const []),
       _p(103, luka, ago(300), 'შაბათს სად წავიდეთ? 🤔', const [], poll: const Poll('შაბათს სად წავიდეთ?', ['ზღვაზე', 'მთაში', 'ქალაქში დავრჩეთ'])),
       _p(104, ana, ago(420), '', const [], repostOf: 105),
       _p(106, nino, ago(60 * 26), 'ახალი აპი ვცადე! 📱 სულ სხვა სისწრაფეა', [img('sea', 640, 480)]),
@@ -76,7 +76,7 @@ class FakeApi implements PeeraApi {
   final _msgs = <int, List<Message>>{};
   final live = <int, StreamController<Message>>{};
   final notes = StreamController<Map<String, dynamic>>.broadcast();
-  var rels = <Rel>[Rel(nino.id, giorgi.id, true), Rel(mariam.id, nino.id, true), Rel(nino.id, luka.id, true), Rel(ana.id, nino.id, false), Rel(nino.id, dato.id, false)];
+  var _rels = <Rel>[Rel(nino.id, giorgi.id, true), Rel(mariam.id, nino.id, true), Rel(nino.id, luka.id, true), Rel(ana.id, nino.id, false), Rel(nino.id, dato.id, false)];
   int _id = 900;
 
   /// a message from someone else, as if it arrived live
@@ -151,7 +151,7 @@ class FakeApi implements PeeraApi {
   @override
   Future<List<Profile>> search(String q) async => everyone.where((p) => p.id != nino.id && (p.name.contains(q) || (p.username ?? '').contains(q))).toList();
   @override
-  Future<List<Rel>> rels() async => [...rels];
+  Future<List<Rel>> rels() async => [..._rels];
   @override
   Future<List<Suggestion>> suggestions() async => [Suggestion(tamar, 4), Suggestion(nika, 2)];
   @override
@@ -159,7 +159,7 @@ class FakeApi implements PeeraApi {
   @override
   Future<void> acceptFriend(String uid) async {
     calls.add('accept $uid');
-    rels = [for (final r in rels) r.requester == uid && r.addressee == nino.id ? Rel(uid, nino.id, true) : r];
+    _rels = [for (final r in _rels) r.requester == uid && r.addressee == nino.id ? Rel(uid, nino.id, true) : r];
   }
 
   @override

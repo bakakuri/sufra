@@ -220,7 +220,8 @@ class _GalleryState extends State<_Gallery> with SingleTickerProviderStateMixin 
       return;
     }
     final photos = widget.post.media.where((x) => !x.isVideo).toList();
-    openPhotos(context, photos, start: photos.indexOf(m) < 0 ? 0 : photos.indexOf(m));
+    final at = photos.indexOf(m);
+    openPhotos(context, photos, start: at > 0 ? at : 0);
   }
 
   @override
