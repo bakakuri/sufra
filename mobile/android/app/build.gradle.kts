@@ -32,6 +32,11 @@ android {
         versionName = flutter.versionName
     }
 
+    // Android's lint check of release builds crashes on one of the plugins (a lint bug); the app's own checks run in `flutter analyze`
+    lint {
+        checkReleaseBuilds = false
+    }
+
     signingConfigs {
         if (peeraKs != null) {
             create("peera") {
