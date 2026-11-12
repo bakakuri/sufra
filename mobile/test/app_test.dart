@@ -156,6 +156,7 @@ void main() {
     await t.tap(find.byTooltip('ახალი პოსტი'));
     await settle(t);
     await t.enterText(find.byType(TextField), 'ჯერ არ დამიმთავრებია');
+    await t.pump();
     await _back(t);
     expect(find.text('პოსტი არ გამოქვეყნდება'), findsOneWidget);
     // back again closes only the question
@@ -169,11 +170,11 @@ void main() {
     final api = await shell(t);
     await _tab(t, 'friends');
     // the request waits first
-    expect(find.text('მეგობრობას გთხოვს'), findsOneWidget);
+    expect(find.textContaining('მეგობრობას გთხოვს'), findsOneWidget);
     await t.tap(find.text('დადასტურება'));
     await settle(t);
     expect(api.calls, contains('accept u5'));
-    expect(find.text('მეგობრობას გთხოვს'), findsNothing);
+    expect(find.textContaining('მეგობრობას გთხოვს'), findsNothing);
     expect(find.descendant(of: find.byKey(const ValueKey('tab-friends')), matching: find.text('1')), findsNothing);
   });
 
@@ -197,6 +198,22 @@ void main() {
     await _back(t);
     // its unread are gone from the badge: only the group's five stay
     expect(find.descendant(of: find.byKey(const ValueKey('tab-chats')), matching: find.text('5')), findsOneWidget);
+  });
+
+  testWidgets('a message from another conversation shows at the top and opens it', (t) async {
+    phone(t);
+    final api = await shell(t);
+    api.notes.add({'kind': 'message', 'actor': 'u3', 'ref': {'conv': 2, 'text': 'სად ხარ? 🙂'}});
+    await settle(t);
+    expect(find.text('სად ხარ? 🙂'), findsOneWidget);
+    await t.tap(find.text('სად ხარ? 🙂'));
+    await settle(t);
+    expect(find.byType(ChatScreen), findsOneWidget);
+    expect(api.calls, contains('read 2'));
+    // back closes the conversation, nothing else
+    await _back(t);
+    expect(find.byType(ChatScreen), findsNothing);
+    expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 0);
   });
 
   testWidgets('sign in checks the fields, then calls the server', (t) async {

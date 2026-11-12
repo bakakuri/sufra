@@ -86,7 +86,7 @@ class _PostView extends StatelessWidget {
           : BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _Head(post: post, onDeleted: onDeleted, inPostScreen: inPostScreen),
-        if (post.body.trim().isNotEmpty)
+        if (post.body.trim().isNotEmpty && post.body.trim() != post.poll?.q.trim())
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => _open(context),
@@ -341,17 +341,21 @@ class _PollView extends StatelessWidget {
                     ),
                     child: Stack(children: [
                       if (voted)
-                        FractionallySizedBox(
-                          widthFactor: tot == 0 ? 0 : (s.votes[i] ?? 0) / tot,
-                          heightFactor: 1,
-                          child: ColoredBox(color: s.myVote == i ? c.accentSoft : c.sunk),
+                        Positioned.fill(
+                          child: FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: tot == 0 ? 0 : (s.votes[i] ?? 0) / tot,
+                            child: ColoredBox(color: s.myVote == i ? c.accentSoft : c.sunk),
+                          ),
                         ),
-                      Padding(
+                      Positioned.fill(
+                        child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Row(children: [
                           Expanded(child: Text(poll.opts[i], maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: s.myVote == i ? FontWeight.w700 : FontWeight.w500))),
                           if (voted) Text('${tot == 0 ? 0 : ((s.votes[i] ?? 0) * 100 / tot).round()}%', style: TextStyle(fontWeight: FontWeight.w700, color: c.muted)),
                         ]),
+                      ),
                       ),
                     ]),
                   ),

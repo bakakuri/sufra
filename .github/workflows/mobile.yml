@@ -44,7 +44,7 @@ jobs:
         run: set -o pipefail; flutter analyze --no-fatal-infos 2>&1 | tee ../out/analyze.txt
       - name: Emoji font for the screen pictures
         if: always()
-        run: curl -sSfL -o test/fonts/NotoColorEmoji.ttf https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf || echo "no emoji font"
+        run: curl -sSfL -o test/fonts/NotoColorEmoji.ttf https://github.com/googlefonts/noto-emoji/raw/main/2D/fonts/Noto-COLRv1.ttf || echo "no emoji font"
       - name: Tests and screen pictures
         if: always()
         run: set -o pipefail; flutter test --update-goldens --reporter expanded 2>&1 | tee ../out/test.txt

@@ -6,8 +6,23 @@ import '../profile/profile.dart';
 import 'api.dart';
 import 'models.dart';
 
+/// A store that may still be answering the server after sign-out; then it stays quiet.
+class Store extends ChangeNotifier {
+  bool _gone = false;
+
+  @override
+  void dispose() {
+    _gone = true;
+    super.dispose();
+  }
+
+  void changed() {
+    if (!_gone) notifyListeners();
+  }
+}
+
 /// People already loaded, so names and pictures show at once everywhere.
-class People extends ChangeNotifier {
+class People extends Store {
   People(this.api);
   final PeeraApi api;
   final _m = <String, Profile>{};
@@ -22,13 +37,13 @@ class People extends ChangeNotifier {
       for (final p in await api.people(miss)) {
         _m[p.id] = p;
       }
-      notifyListeners();
+      changed();
     } catch (_) {}
   }
 }
 
 /// Reactions, votes, saves and comment counts of every post on screen; a change shows on every card of that post.
-class PostStore extends ChangeNotifier {
+class PostStore extends Store {
   PostStore(this.api);
   final PeeraApi api;
   final _s = <int, PostStats>{};
@@ -44,19 +59,19 @@ class PostStore extends ChangeNotifier {
     if (ids.isEmpty) return;
     try {
       _s.addAll(await api.stats(ids.toList()));
-      notifyListeners();
+      changed();
     } catch (_) {}
   }
 
   Future<void> react(int id, String? e) async {
     final s = of(id), old = s.mine;
     s.setReaction(e);
-    notifyListeners();
+    changed();
     try {
       await api.react(id, e);
     } catch (_) {
       s.setReaction(old);
-      notifyListeners();
+      changed();
       rethrow;
     }
   }
@@ -64,31 +79,31 @@ class PostStore extends ChangeNotifier {
   Future<void> vote(int id, int opt) async {
     final s = of(id);
     s.setVote(opt);
-    notifyListeners();
+    changed();
     await api.vote(id, opt);
   }
 
   Future<void> save(int id) async {
     final s = of(id);
     s.saved = !s.saved;
-    notifyListeners();
+    changed();
     try {
       await api.save(id, s.saved);
     } catch (_) {
       s.saved = !s.saved;
-      notifyListeners();
+      changed();
       rethrow;
     }
   }
 
   void commented(int id, [int n = 1]) {
     of(id).comments += n;
-    notifyListeners();
+    changed();
   }
 }
 
 /// My friendships: friends, requests to me, requests from me.
-class FriendStore extends ChangeNotifier {
+class FriendStore extends Store {
   FriendStore(this.api, this.people);
   final PeeraApi api;
   final People people;
@@ -113,14 +128,14 @@ class FriendStore extends ChangeNotifier {
   Future<void> load() async {
     rels = await api.rels();
     loaded = true;
-    notifyListeners();
+    changed();
     await people.ensure(rels.map((r) => r.otherThan(_me)));
   }
 
   Future<void> add(String uid) async {
     if (stateWith(uid) == Friendship.received) return accept(uid);
     rels = [...rels, Rel(_me, uid, false)];
-    notifyListeners();
+    changed();
     try {
       await api.addFriend(uid);
     } catch (_) {
@@ -131,7 +146,7 @@ class FriendStore extends ChangeNotifier {
 
   Future<void> accept(String uid) async {
     rels = [for (final r in rels) r.requester == uid && r.addressee == _me ? Rel(uid, _me, true) : r];
-    notifyListeners();
+    changed();
     try {
       await api.acceptFriend(uid);
     } catch (_) {
@@ -143,7 +158,7 @@ class FriendStore extends ChangeNotifier {
   /// unfriend, take back a request, or turn one down
   Future<void> remove(String uid) async {
     rels = [for (final r in rels) if (r.otherThan(_me) != uid) r];
-    notifyListeners();
+    changed();
     try {
       await api.removeFriend(uid);
     } catch (_) {
@@ -154,7 +169,7 @@ class FriendStore extends ChangeNotifier {
 }
 
 /// The conversations and the unread count for the tab's badge; kept fresh by my notifications.
-class ChatStore extends ChangeNotifier {
+class ChatStore extends Store {
   ChatStore(this.api, this.people);
   final PeeraApi api;
   final People people;
@@ -176,12 +191,12 @@ class ChatStore extends ChangeNotifier {
       }
       loaded = true;
       error = null;
-      notifyListeners();
+      changed();
       await people.ensure(list.expand((c) => c.members));
     } catch (e) {
       error = e;
       loaded = true;
-      notifyListeners();
+      changed();
     }
   }
 
@@ -190,7 +205,7 @@ class ChatStore extends ChangeNotifier {
     for (final c in chats) {
       if (c.convId == conv) c.unread = 0;
     }
-    notifyListeners();
+    changed();
     api.markRead(conv).catchError((_) {});
   }
 
@@ -215,24 +230,50 @@ class AppState {
   final PostStore posts;
   late final FriendStore friends;
   late final ChatStore chats;
+  /// a message that just came for a conversation that is not on screen (shown as a banner at the top)
+  final banner = ValueNotifier<({int conv, String actor, String text})?>(null);
   StreamSubscription<Map<String, dynamic>>? _notes;
   Timer? _seen;
+  AppLifecycleListener? _life;
+  bool _closed = false;
 
   void start() {
     chats.load();
     friends.load().catchError((_) {});
     _notes = api.liveNotes().listen((n) {
       final k = n['kind'];
-      if (k == 'message') chats.load();
+      if (k == 'message') {
+        chats.load();
+        final ref = n['ref'] is Map ? n['ref'] as Map : const {}, actor = '${n['actor'] ?? ''}', conv = asInt(ref['conv']);
+        if (conv != 0 && conv != chats.open && actor.isNotEmpty && actor != api.myId) {
+          people.ensure([actor]).then((_) {
+            if (_closed) return;
+            banner.value = null;
+            banner.value = (conv: conv, actor: actor, text: '${ref['text'] ?? ''}');
+          });
+        }
+      }
       if (k == 'friend_req' || k == 'friend_ok') friends.load().catchError((_) {});
     }, onError: (_) {});
     api.touchSeen().catchError((_) {});
-    _seen = Timer.periodic(const Duration(minutes: 2), (_) => api.touchSeen().catchError((_) {}));
+    // "online" only while the app is on screen
+    _seen = Timer.periodic(const Duration(minutes: 2), (_) {
+      if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) api.touchSeen().catchError((_) {});
+    });
+    // back from the background: whatever came meanwhile
+    _life = AppLifecycleListener(onResume: () {
+      api.touchSeen().catchError((_) {});
+      chats.load();
+      friends.load().catchError((_) {});
+    });
   }
 
   void dispose() {
+    _closed = true;
     _notes?.cancel();
     _seen?.cancel();
+    _life?.dispose();
+    banner.dispose();
     people.dispose();
     posts.dispose();
     friends.dispose();

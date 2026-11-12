@@ -71,6 +71,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 60,
+        leading: backButton(context),
         titleSpacing: 0,
         title: TextField(
           controller: field,

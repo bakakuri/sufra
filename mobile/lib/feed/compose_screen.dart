@@ -115,6 +115,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
         if (!did) _leave();
       },
       child: Scaffold(
+        backgroundColor: c.surface,
         appBar: AppBar(
           toolbarHeight: 60,
           titleSpacing: 0,
@@ -170,7 +171,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
               if (photos.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 GridView.count(
-                  crossAxisCount: photos.length == 1 ? 1 : 3,
+                  crossAxisCount: photos.length < 3 ? photos.length : 3,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   mainAxisSpacing: 6,

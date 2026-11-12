@@ -200,7 +200,7 @@ class _CommentTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     minimumSize: const Size(0, 30),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                    textStyle: const TextStyle(fontFamily: fontBody, fontFamilyFallback: fontFallback, fontWeight: FontWeight.w700, fontSize: 12.5),
                   ),
                   child: const Text('პასუხი'),
                 ),

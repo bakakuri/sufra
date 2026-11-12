@@ -127,10 +127,15 @@ class PeeraLogo extends StatelessWidget {
 /// The top bar of a tab: the logo on the main tab, a title elsewhere.
 PreferredSizeWidget peeraBar(BuildContext context, {String? title, Widget? titleWidget, List<Widget> actions = const []}) => AppBar(
       toolbarHeight: 60,
+      leading: backButton(context),
       titleSpacing: Navigator.of(context).canPop() ? 0 : 16,
       title: titleWidget ?? (title == null ? const PeeraLogo() : Text(title)),
       actions: [...actions, const SizedBox(width: 6)],
     );
+
+/// The site's arrow, on screens that can go back one step (it does what the phone's back does).
+Widget? backButton(BuildContext context) =>
+    Navigator.of(context).canPop() ? IconBtn('back', label: 'უკან', onTap: () => Navigator.of(context).maybePop()) : null;
 
 /// A round button with one of the site's icons.
 class IconBtn extends StatelessWidget {

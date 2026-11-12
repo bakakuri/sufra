@@ -90,7 +90,12 @@ class ChatRow extends StatelessWidget {
     final other = chat.other == null ? null : (app.people[chat.other!] ?? Profile(id: chat.other!, name: '…'));
     final title = chat.isGroup ? ((chat.title ?? '').isEmpty ? 'ჯგუფი' : chat.title!) : (other?.fullName ?? '');
     final unread = chat.unread > 0;
-    final last = '${chat.lastSender == me.id ? 'შენ: ' : ''}${chat.lastText}';
+    final from = chat.lastSender == me.id
+        ? 'შენ: '
+        : chat.isGroup && chat.lastSender != null && app.people[chat.lastSender!] != null
+            ? '${app.people[chat.lastSender!]!.name}: '
+            : '';
+    final last = '$from${chat.lastText}';
     return InkWell(
       onTap: () => openChat(context, chat.convId),
       child: Padding(

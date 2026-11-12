@@ -43,8 +43,10 @@ class ProfileTab extends StatelessWidget {
           child: Row(children: [
             PIcon('coin', size: 24, color: c.gold),
             const SizedBox(width: 10),
-            Text('${coinsText(me.coins)} ქოინი', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: c.ink)),
-            const Spacer(),
+            Expanded(
+              child: Text('${coinsText(me.coins)} ქოინი',
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: c.ink)),
+            ),
             Text('ბალანსი', style: TextStyle(color: c.muted, fontSize: 13.5)),
           ]),
         ),

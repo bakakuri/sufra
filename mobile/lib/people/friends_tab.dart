@@ -68,7 +68,7 @@ class _FriendsTabState extends State<FriendsTab> {
           Profile who(String id) => people[id] ?? Profile(id: id, name: '…');
           final friends = f.friends.map(who).toList()..sort((a, b) => a.name.compareTo(b.name));
           final incoming = f.incoming.map(who).toList(), outgoing = f.outgoing.map(who).toList();
-          final segs = [('მეგობრები', friends.length), ('მოთხოვნები', incoming.length), ('შეიძლება იცნობდე', 0)];
+          final segs = [('მეგობრები', friends.length), ('მოთხოვნები', incoming.length), ('იქნებ იცნობ', 0)];
           Widget list;
           if (!f.loaded && error == null) {
             list = const Center(child: SizedBox.square(dimension: 26, child: CircularProgressIndicator(strokeWidth: 2.4)));
@@ -93,20 +93,7 @@ class _FriendsTabState extends State<FriendsTab> {
             list = incoming.isEmpty && outgoing.isEmpty
                 ? ListView(children: const [Empty(icon: 'uadd', title: 'მოთხოვნები არ არის', text: 'ვინც მეგობრობას გთხოვს, აქ გამოჩნდება.')])
                 : ListView(padding: const EdgeInsets.symmetric(vertical: 6), children: [
-                    for (final p in incoming)
-                      PersonRow(
-                        p: p,
-                        onTap: () => _open(p),
-                        sub: 'მეგობრობას გთხოვს',
-                        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                          FilledButton(
-                            style: FilledButton.styleFrom(minimumSize: const Size(0, 38), padding: const EdgeInsets.symmetric(horizontal: 14)),
-                            onPressed: () => attempt(context, () => f.accept(p.id)),
-                            child: const Text('დადასტურება'),
-                          ),
-                          IconBtn('x', label: 'უარი', size: 20, color: c.muted, onTap: () => attempt(context, () => f.remove(p.id))),
-                        ]),
-                      ),
+                    for (final p in incoming) _RequestRow(p: p, onOpen: () => _open(p), onAccept: () => attempt(context, () => f.accept(p.id)), onDecline: () => attempt(context, () => f.remove(p.id))),
                     if (outgoing.isNotEmpty) ...[
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
@@ -149,12 +136,12 @@ class _FriendsTabState extends State<FriendsTab> {
                       );
           }
           return Column(children: [
-            SizedBox(
-              height: 54,
-              child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.fromLTRB(12, 10, 12, 6), children: [
-                for (var i = 0; i < segs.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+              child: Row(children: [
+                for (var i = 0; i < segs.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 6),
+                  Expanded(
                     child: _Seg(
                       key: ValueKey('seg-$i'),
                       text: segs[i].$1,
@@ -167,6 +154,7 @@ class _FriendsTabState extends State<FriendsTab> {
                       }),
                     ),
                   ),
+                ],
               ]),
             ),
             Expanded(child: RefreshIndicator(onRefresh: _load, child: list)),
@@ -194,10 +182,13 @@ class _Seg extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           alignment: Alignment.center,
           decoration: BoxDecoration(color: on ? c.ink : c.surface, borderRadius: BorderRadius.circular(20), border: Border.all(color: on ? c.ink : c.line)),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
             Text(text, style: TextStyle(color: on ? c.bg : c.ink, fontWeight: FontWeight.w700, fontSize: 14)),
             if (n > 0) ...[
               const SizedBox(width: 6),
@@ -208,7 +199,55 @@ class _Seg extends StatelessWidget {
               ),
             ],
           ]),
+          ),
         ),
+      ),
+    );
+  }
+}
+
+/// A request to you: the person, and the two answers under the name.
+class _RequestRow extends StatelessWidget {
+  const _RequestRow({required this.p, required this.onOpen, required this.onAccept, required this.onDecline});
+  final Profile p;
+  final VoidCallback onOpen, onAccept, onDecline;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.pc;
+    return InkWell(
+      onTap: onOpen,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Avatar(p: p, size: 62),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              NameLine(p, size: 15.5),
+              const SizedBox(height: 2),
+              Text(['მეგობრობას გთხოვს', if ((p.city ?? '').isNotEmpty) p.city!].join(' · '),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 13.5)),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(minimumSize: const Size(0, 38), padding: const EdgeInsets.symmetric(horizontal: 8)),
+                    onPressed: onAccept,
+                    child: const FittedBox(fit: BoxFit.scaleDown, child: Text('დადასტურება')),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(minimumSize: const Size(0, 38), padding: const EdgeInsets.symmetric(horizontal: 8)),
+                    onPressed: onDecline,
+                    child: const FittedBox(fit: BoxFit.scaleDown, child: Text('უარყოფა')),
+                  ),
+                ),
+              ]),
+            ]),
+          ),
+        ]),
       ),
     );
   }

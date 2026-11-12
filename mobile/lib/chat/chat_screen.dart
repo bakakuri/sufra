@@ -202,6 +202,7 @@ class _ChatScreenState extends State<ChatScreen> {
         return Scaffold(
           appBar: AppBar(
             toolbarHeight: 60,
+            leading: backButton(context),
             titleSpacing: 0,
             title: GestureDetector(
               behavior: HitTestBehavior.opaque,
