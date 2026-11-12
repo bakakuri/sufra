@@ -74,7 +74,7 @@ class ChatsTab extends StatelessWidget {
                 ),
             ]);
           }
-          return RefreshIndicator(onRefresh: store.load, child: body);
+          return RefreshIndicator(onRefresh: () => store.load(fresh: true), child: body);
         },
       ),
     );

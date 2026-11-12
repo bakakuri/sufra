@@ -80,6 +80,8 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final r = await app.api.messages(widget.convId);
       await app.people.ensure(r.map((m) => m.sender));
+      final o = chat?.other;
+      if (o != null) app.people.ensure([o], fresh: true);
       if (!mounted) return;
       setState(() {
         final mine = msgs.where((m) => m.sending).toList();
@@ -146,6 +148,8 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => msgs.removeWhere((x) => x.id == temp.id));
+      // the words are not lost: back in the field to send again
+      if (kind == 'text' && field.text.isEmpty) field.text = body;
       toast(context, errText(e));
     }
   }

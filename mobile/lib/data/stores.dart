@@ -30,8 +30,9 @@ class People extends Store {
   Profile? operator [](String id) => _m[id];
   void put(Profile p) => _m[p.id] = p;
 
-  Future<void> ensure(Iterable<String> ids) async {
-    final miss = ids.where((i) => i.isNotEmpty && !_m.containsKey(i)).toSet().toList();
+  /// loads the ones not here yet; with [fresh] all of them again (to see who is online now)
+  Future<void> ensure(Iterable<String> ids, {bool fresh = false}) async {
+    final miss = ids.where((i) => i.isNotEmpty && (fresh || !_m.containsKey(i))).toSet().toList();
     if (miss.isEmpty) return;
     try {
       for (final p in await api.people(miss)) {
@@ -182,7 +183,7 @@ class ChatStore extends Store {
 
   int get unread => chats.where((c) => !c.muted && c.convId != open).fold(0, (a, c) => a + c.unread);
 
-  Future<void> load() async {
+  Future<void> load({bool fresh = false}) async {
     try {
       final list = await api.chats();
       chats = list;
@@ -192,7 +193,7 @@ class ChatStore extends Store {
       loaded = true;
       error = null;
       changed();
-      await people.ensure(list.expand((c) => c.members));
+      await people.ensure(list.expand((c) => c.members), fresh: fresh);
     } catch (e) {
       error = e;
       loaded = true;
