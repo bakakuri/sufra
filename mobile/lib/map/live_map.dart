@@ -449,13 +449,6 @@ class _LiveMapScreenState extends State<LiveMapScreen> with WidgetsBindingObserv
                 padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
                 child: Row(children: [
                   _Round(child: IconBtn('back', label: 'უკან', onTap: () => Navigator.of(context).maybePop())),
-                  const SizedBox(width: 8),
-                  _Round(
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      child: Text('ლაივ რუკა', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                    ),
-                  ),
                   const Spacer(),
                   _Round(
                     child: Padding(
