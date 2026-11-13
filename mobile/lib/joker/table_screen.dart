@@ -82,7 +82,7 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
                   _meRow(g),
                   _status(g),
                   _panel(g),
-                  _hand(g),
+                  if (g.phase != 'over') _hand(g),
                 ]);
               },
             ),
@@ -121,18 +121,17 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: all && d != 0 ? (d > 0 ? badRed : const Color(0xFF8DB0FF)) : Colors.white24),
             ),
-            child: Text.rich(
-              TextSpan(children: [
-                const TextSpan(text: 'ნათქვამი '),
-                TextSpan(text: '$t/${g.n}', style: numFont.copyWith(fontWeight: FontWeight.w800)),
-                if (all && d != 0)
-                  TextSpan(text: ' ${d > 0 ? '+' : '−'}${d.abs()}', style: numFont.copyWith(fontWeight: FontWeight.w800, color: d > 0 ? badRed : const Color(0xFF8DB0FF))),
-              ]),
-              style: const TextStyle(color: light, fontSize: 12.5, fontWeight: FontWeight.w600),
-            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text('ნათქვამი', style: TextStyle(color: lightMuted, fontSize: 10, fontWeight: FontWeight.w600, height: 1.1)),
+              Text.rich(
+                TextSpan(children: [
+                  TextSpan(text: '$t/${g.n}'),
+                  if (all && d != 0) TextSpan(text: ' ${d > 0 ? '+' : '−'}${d.abs()}', style: TextStyle(color: d > 0 ? badRed : const Color(0xFF8DB0FF))),
+                ]),
+                style: numFont.copyWith(color: light, fontSize: 13.5, fontWeight: FontWeight.w800, height: 1.15),
+              ),
+            ]),
           ),
-        if (g.lastT != null && g.phase == 'play')
-          IconBtn('cards', label: 'ბოლო ხელი', color: light, onTap: () => _sheetWhile(() => showLastTrick(context, g.lastT!, _who, c4: s.c4))),
         IconBtn('note', label: 'ქულების ფურცელი', color: light, onTap: () => _sheetWhile(() => showScoreSheet(context, g, [for (var p = 0; p < 4; p++) _name(p)]))),
       ]),
     );
@@ -168,6 +167,28 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
             if (const ['bid', 'play'].contains(g.phase)) Positioned.fill(child: Center(child: _TrumpFlash(key: ValueKey('tf${g.h}'), g: g, c4: s.c4))),
             Positioned.fill(child: _TrickView(g: g, seatAt: seatAt, c4: s.c4)),
             if (g.phase == 'handover') Positioned.fill(child: Center(child: _handFx(g))),
+            if (g.lastT != null && g.phase == 'play')
+              Positioned(
+                left: 20,
+                bottom: 12,
+                child: Material(
+                  color: Colors.white.withValues(alpha: .1),
+                  borderRadius: BorderRadius.circular(10),
+                  child: InkWell(
+                    key: const ValueKey('joker-last'),
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => _sheetWhile(() => showLastTrick(context, g.lastT!, _who, c4: s.c4)),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        PIcon('cards', size: 16, color: lightMuted),
+                        SizedBox(width: 5),
+                        Text('ბოლო ხელი', style: TextStyle(color: lightMuted, fontSize: 12, fontWeight: FontWeight.w700)),
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
           ] else
             Positioned.fill(child: _gameOver(g)),
         ]);
@@ -213,11 +234,14 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
         const SizedBox(height: 4),
         Text(s.nameOf(p), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: light, fontSize: 13, fontWeight: FontWeight.w700)),
         const SizedBox(height: 3),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          _pips(g, p),
-          const SizedBox(width: 5),
-          Text('${g.score[p]}', style: numFont.copyWith(color: g.score[p] < 0 ? badRed : lightMuted, fontSize: 12, fontWeight: FontWeight.w700)),
-        ]),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            _pips(g, p),
+            const SizedBox(width: 5),
+            Text('${g.score[p]}', style: numFont.copyWith(color: g.score[p] < 0 ? badRed : lightMuted, fontSize: 12, fontWeight: FontWeight.w700)),
+          ]),
+        ),
         _result(g, p),
       ]),
     );
@@ -324,9 +348,14 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
     }
 
     final four = order[3];
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 14),
-      child: Column(children: [
+    return LayoutBuilder(
+      builder: (context, box) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 14, 24, 12),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: SizedBox(
+            width: math.max(200, box.maxWidth - 48),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
         Text(won ? 'მოიგე!' : 'თამაში დასრულდა', key: const ValueKey('joker-over'), style: TextStyle(color: won ? goldTable : light, fontSize: 24, fontWeight: FontWeight.w800)),
         const SizedBox(height: 2),
         Text(won ? 'ყველაზე მეტი ქულა შენ დააგროვე' : 'გაიმარჯვა: ${_who(order[0])}', style: const TextStyle(color: lightMuted, fontSize: 14)),
@@ -338,8 +367,8 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
             Text('+${s.reward} მონეტა', style: const TextStyle(color: goldTable, fontSize: 14.5, fontWeight: FontWeight.w800)),
           ]),
         ],
-        const Spacer(),
-        SizedBox(height: 168, child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [step(2), step(1), step(3)])),
+        const SizedBox(height: 14),
+        SizedBox(height: 196, child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [step(2), step(1), step(3)])),
         Container(
           margin: const EdgeInsets.only(top: 8),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -351,7 +380,10 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
             Text('${g.score[four]}', style: numFont.copyWith(color: g.score[four] < 0 ? badRed : light, fontWeight: FontWeight.w800)),
           ]),
         ),
-      ]),
+            ]),
+          ),
+        ),
+      ),
     );
   }
 
@@ -432,18 +464,24 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
     if (g.phase == 'bid' && s.myTurn) return _bidPad(g);
     if (g.phase == 'handover') {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          TextButton.icon(
-            onPressed: () => _sheetWhile(() => showHandReview(context, g, _who)),
-            icon: const PIcon('cards', size: 18, color: light),
-            label: const Text('ხელის მიმოხილვა', style: TextStyle(color: light)),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        child: Row(children: [
+          Expanded(
+            child: OutlinedButton(
+              key: const ValueKey('joker-review'),
+              style: OutlinedButton.styleFrom(foregroundColor: light, side: const BorderSide(color: Colors.white30), minimumSize: const Size.fromHeight(44)),
+              onPressed: () => _sheetWhile(() => showHandReview(context, g, _who)),
+              child: const FittedBox(child: Text('მიმოხილვა')),
+            ),
           ),
-          const SizedBox(width: 6),
-          TextButton(
-            key: const ValueKey('joker-next'),
-            onPressed: s.nextNow,
-            child: const Text('შემდეგი ხელი', style: TextStyle(color: goldTable, fontWeight: FontWeight.w800)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: FilledButton(
+              key: const ValueKey('joker-next'),
+              style: FilledButton.styleFrom(backgroundColor: goldTable, foregroundColor: const Color(0xFF1A1205), minimumSize: const Size.fromHeight(44)),
+              onPressed: s.nextNow,
+              child: const FittedBox(child: Text('შემდეგი ხელი')),
+            ),
           ),
         ]),
       );

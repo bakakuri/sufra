@@ -69,7 +69,7 @@ void main() {
     ];
     expect(jPremium(hist, 0), [100, -50, -50, -50]);
     // nobody made every bid: nothing
-    expect(jPremium([hist[1]], 0), [0, 0, 0, 0]);
+    expect(jPremium([HandRow(n: 2, b: [2, 1, 0, 1], t: [1, 0, 1, 0], p: [10, -200, 10, -200], s: 0)], 0), [0, 0, 0, 0]);
   });
 
   JokerGame table(String? trump, List<Play> plays) {
