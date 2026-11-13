@@ -683,8 +683,8 @@ void main() {
     expect(j.g!.h, h0 + 1);
     expect(api.calls.where((c) => c == 'jk act bid').length, 1);
     expect(api.calls.where((c) => c == 'jk act card').length, greaterThanOrEqualTo(1));
-    // the hand I had is the one the server dealt
-    expect(j.g!.phase, 'handover');
+    // the hand is on the score sheet the server keeps
+    expect(j.g!.hist.where((r) => !r.pr), isNotEmpty);
 
     // back: the table screen closes, the table is in the list
     await _back(t);
