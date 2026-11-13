@@ -4,6 +4,10 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:peera/feed/compose_screen.dart';
+import 'package:peera/home/calendar.dart';
+import 'package:peera/home/home_cards.dart';
+import 'package:peera/home/services.dart';
 import 'package:peera/people/albums.dart';
 import 'package:peera/people/cards.dart';
 import 'package:peera/people/coins.dart';
@@ -128,7 +132,7 @@ void main() {
     testWidgets('writing a post ($k)', (t) async {
       phone(t);
       await shell(t, mode: m);
-      await t.tap(find.byTooltip('ახალი პოსტი'));
+      await t.tap(find.byKey(const ValueKey('compose')));
       await settle(t);
       await t.enterText(find.byType(TextField), 'შაბათ-კვირას კახეთში ვიყავით 🍇 ღვინის ქარხანა, სიღნაღი და ბევრი სიცილი');
       await t.tap(find.text('ფოტო'));
@@ -474,6 +478,86 @@ void main() {
           {'k': 'school', 'n': '41-ე საჯარო სკოლა', 'c': 'ქუთაისი', 'y1': 2017, 'cls': 'ა', 'key': 'ქუთაისი-41'},
         ]),
         '60-classmates'));
+
+    testWidgets('the home page, everything on it ($k)', (t) async {
+      phone(t);
+      firstStepsOn = true;
+      addTearDown(() => firstStepsOn = false);
+      final now = DateTime.now();
+      final api = FakeApi()
+        ..settings = {
+          'banner': {'on': true, 'text': 'ახალი: საერთო ალბომები ქორწილისა და სუფრისთვის!', 'link': '#albums', 'cta': 'ნახვა', 'tone': 'fest'},
+        }
+        ..memory(90, 1, 'პირველი დღე უნივერსიტეტში 🎓 ყველას გისურვებთ წარმატებას!')
+        ..memory(91, 3, 'სკოლის ბოლო ზარი')
+        ..bdays.add({'id': mariam.id, 'name': mariam.name, 'hue': mariam.hue, 'avatar_url': null, 'month': now.month, 'day': now.day});
+      api.promoRows.addAll([
+        {'id': 5, 'kind': 'post', 'brand': 'Peera', 'title': 'საერთო ალბომები', 'body': 'ქორწილის, სუფრის და ლაშქრობის ფოტოები ერთ ადგილას: ყველა სტუმარი თავისას ამატებს.', 'media_url': 'https://t/food.jpg', 'media_type': 'image', 'w': 520, 'h': 520, 'link': '#albums', 'cta': 'ალბომის შექმნა', 'every': 6, 'active': true},
+        {'id': 6, 'kind': 'story', 'brand': 'ბიბლიოთეკა', 'media_url': 'https://t/sea.jpg', 'media_type': 'image', 'link': '#calendar', 'active': true},
+      ]);
+      api.adRows.add((9, 108));
+      await shell(t, mode: m, api: api);
+      await _shot(t, '61-home-top-$k');
+      await t.drag(find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first, const Offset(0, -620));
+      await settle(t);
+      await _shot(t, '61-home-mid-$k');
+      await t.drag(find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first, const Offset(0, -1300));
+      await settle(t);
+      await _shot(t, '61-home-feed-$k');
+    });
+
+    testWidgets('all services ($k)', (t) async {
+      servicesMenu(await onMe(t));
+      await settle(t);
+      await _shot(t, '62-services-$k');
+    });
+
+    testWidgets('making something ($k)', (t) async {
+      createMenu(await onMe(t), write: ({photos = false, poll = false}) async {});
+      await settle(t);
+      await _shot(t, '63-create-$k');
+    });
+
+    testWidgets('first steps, where from ($k)', (t) async => page(t, const FirstStepsScreen(start: 2), '64-first-steps'));
+    testWidgets('first steps, people ($k)', (t) async => page(t, const FirstStepsScreen(start: 3), '64-first-steps-people'));
+    testWidgets('the calendar ($k)', (t) async {
+      final api = FakeApi()..bdays.add({'id': mariam.id, 'name': mariam.name, 'hue': mariam.hue, 'avatar_url': null, 'month': DateTime.now().month, 'day': DateTime.now().day});
+      phone(t);
+      await shell(t, mode: m, api: api);
+      await t.tap(find.byKey(const ValueKey('tab-me')));
+      await settle(t);
+      openPage(t.element(find.byType(PersonScreen).first), const CalendarScreen(), full: true);
+      await settle(t);
+      await _shot(t, '69-calendar-$k');
+    });
+
+    testWidgets('my topics ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('topics')));
+      await settle(t);
+      await _shot(t, '66-topics-$k');
+    });
+
+    testWidgets('inviting friends ($k)', (t) async {
+      inviteSheet(await onMe(t));
+      await settle(t);
+      await _shot(t, '68-invite-$k');
+    });
+
+    testWidgets('a poll written ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('compose-poll')));
+      await settle(t);
+      await t.enterText(find.byKey(const ValueKey('poll-q')), 'სად შევხვდეთ შაბათს?');
+      await t.enterText(find.byKey(const ValueKey('poll-o-0')), 'კაფეში');
+      await t.enterText(find.byKey(const ValueKey('poll-o-1')), 'ბიბლიოთეკაში');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await settle(t);
+      await _shot(t, '70-compose-poll-$k');
+      expect(find.byType(ComposeScreen), findsOneWidget);
+    });
 
     testWidgets('a school added ($k)', (t) async {
       openPage(await onMe(t), const EduScreen(), full: true);

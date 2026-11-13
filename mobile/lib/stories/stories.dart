@@ -16,9 +16,11 @@ import '../ui/net_image.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 
-/// The row of stories at the top of the feed: yours first (or "+" to add one), then everyone's, the unseen ones ringed.
+/// The row of stories at the top of the feed: yours first (or "+" to add one), then [extra] (friends' days coming up,
+/// sponsored stories), then everyone's, the unseen ones ringed.
 class StoriesBar extends StatelessWidget {
-  const StoriesBar({super.key});
+  const StoriesBar({super.key, this.extra = const []});
+  final List<Widget> extra;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +44,7 @@ class StoriesBar extends StatelessWidget {
                 onTap: () => mine == null ? addStory(context) : openStories(context, [mine, ...others], 0),
                 onPlus: () => addStory(context),
               ),
+              ...extra,
               for (var i = 0; i < others.length; i++)
                 _Ring(
                   key: ValueKey('story-${others[i].author}'),

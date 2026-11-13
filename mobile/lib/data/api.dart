@@ -30,7 +30,7 @@ abstract class PeeraApi {
   Future<List<Comment>> comments(int postId);
   Future<Comment> addComment(int postId, String body, {int? parentId});
   Future<Media> uploadPhoto(PreparedPhoto p);
-  Future<Post> createPost(String body, List<Media> media);
+  Future<Post> createPost(String body, List<Media> media, {Poll? poll});
 
   Future<Profile?> person(String uid);
   Future<Counts> counts(String uid);
@@ -308,6 +308,48 @@ abstract class PeeraApi {
 
   /// the selfie (kept where only moderators see it) and the request
   Future<void> requestVerification(Uint8List selfie);
+
+  // ---- the home page ----
+
+  /// what the admin set for everyone (app_settings: banner, features…), by key
+  Future<Map<String, dynamic>> appSettings();
+
+  /// how much is going on in each service (service_counts), by page
+  Future<Map<String, int>> serviceCounts();
+
+  /// the hashtags I follow, and following or leaving some
+  Future<Set<String>> tagFollows();
+  Future<void> followTags(List<String> tags, bool on);
+
+  /// the newest posts on any of these hashtags
+  Future<List<Post>> feedTagged(List<String> tags, {int limit = 5});
+
+  /// posts by their ids (memories, sponsored ones), newest first
+  Future<List<Post>> postsByIds(List<int> ids);
+
+  /// the admin's sponsored posts and stories (promos), the live ones; seen or opened
+  Future<List<Map<String, dynamic>>> promos();
+  Future<void> promoHit(int id, {bool click = false});
+
+  /// paid posts (ads) running now: the ad's id and its post; one more shown
+  Future<List<(int, Post)>> adPosts();
+  Future<void> adImpression(int adId);
+
+  /// friends' birthdays (friend_birthdays): id, name, hue, avatar_url, month, day
+  Future<List<Map<String, dynamic>>> friendBirthdays();
+
+  /// my posts from this day in earlier years (my_memories)
+  Future<List<int>> myMemories();
+
+  /// first steps: people I asked or who are my friends, and whether I have posted
+  Future<(int, bool)> firstStepsCounts();
+
+  /// the welcome gift's coins when it came (coin_log), null when there was none
+  Future<int?> welcomeGift();
+
+  /// the coins for inviting (coin_rules welcome and invite) and who came by my link (count, paid)
+  Future<Map<String, int>> inviteRules();
+  Future<(int, int)> referrals();
 }
 
 class SupaApi implements PeeraApi {
@@ -438,10 +480,15 @@ class SupaApi implements PeeraApi {
   }
 
   @override
-  Future<Post> createPost(String body, List<Media> media) async {
+  Future<Post> createPost(String body, List<Media> media, {Poll? poll}) async {
     final r = await sb
         .from('posts')
-        .insert({'author': myId, 'body': body, 'media': media.map((m) => m.toJson()).toList()})
+        .insert({
+          'author': myId,
+          'body': body,
+          'media': media.map((m) => m.toJson()).toList(),
+          if (poll != null) 'poll': {'q': poll.q, 'opts': poll.opts},
+        })
         .select(postSel)
         .single();
     return Post.fromJson(r);
@@ -1259,5 +1306,125 @@ class SupaApi implements PeeraApi {
     final views = await sb.from('story_views').select('user_id,seen_at').eq('story_id', id).order('seen_at', ascending: false);
     final rx = {for (final r in await sb.from('story_reactions').select('user_id,emoji').eq('story_id', id)) '${r['user_id']}': '${r['emoji']}'};
     return [for (final v in views) if ('${v['user_id']}' != myId) StoryWatcher('${v['user_id']}', rx['${v['user_id']}'])];
+  }
+
+  // ---- the home page ----
+
+  @override
+  Future<Map<String, dynamic>> appSettings() async {
+    final rows = await sb.from('app_settings').select('key,value');
+    return {for (final r in rows) '${r['key']}': r['value']};
+  }
+
+  @override
+  Future<Map<String, int>> serviceCounts() async {
+    final r = await sb.rpc('service_counts');
+    final m = r is Map ? r : const {};
+    return {for (final e in m.entries) '${e.key}': asInt(e.value)};
+  }
+
+  @override
+  Future<Set<String>> tagFollows() async {
+    final r = await sb.from('tag_follows').select('tag').eq('user_id', myId);
+    return {for (final x in r) '${x['tag']}'};
+  }
+
+  @override
+  Future<void> followTags(List<String> tags, bool on) async {
+    if (tags.isEmpty) return;
+    if (on) {
+      final have = await tagFollows();
+      final add = tags.where((t) => !have.contains(t)).toList();
+      if (add.isNotEmpty) await sb.from('tag_follows').insert([for (final t in add) {'user_id': myId, 'tag': t}]);
+    } else {
+      await sb.from('tag_follows').delete().eq('user_id', myId).inFilter('tag', tags);
+    }
+  }
+
+  @override
+  Future<List<Post>> feedTagged(List<String> tags, {int limit = 5}) async {
+    if (tags.isEmpty) return const [];
+    return _hydrate(await _posts().isFilter('group_id', null).eq('hidden', false).overlaps('tags', tags.take(40).toList()).order('created_at', ascending: false).limit(limit));
+  }
+
+  @override
+  Future<List<Post>> postsByIds(List<int> ids) async {
+    if (ids.isEmpty) return const [];
+    return _hydrate(await _posts().inFilter('id', ids).order('created_at', ascending: false));
+  }
+
+  static const _promoSel = 'id,kind,brand,brand_url,title,body,media_url,media_type,w,h,link,cta,every,starts_at,ends_at,active';
+
+  @override
+  Future<List<Map<String, dynamic>>> promos() async {
+    final rows = await sb.from('promos').select(_promoSel).order('created_at', ascending: false).limit(30);
+    final now = DateTime.now();
+    return [
+      for (final r in rows)
+        if (r['active'] == true &&
+            !(DateTime.tryParse('${r['starts_at']}')?.isAfter(now) ?? false) &&
+            (r['ends_at'] == null || (DateTime.tryParse('${r['ends_at']}')?.isAfter(now) ?? true)))
+          Map<String, dynamic>.from(r),
+    ];
+  }
+
+  @override
+  Future<void> promoHit(int id, {bool click = false}) async {
+    await sb.rpc('promo_hit', params: {'p_promo': id, 'p_click': click});
+  }
+
+  @override
+  Future<List<(int, Post)>> adPosts() async {
+    final ads = await sb.from('ads').select('id,post_id').eq('status', 'active').limit(6);
+    if (ads.isEmpty) return const [];
+    final posts = await postsByIds([for (final a in ads) asInt(a['post_id'])]);
+    return [
+      for (final p in posts) (asInt(ads.firstWhere((a) => asInt(a['post_id']) == p.id)['id']), p),
+    ];
+  }
+
+  @override
+  Future<void> adImpression(int adId) async {
+    await sb.rpc('ad_impression', params: {'p_ad': adId});
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> friendBirthdays() async {
+    final r = await sb.rpc('friend_birthdays');
+    return [for (final x in (r as List? ?? const [])) if (x is Map) Map<String, dynamic>.from(x)];
+  }
+
+  @override
+  Future<List<int>> myMemories() async {
+    final r = await sb.rpc('my_memories');
+    return [for (final x in (r as List? ?? const [])) asInt(x is Map ? x.values.first : x)];
+  }
+
+  @override
+  Future<(int, bool)> firstStepsCounts() async {
+    final f = await sb.from('friendships').count(CountOption.exact).or('requester.eq.$myId,and(addressee.eq.$myId,status.eq.accepted)');
+    final p = await sb.from('posts').count(CountOption.exact).eq('author', myId).eq('draft', false);
+    return (f, p > 0);
+  }
+
+  @override
+  Future<int?> welcomeGift() async {
+    final r = await sb.from('coin_log').select('amount,created_at').eq('user_id', myId).eq('action', 'welcome').limit(1);
+    if (r.isEmpty) return null;
+    final at = DateTime.tryParse('${r.first['created_at']}');
+    if (at != null && DateTime.now().difference(at).inDays >= 3) return null;
+    return asInt(r.first['amount']);
+  }
+
+  @override
+  Future<Map<String, int>> inviteRules() async {
+    final rows = await sb.from('coin_rules').select('action,amount,active').inFilter('action', ['welcome', 'invite']);
+    return {for (final x in rows) if (x['active'] == true && asInt(x['amount']) > 0) '${x['action']}': asInt(x['amount'])};
+  }
+
+  @override
+  Future<(int, int)> referrals() async {
+    final rows = await sb.from('referrals').select('paid').eq('inviter', myId);
+    return (rows.length, rows.where((x) => x['paid'] == true).length);
   }
 }

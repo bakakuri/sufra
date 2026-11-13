@@ -309,6 +309,9 @@ class AppState {
   late final ChatStore chats;
   late final StoryStore stories;
 
+  /// what the home page needs from everyone's settings: the banner, sections off, the services' numbers
+  late final home = HomeState(api);
+
   /// the tab on screen (a playing clip stops when another tab opens)
   final tab = ValueNotifier<int>(0);
 
@@ -411,4 +414,35 @@ Future<T?> openPage<T>(BuildContext context, Widget page, {bool full = false}) {
   return Navigator.of(context, rootNavigator: full).push<T>(
     MaterialPageRoute(builder: (_) => AppScope(app: s.app, me: s.me, child: page)),
   );
+}
+
+/// The admin's settings for everyone (app_settings: the banner, the sections switched off) and how much is going on
+/// in each service (service_counts), read with the home page and kept a few minutes.
+class HomeState extends ChangeNotifier {
+  HomeState(this.api);
+  final PeeraApi api;
+  Map<String, dynamic>? banner;
+  Set<String> off = {};
+  final counts = ValueNotifier<Map<String, int>>(const {});
+  DateTime? _settingsAt, _countsAt;
+
+  Future<void> load({bool force = false}) async {
+    final now = DateTime.now();
+    if (force || _settingsAt == null || now.difference(_settingsAt!) > const Duration(minutes: 2)) {
+      try {
+        final m = await api.appSettings();
+        final b = m['banner'], f = m['features'];
+        banner = b is Map ? Map<String, dynamic>.from(b) : null;
+        off = {if (f is Map && f['off'] is List) for (final x in f['off'] as List) '$x'};
+        _settingsAt = now;
+        notifyListeners();
+      } catch (_) {}
+    }
+    if (force || _countsAt == null || now.difference(_countsAt!) > const Duration(minutes: 3)) {
+      try {
+        counts.value = await api.serviceCounts();
+        _countsAt = now;
+      } catch (_) {}
+    }
+  }
 }

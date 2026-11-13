@@ -1,8 +1,16 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/stores.dart';
+import '../home/calendar.dart';
+import '../home/home_cards.dart';
+import '../home/promos.dart';
+import '../home/services.dart';
 import '../notes/notes_screen.dart';
+import '../people/person_screen.dart';
+import '../people/profile_parts.dart';
 import '../people/search_screen.dart';
 import '../stories/stories.dart';
 import '../ui/format.dart';
@@ -11,21 +19,61 @@ import '../ui/widgets.dart';
 import 'compose_screen.dart';
 import 'post_card.dart';
 
-/// The main tab: write something, then everyone's posts (or only friends'), newest first, more as you scroll.
+/// how the feed starts: 'for' (you), 'friends' or 'new' (the tests start with the newest first)
+String feedStartMode = 'for';
+
+/// one thing in the feed: a post, a paid post, a sponsored post of the admin's, or people you may know
+class FeedItem {
+  const FeedItem.post(Post this.post, {this.ad})
+      : promo = null,
+        suggest = false;
+  const FeedItem.promo(Promo this.promo)
+      : post = null,
+        ad = null,
+        suggest = false;
+  const FeedItem.suggest()
+      : post = null,
+        promo = null,
+        ad = null,
+        suggest = true;
+  final Post? post;
+  final Promo? promo;
+  final int? ad;
+  final bool suggest;
+}
+
+/// The main tab, as the site's home page (home.js): the admin's banner, the stories (with friends' days coming up and
+/// sponsored stories), the services, the first steps, "on this day", writing something, and the feed (for you,
+/// friends, the newest), with people you may know and sponsored posts among the posts. More as you scroll.
 class FeedTab extends StatefulWidget {
-  const FeedTab({super.key, this.pageSize = 15});
+  const FeedTab({super.key, this.pageSize = 10});
   final int pageSize;
   @override
   State<FeedTab> createState() => FeedTabState();
 }
 
 class FeedTabState extends State<FeedTab> {
-  final posts = <Post>[];
-  bool loading = true, more = false, done = false, friendsOnly = false;
+  final items = <FeedItem>[];
+  List<Post> get posts => [for (final i in items) if (i.post != null && i.ad == null) i.post!];
+  bool loading = true, more = false, done = false;
+  late String mode = feedStartMode;
   Object? error;
-  int _gen = 0;
+  int _gen = 0, _count = 0, _nextPromo = 3;
+  String? _cursor;
   bool _started = false;
   final scroll = ScrollController();
+  final _seen = <int>{};
+  Set<String> _tags = {};
+  bool _tagsRead = false;
+  List<Promo> _promoQ = [];
+  List<(int, Post)> _adQ = [];
+
+  /// friends' days in the next two weeks, sponsored stories (and which were seen), new guests
+  List<FriendDay> remind = const [];
+  List<Promo> promoStories = const [];
+  Set<int> seenPromos = {};
+  int newGuests = 0;
+  final _steps = GlobalKey<FirstStepsCardState>();
 
   @override
   void initState() {
@@ -40,7 +88,11 @@ class FeedTabState extends State<FeedTab> {
     super.didChangeDependencies();
     if (!_started) {
       _started = true;
+      _extras();
       load(true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) welcomeGift(context);
+      });
     }
   }
 
@@ -55,33 +107,113 @@ class FeedTabState extends State<FeedTab> {
     if (scroll.hasClients) scroll.animateTo(0, duration: const Duration(milliseconds: 320), curve: Curves.easeOutCubic);
   }
 
+  /// what stands above the feed: the settings and numbers, friends' days, sponsored stories, new guests
+  Future<void> _extras({bool force = false}) async {
+    final app = context.app;
+    app.home.load(force: force);
+    final off = app.home.off, admin = context.me.role == 'admin';
+    upcomingDays(context, 14).then((d) {
+      if (mounted && (admin || !app.home.off.contains('calendar'))) setState(() => remind = d);
+    }, onError: (_) {});
+    loadPromos(context).then((r) {
+      if (mounted && (admin || !off.contains('stories'))) {
+        setState(() {
+          promoStories = r.$2;
+          seenPromos = r.$3;
+        });
+      }
+    });
+    try {
+      final n = await app.api.guestsSince(await guestsSeenAt());
+      if (mounted) setState(() => newGuests = n);
+    } catch (_) {}
+  }
+
+  /// a post and its plain reposts show once
+  int _key(Post p) => p.plainRepost && p.repostOf != null ? p.repostOf! : p.id;
+
+  double _score(Post p) {
+    final app = context.app, s = app.posts.of(p.id);
+    final h = DateTime.now().difference(p.createdAt).inMinutes / 60;
+    final topic = _tags.isNotEmpty && p.tags.any((t) => _tags.contains(t.toLowerCase())) ? 4 : 0;
+    final friend = app.friends.friends.contains(p.author) ? 3 : 0, mine = p.author == app.api.myId ? 1 : 0;
+    return (1 + s.total + s.comments * 2 + s.gradeN + topic + friend + mine) / math.pow(h + 2, 1.3);
+  }
+
   Future<void> load(bool reset) async {
     if (!reset && (more || done || loading)) return;
-    final app = context.app, me = context.me;
+    final app = context.app, me = context.me, m = mode;
     final g = reset ? ++_gen : _gen;
     setState(() {
       if (reset) {
-        loading = posts.isEmpty;
+        loading = items.isEmpty;
         error = null;
       } else {
         more = true;
       }
     });
     try {
+      if (m == 'for' && !_tagsRead) {
+        _tagsRead = true;
+        try {
+          _tags = await app.api.tagFollows();
+        } catch (_) {}
+      }
       List<String>? authors;
-      if (friendsOnly) {
+      if (m == 'friends') {
         if (!app.friends.loaded) await app.friends.load();
         authors = [me.id, ...app.friends.friends];
       }
       if (reset) app.stories.load();
-      final rows = await app.api.feed(authors: authors, before: reset ? null : posts.lastOrNull?.cursor, limit: widget.pageSize);
-      await app.posts.load(rows);
+      var rows = await app.api.feed(authors: authors, before: reset ? null : _cursor, limit: widget.pageSize);
+      final last = rows.lastOrNull?.cursor;
+      final end = rows.length < widget.pageSize;
+      // posts on the topics I follow come in even when they are older than the newest ones
+      if (m == 'for' && reset && _tags.isNotEmpty) {
+        try {
+          final have = rows.map((p) => p.id).toSet();
+          rows = [...rows, ...(await app.api.feedTagged(_tags.toList())).where((p) => !have.contains(p.id))];
+        } catch (_) {}
+      }
+      var promoQ = _promoQ, adQ = _adQ;
+      if (reset) {
+        adQ = m == 'friends' ? [] : await app.api.adPosts().catchError((_) => <(int, Post)>[]);
+        promoQ = m == 'friends' || !mounted ? [] : (await loadPromos(context)).$1;
+      }
+      await app.posts.load([...rows, for (final a in adQ) a.$2]);
       if (!mounted || g != _gen) return;
+      final seen = reset ? <int>{} : _seen;
+      rows = rows.where((p) => seen.add(_key(p))).toList();
+      if (m == 'for') rows.sort((a, b) => _score(b).compareTo(_score(a)));
       setState(() {
-        if (reset) posts.clear();
-        final have = posts.map((p) => p.id).toSet();
-        posts.addAll(rows.where((p) => have.add(p.id)));
-        done = rows.length < widget.pageSize;
+        if (reset) {
+          items.clear();
+          _seen
+            ..clear()
+            ..addAll(seen);
+          _count = 0;
+          _nextPromo = 3;
+          _promoQ = [...promoQ];
+          _adQ = [...adQ];
+        }
+        for (final p in rows) {
+          _count++;
+          items.add(FeedItem.post(p));
+          if (_promoQ.isNotEmpty && _count >= _nextPromo) {
+            final pr = _promoQ.removeAt(0);
+            items.add(FeedItem.promo(pr));
+            _nextPromo = _count + pr.every;
+            promoSeen(context, pr.id);
+          }
+          if (_count % 6 == 0 && _adQ.isNotEmpty) {
+            final ad = _adQ.removeAt(0);
+            items.add(FeedItem.post(ad.$2, ad: ad.$1));
+            adSeen(context, ad.$1);
+          }
+          if (reset && _count == 2) items.add(const FeedItem.suggest());
+        }
+        _cursor = last ?? _cursor;
+        done = end;
         loading = false;
         more = false;
         error = null;
@@ -96,27 +228,50 @@ class FeedTabState extends State<FeedTab> {
     }
   }
 
-  void _mode(bool friends) {
-    if (friends == friendsOnly) return;
+  void _mode(String m) {
+    if (m == mode) return;
     setState(() {
-      friendsOnly = friends;
-      posts.clear();
+      mode = m;
+      items.clear();
       done = false;
     });
     load(true);
   }
 
-  Future<void> _write({bool photos = false}) async {
-    final p = await openPage<Post>(context, ComposeScreen(startWithPhotos: photos), full: true);
+  Future<void> _refresh() async {
+    _extras(force: true);
+    _steps.currentState?.reload();
+    await load(true);
+  }
+
+  Future<void> _write({bool photos = false, bool poll = false, String text = ''}) async {
+    final p = await openPage<Post>(context, ComposeScreen(startWithPhotos: photos, startWithPoll: poll, text: text), full: true);
     if (p == null || !mounted) return;
-    setState(() => posts.insert(0, p));
+    setState(() => items.insert(0, FeedItem.post(p)));
     context.app.posts.load([p]);
     toast(context, 'გამოქვეყნდა');
+    _steps.currentState?.reload();
+  }
+
+  Future<void> _topics() async {
+    if (await topicsSheet(context) && mounted) {
+      _tagsRead = false;
+      if (mode == 'for') {
+        setState(() => items.clear());
+        load(true);
+      }
+    }
+  }
+
+  Future<void> _guests() async {
+    setState(() => newGuests = 0);
+    await guestsSheet(context, open: (uid) => openPage(context, PersonScreen(uid: uid)), invisible: context.me.guest);
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.pc;
+    final empty = !loading && items.isEmpty;
     return Scaffold(
       appBar: peeraBar(context, actions: [
         IconBtn('search', label: 'ძებნა', onTap: () => openPage(context, const SearchScreen())),
@@ -124,42 +279,74 @@ class FeedTabState extends State<FeedTab> {
           valueListenable: context.app.unreadNotes,
           builder: (context, n, _) => IconBtn('bell', key: const ValueKey('bell'), label: 'შეტყობინებები', badge: n, onTap: () => openNotes(context)),
         ),
-        IconBtn('plus', label: 'ახალი პოსტი', onTap: _write),
+        IconBtn('eye', key: const ValueKey('guests'), label: 'სტუმრები', badge: newGuests, onTap: _guests),
+        IconBtn('grid', key: const ValueKey('services'), label: 'სერვისები', onTap: () => servicesMenu(context)),
+        IconBtn('plus', key: const ValueKey('create'), label: 'შექმნა', onTap: () => createMenu(context, write: ({photos = false, poll = false}) => _write(photos: photos, poll: poll))),
       ]),
       body: RefreshIndicator(
-        onRefresh: () => load(true),
+        onRefresh: _refresh,
         child: CustomScrollView(controller: scroll, physics: const AlwaysScrollableScrollPhysics(), slivers: [
-          const SliverToBoxAdapter(child: StoriesBar()),
-          SliverToBoxAdapter(child: _Prompt(onWrite: _write, onPhoto: () => _write(photos: true))),
+          const SliverToBoxAdapter(child: HomeBanner()),
+          SliverToBoxAdapter(
+            child: StoriesBar(extra: [
+              if (remind.isNotEmpty) ReminderRing(days: remind, onTap: () => remindersSheet(context, remind)),
+              for (final p in promoStories)
+                PromoRing(
+                  p: p,
+                  seen: seenPromos.contains(p.id),
+                  onTap: () async {
+                    await openPromoStory(context, p);
+                    if (mounted) setState(() => seenPromos = {...seenPromos, p.id});
+                  },
+                ),
+            ]),
+          ),
+          const SliverToBoxAdapter(child: ServicesStrip()),
+          SliverToBoxAdapter(child: FirstStepsCard(key: _steps, onWrite: (t) => _write(text: t))),
+          SliverToBoxAdapter(child: MemoriesCard(onShare: (t) => _write(text: t))),
+          SliverToBoxAdapter(child: _Prompt(onWrite: () => _write(), onPhoto: () => _write(photos: true), onPoll: () => _write(poll: true))),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
+              padding: const EdgeInsets.fromLTRB(12, 2, 4, 10),
               child: Row(children: [
-                _Chip('ყველა', on: !friendsOnly, onTap: () => _mode(false)),
-                const SizedBox(width: 8),
-                _Chip('მეგობრები', on: friendsOnly, onTap: () => _mode(true)),
+                for (final (k, l) in const [('for', 'შენთვის'), ('friends', 'მეგობრები'), ('new', 'ახალი')]) ...[
+                  _Chip(l, key: ValueKey('feed-$k'), on: mode == k, onTap: () => _mode(k)),
+                  const SizedBox(width: 8),
+                ],
+                const Spacer(),
+                IconBtn('star', key: const ValueKey('topics'), label: 'ჩემი თემები', size: 22, color: c.gold, onTap: _topics),
               ]),
             ),
           ),
           if (loading)
             SliverList.list(children: const [SkeletonPost(), SkeletonPost(photo: false)])
-          else if (error != null && posts.isEmpty)
+          else if (error != null && items.isEmpty)
             SliverToBoxAdapter(child: Empty(icon: 'globe', title: 'ფიდი ვერ ჩაიტვირთა', text: errText(error!), action: 'ხელახლა ცდა', onAction: () => load(true)))
-          else if (posts.isEmpty)
+          else if (empty)
             SliverToBoxAdapter(
-              child: Empty(
-                icon: friendsOnly ? 'users' : 'home',
-                title: friendsOnly ? 'მეგობრებს ჯერ არაფერი დაუწერიათ' : 'ჯერ პოსტები არ არის',
-                text: friendsOnly ? 'დაამატე მეგობრები ან ნახე ყველას პოსტები.' : 'დაწერე პირველი!',
-                action: 'პოსტის დაწერა',
-                onAction: _write,
-              ),
+              child: Column(children: [
+                Empty(
+                  icon: mode == 'friends' ? 'users' : 'home',
+                  title: mode == 'friends' ? 'მეგობრების პოსტები ჯერ არ არის' : 'აქ ჯერ ცარიელია',
+                  text: mode == 'friends' ? 'დაამატე მეგობრები და მათი პოსტები აქ გამოჩნდება.' : 'დაწერე პირველი პოსტი ან მოიწვიე მეგობრები.',
+                ),
+                Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
+                  FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(0, 44)), onPressed: () => _write(), child: const Text('პოსტის დაწერა')),
+                  OutlinedButton(
+                    key: const ValueKey('empty-invite'),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)),
+                    onPressed: () => inviteSheet(context),
+                    child: const Text('მეგობრის მოწვევა'),
+                  ),
+                ]),
+                const SizedBox(height: 24),
+              ]),
             )
           else
             SliverList.builder(
-              itemCount: posts.length + 1,
+              itemCount: items.length + 1,
               itemBuilder: (_, i) {
-                if (i == posts.length) {
+                if (i == items.length) {
                   return Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
                     child: Center(
@@ -167,14 +354,25 @@ class FeedTabState extends State<FeedTab> {
                           ? const SizedBox.square(dimension: 24, child: CircularProgressIndicator(strokeWidth: 2.4))
                           : error != null
                               ? TextButton(onPressed: () => load(false), child: const Text('ვერ ჩაიტვირთა — ხელახლა'))
-                              : done
-                                  ? Text('სულ ესაა', style: TextStyle(color: c.muted))
+                              : done && _count > 0
+                                  ? Text('ყველაფერი ნახე', style: TextStyle(color: c.muted))
                                   : const SizedBox(height: 24),
                     ),
                   );
                 }
-                final p = posts[i];
-                return PostCard(key: ValueKey('post-${p.id}'), post: p, onDeleted: () => setState(() => posts.removeWhere((x) => x.id == p.id)));
+                final it = items[i];
+                if (it.suggest) return const SuggestRow();
+                if (it.promo != null) {
+                  final pr = it.promo!;
+                  return PromoCard(p: pr, onHidden: () => setState(() => items.removeWhere((x) => x.promo?.id == pr.id)));
+                }
+                final p = it.post!;
+                return PostCard(
+                  key: ValueKey(it.ad != null ? 'ad-${it.ad}' : 'post-${p.id}'),
+                  post: p,
+                  sponsored: it.ad != null,
+                  onDeleted: () => setState(() => items.removeWhere((x) => x.post?.id == p.id)),
+                );
               },
             ),
         ]),
@@ -184,14 +382,14 @@ class FeedTabState extends State<FeedTab> {
 }
 
 class _Prompt extends StatelessWidget {
-  const _Prompt({required this.onWrite, required this.onPhoto});
-  final VoidCallback onWrite, onPhoto;
+  const _Prompt({required this.onWrite, required this.onPhoto, required this.onPoll});
+  final VoidCallback onWrite, onPhoto, onPoll;
   @override
   Widget build(BuildContext context) {
     final c = context.pc, me = context.me;
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-      padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+      padding: const EdgeInsets.fromLTRB(12, 10, 2, 10),
       decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.line)),
       child: Row(children: [
         Avatar(p: me, size: 40),
@@ -201,6 +399,7 @@ class _Prompt extends StatelessWidget {
             button: true,
             label: 'პოსტის დაწერა',
             child: GestureDetector(
+              key: const ValueKey('compose'),
               behavior: HitTestBehavior.opaque,
               onTap: onWrite,
               child: Container(
@@ -208,19 +407,20 @@ class _Prompt extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 alignment: Alignment.centerLeft,
                 decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(21)),
-                child: Text('რას ფიქრობ, ${me.name}?', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 15)),
+                child: Text('რა ხდება, ${me.name.split(' ').first}?', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 15)),
               ),
             ),
           ),
         ),
-        IconBtn('image', label: 'ფოტოს დამატება', color: c.vine, onTap: onPhoto),
+        IconBtn('image', key: const ValueKey('compose-photo'), label: 'ფოტოს დამატება', color: c.vine, onTap: onPhoto),
+        IconBtn('poll', key: const ValueKey('compose-poll'), label: 'გამოკითხვა', color: c.gold, onTap: onPoll),
       ]),
     );
   }
 }
 
 class _Chip extends StatelessWidget {
-  const _Chip(this.text, {required this.on, required this.onTap});
+  const _Chip(this.text, {super.key, required this.on, required this.onTap});
   final String text;
   final bool on;
   final VoidCallback onTap;
@@ -235,7 +435,7 @@ class _Chip extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: on ? c.ink : c.surface,
             borderRadius: BorderRadius.circular(20),

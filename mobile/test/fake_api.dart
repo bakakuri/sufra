@@ -19,13 +19,13 @@ class FakeApi implements PeeraApi {
     final now = DateTime.now();
     DateTime ago(int minutes) => now.subtract(Duration(minutes: minutes));
     _posts.addAll([
-      _p(101, giorgi, ago(12), 'მცხეთიდან დაბრუნებისას ასეთი მზის ჩასვლა დაგვხვდა 🌄 #საქართველო', [img('sunset', 640, 480), img('hills', 480, 600)]),
+      _p(101, giorgi, ago(12), 'მცხეთიდან დაბრუნებისას ასეთი მზის ჩასვლა დაგვხვდა 🌄 #საქართველო', [img('sunset', 640, 480), img('hills', 480, 600)], tags: const ['საქართველო']),
       _p(102, mariam, ago(130),
           'დღეს პირველად ვცადე ქართული ტრადიციული პურის გამოცხობა თონეში. ბებიამ მასწავლა ყველაფერი: როგორ მოვზილო ცომი, რამდენ ხანს დავტოვო ამოსასვლელად და როგორ მივაკრა თონის კედელზე ისე, რომ არ ჩამოვარდეს.\n\nპირველი ორი ჩამომივარდა 😅 მაგრამ მესამე უკვე იდეალური გამოვიდა.\n\nვინც გინდათ, რეცეპტს გამოგიგზავნით!', const []),
       _p(103, luka, ago(300), 'ამინდი კარგი იქნება, სადმე წავიდეთ ☀️', const [], poll: const Poll('შაბათს სად წავიდეთ?', ['ზღვაზე', 'მთაში', 'ქალაქში დავრჩეთ'])),
       _p(104, ana, ago(420), '', const [], repostOf: 105),
       _p(106, nino, ago(60 * 26), 'ახალი აპი ვცადე! 📱 სულ სხვა სისწრაფეა', [img('sea', 640, 480)]),
-      _p(107, giorgi, ago(60 * 50), 'სვანეთი, უშგული 🏔️', [img('hills', 480, 600)]),
+      _p(107, giorgi, ago(60 * 50), 'სვანეთი, უშგული 🏔️ #მთა', [img('hills', 480, 600)], tags: const ['მთა']),
       _p(108, giorgi, ago(60 * 80), 'ერთი დღე თბილისში: ძველი უბნები, აბანოები და ხინკალი.', const []),
       _p(109, giorgi, ago(60 * 120), 'ზღვა სექტემბერში', [img('sea', 640, 480), img('sunset', 640, 480), img('food', 520, 520)]),
     ]);
@@ -87,8 +87,8 @@ class FakeApi implements PeeraApi {
 
   static Media img(String name, int w, int h) => Media(url: 'https://t/$name.jpg', w: w, h: h);
 
-  Post _p(int id, Profile who, DateTime at, String body, List<Media> media, {Poll? poll, int? repostOf}) =>
-      Post(id: id, author: who.id, ap: who, createdAt: at, cursor: at.toIso8601String(), body: body, media: media, poll: poll, repostOf: repostOf);
+  Post _p(int id, Profile who, DateTime at, String body, List<Media> media, {Poll? poll, int? repostOf, List<String> tags = const []}) =>
+      Post(id: id, author: who.id, ap: who, createdAt: at, cursor: at.toIso8601String(), body: body, media: media, poll: poll, repostOf: repostOf, tags: tags);
 
   final calls = <String>[];
   final _posts = <Post>[];
@@ -158,9 +158,9 @@ class FakeApi implements PeeraApi {
   }
 
   @override
-  Future<Post> createPost(String body, List<Media> media) async {
-    calls.add('post $body ${media.length}');
-    final p = _p(_id++, nino, DateTime.now(), body, media);
+  Future<Post> createPost(String body, List<Media> media, {Poll? poll}) async {
+    calls.add('post $body ${media.length}${poll != null ? ' poll ${poll.q} ${poll.opts.join('/')}' : ''}');
+    final p = _p(_id++, nino, DateTime.now(), body, media, poll: poll);
     _posts.insert(0, p);
     return p;
   }
@@ -1053,4 +1053,84 @@ class FakeApi implements PeeraApi {
     calls.add('verify ${selfie.length}');
     verifyState = 'pending';
   }
+
+  // ---- the home page ----
+
+  Map<String, dynamic> settings = {};
+  @override
+  Future<Map<String, dynamic>> appSettings() async => settings;
+
+  Map<String, int> svcCounts = {'albums': 2, 'groups': 14, 'events': 3, 'rooms': 2, 'jobs': 9, 'places': 31};
+  @override
+  Future<Map<String, int>> serviceCounts() async => svcCounts;
+
+  final tagF = <String>{};
+  @override
+  Future<Set<String>> tagFollows() async => {...tagF};
+  @override
+  Future<void> followTags(List<String> tags, bool on) async {
+    calls.add('tags ${on ? '+' : '-'}${tags.join(',')}');
+    if (on) {
+      tagF.addAll(tags);
+    } else {
+      tagF.removeAll(tags);
+    }
+  }
+
+  @override
+  Future<List<Post>> feedTagged(List<String> tags, {int limit = 5}) async =>
+      [..._posts, ..._orig.values].where((p) => p.tags.any(tags.contains)).take(limit).toList();
+
+  /// posts not in the feed (memories from earlier years)
+  final oldPosts = <int, Post>{};
+
+  /// one of my posts from this day [years] ago, among today's memories
+  void memory(int id, int years, String body) {
+    final n = DateTime.now();
+    oldPosts[id] = _p(id, nino, DateTime(n.year - years, n.month, n.day, 10), body, const []);
+    memoryIds.add(id);
+  }
+  @override
+  Future<List<Post>> postsByIds(List<int> ids) async => [
+        for (final id in ids)
+          if (_posts.where((p) => p.id == id).firstOrNull ?? oldPosts[id] ?? _orig[id] case final p?) p,
+      ];
+
+  final promoRows = <Map<String, dynamic>>[];
+  @override
+  Future<List<Map<String, dynamic>>> promos() async => [...promoRows];
+  @override
+  Future<void> promoHit(int id, {bool click = false}) async => calls.add('promo $id${click ? ' click' : ''}');
+
+  /// paid posts: the ad's id and the post's
+  final adRows = <(int, int)>[];
+  @override
+  Future<List<(int, Post)>> adPosts() async => [
+        for (final (ad, pid) in adRows)
+          if (_posts.where((p) => p.id == pid).firstOrNull ?? _orig[pid] case final p?) (ad, p),
+      ];
+  @override
+  Future<void> adImpression(int adId) async => calls.add('ad $adId');
+
+  final bdays = <Map<String, dynamic>>[];
+  @override
+  Future<List<Map<String, dynamic>>> friendBirthdays() async => [...bdays];
+
+  final memoryIds = <int>[];
+  @override
+  Future<List<int>> myMemories() async => [...memoryIds];
+
+  int fsPeople = 2;
+  bool fsPosted = true;
+  @override
+  Future<(int, bool)> firstStepsCounts() async => (fsPeople, fsPosted);
+
+  int? welcome;
+  @override
+  Future<int?> welcomeGift() async => welcome;
+
+  @override
+  Future<Map<String, int>> inviteRules() async => const {'welcome': 100, 'invite': 50};
+  @override
+  Future<(int, int)> referrals() async => (3, 2);
 }

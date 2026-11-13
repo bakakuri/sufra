@@ -30,11 +30,14 @@ Future<List<Uint8List>> pickPhotos(bool camera) async {
 
 const maxPhotos = 10;
 
-/// Writing a post: words and up to ten photos. "გამოქვეყნება" uploads the photos (made upright and in the
+/// Writing a post: words, up to ten photos and a poll. "გამოქვეყნება" uploads the photos (made upright and in the
 /// site's three sizes) and publishes; the new post comes back to the feed.
 class ComposeScreen extends StatefulWidget {
-  const ComposeScreen({super.key, this.startWithPhotos = false});
-  final bool startWithPhotos;
+  const ComposeScreen({super.key, this.startWithPhotos = false, this.startWithPoll = false, this.text = ''});
+  final bool startWithPhotos, startWithPoll;
+
+  /// words to begin with (a first post's idea, a memory shared)
+  final String text;
 
   @override
   State<ComposeScreen> createState() => _ComposeScreenState();
@@ -46,20 +49,51 @@ class _ComposeScreenState extends State<ComposeScreen> {
   bool busy = false;
   String? stage;
 
+  /// the poll being written: its question and two to six answers (null: none)
+  TextEditingController? pollQ;
+  final pollOpts = <TextEditingController>[];
+
   @override
   void initState() {
     super.initState();
+    field.text = widget.text;
+    field.selection = TextSelection.collapsed(offset: field.text.length);
     field.addListener(() => setState(() {}));
+    if (widget.startWithPoll) _pollOn();
     if (widget.startWithPhotos) WidgetsBinding.instance.addPostFrameCallback((_) => _add(false));
   }
 
   @override
   void dispose() {
     field.dispose();
+    pollQ?.dispose();
+    for (final o in pollOpts) {
+      o.dispose();
+    }
     super.dispose();
   }
 
-  bool get _empty => field.text.trim().isEmpty && photos.isEmpty;
+  void _pollOn() {
+    if (pollQ != null) return;
+    setState(() {
+      pollQ = TextEditingController();
+      pollOpts.addAll([TextEditingController(), TextEditingController()]);
+    });
+  }
+
+  void _pollOff() {
+    final q = pollQ;
+    setState(() {
+      pollQ = null;
+      for (final o in pollOpts) {
+        o.dispose();
+      }
+      pollOpts.clear();
+    });
+    q?.dispose();
+  }
+
+  bool get _empty => field.text.trim().isEmpty && photos.isEmpty && pollQ == null;
 
   Future<void> _add(bool camera) async {
     if (photos.length >= maxPhotos) {
@@ -78,6 +112,16 @@ class _ComposeScreenState extends State<ComposeScreen> {
   Future<void> _publish() async {
     if (_empty || busy) return;
     final app = context.app;
+    Poll? poll;
+    final q = pollQ;
+    if (q != null) {
+      final opts = [for (final o in pollOpts) if (o.text.trim().isNotEmpty) o.text.trim()];
+      if (q.text.trim().isEmpty || opts.length < 2) {
+        toast(context, 'გამოკითხვას სჭირდება კითხვა და მინიმუმ 2 პასუხი');
+        return;
+      }
+      poll = Poll(q.text.trim(), opts);
+    }
     setState(() => busy = true);
     try {
       final media = <Media>[];
@@ -86,7 +130,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
         media.add(await app.api.uploadPhoto(await photoPrep(photos[i])));
       }
       setState(() => stage = 'ქვეყნდება…');
-      final post = await app.api.createPost(field.text.trim(), media);
+      final post = await app.api.createPost(field.text.trim(), media, poll: poll);
       if (!mounted) return;
       Navigator.of(context).pop(post);
     } catch (e) {
@@ -150,7 +194,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
               TextField(
                 controller: field,
                 enabled: !busy,
-                autofocus: !widget.startWithPhotos,
+                autofocus: !widget.startWithPhotos && !widget.startWithPoll,
                 minLines: 4,
                 maxLines: null,
                 maxLength: 5000,
@@ -199,6 +243,65 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   ],
                 ),
               ],
+              if (pollQ != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  key: const ValueKey('poll-box'),
+                  padding: const EdgeInsets.fromLTRB(12, 10, 4, 6),
+                  decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(16)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Row(children: [
+                      PIcon('poll', size: 18, color: c.accent),
+                      const SizedBox(width: 6),
+                      const Expanded(child: Text('გამოკითხვა', style: TextStyle(fontWeight: FontWeight.w800))),
+                      IconBtn('x', key: const ValueKey('poll-rm'), label: 'გამოკითხვის მოხსნა', size: 18, onTap: busy ? null : _pollOff),
+                    ]),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: TextField(
+                        key: const ValueKey('poll-q'),
+                        controller: pollQ,
+                        enabled: !busy,
+                        maxLength: 140,
+                        decoration: const InputDecoration(hintText: 'კითხვა', counterText: ''),
+                      ),
+                    ),
+                    for (var i = 0; i < pollOpts.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Row(children: [
+                          Expanded(
+                            child: TextField(
+                              key: ValueKey('poll-o-$i'),
+                              controller: pollOpts[i],
+                              enabled: !busy,
+                              maxLength: 60,
+                              decoration: InputDecoration(hintText: 'პასუხი ${i + 1}', counterText: ''),
+                            ),
+                          ),
+                          if (i > 1)
+                            IconBtn('x', label: 'წაშლა', size: 18, onTap: busy
+                                ? null
+                                : () => setState(() {
+                                      pollOpts.removeAt(i).dispose();
+                                    }))
+                          else
+                            const SizedBox(width: 8),
+                        ]),
+                      ),
+                    if (pollOpts.length < 6)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          key: const ValueKey('poll-add'),
+                          onPressed: busy ? null : () => setState(() => pollOpts.add(TextEditingController())),
+                          icon: PIcon('plus', size: 18, color: c.accent),
+                          label: const Text('პასუხის დამატება'),
+                        ),
+                      ),
+                  ]),
+                ),
+              ],
               if (stage != null) ...[
                 const SizedBox(height: 14),
                 Text(stage!, style: TextStyle(color: c.muted, fontWeight: FontWeight.w600)),
@@ -212,17 +315,29 @@ class _ComposeScreenState extends State<ComposeScreen> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 child: Row(children: [
-                  TextButton.icon(
-                    onPressed: busy ? null : () => _add(false),
-                    icon: PIcon('image', size: 22, color: c.vine),
-                    label: Text('ფოტო', style: TextStyle(color: c.ink)),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(children: [
+                        TextButton.icon(
+                          onPressed: busy ? null : () => _add(false),
+                          icon: PIcon('image', size: 22, color: c.vine),
+                          label: Text('ფოტო', style: TextStyle(color: c.ink)),
+                        ),
+                        TextButton.icon(
+                          onPressed: busy ? null : () => _add(true),
+                          icon: PIcon('camera', size: 22, color: c.accent),
+                          label: Text('კამერა', style: TextStyle(color: c.ink)),
+                        ),
+                        TextButton.icon(
+                          key: const ValueKey('c-poll'),
+                          onPressed: busy || pollQ != null ? null : _pollOn,
+                          icon: PIcon('poll', size: 22, color: c.gold),
+                          label: Text('გამოკითხვა', style: TextStyle(color: c.ink)),
+                        ),
+                      ]),
+                    ),
                   ),
-                  TextButton.icon(
-                    onPressed: busy ? null : () => _add(true),
-                    icon: PIcon('camera', size: 22, color: c.accent),
-                    label: Text('კამერა', style: TextStyle(color: c.ink)),
-                  ),
-                  const Spacer(),
                   if (photos.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(right: 10),

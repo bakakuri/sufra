@@ -21,9 +21,12 @@ import 'post_screen.dart';
 /// One post as the site draws it: who wrote it, the words, photos (swipe, double tap for ❤️), a poll,
 /// a shared post, then reactions, comments, the link and saving.
 class PostCard extends StatelessWidget {
-  const PostCard({super.key, required this.post, this.onDeleted, this.inPostScreen = false});
+  const PostCard({super.key, required this.post, this.onDeleted, this.inPostScreen = false, this.sponsored = false});
   final Post post;
   final VoidCallback? onDeleted;
+
+  /// a paid post (ads): "რეკლამა" beside the name
+  final bool sponsored;
 
   /// on the post's own screen: the words unfolded, the comment button goes to the field below
   final bool inPostScreen;
@@ -87,7 +90,7 @@ class _PostView extends StatelessWidget {
           ? BoxDecoration(color: c.surface)
           : BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _Head(post: post, onDeleted: onDeleted, inPostScreen: inPostScreen),
+        _Head(post: post, onDeleted: onDeleted, inPostScreen: inPostScreen, sponsored: sponsored),
         if (post.body.trim().isNotEmpty && post.body.trim() != post.poll?.q.trim())
           GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -112,10 +115,10 @@ class _PostView extends StatelessWidget {
 }
 
 class _Head extends StatelessWidget {
-  const _Head({required this.post, this.onDeleted, this.inPostScreen = false});
+  const _Head({required this.post, this.onDeleted, this.inPostScreen = false, this.sponsored = false});
   final Post post;
   final VoidCallback? onDeleted;
-  final bool inPostScreen;
+  final bool inPostScreen, sponsored;
 
   Future<void> _more(BuildContext context) async {
     final mine = post.author == context.me.id;
@@ -144,6 +147,7 @@ class _Head extends StatelessWidget {
     final c = context.pc;
     final who = post.ap ?? Profile(id: post.author, name: '');
     final tags = <Widget>[
+      if (sponsored) const _Tag('რეკლამა', warn: true),
       if (post.byPage) const _Tag('არხი'),
       if (post.groupName != null) _Tag(post.groupName!),
       if (post.placeName != null) _Tag('📍 ${post.placeName}'),

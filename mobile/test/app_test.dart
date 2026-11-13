@@ -181,7 +181,7 @@ void main() {
   testWidgets('writing a post with two photos puts it at the top of the feed', (t) async {
     phone(t);
     final api = await shell(t);
-    await t.tap(find.byTooltip('ახალი პოსტი'));
+    await t.tap(find.byKey(const ValueKey('compose')));
     await settle(t);
     expect(find.byType(ComposeScreen), findsOneWidget);
     await t.enterText(find.byType(TextField), 'პირველი პოსტი აპიდან');
@@ -199,7 +199,7 @@ void main() {
   testWidgets('a half-written post asks before it is thrown away', (t) async {
     phone(t);
     await shell(t);
-    await t.tap(find.byTooltip('ახალი პოსტი'));
+    await t.tap(find.byKey(const ValueKey('compose')));
     await settle(t);
     await t.enterText(find.byType(TextField), 'ჯერ არ დამიმთავრებია');
     await t.pump();

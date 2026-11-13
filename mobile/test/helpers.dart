@@ -9,6 +9,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:peera/auth/auth_api.dart';
 import 'package:peera/data/photos.dart';
 import 'package:peera/feed/compose_screen.dart';
+import 'package:peera/feed/feed_tab.dart';
+import 'package:peera/home/home_cards.dart';
+import 'package:peera/home/services.dart';
 import 'package:peera/joker/session.dart';
 import 'package:peera/map/live_map.dart';
 import 'package:peera/map/loc_device.dart';
@@ -68,6 +71,10 @@ void useTestImages() {
   textZoom.value = 1;
   makePlayer = (u, {bool loop = true}) => FakePlayer();
   SharedPreferences.setMockInitialValues({});
+  // the first steps card stays away unless a test asks for it; the feed starts with the newest, the services stand still
+  firstStepsOn = false;
+  feedStartMode = 'new';
+  stripTurns = false;
   jokerRandom = () => Random(7);
   // the map draws no pictures in the tests (its own background shows), and the phone's location is pretend
   mapTile = (u) => MemoryImage(_clear);
