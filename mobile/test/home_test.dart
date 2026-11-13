@@ -170,8 +170,12 @@ void main() {
     await t.tap(find.byKey(const ValueKey('topic-5')));
     await settle(t);
     expect(api.calls, contains('tags +მოგზაურობა,მთა,ზღვა,ლაშქრობა'));
+    await t.ensureVisible(find.byKey(const ValueKey('tag-add')));
+    await settle(t);
     await t.enterText(find.byKey(const ValueKey('tag-new')), '#სვანეთი');
     await t.tap(find.byKey(const ValueKey('tag-add')));
+    await settle(t);
+    await t.ensureVisible(find.byKey(const ValueKey('tag-სვანეთი')));
     await settle(t);
     expect(api.calls, contains('tags +სვანეთი'));
     expect(find.byKey(const ValueKey('tag-სვანეთი')), findsOneWidget);

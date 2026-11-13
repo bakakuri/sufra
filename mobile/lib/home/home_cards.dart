@@ -986,7 +986,9 @@ Future<bool> topicsSheet(BuildContext context) async {
         child: SafeArea(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(s).height * .85),
-            child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), children: [
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
               const Text('ჩემი თემები', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
               Text('აირჩიე, რა გაინტერესებს. „შენთვის“ ფიდში ამ თემების პოსტები უფრო ხშირად და უფრო მაღლა გამოჩნდება.', style: TextStyle(color: c.muted, height: 1.4)),
@@ -1049,6 +1051,7 @@ Future<bool> topicsSheet(BuildContext context) async {
                 ),
               ]),
             ]),
+            ),
           ),
         ),
       );
