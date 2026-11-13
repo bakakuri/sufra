@@ -52,10 +52,10 @@ class GreetingCard extends StatelessWidget {
       ),
       child: Stack(children: [
         Positioned(
-          top: width * 1.25 * .07,
-          left: width * .06,
-          width: width * .88,
-          height: width * 1.25 * .4,
+          top: width * 1.25 * (small ? .07 : .05),
+          left: width * (small ? .06 : .14),
+          width: width * (small ? .88 : .72),
+          height: width * 1.25 * (small ? .4 : .3),
           child: CustomPaint(painter: _Ornament(d.$4, d.$9)),
         ),
         Positioned.fill(
@@ -65,10 +65,11 @@ class GreetingCard extends StatelessWidget {
           ),
         ),
         Positioned.fill(
+          top: small ? 0 : width * 1.25 * .36,
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: small ? 6 : 16, vertical: small ? 6 : 18),
+            padding: EdgeInsets.fromLTRB(small ? 6 : 16, small ? 6 : 0, small ? 6 : 16, small ? 6 : 16),
             child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-              Text(d.$3, textAlign: TextAlign.center, style: TextStyle(color: d.$8, fontSize: small ? 9.5 : 21 * f, fontWeight: FontWeight.w800, height: 1.15)),
+              Text(d.$3, textAlign: TextAlign.center, style: TextStyle(color: d.$8, fontSize: small ? 9.5 : 19 * f, fontWeight: FontWeight.w800, height: 1.12)),
               if (!small) ...[
                 if (to.isNotEmpty) ...[
                   SizedBox(height: 5 * f),

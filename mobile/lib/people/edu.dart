@@ -225,15 +225,23 @@ Future<Map<String, dynamic>?> eduSheet(BuildContext context, Map<String, dynamic
           child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(20, 0, 20, 16), children: [
             Text(e != null ? 'რედაქტირება' : 'სკოლა ან უნივერსიტეტი', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
-            SegmentedButton<String>(
-              showSelectedIcon: false,
-              segments: const [ButtonSegment(value: 'school', label: Text('სკოლა')), ButtonSegment(value: 'uni', label: Text('უნივერსიტეტი'))],
-              selected: {kind},
-              onSelectionChanged: (v) => set(() {
-                kind = v.first;
-                n.clear();
-              }),
-            ),
+            Wrap(spacing: 6, children: [
+              for (final (k, l, ic) in const [('school', 'სკოლა', 'book'), ('uni', 'უნივერსიტეტი', 'school')])
+                ChoiceChip(
+                  key: ValueKey('edu-kind-$k'),
+                  avatar: PIcon(ic, size: 16, color: kind == k ? c.bg : c.ink),
+                  label: Text(l),
+                  selected: kind == k,
+                  showCheckmark: false,
+                  selectedColor: c.ink,
+                  labelStyle: TextStyle(color: kind == k ? c.bg : c.ink, fontWeight: FontWeight.w600),
+                  onSelected: (_) => set(() {
+                    if (kind == k) return;
+                    kind = k;
+                    n.clear();
+                  }),
+                ),
+            ]),
             const SizedBox(height: 12),
             if (uni) ...[
               TextField(key: const ValueKey('edu-n'), controller: n, maxLength: 80, onChanged: (_) => set(() {}), decoration: dec('უნივერსიტეტი', 'დაიწყე წერა: თსუ, ილიაუნი…')),

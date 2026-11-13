@@ -319,7 +319,7 @@ onPressed: () => _add(), icon: PIcon('plus', size: 18, color: c.ink), label: con
   }
 }
 
-const _nodeW = 96.0, _nodeH = 112.0, _gap = 10.0, _bandLabel = 24.0, _bandGap = 30.0, _pad = 16.0;
+const _nodeW = 108.0, _nodeH = 126.0, _gap = 10.0, _bandLabel = 24.0, _bandGap = 30.0, _pad = 16.0;
 
 /// The generations drawn as rows with lines from each person to the one they hang off.
 class _Tree extends StatelessWidget {
@@ -405,7 +405,7 @@ class _NodeCard extends StatelessWidget {
                 child: Avatar(p: av, size: 44),
               ),
               const SizedBox(height: 6),
-              Text(n.name.split(' ').take(2).join(' '), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+              Text(n.name.split(' ').take(2).join('\n'), maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, height: 1.2)),
               Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(color: c.muted, fontSize: 11, height: 1.2)),
             ]),
           ),

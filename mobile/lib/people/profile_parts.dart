@@ -603,7 +603,7 @@ Future<void> gamesCard(BuildContext context, Profile who, JokerLine? joker, {req
     backgroundColor: context.pc.surface,
     builder: (s) {
       final c = s.pc;
-      Widget cell(String key, String big, String name, String small) => Expanded(
+      Widget cell(String key, String big, String name, String league, [String? record]) => Expanded(
             child: Container(
               key: ValueKey(key),
               margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -613,7 +613,8 @@ Future<void> gamesCard(BuildContext context, Profile who, JokerLine? joker, {req
                 Text(big, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
                 Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                 const SizedBox(height: 2),
-                Text(small, textAlign: TextAlign.center, maxLines: 3, style: TextStyle(color: c.muted, fontSize: 11, height: 1.25)),
+                Text(league, textAlign: TextAlign.center, maxLines: 2, style: TextStyle(color: c.accent, fontSize: 11, fontWeight: FontWeight.w700, height: 1.25)),
+                if (record != null) Text(record, textAlign: TextAlign.center, maxLines: 2, style: TextStyle(color: c.muted, fontSize: 11, height: 1.25)),
               ]),
             ),
           );
@@ -636,14 +637,16 @@ Future<void> gamesCard(BuildContext context, Profile who, JokerLine? joker, {req
                   final r = who.rating ?? 1500;
                   return Row(children: [cell('gc-all', '$r', 'რეიტინგი', gameLeague(r))]);
                 }
-                return Row(children: [
-                  for (final (g, n) in ratedGames)
-                    () {
-                      final r = got.where((x) => x.$1 == g).firstOrNull;
-                      final rt = r?.$2 ?? 1500;
-                      return cell('gc-$g', '$rt', n, '${gameLeague(rt)} · ${r != null && r.$3 > 0 ? '${r.$3} პარტია, ${r.$4} მოგება' : 'ჯერ არ უთამაშია'}');
-                    }(),
-                ]);
+                return IntrinsicHeight(
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    for (final (g, n) in ratedGames)
+                      () {
+                        final r = got.where((x) => x.$1 == g).firstOrNull;
+                        final rt = r?.$2 ?? 1500;
+                        return cell('gc-$g', '$rt', n, gameLeague(rt), r != null && r.$3 > 0 ? '${r.$3} პარტია, ${r.$4} მოგება' : 'ჯერ არ უთამაშია');
+                      }(),
+                  ]),
+                );
               },
             ),
             if (joker != null) ...[

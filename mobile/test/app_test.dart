@@ -1296,8 +1296,10 @@ void main() {
     await tapPro(t, 'stat-rating');
     expect(find.text('სათამაშო ბარათი'), findsOneWidget);
     expect(find.descendant(of: find.byKey(const ValueKey('gc-nardi')), matching: find.text('1620')), findsOneWidget);
-    expect(find.descendant(of: find.byKey(const ValueKey('gc-nardi')), matching: find.text('ქალაქის ჩემპიონი · 40 პარტია, 25 მოგება')), findsOneWidget);
-    expect(find.descendant(of: find.byKey(const ValueKey('gc-shashi')), matching: find.text('უბნის ოსტატი · ჯერ არ უთამაშია')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('gc-nardi')), matching: find.text('ქალაქის ჩემპიონი')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('gc-nardi')), matching: find.text('40 პარტია, 25 მოგება')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('gc-shashi')), matching: find.text('უბნის ოსტატი')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('gc-shashi')), matching: find.text('ჯერ არ უთამაშია')), findsOneWidget);
     expect(find.byKey(const ValueKey('gc-joker')), findsOneWidget);
     expect(find.byKey(const ValueKey('gc-play')), findsNothing);
     await _back(t);
