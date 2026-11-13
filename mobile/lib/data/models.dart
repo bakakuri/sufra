@@ -385,3 +385,79 @@ class StoryWatcher {
 
 /// The reactions under a story (the site's SV_RX)
 const storyReactions = ['❤️', '😂', '😮', '😢', '🔥', '👏', '🍷'];
+
+/// The interests a dating profile picks from (the site's INTERESTS), at most six.
+const datingInterests = [
+  'სწავლა', 'ლაშქრობა', 'მოგზაურობა', 'ნარდი', 'ჭადრაკი', 'კინო', 'მუსიკა', 'ცეკვა', 'სპორტი', //
+  'წიგნები', 'ფოტოგრაფია', 'კულინარია', 'ყავა', 'ზღვა', 'მთა', 'თამაშები', 'ხელოვნება', 'პროგრამირება',
+];
+
+/// My side of dating: whether I may use it (18+), whether it is on, and what my card says.
+class DatingMe {
+  const DatingMe({
+    this.adult = false,
+    this.on = false,
+    this.gender,
+    this.seeking = 'all',
+    this.bio = '',
+    this.interests = const [],
+    this.photo = false,
+  });
+  final bool adult, on, photo;
+
+  /// 'f', 'm', 'x'
+  final String? gender;
+
+  /// 'f', 'm', 'all'
+  final String seeking;
+  final String bio;
+  final List<String> interests;
+
+  DatingMe copyWith({bool? on, String? gender, String? seeking, String? bio, List<String>? interests}) => DatingMe(
+        adult: adult,
+        on: on ?? this.on,
+        gender: gender ?? this.gender,
+        seeking: seeking ?? this.seeking,
+        bio: bio ?? this.bio,
+        interests: interests ?? this.interests,
+        photo: photo,
+      );
+}
+
+/// A person in the dating deck (dating_feed).
+class DatingCard {
+  const DatingCard({
+    required this.id,
+    required this.name,
+    this.age = 0,
+    this.city,
+    this.hue = 200,
+    this.avatarUrl,
+    this.bio = '',
+    this.interests = const [],
+    this.verified = false,
+    this.likedMe = false,
+  });
+  final String id, name, bio;
+  final String? city, avatarUrl;
+  final int age, hue;
+  final List<String> interests;
+  final bool verified, likedMe;
+
+  String get first => name.trim().split(' ').first;
+
+  Profile get profile => Profile(id: id, name: name, avatarUrl: avatarUrl, hue: hue, city: city, verified: verified, onboarded: true);
+
+  factory DatingCard.fromJson(Map<String, dynamic> j) => DatingCard(
+        id: '${j['id']}',
+        name: '${j['name'] ?? ''}',
+        age: asInt(j['age']),
+        city: j['city'] as String?,
+        hue: j['hue'] == null ? 200 : asInt(j['hue']),
+        avatarUrl: j['avatar_url'] as String?,
+        bio: '${j['dating_bio'] ?? ''}',
+        interests: [for (final x in (j['interests'] as List? ?? const [])) '$x'],
+        verified: j['verified'] == true,
+        likedMe: j['liked_me'] == true,
+      );
+}

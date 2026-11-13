@@ -4,6 +4,7 @@ import 'package:peera/auth/auth_screen.dart';
 import 'package:peera/chat/chat_screen.dart';
 import 'package:peera/clips/clip_composer.dart';
 import 'package:peera/clips/clip_feed.dart';
+import 'package:peera/data/models.dart';
 import 'package:peera/stories/stories.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/post_screen.dart';
@@ -17,6 +18,7 @@ import 'package:peera/shell/tab_bar.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'fake_api.dart';
 import 'helpers.dart';
 
 Future<void> _back(WidgetTester t) async {
@@ -506,6 +508,110 @@ void main() {
     expect(s.g!.phase, isNot('over'));
     expect(s.reward, isNull);
     await _back(t);
+  });
+
+  testWidgets('dating: turned on with a card; a like that makes a pair, a no, a super like; the pair opens a conversation', (t) async {
+    phone(t);
+    final api = await shell(t);
+    await _tab(t, 'date');
+    expect(find.text('გაიცანი ახალი ადამიანები'), findsOneWidget);
+    final save = find.byKey(const ValueKey('dating-save'));
+    await t.ensureVisible(save);
+    await settle(t);
+    await t.tap(save);
+    await settle(t);
+    expect(find.text('აირჩიე, ვინ ხარ'), findsOneWidget);
+    await t.ensureVisible(find.byKey(const ValueKey('gender-f')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('gender-f')));
+    await t.tap(find.byKey(const ValueKey('seeking-m')));
+    for (final x in ['მთა', 'ყავა']) {
+      await t.ensureVisible(find.byKey(ValueKey('interest-$x')));
+      await settle(t);
+      await t.tap(find.byKey(ValueKey('interest-$x')));
+      await t.pump();
+    }
+    await t.ensureVisible(save);
+    await settle(t);
+    await t.tap(save);
+    await settle(t);
+    expect(api.calls, contains('dating on f m მთა,ყავა'));
+
+    // the deck: ანა on top; a like makes a pair
+    expect(find.byKey(const ValueKey('dcard-u5')), findsOneWidget);
+    expect(find.text('ანა'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('date-like')));
+    await settle(t);
+    expect(api.calls, contains('swipe u5 like'));
+    expect(find.byKey(const ValueKey('pair-title')), findsOneWidget);
+    // the sheet is one step back
+    await _back(t);
+    expect(find.byKey(const ValueKey('pair-title')), findsNothing);
+    expect(find.byKey(const ValueKey('dcard-u6')), findsOneWidget);
+
+    // dragged to the left: no
+    await t.drag(find.byKey(const ValueKey('dcard-u6')), const Offset(-320, 0));
+    await settle(t);
+    expect(api.calls, contains('swipe u6 nope'));
+    // dragged a little: it comes back, nothing is sent
+    await t.drag(find.byKey(const ValueKey('dcard-u7')), const Offset(50, 0));
+    await settle(t);
+    expect(api.calls.where((c) => c.startsWith('swipe u7')), isEmpty);
+    expect(find.byKey(const ValueKey('dcard-u7')), findsOneWidget);
+    // a super like
+    await t.tap(find.byKey(const ValueKey('date-super')));
+    await settle(t);
+    expect(api.calls, contains('swipe u7 super'));
+    expect(find.text('ახლა ახალი ადამიანები აღარ არის'), findsOneWidget);
+
+    // the pairs: a tap opens the conversation, back comes to the pairs
+    await t.tap(find.byKey(const ValueKey('dseg-2')));
+    await settle(t);
+    expect(find.byKey(const ValueKey('pair-u5')), findsOneWidget);
+    expect(find.byKey(const ValueKey('pair-u3')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('pair-u5')));
+    await settle(t);
+    expect(api.calls, contains('dm u5'));
+    expect(find.byType(ChatScreen), findsOneWidget);
+    await _back(t);
+    expect(find.byType(ChatScreen), findsNothing);
+    expect(find.byKey(const ValueKey('pair-u5')), findsOneWidget);
+  });
+
+  testWidgets('dating: changes to the card are asked about before they are lost; dating can be turned off', (t) async {
+    phone(t);
+    final api = FakeApi()..dating = const DatingMe(adult: true, on: true, gender: 'm', seeking: 'f', bio: 'ლაშქრობა', interests: ['მთა']);
+    await shell(t, api: api);
+    await _tab(t, 'date');
+    await t.tap(find.byTooltip('გაცნობის პროფილი'));
+    await settle(t);
+    await t.enterText(find.byKey(const ValueKey('dating-bio')), 'ლაშქრობა და ჭადრაკი');
+    await t.pump();
+    await _back(t);
+    expect(find.text('ცვლილებები არ შეინახება'), findsOneWidget);
+    await t.tap(find.text('გასვლა'));
+    await settle(t);
+    expect(find.byKey(const ValueKey('dating-bio')), findsNothing);
+    expect(find.byKey(const ValueKey('dcard-u5')), findsOneWidget);
+    // off
+    await t.tap(find.byTooltip('გაცნობის პროფილი'));
+    await settle(t);
+    await t.ensureVisible(find.byKey(const ValueKey('dating-off')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('dating-off')));
+    await settle(t);
+    await t.tap(find.text('გამორთვა').last);
+    await settle(t);
+    expect(api.calls, contains('dating off'));
+    expect(find.text('გაიცანი ახალი ადამიანები'), findsOneWidget);
+  });
+
+  testWidgets('dating: under 18 it stays closed', (t) async {
+    phone(t);
+    await shell(t, api: FakeApi()..dating = const DatingMe(adult: false));
+    await _tab(t, 'date');
+    expect(find.text('გაცნობა მხოლოდ 18+ მომხმარებლებისთვისაა'), findsOneWidget);
+    expect(find.byKey(const ValueKey('dating-save')), findsNothing);
   });
 
   testWidgets('sign in checks the fields, then calls the server', (t) async {

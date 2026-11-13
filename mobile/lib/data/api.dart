@@ -85,6 +85,24 @@ abstract class PeeraApi {
 
   /// a game against the computer is over (as on the site): a win may bring the day's coins; the server decides how many
   Future<({int coins, int reward})> gameResult(String game, bool win);
+
+  // dating (js/dating.js): adults only, opt-in
+
+  Future<DatingMe> datingMe();
+
+  /// turns dating on with this card, or saves changes to it
+  Future<void> saveDating(DatingMe d);
+  Future<void> datingOff();
+  Future<List<DatingCard>> datingFeed({int limit = 25});
+
+  /// 'like', 'nope' or 'super' (5 coins); true when it made a pair
+  Future<bool> swipe(String target, String kind);
+
+  /// how many like me whom I have not answered yet (who they are shows once we are a pair)
+  Future<int> likesMeCount();
+
+  /// the people I am a pair with, the newest first
+  Future<List<String>> matches();
 }
 
 class SupaApi implements PeeraApi {
@@ -387,6 +405,52 @@ class SupaApi implements PeeraApi {
         'ua': 'Peera app',
         'ver': appVersion,
       });
+
+  @override
+  Future<DatingMe> datingMe() async {
+    final rs = await Future.wait([sb.rpc('my_profile'), sb.rpc('is_adult', params: {'u': myId})]);
+    final r = rs[0], m = r is Map ? r : (r is List && r.isNotEmpty && r.first is Map ? r.first as Map : const {});
+    final url = m['avatar_url'];
+    return DatingMe(
+      adult: rs[1] == true,
+      on: m['dating'] == true,
+      gender: m['gender'] as String?,
+      seeking: (m['seeking'] as String?) ?? 'all',
+      bio: '${m['dating_bio'] ?? ''}',
+      interests: [for (final x in (m['interests'] as List? ?? const [])) '$x'],
+      photo: url is String && url.isNotEmpty,
+    );
+  }
+
+  @override
+  Future<void> saveDating(DatingMe d) => sb.from('profiles').update({
+        'dating': true,
+        'gender': d.gender,
+        'seeking': d.seeking,
+        'dating_bio': d.bio.trim(),
+        'interests': d.interests.take(6).toList(),
+      }).eq('id', myId);
+
+  @override
+  Future<void> datingOff() => sb.from('profiles').update({'dating': false}).eq('id', myId);
+
+  @override
+  Future<List<DatingCard>> datingFeed({int limit = 25}) async {
+    final r = await sb.rpc('dating_feed', params: {'p_limit': limit});
+    return [for (final x in (r as List? ?? const [])) DatingCard.fromJson(Map<String, dynamic>.from(x as Map))];
+  }
+
+  @override
+  Future<bool> swipe(String target, String kind) async => (await sb.rpc('swipe', params: {'p_target': target, 'p_kind': kind})) == true;
+
+  @override
+  Future<int> likesMeCount() async => asInt(await sb.rpc('likes_me_count'));
+
+  @override
+  Future<List<String>> matches() async {
+    final rows = await sb.from('matches').select('a,b,created_at').or('a.eq.$myId,b.eq.$myId').order('created_at', ascending: false);
+    return [for (final r in rows) '${r['a']}' == myId ? '${r['b']}' : '${r['a']}'];
+  }
 
   @override
   Future<({int coins, int reward})> gameResult(String game, bool win) async {

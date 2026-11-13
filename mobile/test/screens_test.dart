@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:peera/auth/auth_screen.dart';
 import 'package:peera/auth/onboarding_screen.dart';
+import 'package:peera/data/models.dart';
 import 'package:peera/data/stores.dart';
 import 'package:peera/joker/engine.dart';
 import 'package:peera/joker/session.dart';
@@ -237,6 +238,50 @@ void main() {
       s.setHint(true); // the table draws again
       await settle(t);
       await _shot(t, '25-joker-over-$k');
+    });
+
+    testWidgets('dating: turning it on ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('tab-date')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('gender-f')));
+      await t.tap(find.byKey(const ValueKey('seeking-m')));
+      await t.pump();
+      await settle(t);
+      await _shot(t, '26-dating-setup-$k');
+    });
+
+    testWidgets('dating: a card ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m, api: FakeApi()..dating = const DatingMe(adult: true, on: true, gender: 'm', seeking: 'f', photo: true));
+      await t.tap(find.byKey(const ValueKey('tab-date')));
+      await settle(t);
+      await _shot(t, '27-dating-card-$k');
+      // half way to the right: the stamp shows
+      final g = await t.startGesture(t.getCenter(find.byKey(const ValueKey('dcard-u5'))));
+      await g.moveBy(const Offset(30, 0));
+      await t.pump();
+      await g.moveBy(const Offset(70, 10));
+      await t.pump();
+      await _shot(t, '28-dating-drag-$k');
+      await g.up();
+      await settle(t);
+    });
+
+    testWidgets('dating: a pair ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m, api: FakeApi()..dating = const DatingMe(adult: true, on: true, gender: 'm', seeking: 'f', photo: true));
+      await t.tap(find.byKey(const ValueKey('tab-date')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('date-like')));
+      await settle(t);
+      await _shot(t, '29-dating-pair-$k');
+      await t.tap(find.text('სვაიპის გაგრძელება'));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('dseg-2')));
+      await settle(t);
+      await _shot(t, '30-dating-pairs-$k');
     });
 
     testWidgets('search ($k)', (t) async {

@@ -233,6 +233,45 @@ class FakeApi implements PeeraApi {
   Future<void> removePushToken(String token) async => calls.add('push- $token');
   @override
   Future<void> logError(String msg, {String stack = ''}) async => calls.add('error $msg');
+  // dating: on is false until the card is saved; ანა likes me back
+  DatingMe dating = const DatingMe(adult: true);
+  late final datingCards = <DatingCard>[
+    const DatingCard(id: 'u5', name: 'ანა მელაძე', age: 24, city: 'რუსთავი', hue: 28, likedMe: true, bio: 'ვხატავ, დავდივარ კონცერტებზე და ყოველ შაბათს მთაში ვარ.', interests: ['ხელოვნება', 'მთა', 'მუსიკა']),
+    const DatingCard(id: 'u6', name: 'დათო ხარაბაძე', age: 27, city: 'გორი', hue: 260, verified: true, bio: 'ნარდი და კარგი ყავა.', interests: ['ნარდი', 'ყავა']),
+    const DatingCard(id: 'u7', name: 'თამარ ლომიძე', age: 22, city: 'ქუთაისი', hue: 190, avatarUrl: 'https://t/sea.jpg', likedMe: true, interests: ['ზღვა', 'წიგნები', 'კინო', 'ცეკვა']),
+  ];
+  final pairIds = <String>['u3', 'u4'];
+
+  @override
+  Future<DatingMe> datingMe() async => dating;
+  @override
+  Future<void> saveDating(DatingMe d) async {
+    calls.add('dating on ${d.gender} ${d.seeking} ${d.interests.join(',')}');
+    dating = d.copyWith(on: true);
+  }
+
+  @override
+  Future<void> datingOff() async {
+    calls.add('dating off');
+    dating = dating.copyWith(on: false);
+  }
+
+  @override
+  Future<List<DatingCard>> datingFeed({int limit = 25}) async => [...datingCards];
+  @override
+  Future<bool> swipe(String target, String kind) async {
+    calls.add('swipe $target $kind');
+    datingCards.removeWhere((c) => c.id == target);
+    final pair = kind != 'nope' && target == 'u5';
+    if (pair) pairIds.insert(0, target);
+    return pair;
+  }
+
+  @override
+  Future<int> likesMeCount() async => datingCards.where((c) => c.likedMe).length;
+  @override
+  Future<List<String>> matches() async => [...pairIds];
+
   @override
   Future<({int coins, int reward})> gameResult(String game, bool win) async {
     calls.add('game $game ${win ? 'won' : 'lost'}');

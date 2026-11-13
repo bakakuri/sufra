@@ -10,6 +10,7 @@ import '../data/api.dart';
 import '../data/stores.dart';
 import '../feed/feed_tab.dart';
 import '../feed/post_screen.dart';
+import '../dating/dating_tab.dart';
 import '../joker/joker_tab.dart';
 import '../people/friends_tab.dart';
 import '../profile/profile.dart';
@@ -165,7 +166,8 @@ class HomeShellState extends State<HomeShell> {
   bool back() {
     final nav = _navs[index].currentState;
     if (nav != null && nav.canPop()) {
-      nav.pop();
+      // maybePop: a screen that asks before closing (a form with changes) is asked
+      nav.maybePop();
       return false;
     }
     if (index != 0) {
@@ -195,6 +197,8 @@ class HomeShellState extends State<HomeShell> {
         return const ClipsTab();
       case 'joker':
         return const JokerTab();
+      case 'date':
+        return const DatingTab();
       case 'me':
         return ProfileTab(me: widget.me, onSignOut: _signOut, onRefresh: widget.onRefresh);
     }
@@ -218,9 +222,13 @@ class HomeShellState extends State<HomeShell> {
             index: index,
             children: [
               for (var i = 0; i < tabs.length; i++)
-                Navigator(
-                  key: _navs[i],
-                  onGenerateRoute: (s) => MaterialPageRoute(settings: s, builder: (_) => _root(i)),
+                // the tabs not on screen keep their place but do not animate
+                TickerMode(
+                  enabled: i == index,
+                  child: Navigator(
+                    key: _navs[i],
+                    onGenerateRoute: (s) => MaterialPageRoute(settings: s, builder: (_) => _root(i)),
+                  ),
                 ),
             ],
           ),

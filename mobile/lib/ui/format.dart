@@ -54,6 +54,9 @@ String errText(Object e) {
   if (has('JWT|not authenticated|401')) return 'სესია ამოიწურა — შედი თავიდან';
   if (has('row-level security|permission denied|42501')) return 'ამის უფლება არ გაქვს';
   if (has('rate|too many')) return 'ძალიან ხშირად — სცადე ცოტა ხანში';
+  if (has('not_enough_coins')) return 'მონეტები არ გყოფნის';
+  if (has('adults_only')) return 'მხოლოდ 18+ მომხმარებლებისთვის';
+  if (has('dating_off')) return 'ჯერ გაცნობა ჩართე';
   if (has('payload too large|exceeded|413')) return 'ფაილი ძალიან დიდია';
   if (has('photo|FormatException')) return 'ფოტო ვერ წავიკითხე';
   return 'ვერ მოხერხდა — სცადე ხელახლა';
