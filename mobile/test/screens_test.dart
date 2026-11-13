@@ -324,6 +324,42 @@ void main() {
       await _shot(t, '35-map-share-$k');
     });
 
+    testWidgets('the bell ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('bell')));
+      await settle(t);
+      await _shot(t, '36-notes-$k');
+    });
+
+    testWidgets('settings ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('tab-me')));
+      await settle(t);
+      await t.tap(find.byTooltip('პარამეტრები'));
+      await settle(t);
+      await _shot(t, '37-settings-$k');
+      await t.tap(find.byKey(const ValueKey('set-privacy')));
+      await settle(t);
+      await _shot(t, '38-privacy-$k');
+      await t.binding.handlePopRoute();
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('set-notif')));
+      await settle(t);
+      await _shot(t, '39-notif-settings-$k');
+    });
+
+    testWidgets('editing the profile ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('tab-me')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('edit-profile')));
+      await settle(t);
+      await _shot(t, '40-edit-profile-$k');
+    });
+
     testWidgets('search ($k)', (t) async {
       phone(t);
       await shell(t, mode: m);

@@ -553,3 +553,23 @@ class MyShare {
     return m >= 60 ? '${m ~/ 60} სთ${m % 60 > 0 ? ' ${m % 60} წთ' : ''}' : '$m წთ';
   }
 }
+
+/// A notification in the list (notifications): who did it, what kind, what about, whether I have seen it.
+class Notif {
+  const Notif({required this.id, this.actor, required this.kind, this.ref = const {}, this.read = false, required this.createdAt});
+  final int id;
+  final String? actor;
+  final String kind;
+  final Map<String, dynamic> ref;
+  final bool read;
+  final DateTime createdAt;
+
+  factory Notif.fromJson(Map<String, dynamic> j) => Notif(
+        id: asInt(j['id']),
+        actor: j['actor'] == null ? null : '${j['actor']}',
+        kind: '${j['kind'] ?? ''}',
+        ref: j['ref'] is Map ? Map<String, dynamic>.from(j['ref'] as Map) : const {},
+        read: j['read'] == true,
+        createdAt: DateTime.tryParse('${j['created_at'] ?? ''}')?.toLocal() ?? DateTime.now(),
+      );
+}

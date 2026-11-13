@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/stores.dart';
+import '../notes/notes_screen.dart';
 import '../people/search_screen.dart';
 import '../stories/stories.dart';
 import '../ui/format.dart';
@@ -119,6 +120,10 @@ class FeedTabState extends State<FeedTab> {
     return Scaffold(
       appBar: peeraBar(context, actions: [
         IconBtn('search', label: 'ძებნა', onTap: () => openPage(context, const SearchScreen())),
+        ValueListenableBuilder<int>(
+          valueListenable: context.app.unreadNotes,
+          builder: (context, n, _) => IconBtn('bell', key: const ValueKey('bell'), label: 'შეტყობინებები', badge: n, onTap: () => openNotes(context)),
+        ),
         IconBtn('plus', label: 'ახალი პოსტი', onTap: _write),
       ]),
       body: RefreshIndicator(

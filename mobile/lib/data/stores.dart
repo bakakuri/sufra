@@ -297,6 +297,21 @@ class AppState {
 
   /// notifications to the phone, when the app has them (not in the tests)
   PushService? push;
+  /// notifications not yet seen (the bell's number)
+  final unreadNotes = ValueNotifier<int>(0);
+
+  /// set by the shell: my profile read again (after changing it), a tab opened, signing out
+  Future<void> Function()? refreshMe;
+  void Function(String tab)? goTab;
+  Future<void> Function()? signOut;
+
+  Future<void> countNotes() async {
+    try {
+      final n = await api.unreadNotes();
+      if (!_closed) unreadNotes.value = n;
+    } catch (_) {}
+  }
+
   /// a message that just came for a conversation that is not on screen (shown as a banner at the top)
   final banner = ValueNotifier<({int conv, String actor, String text})?>(null);
   StreamSubscription<Map<String, dynamic>>? _notes;
@@ -321,7 +336,9 @@ class AppState {
         }
       }
       if (k == 'friend_req' || k == 'friend_ok') friends.load().catchError((_) {});
+      if (k != 'message' && !_closed) unreadNotes.value++;
     }, onError: (_) {});
+    countNotes();
     api.touchSeen().catchError((_) {});
     // "online" only while the app is on screen
     _seen = Timer.periodic(const Duration(minutes: 2), (_) {
@@ -333,6 +350,7 @@ class AppState {
       api.touchSeen().catchError((_) {});
       chats.load();
       friends.load().catchError((_) {});
+      countNotes();
     });
   }
 
@@ -342,6 +360,7 @@ class AppState {
     _seen?.cancel();
     _life?.dispose();
     banner.dispose();
+    unreadNotes.dispose();
     tab.dispose();
     stories.dispose();
     people.dispose();

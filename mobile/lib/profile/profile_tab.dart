@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/stores.dart';
 import '../people/person_screen.dart';
+import '../settings/settings_screens.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
 import '../ui/theme.dart';
@@ -10,16 +11,13 @@ import 'profile.dart';
 
 String coinsText(int n) => grouped(n);
 
-/// Your own page: the same as anyone's (picture, name, posts), with your coins under it and "გასვლა" in the bar.
+/// Your own page: the same as anyone's (picture, name, posts), with your coins under it and the settings in the bar
+/// (signing out is there, as on the site).
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key, required this.me, required this.onSignOut, this.onRefresh});
   final Profile me;
   final Future<void> Function() onSignOut;
   final Future<void> Function()? onRefresh;
-
-  Future<void> _out(BuildContext context) async {
-    if (await confirm(context, title: 'გასვლა', text: 'ანგარიშიდან გახვალ ამ ტელეფონზე.', yes: 'გასვლა', danger: true)) await onSignOut();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +28,7 @@ class ProfileTab extends StatelessWidget {
       initial: me,
       ownTab: true,
       onRefresh: onRefresh,
-      actions: [IconBtn('out', label: 'გასვლა', onTap: () => _out(context))],
+      actions: [IconBtn('gear', label: 'პარამეტრები', onTap: () => openSettings(context))],
       extra: Column(children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),

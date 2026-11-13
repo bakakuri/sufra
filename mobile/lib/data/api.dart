@@ -150,6 +150,24 @@ abstract class PeeraApi {
 
   /// under 18: the place is shared with friends only
   Future<bool> amMinor();
+
+  // notifications, my profile and settings
+
+  /// the latest notifications (not the messages: those are in the conversations)
+  Future<List<Notif>> notes();
+  Future<void> notesRead(List<int> ids);
+  Future<void> allNotesRead();
+  Future<int> unreadNotes();
+
+  /// my whole profile row as the site has it (what the settings and the editor need)
+  Future<Map<String, dynamic>> mySettings();
+
+  /// changes to my profile row (name, picture, privacy, notifications…)
+  Future<void> updateMe(Map<String, dynamic> fields);
+
+  /// people I blocked
+  Future<List<String>> blocked();
+  Future<void> unblock(String uid);
 }
 
 class SupaApi implements PeeraApi {
@@ -645,6 +663,40 @@ class SupaApi implements PeeraApi {
     if (now.month < b.month || (now.month == b.month && now.day < b.day)) age--;
     return age < 18;
   }
+
+  @override
+  Future<List<Notif>> notes() async {
+    final r = await sb.from('notifications').select('id,actor,kind,ref,read,created_at').neq('kind', 'message').order('created_at', ascending: false).limit(60);
+    return [for (final x in r) Notif.fromJson(x)];
+  }
+
+  @override
+  Future<void> notesRead(List<int> ids) async {
+    if (ids.isEmpty) return;
+    await sb.from('notifications').update({'read': true}).inFilter('id', ids);
+  }
+
+  @override
+  Future<void> allNotesRead() => sb.from('notifications').update({'read': true}).eq('user_id', myId).eq('read', false);
+
+  @override
+  Future<int> unreadNotes() async => await sb.from('notifications').count(CountOption.exact).eq('read', false).neq('kind', 'message');
+
+  @override
+  Future<Map<String, dynamic>> mySettings() async {
+    final r = await sb.rpc('my_profile');
+    final m = r is Map ? r : (r is List && r.isNotEmpty && r.first is Map ? r.first as Map : const {});
+    return Map<String, dynamic>.from(m);
+  }
+
+  @override
+  Future<void> updateMe(Map<String, dynamic> fields) => sb.from('profiles').update(fields).eq('id', myId);
+
+  @override
+  Future<List<String>> blocked() async => [for (final r in await sb.from('blocks').select('blocked').eq('blocker', myId)) '${r['blocked']}'];
+
+  @override
+  Future<void> unblock(String uid) => sb.from('blocks').delete().eq('blocker', myId).eq('blocked', uid);
 
   @override
   Future<({int coins, int reward})> gameResult(String game, bool win) async {

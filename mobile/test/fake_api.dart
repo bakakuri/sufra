@@ -91,7 +91,7 @@ class FakeApi implements PeeraApi {
   final _chats = <Chat>[];
   final _msgs = <int, List<Message>>{};
   final live = <int, StreamController<Message>>{};
-  final notes = StreamController<Map<String, dynamic>>.broadcast();
+  final liveNote = StreamController<Map<String, dynamic>>.broadcast();
   var _rels = <Rel>[Rel(nino.id, giorgi.id, true), Rel(mariam.id, nino.id, true), Rel(nino.id, luka.id, true), Rel(ana.id, nino.id, false), Rel(nino.id, dato.id, false)];
   int _id = 900;
 
@@ -227,7 +227,7 @@ class FakeApi implements PeeraApi {
   @override
   Stream<Message> liveMessages(int convId) => (live[convId] ??= StreamController<Message>.broadcast()).stream;
   @override
-  Stream<Map<String, dynamic>> liveNotes() => notes.stream;
+  Stream<Map<String, dynamic>> liveNotes() => liveNote.stream;
   @override
   Future<void> touchSeen() async {}
   @override
@@ -540,4 +540,74 @@ class FakeApi implements PeeraApi {
   Future<void> replyStory(Story s, String text) async => calls.add('story reply ${s.id} $text');
   @override
   Future<List<StoryWatcher>> storyViewers(int id) async => [StoryWatcher(giorgi.id, '❤️'), StoryWatcher(mariam.id, null)];
+
+  // ---- the bell, the settings, the profile row ----
+
+  late final noteList = () {
+    final now = DateTime.now();
+    Notif n(int id, String? who, String kind, Map<String, dynamic> ref, int min, {bool read = true}) =>
+        Notif(id: id, actor: who, kind: kind, ref: ref, read: read, createdAt: now.subtract(Duration(minutes: min)));
+    return [
+      n(71, giorgi.id, 'react', {'post': 106, 'emoji': '❤️'}, 4, read: false),
+      n(70, mariam.id, 'comment', {'post': 106, 'text': 'რა მაგარია! სად გადაიღე?'}, 18, read: false),
+      n(69, tamar.id, 'friend_req', {}, 60, read: false),
+      n(68, luka.id, 'mention', {'post': 103, 'text': '@nino.beridze შენ რას იტყვი?'}, 60 * 3),
+      n(67, null, 'verified', {}, 60 * 26),
+      n(66, ana.id, 'birthday', {}, 60 * 30),
+      n(65, dato.id, 'jk_invite', {'table': 7}, 60 * 50),
+    ];
+  }();
+
+  @override
+  Future<List<Notif>> notes() async => [...noteList];
+  @override
+  Future<void> notesRead(List<int> ids) async => calls.add('read ${ids.join(',')}');
+  @override
+  Future<void> allNotesRead() async => calls.add('read all');
+  @override
+  Future<int> unreadNotes() async => noteList.where((n) => !n.read).length;
+
+  /// my row as the server keeps it; the settings write into it
+  final me = <String, dynamic>{
+    'id': nino.id,
+    'name': nino.name,
+    'surname': nino.surname,
+    'username': nino.username,
+    'city': nino.city,
+    'hue': nino.hue,
+    'bio': 'ქუთაისელი, ვსწავლობ თბილისში 📚',
+    'coins': nino.coins,
+    'birthday': '1999-04-12',
+    'home_region': 'იმერეთი',
+    'home_place': 'წყალტუბო',
+    'abroad': '',
+    'is_business': false,
+    'dating': false,
+    'privacy': <String, dynamic>{'dm': 'all'},
+    'notif': <String, dynamic>{
+      'off': {'promo': true},
+      'quiet': {'on': true, 'from': 23, 'to': 8, 'tz': 'Asia/Tbilisi'},
+    },
+  };
+
+  /// a write that fails like a taken @name
+  Object? updateFail;
+
+  @override
+  Future<Map<String, dynamic>> mySettings() async => {...me};
+  @override
+  Future<void> updateMe(Map<String, dynamic> fields) async {
+    if (updateFail != null) throw updateFail!;
+    calls.add('me ${fields.keys.join(',')}');
+    me.addAll(fields);
+  }
+
+  final blockedIds = [nika.id];
+  @override
+  Future<List<String>> blocked() async => [...blockedIds];
+  @override
+  Future<void> unblock(String uid) async {
+    calls.add('unblock $uid');
+    blockedIds.remove(uid);
+  }
 }

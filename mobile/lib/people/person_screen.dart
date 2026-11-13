@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../chat/chat_screen.dart';
-import '../config.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
 import '../feed/feed_tab.dart';
 import '../profile/profile.dart';
+import '../settings/edit_profile.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
 import '../ui/net_image.dart';
@@ -106,6 +105,11 @@ class _PersonScreenState extends State<PersonScreen> {
     );
   }
 
+  Future<void> _edit() async {
+    final saved = await openPage<bool>(context, const EditProfileScreen(), full: true);
+    if (saved == true && mounted) _load();
+  }
+
   Future<void> _message() async {
     if (opening) return;
     setState(() => opening = true);
@@ -177,9 +181,10 @@ class _PersonScreenState extends State<PersonScreen> {
               child: mine
                   ? OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44)),
-                      onPressed: () => launchUrl(Uri.parse('$siteUrl/#me'), mode: LaunchMode.externalApplication),
+                      key: const ValueKey('edit-profile'),
+                      onPressed: _edit,
                       icon: PIcon('edit', size: 19, color: c.ink),
-                      label: const Text('პროფილის რედაქტირება საიტზე'),
+                      label: const Text('პროფილის რედაქტირება'),
                     )
                   : ListenableBuilder(
                       listenable: context.app.friends,

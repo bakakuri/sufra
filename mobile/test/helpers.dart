@@ -17,6 +17,8 @@ import 'package:peera/media/video_tools.dart';
 import 'package:peera/main.dart';
 import 'package:peera/profile/profile.dart';
 import 'package:peera/push/push.dart';
+import 'package:peera/settings/frame_photo.dart';
+import 'package:peera/ui/look.dart';
 import 'package:peera/data/api.dart';
 import 'package:peera/shell/home_shell.dart';
 import 'package:peera/stories/stories.dart';
@@ -60,6 +62,9 @@ void useTestImages() {
   netImage = (u) => MemoryImage(pic(u.split('/').last.replaceAll('.jpg', '')));
   photoSource = (camera) async => camera ? [pic('food')] : [pic('sunset'), pic('hills')];
   photoPrep = (b) async => PreparedPhoto(b, 640, 480);
+  photoFrame = (context, src, {required aspect, required max, required title}) async => (bytes: src, w: max, h: (max / aspect).round());
+  themeChoice.value = ThemeMode.system;
+  textZoom.value = 1;
   makePlayer = (u, {bool loop = true}) => FakePlayer();
   SharedPreferences.setMockInitialValues({});
   jokerRandom = () => Random(7);

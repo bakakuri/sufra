@@ -65,6 +65,12 @@ class HomeShellState extends State<HomeShell> {
     super.initState();
     app = AppState(widget.api)
       ..push = _push
+      ..refreshMe = widget.onRefresh
+      ..signOut = _signOut
+      ..goTab = (id) {
+        final i = tabs.indexWhere((t) => t.id == id);
+        if (i >= 0 && i != index && mounted) select(i);
+      }
       ..start();
     app.banner.addListener(_showBanner);
     _push?.start(app.api, onOpen: _openFromPush, onForeground: _pushWhileOpen);

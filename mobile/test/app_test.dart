@@ -18,9 +18,13 @@ import 'package:peera/main.dart';
 import 'package:peera/map/live_map.dart';
 import 'package:peera/map/loc_device.dart';
 import 'package:peera/people/person_screen.dart';
+import 'package:peera/notes/notes_screen.dart';
 import 'package:peera/push/push.dart';
+import 'package:peera/settings/edit_profile.dart';
+import 'package:peera/settings/settings_screens.dart';
 import 'package:peera/shell/home_shell.dart';
 import 'package:peera/shell/tab_bar.dart';
+import 'package:peera/ui/look.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -196,7 +200,7 @@ void main() {
     final api = await shell(t);
     await _tab(t, 'friends');
     // the request waits first
-    expect(find.textContaining('მეგობრობას გთხოვს'), findsOneWidget);
+    expect(find.textContaining('გიგზავნის მეგობრობის მოთხოვნას'), findsOneWidget);
     await t.tap(find.text('დადასტურება'));
     await settle(t);
     expect(api.calls, contains('accept u5'));
@@ -229,7 +233,7 @@ void main() {
   testWidgets('a message from another conversation shows at the top and opens it', (t) async {
     phone(t);
     final api = await shell(t);
-    api.notes.add({'kind': 'message', 'actor': 'u3', 'ref': {'conv': 2, 'text': 'სად ხარ? 🙂'}});
+    api.liveNote.add({'kind': 'message', 'actor': 'u3', 'ref': {'conv': 2, 'text': 'სად ხარ? 🙂'}});
     await settle(t);
     expect(find.text('სად ხარ? 🙂'), findsOneWidget);
     await t.tap(find.text('სად ხარ? 🙂'));
@@ -366,7 +370,11 @@ void main() {
     expect(find.text('შეტყობინებები გამორთულია'), findsOneWidget);
     await t.tap(find.text('ჩართვა'));
     expect(push.calls, contains('settings'));
-    await t.tap(find.byTooltip('გასვლა'));
+    // signing out is in the settings now, as on the site
+    await t.tap(find.byTooltip('პარამეტრები'));
+    await settle(t);
+    await t.scrollUntilVisible(find.byKey(const ValueKey('set-out')), 300, scrollable: find.descendant(of: find.byType(SettingsScreen), matching: find.byType(Scrollable)).first);
+    await t.tap(find.byKey(const ValueKey('set-out')));
     await settle(t);
     await t.tap(find.widgetWithText(TextButton, 'გასვლა'));
     await settle(t);
@@ -819,6 +827,137 @@ void main() {
     expect(api.calls, ['up nino@peera.my ნინო']);
     expect(find.textContaining('დადასტურების ბმული'), findsOneWidget);
   });
-}
 
-String jsonOf(JokerGame g) => g.toJson().toString();
+  testWidgets('the bell: new ones counted and marked, each opens what it is about, back comes back', (t) async {
+    phone(t);
+    final api = await shell(t);
+    // three unread on the bell
+    expect(find.descendant(of: find.byKey(const ValueKey('bell')), matching: find.text('3')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('bell')));
+    await settle(t);
+    expect(find.byType(NotesScreen), findsOneWidget);
+    expect(find.textContaining('რა მაგარია! სად გადაიღე?'), findsOneWidget);
+    expect(find.textContaining('გიგზავნის მეგობრობის მოთხოვნას'), findsOneWidget);
+    // seen as soon as the list opened; the badge is gone
+    expect(api.calls, contains('read 71,70,69'));
+
+    // a comment opens the post
+    await t.tap(find.byKey(const ValueKey('note-70')));
+    await settle(t);
+    expect(find.byType(PostScreen), findsOneWidget);
+    await _back(t);
+    expect(find.byType(NotesScreen), findsOneWidget);
+
+    // a request goes to the friends tab
+    await t.tap(find.byKey(const ValueKey('note-69')));
+    await settle(t);
+    expect(find.byType(NotesScreen), findsNothing);
+    expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 1);
+    await _tab(t, 'home');
+    expect(find.descendant(of: find.byKey(const ValueKey('bell')), matching: find.text('3')), findsNothing);
+  });
+
+  testWidgets('settings: privacy and notification switches are saved, unblocking, the look', (t) async {
+    phone(t);
+    final api = await shell(t);
+    await _tab(t, 'me');
+    await t.tap(find.byTooltip('პარამეტრები'));
+    await settle(t);
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    expect(find.text('1 ტიპი გამორთულია · ღამით ჩუმად'), findsOneWidget);
+
+    // privacy: hide the online status, only friends may write, unblock ნიკა
+    await t.tap(find.byKey(const ValueKey('set-privacy')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('priv-online')));
+    await settle(t);
+    expect(api.me['privacy']['online'], false);
+    await t.tap(find.byKey(const ValueKey('priv-dm-friends')));
+    await settle(t);
+    expect(api.me['privacy'], {'dm': 'friends', 'online': false});
+    await t.pump(const Duration(seconds: 5));
+    await settle(t);
+    await t.scrollUntilVisible(find.byKey(ValueKey('unblock-${nika.id}')), 300, scrollable: find.descendant(of: find.byType(PrivacyScreen), matching: find.byType(Scrollable)).first);
+    await t.tap(find.byKey(ValueKey('unblock-${nika.id}')));
+    await settle(t);
+    expect(api.calls, contains('unblock ${nika.id}'));
+    expect(find.text('დაბლოკილი არავინ გყავს.'), findsOneWidget);
+    await _back(t);
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    expect(find.text('ონლაინ სტატუსი დამალულია · მოგწერენ მეგობრები'), findsOneWidget);
+
+    // notifications: comments off, the quiet hours kept with their zone
+    await t.tap(find.byKey(const ValueKey('set-notif')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('ncat-comments')));
+    await settle(t);
+    expect(api.me['notif'], {
+      'off': {'promo': true, 'comments': true},
+      'quiet': {'on': true, 'from': 23, 'to': 8, 'tz': 'Asia/Tbilisi'},
+    });
+    await t.tap(find.byKey(const ValueKey('quiet')));
+    await settle(t);
+    expect(api.me['notif']['quiet']['on'], false);
+    await _back(t);
+
+    // the look: dark, bigger text (kept on the phone)
+    await t.tap(find.byKey(const ValueKey('set-look')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('look-theme-ThemeMode.dark')));
+    await t.tap(find.byKey(const ValueKey('look-zoom-1.1')));
+    await settle(t);
+    expect(themeChoice.value, ThemeMode.dark);
+    expect(textZoom.value, 1.1);
+    expect((await SharedPreferences.getInstance()).getString('look.theme'), 'dark');
+    await _back(t);
+    await _back(t);
+    expect(find.byType(SettingsScreen), findsNothing);
+    expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 6);
+    themeChoice.value = ThemeMode.system;
+    textZoom.value = 1;
+  });
+
+  testWidgets('editing my profile: a new picture and fields saved in one go; back with changes asks', (t) async {
+    phone(t);
+    final api = await shell(t);
+    await _tab(t, 'me');
+    await t.tap(find.byKey(const ValueKey('edit-profile')));
+    await settle(t);
+    expect(find.byType(EditProfileScreen), findsOneWidget);
+
+    // a change, then back: asked; staying keeps the page
+    await t.enterText(find.byKey(const ValueKey('ep-bio')), 'ახალი ტექსტი ჩემზე');
+    await settle(t);
+    await _back(t);
+    expect(find.text('ცვლილებები არ შეინახება'), findsOneWidget);
+    await t.tap(find.text('არა'));
+    await settle(t);
+    expect(find.byType(EditProfileScreen), findsOneWidget);
+
+    // the @name keeps only what the site allows
+    await t.enterText(find.byKey(const ValueKey('ep-user')), 'Nino Beridze!');
+    await settle(t);
+    expect(find.text('ninoberidze'), findsOneWidget);
+
+    // a new picture (framed, uploaded at once), then save
+    await t.tap(find.byKey(const ValueKey('ep-avatar')));
+    await settle(t);
+    expect(api.calls, contains('upload 640x640'));
+
+    // a taken @name is said plainly, nothing leaves the page
+    api.updateFail = Exception('duplicate key value violates unique constraint "profiles_username_key"');
+    await t.tap(find.byKey(const ValueKey('ep-save-top')));
+    await settle(t);
+    expect(find.text('ეს მომხმარებლის სახელი დაკავებულია'), findsOneWidget);
+    expect(find.byType(EditProfileScreen), findsOneWidget);
+    api.updateFail = null;
+    await t.pump(const Duration(seconds: 5));
+    await t.tap(find.byKey(const ValueKey('ep-save-top')));
+    await settle(t);
+    expect(find.byType(EditProfileScreen), findsNothing);
+    expect(api.me['bio'], 'ახალი ტექსტი ჩემზე');
+    expect(api.me['username'], 'ninoberidze');
+    expect(api.me['avatar_url'], 'https://t/hills.jpg');
+    expect(api.me['home_region'], 'იმერეთი');
+  });
+}
