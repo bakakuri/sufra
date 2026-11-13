@@ -14,6 +14,7 @@ import 'package:peera/map/live_map.dart';
 import 'package:peera/map/loc_device.dart';
 import 'package:peera/media/player.dart';
 import 'package:peera/media/video_tools.dart';
+import 'package:peera/media/voice.dart';
 import 'package:peera/main.dart';
 import 'package:peera/profile/profile.dart';
 import 'package:peera/push/push.dart';
@@ -71,6 +72,7 @@ void useTestImages() {
   // the map draws no pictures in the tests (its own background shows), and the phone's location is pretend
   mapTile = (u) => MemoryImage(_clear);
   locDevice = FakeLoc();
+  voiceDevice = FakeVoice();
   storyClock = false;
   videoPicker = () async => '/phone/clip.mp4';
   videoPrep = (path, progress) async {
@@ -78,6 +80,33 @@ void useTestImages() {
     progress(1);
     return const VideoReady(path: '/phone/clip.mp4', poster: '/phone/poster.jpg', w: 720, h: 1280, dur: 14, bytes: 9 * 1024 * 1024);
   };
+}
+
+/// A microphone that records whatever the test says
+class FakeVoice implements VoiceDevice {
+  final calls = <String>[];
+  String answer = 'granted';
+  int ms = 3200;
+  @override
+  Future<String> permission() async => answer;
+  @override
+  Future<bool> start() async {
+    calls.add('start');
+    return true;
+  }
+
+  @override
+  Future<double> level() async => .5;
+  @override
+  Future<Recorded?> stop() async {
+    calls.add('stop');
+    return (path: '/phone/voice.m4a', ms: ms);
+  }
+
+  @override
+  Future<void> cancel() async => calls.add('cancel');
+  @override
+  Future<void> settings() async => calls.add('settings');
 }
 
 /// A video that is always ready, a third of the way in, and draws nothing (the poster under it shows)

@@ -168,6 +168,13 @@ void main() {
       await t.tap(find.text('გიორგი კაპანაძე').first);
       await settle(t);
       await _shot(t, '15-chat-$k');
+      // recording a voice message
+      await t.tap(find.byKey(const ValueKey('chat-mic')));
+      await t.pump(const Duration(seconds: 7));
+      await t.pump(const Duration(milliseconds: 300));
+      await _shot(t, '41-chat-voice-$k');
+      await t.tap(find.byKey(const ValueKey('voice-cancel')));
+      await settle(t);
     });
 
     testWidgets('clips ($k)', (t) async {

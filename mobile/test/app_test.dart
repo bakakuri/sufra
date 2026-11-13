@@ -17,6 +17,7 @@ import 'package:peera/joker/table_screen.dart';
 import 'package:peera/main.dart';
 import 'package:peera/map/live_map.dart';
 import 'package:peera/map/loc_device.dart';
+import 'package:peera/media/voice.dart';
 import 'package:peera/people/person_screen.dart';
 import 'package:peera/notes/notes_screen.dart';
 import 'package:peera/push/push.dart';
@@ -24,6 +25,7 @@ import 'package:peera/settings/edit_profile.dart';
 import 'package:peera/settings/settings_screens.dart';
 import 'package:peera/shell/home_shell.dart';
 import 'package:peera/shell/tab_bar.dart';
+import 'package:peera/ui/icons.dart';
 import 'package:peera/ui/look.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -899,7 +901,7 @@ void main() {
       'off': {'promo': true, 'comments': true},
       'quiet': {'on': true, 'from': 23, 'to': 8, 'tz': 'Asia/Tbilisi'},
     });
-    await t.ensureVisible(find.byKey(const ValueKey('quiet')));
+    await t.scrollUntilVisible(find.byKey(const ValueKey('quiet')), -300, scrollable: find.descendant(of: find.byType(NotifSettingsScreen), matching: find.byType(Scrollable)).first);
     await settle(t);
     await t.tap(find.byKey(const ValueKey('quiet')));
     await settle(t);
@@ -965,6 +967,47 @@ void main() {
     expect(api.me['username'], 'ninoberidze');
     expect(api.me['avatar_url'], 'https://t/hills.jpg');
     expect(api.me['home_region'], 'იმერეთი');
+  });
+
+  testWidgets('voice: recorded with the time running, back throws it away, sent with its length, played', (t) async {
+    phone(t);
+    final mic = FakeVoice();
+    voiceDevice = mic;
+    final api = await shell(t);
+    await _tab(t, 'chats');
+    await t.tap(find.text('გიორგი კაპანაძე').first);
+    await settle(t);
+    // nothing written: the round button records
+    expect(find.byKey(const ValueKey('chat-send')), findsNothing);
+    await t.tap(find.byKey(const ValueKey('chat-mic')));
+    await t.pump();
+    expect(find.byKey(const ValueKey('voice-send')), findsOneWidget);
+    await t.pump(const Duration(seconds: 2));
+    expect(find.text('0:02'), findsOneWidget);
+
+    // back: the recording is thrown away, the conversation stays
+    await _back(t);
+    expect(mic.calls, ['start', 'cancel']);
+    expect(find.byType(ChatScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('chat-mic')), findsOneWidget);
+
+    // again, and send: uploaded, then a voice message with its length
+    await t.tap(find.byKey(const ValueKey('chat-mic')));
+    await t.pump(const Duration(seconds: 3));
+    await t.tap(find.byKey(const ValueKey('voice-send')));
+    await settle(t);
+    expect(api.calls, containsAllInOrder(['voice /phone/voice.m4a', 'send 1 voice ']));
+    expect(find.text('0:03'), findsOneWidget);
+
+    // it plays (and pauses)
+    PIcon? icon(String n) => find.byWidgetPredicate((w) => w is PIcon && w.name == n).evaluate().map((e) => e.widget as PIcon).firstOrNull;
+    await t.tap(find.byKey(const ValueKey('voice-play')).first);
+    await settle(t);
+    expect(icon('pause'), isNotNull);
+    expect(find.text('0:05'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('voice-play')).first);
+    await settle(t);
+    expect(icon('pause'), isNull);
   });
 }
 

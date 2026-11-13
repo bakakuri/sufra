@@ -26,6 +26,8 @@ class MainActivity : FlutterActivity() {
     /* the screen a notification asked for ("map": the live location's notification), until the app takes it */
     private var openAsked: String? = null
     private var permWait: MethodChannel.Result? = null
+    private var micWait: MethodChannel.Result? = null
+    private var voice: VoiceRec? = null
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -49,6 +51,10 @@ class MainActivity : FlutterActivity() {
         val video = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "peera/video")
         val tools = VideoTools(this, video)
         video.setMethodCallHandler { call, result -> tools.handle(call, result) }
+        // voice messages: the microphone
+        val rec = VoiceRec(this)
+        voice = rec
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "peera/voice").setMethodCallHandler { call, result -> rec.handle(call, result) }
         // the live location: asking for it, the place now, and the service that shares it with the app closed
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "peera/loc").setMethodCallHandler { call, result ->
             when (call.method) {
@@ -82,7 +88,7 @@ class MainActivity : FlutterActivity() {
                     openAsked = null
                 }
                 "settings" -> {
-                    startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    openAppSettings()
                     result.success(true)
                 }
                 else -> result.notImplemented()
@@ -140,6 +146,26 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    override fun onDestroy() {
+        voice?.release()
+        super.onDestroy()
+    }
+
+    fun openAppSettings() {
+        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    /* the microphone, as the location: "granted", "denied" or "blocked" */
+    fun askMic(result: MethodChannel.Result) {
+        if (has(Manifest.permission.RECORD_AUDIO)) {
+            result.success("granted")
+            return
+        }
+        micWait?.success("denied")
+        micWait = result
+        requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 8)
+    }
+
     private fun has(p: String) = checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED
     private fun located() = has(Manifest.permission.ACCESS_FINE_LOCATION) || has(Manifest.permission.ACCESS_COARSE_LOCATION)
 
@@ -167,6 +193,18 @@ class MainActivity : FlutterActivity() {
 
     override fun onRequestPermissionsResult(code: Int, perms: Array<out String>, res: IntArray) {
         super.onRequestPermissionsResult(code, perms, res)
+        if (code == 8) {
+            val m = micWait ?: return
+            micWait = null
+            m.success(
+                when {
+                    has(Manifest.permission.RECORD_AUDIO) -> "granted"
+                    !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) -> "blocked"
+                    else -> "denied"
+                }
+            )
+            return
+        }
         if (code != 7) return
         val r = permWait ?: return
         permWait = null

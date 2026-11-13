@@ -10,6 +10,7 @@ import '../data/stores.dart';
 import '../feed/compose_screen.dart';
 import '../feed/photo_viewer.dart';
 import '../feed/post_screen.dart';
+import '../media/voice.dart';
 import '../people/person_screen.dart';
 import '../profile/profile.dart';
 import '../ui/format.dart';
@@ -23,7 +24,7 @@ import 'chats_tab.dart';
 /// Opens a conversation over the whole app (the tab bar steps aside); back returns to where you were.
 Future<void> openChat(BuildContext context, int convId) => openPage(context, ChatScreen(convId: convId), full: true);
 
-/// One conversation: messages as they arrive (live), older ones as you scroll up, text and photos to send.
+/// One conversation: messages as they arrive (live), older ones as you scroll up, text, photos and voice to send.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, required this.convId});
   final int convId;
@@ -42,6 +43,13 @@ class _ChatScreenState extends State<ChatScreen> {
   late final AppState app;
   bool _started = false;
   int _tmp = -1;
+
+  // a voice message being recorded: for how long, how loud now
+  bool recording = false;
+  int recMs = 0;
+  double recLevel = 0;
+  Timer? _recTick;
+  static const recMax = 120000;
 
   @override
   void initState() {
@@ -67,6 +75,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _recTick?.cancel();
+    if (recording) voiceDevice.cancel();
     _live?.cancel();
     app.chats.closed(widget.convId);
     field.dispose();
@@ -184,6 +194,75 @@ class _ChatScreenState extends State<ChatScreen> {
     if (mounted) setState(() => sending = false);
   }
 
+  /// the microphone button: asks for the microphone once, then records until "send" or "cancel" (2 minutes at most)
+  Future<void> _voice() async {
+    if (recording || sending) return;
+    final p = await voiceDevice.permission();
+    if (!mounted) return;
+    if (p != 'granted') {
+      if (p == 'blocked' &&
+          await confirm(context, title: 'მიკროფონი დაკეტილია', text: 'ხმოვანი შეტყობინებისთვის ტელეფონის პარამეტრებში მიეცი Peera-ს მიკროფონის ნება.', yes: 'პარამეტრები')) {
+        await voiceDevice.settings();
+      } else if (p != 'blocked' && mounted) {
+        toast(context, 'მიკროფონზე წვდომა არ არის');
+      }
+      return;
+    }
+    if (!await voiceDevice.start()) {
+      if (mounted) toast(context, 'ჩაწერა ვერ დაიწყო');
+      return;
+    }
+    if (!mounted) {
+      voiceDevice.cancel();
+      return;
+    }
+    setState(() {
+      recording = true;
+      recMs = 0;
+      recLevel = 0;
+    });
+    _recTick = Timer.periodic(const Duration(milliseconds: 250), (_) async {
+      final l = await voiceDevice.level();
+      if (!mounted || !recording) return;
+      setState(() {
+        recMs += 250;
+        recLevel = l;
+      });
+      if (recMs >= recMax) _voiceSend();
+    });
+  }
+
+  void _voiceCancel() {
+    if (!recording) return;
+    _recTick?.cancel();
+    setState(() => recording = false);
+    voiceDevice.cancel();
+  }
+
+  Future<void> _voiceSend() async {
+    if (!recording) return;
+    _recTick?.cancel();
+    setState(() {
+      recording = false;
+      sending = true;
+    });
+    try {
+      final r = await voiceDevice.stop();
+      if (r == null || r.ms < 600) {
+        if (mounted) toast(context, 'ძალიან მოკლეა. ილაპარაკე და მერე დააჭირე გაგზავნას');
+        return;
+      }
+      final url = await app.api.uploadVoice(r.path);
+      final dur = (r.ms / 1000).round().clamp(1, recMax ~/ 1000);
+      await _send(kind: 'voice', media: {'url': url, 'dur': dur});
+      if (scroll.hasClients) scroll.jumpTo(0);
+    } catch (e) {
+      if (mounted) toast(context, errText(e));
+    } finally {
+      if (mounted) setState(() => sending = false);
+    }
+  }
+
   void _openOther() {
     final o = chat?.other;
     if (o == null) return;
@@ -203,7 +282,13 @@ class _ChatScreenState extends State<ChatScreen> {
             : ch.isGroup
                 ? '${ch.members.length + 1} წევრი'
                 : lastSeenText(other?.lastSeen);
-        return Scaffold(
+        // back while recording throws the recording away (one step), the conversation stays
+        return PopScope(
+          canPop: !recording,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _voiceCancel();
+          },
+          child: Scaffold(
           appBar: AppBar(
             toolbarHeight: 60,
             leading: backButton(context),
@@ -228,8 +313,11 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           body: Column(children: [
             Expanded(child: _list(context, ch)),
-            _Composer(field: field, sending: sending, onSend: _sendText, onPhoto: _sendPhoto),
+            recording
+                ? _RecordBar(ms: recMs, level: recLevel, onCancel: _voiceCancel, onSend: _voiceSend)
+                : _Composer(field: field, sending: sending, onSend: _sendText, onPhoto: _sendPhoto, onMic: _voice),
           ]),
+          ),
         );
       },
     );
@@ -304,7 +392,7 @@ class _Bubble extends StatelessWidget {
   /// what the app cannot show yet: a line saying what it is, opened on the site
   (String, String)? _other() {
     final md = m.media ?? const {};
-    if (m.kind == 'voice') return ('🎤', 'ხმოვანი შეტყობინება');
+    if (m.kind == 'voice') return ('🎤', 'ხმოვანი შეტყობინება'); // one without a link
     if (md['story'] != null) return ('📸', 'ისტორიაზე პასუხი');
     if (md['sticker'] != null) return ('🙂', 'სტიკერი');
     if (md['card'] != null) return ('💌', 'ბარათი');
@@ -366,6 +454,8 @@ class _Bubble extends StatelessWidget {
           ),
         ),
       );
+    } else if (m.kind == 'voice' && '${(m.media ?? const {})['url'] ?? ''}'.isNotEmpty) {
+      inner = _box(context, shape, bg, VoiceNote(url: '${m.media!['url']}', seconds: asInt(m.media!['dur']), mine: mine), time);
     } else if (post is Map) {
       final id = asInt(post['id']);
       inner = GestureDetector(
@@ -460,10 +550,10 @@ class _Bubble extends StatelessWidget {
 }
 
 class _Composer extends StatelessWidget {
-  const _Composer({required this.field, required this.sending, required this.onSend, required this.onPhoto});
+  const _Composer({required this.field, required this.sending, required this.onSend, required this.onPhoto, required this.onMic});
   final TextEditingController field;
   final bool sending;
-  final VoidCallback onSend, onPhoto;
+  final VoidCallback onSend, onPhoto, onMic;
   @override
   Widget build(BuildContext context) {
     final c = context.pc;
@@ -497,24 +587,88 @@ class _Composer extends StatelessWidget {
               listenable: field,
               builder: (_, __) {
                 final can = field.text.trim().isNotEmpty;
+                // with nothing written the button records a voice message, as in the site's chat
                 return Semantics(
-                  key: const ValueKey('chat-send'),
+                  key: ValueKey(can ? 'chat-send' : 'chat-mic'),
                   button: true,
-                  label: 'გაგზავნა',
+                  label: can ? 'გაგზავნა' : 'ხმოვანი შეტყობინება',
                   excludeSemantics: true,
                   child: GestureDetector(
-                    onTap: can ? onSend : null,
+                    onTap: can ? onSend : (sending ? null : onMic),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 160),
                       width: 44,
                       height: 44,
                       alignment: Alignment.center,
-                      decoration: BoxDecoration(color: can ? c.accent : c.sunk, shape: BoxShape.circle),
-                      child: Padding(padding: const EdgeInsets.only(left: 2), child: PIcon('send', size: 21, color: can ? c.onAccent : c.muted, stroke: 2)),
+                      decoration: BoxDecoration(color: can ? c.accent : c.accentSoft, shape: BoxShape.circle),
+                      child: can
+                          ? Padding(padding: const EdgeInsets.only(left: 2), child: PIcon('send', size: 21, color: c.onAccent, stroke: 2))
+                          : PIcon('mic', size: 22, color: c.accent, stroke: 2),
                     ),
                   ),
                 );
               },
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// Recording a voice message, in place of the writing line: throw away, the time and a dot that grows with the
+/// voice, send. Two minutes at most (then it goes by itself).
+class _RecordBar extends StatelessWidget {
+  const _RecordBar({required this.ms, required this.level, required this.onCancel, required this.onSend});
+  final int ms;
+  final double level;
+  final VoidCallback onCancel, onSend;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.pc, left = _ChatScreenState.recMax - ms;
+    return Container(
+      decoration: BoxDecoration(color: c.surface, border: Border(top: BorderSide(color: c.line))),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(4, 6, 6, 6),
+          child: Row(children: [
+            IconBtn('trash', key: const ValueKey('voice-cancel'), label: 'გაუქმება', color: c.nope, onTap: onCancel),
+            const SizedBox(width: 6),
+            SizedBox.square(
+              dimension: 22,
+              child: Center(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 10 + 12 * level,
+                  height: 10 + 12 * level,
+                  decoration: BoxDecoration(color: c.nope, shape: BoxShape.circle),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(clockOf(Duration(milliseconds: ms)),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.ink, fontFeatures: const [FontFeature.tabularFigures()])),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(left <= 15000 ? 'დარჩა ${(left / 1000).ceil()} წამი' : 'იწერება…',
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: left <= 15000 ? c.nope : c.muted, fontSize: 14)),
+            ),
+            Semantics(
+              key: const ValueKey('voice-send'),
+              button: true,
+              label: 'ხმოვანის გაგზავნა',
+              excludeSemantics: true,
+              child: GestureDetector(
+                onTap: onSend,
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: c.accent, shape: BoxShape.circle),
+                  child: Padding(padding: const EdgeInsets.only(left: 2), child: PIcon('send', size: 21, color: c.onAccent, stroke: 2)),
+                ),
+              ),
             ),
           ]),
         ),

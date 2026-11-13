@@ -68,6 +68,9 @@ abstract class PeeraApi {
   /// a video and its poster, uploaded
   Future<Media> uploadVideo(VideoReady v);
 
+  /// a voice message recorded on the phone (m4a), its link
+  Future<String> uploadVoice(String path);
+
   /// a clip: the video and a few words
   Future<Post> createClip(String body, Media video);
 
@@ -718,6 +721,9 @@ class SupaApi implements PeeraApi {
     await sb.storage.from('media').upload(path, f, fileOptions: FileOptions(contentType: type, cacheControl: '31536000', upsert: false));
     return sb.storage.from('media').getPublicUrl(path);
   }
+
+  @override
+  Future<String> uploadVoice(String path) => _putFile(File(path), 'm4a', 'audio/mp4');
 
   @override
   Future<Media> uploadVideo(VideoReady v) async {

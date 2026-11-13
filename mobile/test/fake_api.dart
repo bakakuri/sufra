@@ -72,6 +72,7 @@ class FakeApi implements PeeraApi {
       m(giorgi.id, '', y.add(const Duration(minutes: 3)), kind: 'image', media: {'url': 'https://t/sea.jpg', 'w': 640, 'h': 480}),
       m(nino.id, 'ვაუ, რა ლამაზია! სად არის?', y.add(const Duration(minutes: 6))),
       m(giorgi.id, 'ურეკში. ზაფხულში აუცილებლად უნდა წავიდეთ ყველა ერთად', y.add(const Duration(minutes: 7))),
+      m(giorgi.id, '', y.add(const Duration(minutes: 8)), kind: 'voice', media: {'url': 'https://t/voice.m4a', 'dur': 14}),
       m(nino.id, 'აუცილებლად!', now.subtract(const Duration(minutes: 20))),
       m(giorgi.id, 'ხვალ თავისუფალი ხარ?', now.subtract(const Duration(minutes: 4))),
       m(giorgi.id, 'ხვალ 7-ზე შევხვდეთ?', now.subtract(const Duration(minutes: 3))),
@@ -498,6 +499,12 @@ class FakeApi implements PeeraApi {
 
   @override
   Future<List<Post>> clips({String? before, int limit = 12}) async => before == null ? [...clipPosts] : const [];
+  @override
+  Future<String> uploadVoice(String path) async {
+    calls.add('voice $path');
+    return 'https://t/voice-new.m4a';
+  }
+
   @override
   Future<Media> uploadVideo(VideoReady v) async {
     calls.add('video ${v.w}x${v.h}');

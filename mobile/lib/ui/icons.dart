@@ -55,6 +55,7 @@ const _ic = <String, String>{
   'locate': '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
   'cards': '<rect x="4" y="5" width="11" height="15" rx="2"/><path d="M15 7l4.5 1.2-3 12-3-.8"/>',
   'note': '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',
+  'mic': '<rect x="9" y="3" width="6" height="11.5" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/>',
   'heartfill': '<path d="M12 20s-7-4.4-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.6-9 9-9 9z" fill="1"/>',
 };
 
