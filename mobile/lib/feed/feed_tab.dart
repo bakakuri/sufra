@@ -309,11 +309,17 @@ class FeedTabState extends State<FeedTab> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 2, 4, 10),
               child: Row(children: [
-                for (final (k, l) in const [('for', 'შენთვის'), ('friends', 'მეგობრები'), ('new', 'ახალი')]) ...[
-                  _Chip(l, key: ValueKey('feed-$k'), on: mode == k, onTap: () => _mode(k)),
-                  const SizedBox(width: 8),
-                ],
-                const Spacer(),
+                Expanded(
+                  child: Container(
+                    height: 42,
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(21)),
+                    child: Row(children: [
+                      for (final (k, l) in const [('for', 'შენთვის'), ('friends', 'მეგობრები'), ('new', 'ახალი')])
+                        Expanded(child: _Chip(l, key: ValueKey('feed-$k'), on: mode == k, onTap: () => _mode(k))),
+                    ]),
+                  ),
+                ),
                 IconBtn('star', key: const ValueKey('topics'), label: 'ჩემი თემები', size: 22, color: c.gold, onTap: _topics),
               ]),
             ),
@@ -431,17 +437,21 @@ class _Chip extends StatelessWidget {
       button: true,
       selected: on,
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
           decoration: BoxDecoration(
-            color: on ? c.ink : c.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: on ? c.ink : c.line),
+            color: on ? c.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: on ? const [BoxShadow(color: Color(0x1A141830), blurRadius: 6, offset: Offset(0, 1))] : null,
           ),
-          child: Text(text, style: TextStyle(color: on ? c.bg : c.ink, fontWeight: FontWeight.w700, fontSize: 14)),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(text, style: TextStyle(color: on ? c.ink : c.muted, fontWeight: FontWeight.w700, fontSize: 14)),
+          ),
         ),
       ),
     );

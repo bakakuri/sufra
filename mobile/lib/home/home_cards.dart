@@ -437,6 +437,7 @@ class _FirstStepsScreenState extends State<FirstStepsScreen> {
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             key: const ValueKey('fs-region'),
+            isExpanded: true,
             initialValue: region.isEmpty ? null : region,
             decoration: const InputDecoration(labelText: 'მშობლიური კუთხე'),
             items: [for (final r in homeRegions) DropdownMenuItem(value: r, child: Text(r))],

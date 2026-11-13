@@ -155,7 +155,7 @@ Future<void> remindersSheet(BuildContext context, List<FriendDay> days) => showM
       backgroundColor: context.pc.surface,
       builder: (s) {
         final c = s.pc;
-        return SafeArea(
+        return AppScope(app: context.app, me: context.me, child: SafeArea(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(s).height * .8),
             child: ListView(shrinkWrap: true, padding: const EdgeInsets.only(bottom: 12), children: [
@@ -179,7 +179,7 @@ Future<void> remindersSheet(BuildContext context, List<FriendDay> days) => showM
               ),
             ]),
           ),
-        );
+        ));
       },
     );
 

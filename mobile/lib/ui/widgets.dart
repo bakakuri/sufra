@@ -129,7 +129,7 @@ PreferredSizeWidget peeraBar(BuildContext context, {String? title, Widget? title
       toolbarHeight: 60,
       leading: backButton(context),
       titleSpacing: Navigator.of(context).canPop() ? 0 : 16,
-      title: titleWidget ?? (title == null ? const PeeraLogo() : Text(title)),
+      title: titleWidget ?? (title == null ? const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: PeeraLogo()) : Text(title)),
       actions: [...actions, const SizedBox(width: 6)],
     );
 

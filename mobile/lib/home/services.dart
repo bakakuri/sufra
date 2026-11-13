@@ -298,14 +298,14 @@ class _ServicesStripState extends State<ServicesStrip> with SingleTickerProvider
                 Positioned(
                   left: cw / 2 - w / 2,
                   top: 6,
-                  child: Opacity(
-                    opacity: ad <= 3 ? 1.0 : math.max(0.0, 4 - ad),
-                    child: Transform(
-                      alignment: Alignment.center,
-                      transform: (Matrix4.identity()..setEntry(3, 2, .001))
-                        ..multiply(Matrix4.translationValues(sg * xOf(ad), 0, -t * 90 - math.max(0.0, ad - 1) * 40))
-                        ..multiply(Matrix4.rotationY(-sg * t * 55 * math.pi / 180))
-                        ..multiply(Matrix4.diagonal3Values(1 - t * .08, 1 - t * .08, 1)),
+                  child: Transform(
+                    alignment: Alignment.center,
+                    transform: (Matrix4.identity()..setEntry(3, 2, .001))
+                      ..multiply(Matrix4.translationValues(sg * xOf(ad), 0, t * 90 + math.max(0.0, ad - 1) * 40))
+                      ..multiply(Matrix4.rotationY(sg * t * 55 * math.pi / 180))
+                      ..multiply(Matrix4.diagonal3Values(1 - t * .08, 1 - t * .08, 1)),
+                    child: Opacity(
+                      opacity: ad <= 3 ? 1.0 : math.max(0.0, 4 - ad),
                       child: Semantics(
                         button: true,
                         label: on ? s.$3 : '${s.$3} (გადახვევა)',

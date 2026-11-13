@@ -261,6 +261,9 @@ void main() {
     await t.tap(find.byKey(const ValueKey('services')));
     await settle(t);
     expect(find.byKey(const ValueKey('menu-rooms-birja')), findsOneWidget);
+    await t.scrollUntilVisible(find.byKey(const ValueKey('menu-tree')), 200,
+        scrollable: find.descendant(of: find.byType(GridView), matching: find.byType(Scrollable)).first);
+    await settle(t);
     await t.tap(find.byKey(const ValueKey('menu-tree')));
     await settle(t);
     expect(find.byType(TreeScreen), findsOneWidget);
