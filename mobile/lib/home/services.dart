@@ -283,7 +283,7 @@ class _ServicesStripState extends State<ServicesStrip> with SingleTickerProvider
         final first = w / 2 + w * .2, gap = ((cw / 2 - first - w * .2) / 2).clamp(16.0, 70.0).toDouble();
         double xOf(double a) => a <= 1 ? a * first : first + (a - 1) * gap;
         return ListenableBuilder(
-          listenable: Listenable.merge([app.home.counts, app.friends]),
+          listenable: Listenable.merge([app.home.counts, app.friends, app.home]),
           builder: (context, _) {
             final counts = {...app.home.counts.value, 'friends': app.friends.incoming.length};
             final kids = <(double, Widget)>[];

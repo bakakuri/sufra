@@ -57,7 +57,7 @@ class PostCard extends StatelessWidget {
         _PostView(post: post.original!, onDeleted: onDeleted, inPostScreen: inPostScreen),
       ]);
     }
-    return _PostView(post: post, onDeleted: onDeleted, inPostScreen: inPostScreen);
+    return _PostView(post: post, onDeleted: onDeleted, inPostScreen: inPostScreen, sponsored: sponsored);
   }
 }
 
@@ -67,9 +67,10 @@ Future<void> openPerson(BuildContext context, Profile p) async {
 }
 
 class _PostView extends StatelessWidget {
-  const _PostView({required this.post, this.onDeleted, this.inPostScreen = false});
+  const _PostView({required this.post, this.onDeleted, this.inPostScreen = false, this.sponsored = false});
   final Post post;
   final VoidCallback? onDeleted;
+  final bool sponsored;
   final bool inPostScreen;
 
   Future<void> _open(BuildContext context, {bool focus = false}) async {

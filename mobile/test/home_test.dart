@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:peera/chat/chat_screen.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/feed_tab.dart';
 import 'package:peera/home/calendar.dart';
