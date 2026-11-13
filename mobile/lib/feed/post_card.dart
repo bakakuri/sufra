@@ -688,14 +688,17 @@ class _Grades extends StatelessWidget {
                         constraints: const BoxConstraints(minWidth: 30),
                         height: 26,
                         padding: const EdgeInsets.symmetric(horizontal: 6),
-                        alignment: Alignment.center,
-                        child: Text(g,
+                        // sized by its number (an alignment would stretch it across the line)
+                        child: Center(
+                          widthFactor: 1,
+                          child: Text(g,
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 12,
                               color: s.myGrade == g ? const Color(0xFF1A1205) : (g == '5+' ? c.gold : c.ink),
                               fontFeatures: const [FontFeature.tabularFigures()],
                             )),
+                        ),
                       ),
                     ),
                   ),
