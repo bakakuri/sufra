@@ -496,3 +496,60 @@ class JkTable {
         updatedAt: DateTime.tryParse('${j['updated_at'] ?? ''}')?.toLocal(),
       );
 }
+
+/// A place on the live map (live_map): whose, where, how exactly, since and until when.
+class LiveSpot {
+  const LiveSpot({
+    required this.userId,
+    required this.lat,
+    required this.lng,
+    this.acc = 0,
+    this.speed,
+    this.audience = 'friends',
+    this.approx = false,
+    required this.updatedAt,
+    this.expiresAt,
+    this.friend = false,
+  });
+  final String userId, audience;
+  final double lat, lng;
+  final int acc;
+  final double? speed;
+  final bool approx, friend;
+  final DateTime updatedAt;
+  final DateTime? expiresAt;
+
+  /// refreshed in the last three minutes (otherwise the last place, greyed)
+  bool get live => DateTime.now().difference(updatedAt) < const Duration(minutes: 3);
+
+  static double _d(Object? v) => v is num ? v.toDouble() : double.tryParse('${v ?? ''}') ?? 0;
+
+  factory LiveSpot.fromJson(Map<String, dynamic> j) => LiveSpot(
+        userId: '${j['user_id']}',
+        lat: _d(j['lat']),
+        lng: _d(j['lng']),
+        acc: asInt(j['acc']),
+        speed: j['speed'] == null ? null : _d(j['speed']),
+        audience: '${j['audience'] ?? 'friends'}',
+        approx: j['approx'] == true,
+        updatedAt: DateTime.tryParse('${j['updated_at'] ?? ''}')?.toLocal() ?? DateTime.now(),
+        expiresAt: DateTime.tryParse('${j['expires_at'] ?? ''}')?.toLocal(),
+        friend: j['friend'] == true,
+      );
+}
+
+/// My own share: who sees it, how exactly, until when, and whether a phone keeps it going with the app closed.
+class MyShare {
+  const MyShare({this.audience = 'friends', this.approx = false, this.expiresAt, this.device = false});
+  final String audience;
+  final bool approx, device;
+  final DateTime? expiresAt;
+
+  /// "45 წთ", "7 სთ 20 წთ"; null when it runs until stopped
+  String? get left {
+    final e = expiresAt;
+    if (e == null) return null;
+    final m = (e.difference(DateTime.now()).inSeconds / 60).ceil().clamp(1, 100000).toInt();
+    return m >= 60 ? '${m ~/ 60} სთ${m % 60 > 0 ? ' ${m % 60} წთ' : ''}' : '$m წთ';
+  }
+}

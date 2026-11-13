@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/stores.dart';
+import '../map/live_map.dart';
 import '../profile/profile.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
@@ -60,6 +61,7 @@ class _FriendsTabState extends State<FriendsTab> {
     final c = context.pc, f = context.app.friends, people = context.app.people;
     return Scaffold(
       appBar: peeraBar(context, title: 'მეგობრები', actions: [
+        IconBtn('locate', label: 'ლაივ რუკა', onTap: () => openLiveMap(context)),
         IconBtn('search', label: 'ხალხის ძებნა', onTap: () => openPage(context, const SearchScreen())),
       ]),
       body: ListenableBuilder(

@@ -2,6 +2,12 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Android 13+: the app asks once before it may show notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- the live location: only while the person chose to share it; with the app closed a foreground service with its own
+         notification and a stop button sends it (it never starts by itself) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
     <application
         android:label="Peera ტესტი"
         android:name="${applicationName}"
@@ -28,6 +34,10 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <service
+            android:name=".LocService"
+            android:exported="false"
+            android:foregroundServiceType="location"/>
         <!-- push notifications register by the app's Firebase installation id (the old token way fails on some phones) -->
         <meta-data
             android:name="firebase_messaging_installation_id_enabled"

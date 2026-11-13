@@ -450,6 +450,43 @@ class FakeApi implements PeeraApi {
   @override
   Future<List<JkTable>> jkMine() async => [for (final t in jk.values) if (t.seats.contains(myId) && t.status != 'over') t];
 
+  // the live map: გიორგი shares exactly and is live; მარიამ roughly, twenty minutes ago
+  late final spots = <LiveSpot>[
+    LiveSpot(userId: 'u2', lat: 41.7105, lng: 44.7932, acc: 8, speed: 4.2, audience: 'friends', updatedAt: DateTime.now().subtract(const Duration(seconds: 40)), friend: true),
+    LiveSpot(
+      userId: 'u3',
+      lat: 41.64,
+      lng: 41.63,
+      acc: 1000,
+      audience: 'public',
+      approx: true,
+      updatedAt: DateTime.now().subtract(const Duration(minutes: 20)),
+      expiresAt: DateTime.now().add(const Duration(hours: 2)),
+      friend: true,
+    ),
+  ];
+  MyShare? share;
+  int _tok = 0;
+
+  @override
+  Future<List<LiveSpot>> liveMap() async => [...spots];
+  @override
+  Future<MyShare?> myShare() async => share;
+  @override
+  Future<String> locToken() async {
+    calls.add('loc token');
+    return 'tok-${++_tok}';
+  }
+
+  @override
+  Future<void> locStop() async {
+    calls.add('loc stop');
+    share = null;
+  }
+
+  @override
+  Future<bool> amMinor() async => false;
+
   @override
   Future<({int coins, int reward})> gameResult(String game, bool win) async {
     calls.add('game $game ${win ? 'won' : 'lost'}');

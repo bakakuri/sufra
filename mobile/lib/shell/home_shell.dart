@@ -13,6 +13,8 @@ import '../feed/post_screen.dart';
 import '../dating/dating_tab.dart';
 import '../joker/joker_tab.dart';
 import '../joker/online_screen.dart';
+import '../map/live_map.dart';
+import '../map/loc_device.dart';
 import '../people/friends_tab.dart';
 import '../profile/profile.dart';
 import '../profile/profile_tab.dart';
@@ -66,6 +68,17 @@ class HomeShellState extends State<HomeShell> {
       ..start();
     app.banner.addListener(_showBanner);
     _push?.start(app.api, onOpen: _openFromPush, onForeground: _pushWhileOpen);
+    // the live location's notification opens the map (the app may have been started by it, or brought back)
+    _life = AppLifecycleListener(onResume: _takeOpen);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _takeOpen());
+  }
+
+  AppLifecycleListener? _life;
+
+  Future<void> _takeOpen() async {
+    final o = await locDevice.takeOpen();
+    final ctx = _scaffold.currentContext;
+    if (o == 'map' && ctx != null && mounted) await openLiveMap(ctx);
   }
 
   /// a tapped notification: its conversation or post opens over the app, a friend request opens the friends tab
@@ -118,6 +131,7 @@ class HomeShellState extends State<HomeShell> {
 
   @override
   void dispose() {
+    _life?.dispose();
     _hideBanner();
     _push?.dispose();
     app.banner.removeListener(_showBanner);

@@ -15,6 +15,8 @@ import 'package:peera/joker/online.dart';
 import 'package:peera/joker/online_screen.dart';
 import 'package:peera/joker/table_screen.dart';
 import 'package:peera/main.dart';
+import 'package:peera/map/live_map.dart';
+import 'package:peera/map/loc_device.dart';
 import 'package:peera/people/person_screen.dart';
 import 'package:peera/push/push.dart';
 import 'package:peera/shell/home_shell.dart';
@@ -695,6 +697,93 @@ void main() {
   test('a notification about a Joker table or a pair opens its place', () {
     expect(PushTarget.fromData({'url': '/#jktable-12', 'kind': 'jk_invite'})?.jk, 12);
     expect(PushTarget.fromData({'url': '/#date', 'kind': 'match'})?.tab, 'date');
+  });
+
+  testWidgets('live map: who shares; my place shared by the phone with the app closed; stop; a person; back steps out', (t) async {
+    phone(t);
+    final loc = FakeLoc();
+    locDevice = loc;
+    final api = await shell(t);
+    await _tab(t, 'friends');
+    await t.tap(find.byTooltip('ლაივ რუკა'));
+    await settle(t);
+    expect(find.byType(LiveMapScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('map-p-u2')), findsOneWidget);
+    expect(find.byKey(const ValueKey('map-p-u3')), findsOneWidget);
+
+    // share with everyone for 8 hours: rough by default then, as on the site
+    await t.tap(find.byKey(const ValueKey('map-share')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('ls-aud-public')));
+    await t.tap(find.byKey(const ValueKey('ls-min-480')));
+    await t.pump();
+    await t.tap(find.byKey(const ValueKey('ls-go')));
+    await settle(t);
+    expect(loc.calls, contains('permission'));
+    expect(api.calls, contains('loc token'));
+    expect(loc.calls, contains('start tok-1 public 480 true'));
+    expect(find.byKey(const ValueKey('map-on')), findsOneWidget);
+    expect(find.textContaining('ფონზეც · ყველას · მიახლოებით'), findsOneWidget);
+    // the server has it now (the phone's service started it); the line at the bottom goes away
+    api.share = MyShare(audience: 'public', approx: true, device: true, expiresAt: DateTime.now().add(const Duration(hours: 8)));
+    await t.pump(const Duration(seconds: 5));
+    await settle(t);
+    expect(find.byKey(const ValueKey('map-on')), findsOneWidget);
+
+    // stop: the server and the phone's service both
+    await t.tap(find.byKey(const ValueKey('map-stop')));
+    await settle(t);
+    expect(api.calls, contains('loc stop'));
+    expect(loc.calls.last, 'stop');
+    expect(find.byKey(const ValueKey('map-share')), findsOneWidget);
+    await t.pump(const Duration(seconds: 5));
+    await settle(t);
+
+    // a person: the map flies there, a second tap opens the card; a message from it
+    await t.tap(find.byKey(const ValueKey('map-p-u2')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('map-p-u2')));
+    await settle(t);
+    expect(find.text('ახლა აქ არის'), findsOneWidget);
+    expect(find.textContaining('მოძრაობს'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('peek-chat')));
+    await settle(t);
+    expect(api.calls, contains('dm u2'));
+    expect(find.byType(ChatScreen), findsOneWidget);
+    await _back(t);
+    expect(find.byType(LiveMapScreen), findsOneWidget);
+    await _back(t);
+    expect(find.byType(LiveMapScreen), findsNothing);
+    expect(find.byKey(const ValueKey('seg-0')), findsOneWidget);
+  });
+
+  testWidgets('live map: the phone does not allow the location — it says so, and offers the settings', (t) async {
+    phone(t);
+    final loc = FakeLoc()..perm = 'blocked';
+    locDevice = loc;
+    final api = await shell(t);
+    await _tab(t, 'friends');
+    await t.tap(find.byTooltip('ლაივ რუკა'));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('map-share')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('ls-go')));
+    await settle(t);
+    expect(api.calls.where((c) => c == 'loc token'), isEmpty);
+    expect(find.text('ლოკაციაზე წვდომა გამორთულია. ჩართე ტელეფონის პარამეტრებში'), findsOneWidget);
+    await t.tap(find.text('პარამეტრები'));
+    await t.pump();
+    expect(loc.calls, contains('settings'));
+    await _back(t);
+  });
+
+  testWidgets('the live location notice opens the map', (t) async {
+    phone(t);
+    final loc = FakeLoc()..open = 'map';
+    locDevice = loc;
+    await shell(t);
+    await settle(t);
+    expect(find.byType(LiveMapScreen), findsOneWidget);
   });
 
   testWidgets('sign in checks the fields, then calls the server', (t) async {

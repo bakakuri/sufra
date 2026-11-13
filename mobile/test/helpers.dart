@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -9,6 +10,8 @@ import 'package:peera/auth/auth_api.dart';
 import 'package:peera/data/photos.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/joker/session.dart';
+import 'package:peera/map/live_map.dart';
+import 'package:peera/map/loc_device.dart';
 import 'package:peera/media/player.dart';
 import 'package:peera/media/video_tools.dart';
 import 'package:peera/main.dart';
@@ -60,6 +63,9 @@ void useTestImages() {
   makePlayer = (u, {bool loop = true}) => FakePlayer();
   SharedPreferences.setMockInitialValues({});
   jokerRandom = () => Random(7);
+  // the map draws no pictures in the tests (its own background shows), and the phone's location is pretend
+  mapTile = (u) => MemoryImage(_clear);
+  locDevice = FakeLoc();
   storyClock = false;
   videoPicker = () async => '/phone/clip.mp4';
   videoPrep = (path, progress) async {
@@ -223,4 +229,50 @@ class FakePush implements PushService {
 
   @override
   void dispose() => calls.add('dispose');
+}
+
+final _clear = base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=');
+
+/// a pretend phone for the live location: allowed, in Tbilisi, its service records what it was told
+class FakeLoc implements LocDevice {
+  String perm = 'granted';
+  Here? at = (lat: 41.7151, lng: 44.8271, acc: 12.0);
+  final calls = <String>[];
+  bool on = false;
+  String? open;
+
+  @override
+  Future<String> permission({bool ask = true}) async {
+    calls.add('permission');
+    return perm;
+  }
+
+  @override
+  Future<Here?> here() async => at;
+
+  @override
+  Future<bool> start({required String token, required String audience, required int minutes, required bool approx}) async {
+    calls.add('start $token $audience $minutes $approx');
+    on = true;
+    return true;
+  }
+
+  @override
+  Future<void> stop() async {
+    calls.add('stop');
+    on = false;
+  }
+
+  @override
+  Future<bool> running() async => on;
+
+  @override
+  Future<String?> takeOpen() async {
+    final o = open;
+    open = null;
+    return o;
+  }
+
+  @override
+  Future<void> settings() async => calls.add('settings');
 }

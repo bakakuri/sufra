@@ -311,6 +311,19 @@ void main() {
       await _shot(t, '33-joker-online-$k');
     });
 
+    testWidgets('the live map ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('tab-friends')));
+      await settle(t);
+      await t.tap(find.byTooltip('ლაივ რუკა'));
+      await settle(t);
+      await _shot(t, '34-map-$k');
+      await t.tap(find.byKey(const ValueKey('map-share')));
+      await settle(t);
+      await _shot(t, '35-map-share-$k');
+    });
+
     testWidgets('search ($k)', (t) async {
       phone(t);
       await shell(t, mode: m);

@@ -136,6 +136,20 @@ abstract class PeeraApi {
 
   /// the tables I sit at that are not over
   Future<List<JkTable>> jkMine();
+
+  // the live map (js/livemap.js): who shares their place with me now; who sees what is decided on the server
+
+  Future<List<LiveSpot>> liveMap();
+
+  /// my share as the server has it (null when there is none, or it ran out)
+  Future<MyShare?> myShare();
+
+  /// a secret for this phone only: its service can move or stop my place with it, nothing else
+  Future<String> locToken();
+  Future<void> locStop();
+
+  /// under 18: the place is shared with friends only
+  Future<bool> amMinor();
 }
 
 class SupaApi implements PeeraApi {
@@ -597,6 +611,39 @@ class SupaApi implements PeeraApi {
         .order('updated_at', ascending: false)
         .limit(10);
     return [for (final x in r) if (x['srv'] == true) JkTable.fromJson(x)];
+  }
+
+  @override
+  Future<List<LiveSpot>> liveMap() async {
+    final r = await sb.rpc('live_map');
+    return [for (final x in (r as List? ?? const [])) LiveSpot.fromJson(Map<String, dynamic>.from(x as Map))];
+  }
+
+  @override
+  Future<MyShare?> myShare() async {
+    final r = await sb.from('live_locations').select('audience,approx,expires_at,dev_at').eq('user_id', myId).maybeSingle();
+    if (r == null) return null;
+    final ex = DateTime.tryParse('${r['expires_at'] ?? ''}')?.toLocal();
+    if (ex != null && ex.isBefore(DateTime.now())) return null;
+    return MyShare(audience: '${r['audience'] ?? 'friends'}', approx: r['approx'] == true, expiresAt: ex, device: r['dev_at'] != null);
+  }
+
+  @override
+  Future<String> locToken() async => '${await sb.rpc('loc_device_token')}';
+
+  @override
+  Future<void> locStop() => sb.rpc('loc_stop');
+
+  @override
+  Future<bool> amMinor() async {
+    final r = await sb.rpc('my_profile');
+    final m = r is Map ? r : (r is List && r.isNotEmpty && r.first is Map ? r.first as Map : const {});
+    final b = DateTime.tryParse('${m['birthday'] ?? ''}');
+    if (b == null) return false;
+    final now = DateTime.now();
+    var age = now.year - b.year;
+    if (now.month < b.month || (now.month == b.month && now.day < b.day)) age--;
+    return age < 18;
   }
 
   @override
