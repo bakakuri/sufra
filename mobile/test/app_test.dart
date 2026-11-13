@@ -10,6 +10,9 @@ import 'package:peera/stories/stories.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/post_screen.dart';
 import 'package:peera/joker/engine.dart';
+import 'package:peera/joker/joker_tab.dart';
+import 'package:peera/joker/online.dart';
+import 'package:peera/joker/online_screen.dart';
 import 'package:peera/joker/table_screen.dart';
 import 'package:peera/main.dart';
 import 'package:peera/people/person_screen.dart';
@@ -617,6 +620,78 @@ void main() {
     await _tab(t, 'date');
     expect(find.text('გაცნობა მხოლოდ 18+ მომხმარებლებისთვისაა'), findsOneWidget);
     expect(find.byKey(const ValueKey('dating-save')), findsNothing);
+  });
+
+  testWidgets('joker with friends: a table, the length, an invitation, the start; moves go to the server; back keeps the seat', (t) async {
+    phone(t);
+    SharedPreferences.setMockInitialValues({});
+    final api = await shell(t);
+    await _tab(t, 'joker');
+    await t.scrollUntilVisible(find.byKey(const ValueKey('joker-friends-table')), 250, scrollable: find.descendant(of: find.byType(JokerTab), matching: find.byType(Scrollable)).first);
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('joker-friends-table')));
+    await settle(t);
+    expect(api.calls, contains('jk new 50'));
+    expect(find.byType(OnlineTableScreen), findsOneWidget);
+    expect(find.text('მაგიდა #50'), findsOneWidget);
+    expect(find.text('შენ'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('jlen-full')));
+    await settle(t);
+    expect(api.calls, contains('jk set 50 full'));
+    // invite a friend
+    await t.scrollUntilVisible(find.byKey(const ValueKey('jinvite')), 200, scrollable: find.descendant(of: find.byType(OnlineTableScreen), matching: find.byType(Scrollable)).first);
+    await t.tap(find.byKey(const ValueKey('jinvite')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('jfriend-u2')));
+    await t.pump();
+    await t.tap(find.byKey(const ValueKey('jinvite-send')));
+    await settle(t);
+    expect(api.calls, contains('jk invite 50 u2'));
+    // start: three bots sit down
+    await t.scrollUntilVisible(find.byKey(const ValueKey('jstart')), 200, scrollable: find.descendant(of: find.byType(OnlineTableScreen), matching: find.byType(Scrollable)).first);
+    await t.tap(find.byKey(const ValueKey('jstart')));
+    await settle(t);
+    expect(api.calls, contains('jk start 50'));
+    expect(find.byType(JokerTableScreen), findsOneWidget);
+    final j = t.widget<JokerTableScreen>(find.byType(JokerTableScreen)).session as OnlineJoker;
+    expect(find.text('რეზო'), findsNothing); // my own seat is at the bottom
+    expect(find.text('სალომე'), findsOneWidget);
+
+    // the server moves the bots each time the table is ticked; my moves go to it
+    final h0 = j.g!.h;
+    for (var i = 0; i < 120 && j.g!.h == h0; i++) {
+      if (j.myTurn) {
+        final g = j.g!;
+        if (g.phase == 'bid') {
+          final f = g.forbidden(0);
+          await t.tap(find.byKey(ValueKey('jbid-${f == 0 ? 1 : 0}')));
+        } else if (g.phase == 'trump') {
+          await t.tap(find.byKey(const ValueKey('jtrump-none')));
+        } else {
+          final c = g.legal(0).first;
+          await t.tap(find.byKey(ValueKey('jcard-${c.key}')));
+          await t.pumpAndSettle();
+          if (c.joker) await t.tap(find.byKey(ValueKey(g.trick.isEmpty ? 'jcall-hi-h' : 'jcall-hi')));
+        }
+        await t.pump();
+      }
+      await t.pump(const Duration(seconds: 1));
+    }
+    expect(j.g!.h, h0 + 1);
+    expect(api.calls.where((c) => c == 'jk act bid').length, 1);
+    expect(api.calls.where((c) => c == 'jk act card').length, greaterThanOrEqualTo(1));
+    // the hand I had is the one the server dealt
+    expect(j.g!.phase, 'handover');
+
+    // back: the table screen closes, the table is in the list
+    await _back(t);
+    expect(find.byType(OnlineTableScreen), findsNothing);
+    expect(find.byKey(const ValueKey('jtable-50')), findsOneWidget);
+  });
+
+  test('a notification about a Joker table or a pair opens its place', () {
+    expect(PushTarget.fromData({'url': '/#jktable-12', 'kind': 'jk_invite'})?.jk, 12);
+    expect(PushTarget.fromData({'url': '/#date', 'kind': 'match'})?.tab, 'date');
   });
 
   testWidgets('sign in checks the fields, then calls the server', (t) async {

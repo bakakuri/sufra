@@ -4,10 +4,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'engine.dart';
+import 'table_model.dart';
 
 /// The drawn people who sit at the card tables (the site's cast), with the name's ergative for "…მა წაიღო".
 class CastMember {
@@ -18,13 +18,23 @@ class CastMember {
 
 const cast = [
   CastMember('m1', 'გურამი', 'გურამმა'),
+  CastMember('m2', 'რეზო', 'რეზომ'),
   CastMember('m3', 'ლუკა', 'ლუკამ'),
+  CastMember('m4', 'დათო', 'დათომ'),
   CastMember('m5', 'ნიკა', 'ნიკამ'),
   CastMember('f1', 'თამარი', 'თამარმა'),
   CastMember('f2', 'ნინო', 'ნინომ'),
   CastMember('f3', 'ანა', 'ანამ'),
+  CastMember('f4', 'მარიამი', 'მარიამმა'),
+  CastMember('f5', 'სალომე', 'სალომემ'),
 ];
+
+/// the six who sit at the computer games (as on the site)
+const castFree = ['m1', 'm3', 'm5', 'f1', 'f2', 'f3'];
 CastMember castOf(String id) => cast.firstWhere((c) => c.id == id, orElse: () => cast.first);
+
+/// a bot of a server table, by the name the server gave it
+CastMember? castNamed(String name) => cast.where((c) => c.name == name).firstOrNull;
 
 /// the dice of the game (the tests hand out a fixed one)
 math.Random Function() jokerRandom = () => math.Random();
@@ -34,12 +44,13 @@ const _think = {'trump': 900, 'bid': 750, 'play': 800};
 const collectAfter = Duration(milliseconds: 1400);
 const nextHandAfter = Duration(milliseconds: 3800);
 
-class JokerSession extends ChangeNotifier {
+class JokerSession extends JokerTable {
   JokerSession({this.onOver});
 
   /// a finished game: the player won or not; answers with the coins it brought, if any
   final Future<int> Function(bool won)? onOver;
 
+  @override
   JokerGame? g;
 
   /// the player's name: nobody drawn at the table has the same first name
@@ -48,11 +59,15 @@ class JokerSession extends ChangeNotifier {
   /// who sits in seats 1–3 (left, across, right)
   List<String> seats = ['f1', 'm1', 'f2'];
   int level = 2;
-  bool hint = true, c4 = false;
+  @override
+  bool hint = true;
+  @override
+  bool c4 = false;
   bool loaded = false;
 
   /// the end of the game was told to the server (once a game)
   bool reported = false;
+  @override
   int? reward;
 
   /// the table is on screen: the bots play only then
@@ -67,7 +82,18 @@ class JokerSession extends ChangeNotifier {
   static const _kGame = 'joker.game', _kLevel = 'joker.level', _kHint = 'joker.hint', _kC4 = 'joker.c4';
 
   bool get playing => g != null && g!.phase != 'over';
+  @override
   String nameOf(int p) => castOf(seats[p - 1]).name;
+  @override
+  SeatFace faceOf(int p) => SeatFace(asset: castOf(seats[p - 1]).asset);
+  @override
+  String tookText(int p) => '${castOf(seats[p - 1]).erg} წაიღო ხელი';
+  @override
+  bool get canNext => true;
+  @override
+  bool get canAgain => true;
+  @override
+  void again() => start(g?.len ?? 'quick');
 
   Future<void> load() async {
     try {
@@ -131,7 +157,7 @@ class JokerSession extends ChangeNotifier {
     _t?.cancel();
     final rng = jokerRandom();
     final mine = myName.trim().split(' ').first;
-    final free = [for (final c in cast) if (c.name != mine) c.id]..shuffle(rng);
+    final free = [for (final c in cast) if (castFree.contains(c.id) && c.name != mine) c.id]..shuffle(rng);
     seats = free.take(3).toList();
     g = JokerGame.start(len, rng: rng);
     reported = false;
@@ -148,6 +174,7 @@ class JokerSession extends ChangeNotifier {
     _changed();
   }
 
+  @override
   set live(bool v) {
     _live = v;
     if (v) {
@@ -157,6 +184,7 @@ class JokerSession extends ChangeNotifier {
     }
   }
 
+  @override
   set hold(bool v) {
     _hold = v;
     if (!v) _step();
@@ -225,11 +253,13 @@ class JokerSession extends ChangeNotifier {
 
   // ---------- the player's moves ----------
 
+  @override
   bool get myTurn {
     final game = g;
     return game != null && game.cur == 0 && game.win == null && const ['trump', 'bid', 'play'].contains(game.phase);
   }
 
+  @override
   void myTrump(String? s) {
     final game = g;
     if (game == null || game.phase != 'trump' || !myTurn) return;
@@ -237,6 +267,7 @@ class JokerSession extends ChangeNotifier {
     _after();
   }
 
+  @override
   void myBid(int b) {
     final game = g;
     if (game == null || game.phase != 'bid' || !myTurn || b < 0 || b > game.n || b == game.forbidden(0)) return;
@@ -244,6 +275,7 @@ class JokerSession extends ChangeNotifier {
     _after();
   }
 
+  @override
   void myPlay(JCard c, {String? jm, String? js}) {
     final game = g;
     if (game == null || game.phase != 'play' || !myTurn || !game.legal(0).contains(c)) return;
@@ -252,6 +284,7 @@ class JokerSession extends ChangeNotifier {
   }
 
   /// the next hand now, without waiting
+  @override
   void nextNow() {
     final game = g;
     if (game == null || game.phase != 'handover') return;

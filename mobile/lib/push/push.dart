@@ -9,8 +9,11 @@ import '../data/api.dart';
 
 /// What a tapped notification opens: a conversation, a post, or the friends tab.
 class PushTarget {
-  const PushTarget({this.conv, this.post, this.tab});
+  const PushTarget({this.conv, this.post, this.tab, this.jk});
   final int? conv, post;
+
+  /// a Joker table someone invited me to
+  final int? jk;
   final String? tab;
 
   /// from the notification's data: the site's address (/#chat-12, /#post-34) and its kind
@@ -20,6 +23,9 @@ class PushTarget {
     if (chat != null) return PushTarget(conv: int.parse(chat.group(1)!));
     final post = RegExp(r'#post-(\d+)').firstMatch(url);
     if (post != null) return PushTarget(post: int.parse(post.group(1)!));
+    final jk = RegExp(r'#jktable-(\d+)').firstMatch(url);
+    if (jk != null) return PushTarget(jk: int.parse(jk.group(1)!));
+    if (kind == 'match' || kind == 'super' || url.endsWith('#date')) return const PushTarget(tab: 'date');
     if (kind == 'friend_req' || kind == 'friend_ok') return const PushTarget(tab: 'friends');
     return null;
   }

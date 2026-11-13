@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:peera/data/api.dart';
 import 'package:peera/data/models.dart';
 import 'package:peera/data/photos.dart';
+import 'package:peera/joker/engine.dart';
+import 'package:peera/joker/online.dart';
 import 'package:peera/media/video_tools.dart';
 import 'package:peera/profile/profile.dart';
 
@@ -271,6 +274,181 @@ class FakeApi implements PeeraApi {
   Future<int> likesMeCount() async => datingCards.where((c) => c.likedMe).length;
   @override
   Future<List<String>> matches() async => [...pairIds];
+
+  // Joker tables "on the server": the engine plays it, bots (and the other people) move when the table is ticked
+  final jk = <int, JkTable>{};
+  final _jkLive = StreamController<JkTable>.broadcast();
+  final _jkGame = <int, JokerGame>{};
+  final _jkBots = <int, List<String?>>{};
+  final _jkDeal = <int, int>{};
+  int _jkSeq = 0;
+
+  Map<String, dynamic> _jkState(int id) {
+    final g = _jkGame[id]!;
+    Map<String, dynamic> e(Play x) => {'p': x.p, 'card': cardJson(x.card), 'jm': x.jm, 'js': x.js};
+    return {
+      'srv': true,
+      'len': g.len,
+      'h': g.h,
+      'n': g.n,
+      'score': [...g.score],
+      'hist': [for (final r in g.hist) r.toJson()],
+      'bots': _jkBots[id],
+      'away': [false, false, false, false],
+      'dealer': g.dealer,
+      'deal': _jkDeal[id],
+      'seq': ++_jkSeq,
+      'phase': g.phase,
+      'cur': g.cur,
+      'bids': [...g.bids],
+      'taken': [...g.taken],
+      'trick': [for (final x in g.trick) e(x)],
+      'trump': g.trump,
+      'trumpCard': g.trumpCard == null ? null : cardJson(g.trumpCard!),
+      'counts': [for (final h in g.hands) h.length],
+      'win': g.win,
+      'last': g.lastT == null ? null : {'t': [for (final x in g.lastT!.t) e(x)], 'w': g.lastT!.w},
+      // another person's turn is over at once (the server would play for them after the time limit)
+      'dl': g.cur >= 0 && jk[id]!.seats[g.cur] != null && jk[id]!.seats[g.cur] != myId ? 1 : 0,
+      'at': 0,
+    };
+  }
+
+  void _jkPut(int id, {String? status}) {
+    final t = jk[id]!, g = _jkGame[id];
+    jk[id] = JkTable(id: id, host: t.host, len: t.len, seats: t.seats, status: status ?? (g?.phase == 'over' ? 'over' : t.status), pub: t.pub, state: g == null ? t.state : _jkState(id));
+    _jkLive.add(jk[id]!);
+  }
+
+  void _jkSeats(int id, List<String?> seats, {String? len, bool? pub}) {
+    final t = jk[id]!;
+    jk[id] = JkTable(id: id, host: t.host, len: len ?? t.len, seats: seats, status: t.status, pub: pub ?? t.pub, state: t.state);
+    _jkLive.add(jk[id]!);
+  }
+
+  @override
+  Future<JkTable?> jkTable(int id) async => jk[id];
+  @override
+  Stream<JkTable> liveJkTable(int id) => _jkLive.stream.where((t) => t.id == id);
+
+  @override
+  Future<({int seat, int deal, List<Map<String, dynamic>> cards})?> jkHand(int id) async {
+    final g = _jkGame[id], seat = jk[id]?.seats.indexOf(myId) ?? -1;
+    if (g == null || seat < 0) return null;
+    return (seat: seat, deal: _jkDeal[id]!, cards: [for (final c in g.phase == 'trump' ? g.first3[seat] : g.hands[seat]) cardJson(c)]);
+  }
+
+  @override
+  Future<Map<String, dynamic>?> jkTick(int id) async {
+    final g = _jkGame[id], t = jk[id];
+    if (g == null || t == null) return null;
+    final me = t.seats.indexOf(myId);
+    if (g.phase == 'play' && g.win != null) {
+      g.collect();
+    } else if (g.phase == 'handover') {
+      g.nextHand();
+      _jkDeal[id] = _jkDeal[id]! + 1;
+    } else if (g.cur >= 0 && g.cur != me) {
+      final p = g.cur;
+      switch (g.phase) {
+        case 'trump':
+          g.setTrump(g.botTrump(p));
+        case 'bid':
+          g.bid(p, g.botBid(p, 3));
+        case 'play':
+          final m = g.botPlay(p, 3);
+          g.play(p, m.c, jm: m.jm, js: m.js);
+      }
+    } else {
+      return jk[id]!.state;
+    }
+    _jkPut(id);
+    return jk[id]!.state;
+  }
+
+  @override
+  Future<({Map<String, dynamic> state, List<Map<String, dynamic>>? hand})> jkAct(int id, Map<String, dynamic> move) async {
+    final g = _jkGame[id]!, seat = jk[id]!.seats.indexOf(myId);
+    if (g.cur != seat) throw Exception('not_your_turn');
+    calls.add('jk act ${move['k']}');
+    switch (move['k']) {
+      case 'trump':
+        g.setTrump(move['s'] as String?);
+      case 'bid':
+        g.bid(seat, move['v'] as int);
+      case 'card':
+        final c = cardOf(move['c'] as Map);
+        if (!g.legal(seat).contains(c)) throw Exception('bad_move');
+        g.play(seat, c, jm: move['jm'] as String?, js: move['js'] as String?);
+    }
+    _jkPut(id);
+    return (state: jk[id]!.state, hand: [for (final c in g.hands[seat]) cardJson(c)]);
+  }
+
+  @override
+  Future<void> jkBack(int id) async {}
+
+  @override
+  Future<Map<String, dynamic>?> jkStart(int id) async {
+    final t = jk[id]!;
+    calls.add('jk start $id');
+    const names = ['რეზო', 'სალომე', 'დათო', 'მარიამი'];
+    _jkBots[id] = [for (var i = 0; i < 4; i++) t.seats[i] == null ? names[i] : null];
+    _jkGame[id] = JokerGame.start(t.len, rng: Random(3));
+    _jkDeal[id] = 1;
+    _jkPut(id, status: 'play');
+    return jk[id]!.state;
+  }
+
+  @override
+  Future<int> jkQuick(String len) async {
+    calls.add('jk quick $len');
+    jk[70] = JkTable(id: 70, host: 'u2', len: len, seats: const ['u2', 'u1', null, null], pub: true, state: const {'srv': true});
+    return 70;
+  }
+
+  @override
+  Future<int> jkNew() async {
+    final id = 50 + jk.length;
+    calls.add('jk new $id');
+    jk[id] = JkTable(id: id, host: myId, seats: [myId, null, null, null], state: const {'srv': true});
+    return id;
+  }
+
+  @override
+  Future<int> jkJoin(int id) async {
+    final s = [...jk[id]!.seats];
+    final i = s.indexOf(null);
+    s[i] = myId;
+    _jkSeats(id, s);
+    return i;
+  }
+
+  @override
+  Future<void> jkLeave(int id) async => _jkSeats(id, [for (final x in jk[id]!.seats) x == myId ? null : x]);
+
+  @override
+  Future<void> jkSet(int id, {String? len, bool? pub}) async {
+    calls.add('jk set $id ${len ?? ''}${pub ?? ''}');
+    _jkSeats(id, jk[id]!.seats, len: len, pub: pub);
+  }
+
+  @override
+  Future<void> jkClose(int id) async {
+    calls.add('jk close $id');
+    jk.remove(id);
+  }
+
+  @override
+  Future<int> jkInvite(int id, List<String> users) async {
+    calls.add('jk invite $id ${users.join(',')}');
+    return users.length;
+  }
+
+  @override
+  Future<List<JkTable>> jkLobby() async => [for (final t in jk.values) if (t.pub && t.status == 'wait') t];
+  @override
+  Future<List<JkTable>> jkMine() async => [for (final t in jk.values) if (t.seats.contains(myId) && t.status != 'over') t];
 
   @override
   Future<({int coins, int reward})> gameResult(String game, bool win) async {

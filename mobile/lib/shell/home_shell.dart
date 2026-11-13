@@ -12,6 +12,7 @@ import '../feed/feed_tab.dart';
 import '../feed/post_screen.dart';
 import '../dating/dating_tab.dart';
 import '../joker/joker_tab.dart';
+import '../joker/online_screen.dart';
 import '../people/friends_tab.dart';
 import '../profile/profile.dart';
 import '../profile/profile_tab.dart';
@@ -79,6 +80,13 @@ class HomeShellState extends State<HomeShell> {
         if (p == null || !ctx.mounted) return;
         await app.posts.load([p]);
         if (ctx.mounted) await openPage(ctx, PostScreen(post: p), full: true);
+      } else if (to.jk != null) {
+        final i = tabs.indexWhere((t) => t.id == 'joker');
+        if (i >= 0 && i != index) {
+          setState(() => index = i);
+          app.tab.value = i;
+        }
+        await openJokerTable(ctx, to.jk!);
       } else if (to.tab != null) {
         final i = tabs.indexWhere((t) => t.id == to.tab);
         if (i >= 0 && i != index) {

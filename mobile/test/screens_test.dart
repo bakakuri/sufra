@@ -9,6 +9,9 @@ import 'package:peera/auth/onboarding_screen.dart';
 import 'package:peera/data/models.dart';
 import 'package:peera/data/stores.dart';
 import 'package:peera/joker/engine.dart';
+import 'package:peera/joker/joker_tab.dart';
+import 'package:peera/joker/online.dart';
+import 'package:peera/joker/online_screen.dart';
 import 'package:peera/joker/session.dart';
 import 'package:peera/joker/table_screen.dart';
 import 'package:peera/main.dart';
@@ -282,6 +285,30 @@ void main() {
       await t.tap(find.byKey(const ValueKey('dseg-2')));
       await settle(t);
       await _shot(t, '30-dating-pairs-$k');
+    });
+
+    testWidgets('joker with people: the waiting room and the table ($k)', (t) async {
+      phone(t);
+      final api = FakeApi();
+      api.jk[60] = const JkTable(id: 60, host: 'u1', len: 'quick', seats: ['u1', 'u2', null, null], pub: true, state: {'srv': true});
+      await shell(t, mode: m, api: api);
+      await t.tap(find.byKey(const ValueKey('tab-joker')));
+      await settle(t);
+      await t.scrollUntilVisible(find.byKey(const ValueKey('jtable-60')), 250, scrollable: find.descendant(of: find.byType(JokerTab), matching: find.byType(Scrollable)).first);
+      await settle(t);
+      await _shot(t, '31-joker-online-list-$k');
+      await t.tap(find.byKey(const ValueKey('jtable-60')));
+      await settle(t);
+      await _shot(t, '32-joker-wait-$k');
+      await t.scrollUntilVisible(find.byKey(const ValueKey('jstart')), 200, scrollable: find.descendant(of: find.byType(OnlineTableScreen), matching: find.byType(Scrollable)).first);
+      await t.tap(find.byKey(const ValueKey('jstart')));
+      await settle(t);
+      final j = t.widget<JokerTableScreen>(find.byType(JokerTableScreen)).session as OnlineJoker;
+      for (var i = 0; i < 30 && !j.myTurn; i++) {
+        await t.pump(const Duration(seconds: 1));
+      }
+      await settle(t);
+      await _shot(t, '33-joker-online-$k');
     });
 
     testWidgets('search ($k)', (t) async {

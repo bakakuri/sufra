@@ -103,6 +103,39 @@ abstract class PeeraApi {
 
   /// the people I am a pair with, the newest first
   Future<List<String>> matches();
+
+  // Joker with people, at a table the server runs (public.jks_*, as on the site)
+
+  Future<JkTable?> jkTable(int id);
+  Stream<JkTable> liveJkTable(int id);
+
+  /// my cards at the table (the first three while a nine-card hand's trump is chosen)
+  Future<({int seat, int deal, List<Map<String, dynamic>> cards})?> jkHand(int id);
+
+  /// moves the game on where it waits for a bot, someone away, a taken trick or the next hand
+  Future<Map<String, dynamic>?> jkTick(int id);
+
+  /// my move: {k: 'bid', v} · {k: 'trump', s} · {k: 'card', c, jm, js}
+  Future<({Map<String, dynamic> state, List<Map<String, dynamic>>? hand})> jkAct(int id, Map<String, dynamic> move);
+  Future<void> jkBack(int id);
+  Future<Map<String, dynamic>?> jkStart(int id);
+
+  /// a seat at an open table of this length that waits for people, or a new one
+  Future<int> jkQuick(String len);
+
+  /// a table of my own for friends
+  Future<int> jkNew();
+  Future<int> jkJoin(int id);
+  Future<void> jkLeave(int id);
+  Future<void> jkSet(int id, {String? len, bool? pub});
+  Future<void> jkClose(int id);
+  Future<int> jkInvite(int id, List<String> users);
+
+  /// open tables that wait for people (or play now)
+  Future<List<JkTable>> jkLobby();
+
+  /// the tables I sit at that are not over
+  Future<List<JkTable>> jkMine();
 }
 
 class SupaApi implements PeeraApi {
@@ -450,6 +483,120 @@ class SupaApi implements PeeraApi {
   Future<List<String>> matches() async {
     final rows = await sb.from('matches').select('a,b,created_at').or('a.eq.$myId,b.eq.$myId').order('created_at', ascending: false);
     return [for (final r in rows) '${r['a']}' == myId ? '${r['b']}' : '${r['a']}'];
+  }
+
+  static const _jkCols = 'id,host,len,seats,status,pub,state,updated_at';
+
+  @override
+  Future<JkTable?> jkTable(int id) async {
+    final r = await sb.from('jk_tables').select(_jkCols).eq('id', id).maybeSingle();
+    return r == null ? null : JkTable.fromJson(r);
+  }
+
+  @override
+  Stream<JkTable> liveJkTable(int id) {
+    RealtimeChannel? ch;
+    late final StreamController<JkTable> out;
+    out = StreamController<JkTable>(
+      onListen: () {
+        ch = sb
+            .channel('app-jk-$id-${_id(5)}')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.update,
+              schema: 'public',
+              table: 'jk_tables',
+              filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'id', value: id),
+              callback: (pl) {
+                if (pl.newRecord.isNotEmpty && !out.isClosed) out.add(JkTable.fromJson(pl.newRecord));
+              },
+            )
+            .subscribe();
+      },
+      onCancel: () async {
+        final c = ch;
+        if (c != null) await sb.removeChannel(c);
+      },
+    );
+    return out.stream;
+  }
+
+  static List<Map<String, dynamic>> _cards(Object? x) => [for (final c in (x as List? ?? const [])) Map<String, dynamic>.from(c as Map)];
+  static Map<String, dynamic>? _map(Object? x) => x is Map ? Map<String, dynamic>.from(x) : null;
+
+  @override
+  Future<({int seat, int deal, List<Map<String, dynamic>> cards})?> jkHand(int id) async {
+    final r = _map(await sb.rpc('jks_hand', params: {'p_table': id}));
+    if (r == null) return null;
+    return (seat: asInt(r['seat'], -1), deal: asInt(r['deal'], -1), cards: _cards(r['cards']));
+  }
+
+  @override
+  Future<Map<String, dynamic>?> jkTick(int id) async => _map(await sb.rpc('jks_tick', params: {'p_table': id}));
+
+  @override
+  Future<({Map<String, dynamic> state, List<Map<String, dynamic>>? hand})> jkAct(int id, Map<String, dynamic> move) async {
+    final r = _map(await sb.rpc('jks_act', params: {'p_table': id, 'p_move': move})) ?? const {};
+    return (state: _map(r['state']) ?? <String, dynamic>{}, hand: r['hand'] == null ? null : _cards(r['hand']));
+  }
+
+  @override
+  Future<void> jkBack(int id) => sb.rpc('jks_back', params: {'p_table': id});
+
+  @override
+  Future<Map<String, dynamic>?> jkStart(int id) async => _map(await sb.rpc('jks_start', params: {'p_table': id}));
+
+  @override
+  Future<int> jkQuick(String len) async => asInt(await sb.rpc('jks_quick', params: {'p_len': len}));
+
+  @override
+  Future<int> jkNew() async {
+    final r = await sb.from('jk_tables').insert({
+      'host': myId,
+      'len': 'quick',
+      'seats': [myId, null, null, null],
+      'state': {'srv': true},
+    }).select('id').single();
+    return asInt(r['id']);
+  }
+
+  @override
+  Future<int> jkJoin(int id) async => asInt(await sb.rpc('jk_join', params: {'p_table': id}));
+
+  @override
+  Future<void> jkLeave(int id) => sb.rpc('jk_leave', params: {'p_table': id});
+
+  @override
+  Future<void> jkSet(int id, {String? len, bool? pub}) => sb.from('jk_tables').update({
+        if (len != null) 'len': len,
+        if (pub != null) 'pub': pub,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', id);
+
+  @override
+  Future<void> jkClose(int id) =>
+      sb.from('jk_tables').update({'status': 'closed', 'updated_at': DateTime.now().toUtc().toIso8601String()}).eq('id', id);
+
+  @override
+  Future<int> jkInvite(int id, List<String> users) async => asInt(await sb.rpc('jk_invite', params: {'p_table': id, 'p_users': users}));
+
+  @override
+  Future<List<JkTable>> jkLobby() async {
+    final r = await sb.rpc('jks_lobby');
+    return [for (final x in (r as List? ?? const [])) JkTable.fromJson({...Map<String, dynamic>.from(x as Map), 'srv': true})];
+  }
+
+  @override
+  Future<List<JkTable>> jkMine() async {
+    final since = DateTime.now().toUtc().subtract(const Duration(hours: 3)).toIso8601String();
+    final r = await sb
+        .from('jk_tables')
+        .select('id,host,len,seats,status,pub,updated_at,srv:state->srv')
+        .contains('seats', [myId])
+        .inFilter('status', ['wait', 'play'])
+        .gt('updated_at', since)
+        .order('updated_at', ascending: false)
+        .limit(10);
+    return [for (final x in r) if (x['srv'] == true) JkTable.fromJson(x)];
   }
 
   @override

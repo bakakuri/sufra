@@ -188,6 +188,9 @@ class JokerGame {
     return g;
   }
 
+  /// an empty game to fill from elsewhere (a server table, seen from one seat)
+  factory JokerGame.view(String len) => JokerGame._(jSeq.containsKey(len) ? len : 'quick', math.Random());
+
   final String len;
   final math.Random rng;
   int h = 0;

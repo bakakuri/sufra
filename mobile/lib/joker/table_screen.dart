@@ -11,18 +11,21 @@ import '../ui/icons.dart';
 import '../ui/widgets.dart';
 import 'cards.dart';
 import 'engine.dart';
-import 'session.dart';
+import 'table_model.dart';
 import 'sheets.dart';
 
 class JokerTableScreen extends StatefulWidget {
-  const JokerTableScreen({super.key, required this.session});
-  final JokerSession session;
+  const JokerTableScreen({super.key, required this.session, this.title});
+  final JokerTable session;
+
+  /// over the trump in the bar for a table with people (its number)
+  final String? title;
   @override
   State<JokerTableScreen> createState() => _JokerTableScreenState();
 }
 
 class _JokerTableScreenState extends State<JokerTableScreen> {
-  JokerSession get s => widget.session;
+  JokerTable get s => widget.session;
   bool _busy = false;
 
   @override
@@ -196,9 +199,17 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
 
   Widget _face(int p, double size, {bool turn = false}) {
     final ring = turn ? goldTable : Colors.white24;
-    Widget pic = p == 0
-        ? Avatar(p: context.me, size: size)
-        : ClipOval(child: Image.asset(castOf(s.seats[p - 1]).asset, width: size, height: size, fit: BoxFit.cover));
+    final f = p == 0 ? SeatFace(person: context.me) : s.faceOf(p);
+    final Widget pic = f.person != null
+        ? Avatar(p: f.person!, size: size)
+        : f.asset != null
+            ? ClipOval(child: Image.asset(f.asset!, width: size, height: size, fit: BoxFit.cover))
+            : Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .08), border: Border.all(color: Colors.white24)),
+                child: Center(child: PIcon('plus', size: size * .4, color: lightMuted)),
+              );
     return Container(
       padding: const EdgeInsets.all(2.5),
       decoration: BoxDecoration(
@@ -233,6 +244,11 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
         ]),
         const SizedBox(height: 4),
         Text(s.nameOf(p), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: light, fontSize: 13, fontWeight: FontWeight.w700)),
+        if (s.awayOf(p))
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Text('გავიდა · ბოტი თამაშობს', style: TextStyle(color: goldTable, fontSize: 10.5, fontWeight: FontWeight.w700)),
+          ),
         const SizedBox(height: 3),
         FittedBox(
           fit: BoxFit.scaleDown,
@@ -427,14 +443,14 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
   String _statusText(JokerGame g) {
     switch (g.phase) {
       case 'trump':
-        return s.myTurn ? 'პირველი სამი კარტით აირჩიე კოზირი' : '${s.nameOf(g.cur)} ირჩევს კოზირს…';
+        return s.myTurn ? 'პირველი სამი კარტით აირჩიე კოზირი${_left()}' : '${s.nameOf(g.cur)} ირჩევს კოზირს…';
       case 'bid':
         if (!s.myTurn) return '${s.nameOf(g.cur)} ამბობს…';
         final f = g.forbidden(0);
-        return 'რამდენს წაიღებ?${f >= 0 ? ' დამრიგებელი ხარ, $f-ს ვერ იტყვი' : ''}';
+        return 'რამდენს წაიღებ?${f >= 0 ? ' დამრიგებელი ხარ, $f-ს ვერ იტყვი' : ''}${_left()}';
       case 'play':
-        if (g.win != null) return g.win == 0 ? 'ეს ხელი შენ წაიღე' : '${castOf(s.seats[g.win! - 1]).erg} წაიღო ხელი';
-        return s.myTurn ? 'შენი სვლაა' : '${s.nameOf(g.cur)} ფიქრობს…';
+        if (g.win != null) return g.win == 0 ? 'ეს ხელი შენ წაიღე' : s.tookText(g.win!);
+        return s.myTurn ? 'შენი სვლაა${_left()}' : '${s.nameOf(g.cur)} ფიქრობს…';
       case 'handover':
         final l = jLast(g.hist);
         final mine = (l.hand?.p[0] ?? 0) + (l.prem?.p[0] ?? 0);
@@ -442,6 +458,12 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
       default:
         return '';
     }
+  }
+
+  /// the seconds left for my move at a table with people
+  String _left() {
+    final l = s.secondsLeft;
+    return l == null || l > 30 ? '' : ' · $l წმ';
   }
 
   Widget _status(JokerGame g) {
@@ -462,7 +484,7 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
   Widget _panel(JokerGame g) {
     if (g.phase == 'trump' && s.myTurn) return _trumpPad(g);
     if (g.phase == 'bid' && s.myTurn) return _bidPad(g);
-    if (g.phase == 'handover') {
+    if (g.phase == 'handover' && s.canNext) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
         child: Row(children: [
@@ -500,12 +522,14 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
           const SizedBox(width: 10),
           Expanded(
             flex: 2,
-            child: FilledButton(
-              key: const ValueKey('joker-again'),
-              style: FilledButton.styleFrom(backgroundColor: goldTable, foregroundColor: const Color(0xFF1A1205), minimumSize: const Size.fromHeight(48)),
-              onPressed: () => s.start(g.len),
-              child: const Text('ახალი თამაში'),
-            ),
+            child: s.canAgain
+                ? FilledButton(
+                    key: const ValueKey('joker-again'),
+                    style: FilledButton.styleFrom(backgroundColor: goldTable, foregroundColor: const Color(0xFF1A1205), minimumSize: const Size.fromHeight(48)),
+                    onPressed: s.again,
+                    child: const Text('ახალი თამაში'),
+                  )
+                : Text(s.againNote, textAlign: TextAlign.center, style: const TextStyle(color: lightMuted, fontSize: 13.5, height: 1.3)),
           ),
         ]),
       );

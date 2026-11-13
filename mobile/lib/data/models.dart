@@ -461,3 +461,38 @@ class DatingCard {
         likedMe: j['liked_me'] == true,
       );
 }
+
+/// A Joker table on the server (jk_tables): the seats (people; the empty ones get bots when it starts),
+/// 'wait' → 'play' → 'over' (or 'closed'), and the game's public state the server keeps.
+class JkTable {
+  const JkTable({
+    required this.id,
+    required this.host,
+    this.len = 'quick',
+    this.seats = const [null, null, null, null],
+    this.status = 'wait',
+    this.pub = false,
+    this.state = const {},
+    this.updatedAt,
+  });
+  final int id;
+  final String host, len, status;
+  final List<String?> seats;
+  final bool pub;
+  final Map<String, dynamic> state;
+  final DateTime? updatedAt;
+
+  int get free => seats.where((s) => s == null).length;
+  bool get srv => state['srv'] == true;
+
+  factory JkTable.fromJson(Map<String, dynamic> j) => JkTable(
+        id: asInt(j['id']),
+        host: '${j['host'] ?? ''}',
+        len: '${j['len'] ?? 'quick'}',
+        seats: [for (final s in (j['seats'] as List? ?? const [null, null, null, null])) s == null ? null : '$s'],
+        status: '${j['status'] ?? 'wait'}',
+        pub: j['pub'] == true,
+        state: j['state'] is Map ? Map<String, dynamic>.from(j['state'] as Map) : {if (j['srv'] == true) 'srv': true},
+        updatedAt: DateTime.tryParse('${j['updated_at'] ?? ''}')?.toLocal(),
+      );
+}

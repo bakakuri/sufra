@@ -2,12 +2,15 @@
 // the bots' level, the hint and the four-colour deck, and the rules.
 import 'package:flutter/material.dart';
 
+import '../data/models.dart';
 import '../data/stores.dart';
+import '../shell/tab_bar.dart';
 import '../ui/icons.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'cards.dart';
 import 'engine.dart';
+import 'online_screen.dart';
 import 'session.dart';
 import 'table_screen.dart';
 
@@ -34,23 +37,66 @@ class JokerTab extends StatefulWidget {
 
 class _JokerTabState extends State<JokerTab> {
   JokerSession? _s;
+  AppState? _app;
+
+  /// the tables with people: mine first, then the open ones (loaded each time the tab opens)
+  List<JkTable>? _tables;
+  bool _going = false;
 
   JokerSession get s => _s!;
+
+  static final _index = tabs.indexWhere((t) => t.id == 'joker');
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_s != null) return;
-    final api = context.app.api;
+    final app = _app = context.app;
+    final api = app.api;
     _s = JokerSession(onOver: (won) async => won ? (await api.gameResult('joker', true)).reward : 0)
       ..myName = context.me.name
       ..load();
+    app.tab.addListener(_shown);
+    _shown();
+  }
+
+  void _shown() {
+    if (_app?.tab.value == _index) _loadTables();
   }
 
   @override
   void dispose() {
+    _app?.tab.removeListener(_shown);
     _s?.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadTables() async {
+    final app = _app;
+    if (app == null) return;
+    try {
+      final rs = await Future.wait([app.api.jkMine(), app.api.jkLobby()]);
+      final mine = rs[0], seen = {for (final t in mine) t.id};
+      final all = [...mine, for (final t in rs[1]) if (!seen.contains(t.id)) t];
+      await app.people.ensure([for (final t in all) ...t.seats.whereType<String>()]);
+      if (mounted) setState(() => _tables = all);
+    } catch (_) {
+      if (mounted) setState(() => _tables ??= const []);
+    }
+  }
+
+  Future<void> _table(int id) async {
+    await openJokerTable(context, id, hint: s.hint, c4: s.c4);
+    _loadTables();
+  }
+
+  Future<void> _online(Future<int> Function() make) async {
+    if (_going) return;
+    setState(() => _going = true);
+    int? id;
+    await attempt(context, () async => id = await make());
+    if (mounted) setState(() => _going = false);
+    if (id != null && id! > 0 && mounted) await _table(id!);
   }
 
   Future<void> _open() => openPage(context, JokerTableScreen(session: s), full: true);
@@ -76,7 +122,9 @@ class _JokerTabState extends State<JokerTab> {
       appBar: peeraBar(context, title: 'ჯოკერი'),
       body: ListenableBuilder(
         listenable: s,
-        builder: (context, _) => ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 32), children: [
+        builder: (context, _) => RefreshIndicator(
+          onRefresh: _loadTables,
+          child: ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 32), children: [
           _hero(c),
           if (s.g != null) ...[const SizedBox(height: 14), _current(c)],
           const SizedBox(height: 22),
@@ -84,6 +132,8 @@ class _JokerTabState extends State<JokerTab> {
           const SizedBox(height: 10),
           for (final m in _modes) ...[_mode(c, m), const SizedBox(height: 10)],
           const SizedBox(height: 12),
+          _onlinePart(c),
+          const SizedBox(height: 14),
           _level(c),
           const SizedBox(height: 14),
           PCard(
@@ -122,7 +172,49 @@ class _JokerTabState extends State<JokerTab> {
             ),
           ),
         ]),
+        ),
       ),
+    );
+  }
+
+  /// with people: a quick seat at an open table, a table for friends, the tables to go back to or join
+  Widget _onlinePart(PeeraColors c) {
+    final ts = _tables ?? const <JkTable>[];
+    Widget quick(String len, String label) => Expanded(
+          child: OutlinedButton(
+            key: ValueKey('joker-online-$len'),
+            onPressed: _going ? null : () => _online(() => context.app.api.jkQuick(len)),
+            style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44), padding: const EdgeInsets.symmetric(horizontal: 4)),
+            child: FittedBox(child: Text(label)),
+          ),
+        );
+    return PCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          PIcon('users', size: 22, color: c.accent),
+          const SizedBox(width: 8),
+          const Text('ონლაინ, ადამიანებთან', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800)),
+        ]),
+        const SizedBox(height: 4),
+        Text('სწრაფი თამაში ღია მაგიდაზე გსვამს. ცარიელ ადგილებზე ბოტები ჩასხდებიან.', style: TextStyle(color: c.muted, fontSize: 13.5, height: 1.4)),
+        const SizedBox(height: 12),
+        Row(children: [quick('quick', 'სწრაფი'), const SizedBox(width: 8), quick('full', 'სრული'), const SizedBox(width: 8), quick('nines', 'ცხრიანები')]),
+        const SizedBox(height: 8),
+        FilledButton.icon(
+          key: const ValueKey('joker-friends-table'),
+          onPressed: _going ? null : () => _online(context.app.api.jkNew),
+          icon: PIcon('uadd', size: 20, color: c.onAccent),
+          label: const Text('მაგიდა მეგობრებთან'),
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+        ),
+        if (ts.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Text('მაგიდები', style: TextStyle(color: c.muted, fontSize: 13, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          for (final t in ts.take(8)) ...[JkTableTile(t: t, onTap: () => _table(t.id)), const SizedBox(height: 8)],
+        ],
+      ]),
     );
   }
 
