@@ -81,7 +81,7 @@ void main() {
     await t.tap(find.byKey(const ValueKey('story-remind')));
     await settle(t);
     expect(find.text('არ დაგავიწყდეს'), findsOneWidget);
-    expect(find.text('გიორგი კაპანაძე · დაბადების დღე'), findsOneWidget);
+    expect(find.text('🎂 დაბადების დღე'), findsOneWidget);
     await t.tap(find.byKey(ValueKey('greet-${giorgi.id}-b')));
     await settle(t);
     expect(find.byType(CardPicker), findsOneWidget);
@@ -92,7 +92,7 @@ void main() {
     await settle(t);
     expect(find.byType(CalendarScreen), findsOneWidget);
     expect(find.text(['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'][now.month - 1]), findsOneWidget);
-    expect(find.text('გიორგი კაპანაძე · დაბადების დღე'), findsOneWidget);
+    expect(find.text('🎂 დაბადების დღე'), findsOneWidget);
     await _back(t);
     expect(find.byType(CalendarScreen), findsNothing);
     expect(find.text('არ დაგავიწყდეს'), findsNothing);

@@ -450,7 +450,7 @@ Future<void> createMenu(BuildContext context, {required Future<void> Function({b
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
               mainAxisSpacing: 8,
               crossAxisSpacing: 8,
-              childAspectRatio: 2.3,
+              childAspectRatio: 2.0,
               children: [
                 for (final x in items)
                   if (admin || feat[x.$1] == null || !off.contains(feat[x.$1]))
@@ -478,7 +478,7 @@ Future<void> createMenu(BuildContext context, {required Future<void> Function({b
                             Expanded(
                               child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
                                 Text(x.$3, maxLines: 1, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-                                Text(x.$4, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 11.5)),
+                                Text(x.$4, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 11.5, height: 1.2)),
                               ]),
                             ),
                           ]),

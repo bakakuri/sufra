@@ -84,14 +84,16 @@ class MiniSvg extends StatelessWidget {
   final String svg;
   final Size view;
   @override
-  Widget build(BuildContext context) => CustomPaint(painter: _SvgPainter(svg, view, DefaultTextStyle.of(context).style.fontFamily), size: Size.infinite);
+  Widget build(BuildContext context) => CustomPaint(painter: _SvgPainter(svg, view, DefaultTextStyle.of(context).style), size: Size.infinite);
 }
 
 class _SvgPainter extends CustomPainter {
   _SvgPainter(this.svg, this.view, this.font);
   final String svg;
   final Size view;
-  final String? font;
+
+  /// the app's text style, for its font and the fonts behind it (digits, emoji)
+  final TextStyle font;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -130,7 +132,7 @@ class _SvgPainter extends CustomPainter {
       final tp = TextPainter(
         text: TextSpan(
           text: op.text.trim(),
-          style: TextStyle(color: fill, fontSize: _n(a, 'font-size', 16), fontWeight: FontWeight.values[((w ~/ 100) - 1).clamp(0, 8)], height: 1, fontFamily: font),
+          style: font.copyWith(color: fill, fontSize: _n(a, 'font-size', 16), fontWeight: FontWeight.values[((w ~/ 100) - 1).clamp(0, 8)], height: 1, decoration: TextDecoration.none),
         ),
         textDirection: TextDirection.ltr,
       )..layout();

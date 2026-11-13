@@ -66,7 +66,8 @@ class FriendDayRow extends StatelessWidget {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${whenText(e.n)} · ${e.dt.day} ${monthNames[e.dt.month - 1]}', style: TextStyle(color: e.n == 0 ? c.accent : c.muted, fontSize: 12.5, fontWeight: FontWeight.w700)),
-            Text('${e.p.name} · ${e.kind == 'b' ? 'დაბადების დღე' : 'ანგელოზის დღე, ${e.label}'}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+            Text(e.p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+            Text(e.kind == 'b' ? '🎂 დაბადების დღე' : '🕯 ანგელოზის დღე, ${e.label}', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 12.5)),
           ]),
         ),
         const SizedBox(width: 6),
@@ -114,14 +115,14 @@ class ReminderRing extends StatelessWidget {
                   child: Container(padding: const EdgeInsets.all(2), decoration: BoxDecoration(color: c.bg, shape: BoxShape.circle), child: Avatar(p: e.p, size: 54)),
                 ),
                 Positioned(
-                  left: 0,
-                  right: 0,
+                  left: -12,
+                  right: -12,
                   bottom: -6,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                       decoration: BoxDecoration(color: today ? const Color(0xFFE11D48) : const Color(0xFFF59E0B), borderRadius: BorderRadius.circular(999), border: Border.all(color: c.bg, width: 2)),
-                      child: Text(tag, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
+                      child: Text(tag, maxLines: 1, softWrap: false, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
                     ),
                   ),
                 ),

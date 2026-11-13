@@ -438,6 +438,7 @@ class _FirstStepsScreenState extends State<FirstStepsScreen> {
           DropdownButtonFormField<String>(
             key: const ValueKey('fs-region'),
             isExpanded: true,
+            icon: Transform.rotate(angle: 1.5708, child: PIcon('chev', size: 18, color: c.muted)),
             initialValue: region.isEmpty ? null : region,
             decoration: const InputDecoration(labelText: 'მშობლიური კუთხე'),
             items: [for (final r in homeRegions) DropdownMenuItem(value: r, child: Text(r))],
@@ -762,10 +763,14 @@ class _SuggestRowState extends State<SuggestRow> {
                   SizedBox(
                     width: double.infinity,
                     child: sent
-                        ? OutlinedButton(onPressed: null, style: OutlinedButton.styleFrom(minimumSize: const Size(0, 36)), child: const Text('გაგზავნილია'))
+                        ? OutlinedButton(
+                            onPressed: null,
+                            style: OutlinedButton.styleFrom(minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: 8)),
+                            child: const FittedBox(fit: BoxFit.scaleDown, child: Text('გაგზავნილია')),
+                          )
                         : FilledButton(
                             key: ValueKey('sug-add-${s.p.id}'),
-                            style: FilledButton.styleFrom(minimumSize: const Size(0, 36)),
+                            style: FilledButton.styleFrom(minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: 8)),
                             onPressed: () async {
                               setState(() => asked.add(s.p.id));
                               try {
@@ -776,7 +781,7 @@ class _SuggestRowState extends State<SuggestRow> {
                                 toast(this.context, errText(e));
                               }
                             },
-                            child: const Text('დამატება'),
+                            child: const FittedBox(fit: BoxFit.scaleDown, child: Text('დამატება')),
                           ),
                   ),
                 ]),
