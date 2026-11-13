@@ -200,7 +200,7 @@ void main() {
     final api = await shell(t);
     await _tab(t, 'friends');
     // the request waits first
-    expect(find.textContaining('გიგზავნის მეგობრობის მოთხოვნას'), findsOneWidget);
+    expect(find.textContaining('მეგობრობას გთხოვს'), findsOneWidget);
     await t.tap(find.text('დადასტურება'));
     await settle(t);
     expect(api.calls, contains('accept u5'));
@@ -961,3 +961,5 @@ void main() {
     expect(api.me['home_region'], 'იმერეთი');
   });
 }
+
+String jsonOf(JokerGame g) => g.toJson().toString();

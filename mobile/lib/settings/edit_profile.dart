@@ -333,6 +333,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 key: const ValueKey('ep-region'),
                 initialValue: region,
                 isExpanded: true,
+                icon: Transform.rotate(angle: 1.5708, child: PIcon('chev', size: 18, color: c.muted)),
                 decoration: const InputDecoration(labelText: 'მშობლიური კუთხე'),
                 items: [
                   const DropdownMenuItem(value: '', child: Text('—')),
@@ -353,6 +354,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 key: const ValueKey('ep-abroad'),
                 initialValue: abroad,
                 isExpanded: true,
+                icon: Transform.rotate(angle: 1.5708, child: PIcon('chev', size: 18, color: c.muted)),
                 decoration: const InputDecoration(labelText: 'ემიგრაციაში ვარ'),
                 items: [
                   const DropdownMenuItem(value: '', child: Text('არა')),
@@ -395,7 +397,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         if (await confirm(context, title: 'ცვლილებები არ შეინახება', text: 'გავიდე შენახვის გარეშე?', yes: 'გასვლა', danger: true)) nav.pop();
       },
       child: Scaffold(
-        appBar: peeraBar(context, title: 'პროფილის რედაქტირება', actions: [
+        appBar: peeraBar(context, title: 'რედაქტირება', actions: [
           if (m != null)
             Padding(
               padding: const EdgeInsets.only(right: 6),

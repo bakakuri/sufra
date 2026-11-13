@@ -99,7 +99,7 @@ class SRow extends StatelessWidget {
               ],
             ]),
           ),
-          trailing ?? (onTap != null && !danger ? Transform.rotate(angle: 3.14159, child: PIcon('back', size: 18, color: c.muted)) : const SizedBox.shrink()),
+          trailing ?? (onTap != null && !danger ? PIcon('chev', size: 18, color: c.muted) : const SizedBox.shrink()),
         ]),
       ),
     );
@@ -275,7 +275,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Text('პროფილის რედაქტირება', style: TextStyle(color: c.accent, fontWeight: FontWeight.w700, fontSize: 13.5)),
                     ]),
                   ),
-                  Transform.rotate(angle: 3.14159, child: PIcon('back', size: 18, color: c.muted)),
+                  PIcon('chev', size: 18, color: c.muted),
                 ]),
               ),
             ),
@@ -458,6 +458,7 @@ class _NotifSettingsScreenState extends State<NotifSettingsScreen> {
                       child: DropdownButtonFormField<int>(
                         key: ValueKey('quiet-${isFrom ? 'from' : 'to'}'),
                         initialValue: isFrom ? from : to,
+                        icon: const _Down(),
                         decoration: InputDecoration(labelText: label),
                         items: [for (var h = 0; h < 24; h++) DropdownMenuItem(value: h, child: Text(_h(h)))],
                         onChanged: (v) {
@@ -683,4 +684,11 @@ class TextScreen extends StatelessWidget {
       ]),
     );
   }
+}
+
+/// the little arrow of a drop-down list, in the app's own icons
+class _Down extends StatelessWidget {
+  const _Down();
+  @override
+  Widget build(BuildContext context) => Transform.rotate(angle: 1.5708, child: PIcon('chev', size: 18, color: context.pc.muted));
 }
