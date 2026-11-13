@@ -18,8 +18,9 @@ android {
     }
 
     defaultConfig {
-        // the test version sits beside the installed Peera app; after phase 1 it becomes my.peera.app and replaces it as an update
-        applicationId = "my.peera.app.dev"
+        // the same package as the old web-view app, signed with the same key: installing this replaces it as an update
+        // (the build number, the CI run, is far above the old app's 2)
+        applicationId = "my.peera.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         // Firebase (push notifications) needs Android 7 or newer

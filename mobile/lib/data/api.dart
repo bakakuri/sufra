@@ -11,7 +11,7 @@ import 'photos.dart';
 import '../media/video_tools.dart';
 
 /// shown beside the app's errors in the admin panel
-const appVersion = '0.4.0';
+const appVersion = '0.5.0';
 
 /// Everything the app reads and writes, from the same tables and functions the site uses.
 /// The screens only see this; the tests answer it from memory.

@@ -24,7 +24,7 @@ import '../ui/widgets.dart';
 import 'loc_device.dart';
 
 /// a map tile from the network (kept on the phone after the first time); the tests draw a picture instead
-ImageProvider Function(String url) mapTile = (u) => CachedNetworkImageProvider(u, headers: const {'User-Agent': 'Peera/0.4 (my.peera.app; www.peera.my)'});
+ImageProvider Function(String url) mapTile = (u) => CachedNetworkImageProvider(u, headers: const {'User-Agent': 'Peera/0.5 (my.peera.app; www.peera.my)'});
 
 class _Tiles extends TileProvider {
   @override

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Firebase (push notifications), what the google-services Gradle plugin would generate from google-services.json.
      These are the app's public identifiers, not secrets (they are inside every installed copy of the app).
-     google_app_id belongs to the package: this is my.peera.app.dev; the final my.peera.app has its own
-     (1:228538319269:android:f02597c8cdfbb82108284c). -->
+     google_app_id belongs to the package: this is my.peera.app (the test package my.peera.app.dev had
+     1:228538319269:android:55415d856170e89808284c). -->
 <resources>
-    <string name="google_app_id" translatable="false">1:228538319269:android:55415d856170e89808284c</string>
+    <string name="google_app_id" translatable="false">1:228538319269:android:f02597c8cdfbb82108284c</string>
     <string name="gcm_defaultSenderId" translatable="false">228538319269</string>
     <string name="google_api_key" translatable="false">AIzaSyAR9KtBxC_50rw4OzKYU1zXzd9b7VCy1eY</string>
     <string name="google_crash_reporting_api_key" translatable="false">AIzaSyAR9KtBxC_50rw4OzKYU1zXzd9b7VCy1eY</string>
