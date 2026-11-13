@@ -539,6 +539,9 @@ void main() {
     await t.tap(save);
     await settle(t);
     expect(api.calls, contains('dating on f m მთა,ყავა'));
+    // the line that says it was saved goes away by itself
+    await t.pump(const Duration(seconds: 5));
+    await settle(t);
 
     // the deck: ანა on top; a like makes a pair
     expect(find.byKey(const ValueKey('dcard-u5')), findsOneWidget);
