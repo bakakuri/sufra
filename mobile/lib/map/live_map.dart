@@ -808,19 +808,20 @@ class _ShareSheetState extends State<_ShareSheet> {
         const SizedBox(height: 16),
         Row(children: [
           Expanded(
+            flex: 2,
             child: OutlinedButton(
               key: const ValueKey('ls-cancel'),
               onPressed: () async {
                 Navigator.pop(context);
                 if (on) await widget.onStop();
               },
-              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48), foregroundColor: on ? c.nope : null),
-              child: Text(on ? 'გაჩერება' : 'გაუქმება'),
+              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48), foregroundColor: on ? c.nope : null, padding: const EdgeInsets.symmetric(horizontal: 8)),
+              child: FittedBox(child: Text(on ? 'გაჩერება' : 'გაუქმება')),
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
-            flex: 2,
+            flex: 3,
             child: FilledButton.icon(
               key: const ValueKey('ls-go'),
               onPressed: () => Navigator.pop<ShareChoice>(context, (audience: audience, minutes: minutes, approx: approx)),
