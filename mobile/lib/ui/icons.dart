@@ -220,3 +220,6 @@ class _MarkPainter extends CustomPainter {
   @override
   bool shouldRepaint(_MarkPainter o) => false;
 }
+
+/// An SVG path ("M… L… C…") as a Flutter path, for drawings outside the icon set (the greeting cards).
+Path svgPath(String d) => _svg(d);

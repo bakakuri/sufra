@@ -11,6 +11,7 @@ import '../feed/compose_screen.dart';
 import '../feed/photo_viewer.dart';
 import '../feed/post_screen.dart';
 import '../media/voice.dart';
+import '../people/cards.dart';
 import '../people/person_screen.dart';
 import '../profile/profile.dart';
 import '../ui/format.dart';
@@ -454,6 +455,11 @@ class _Bubble extends StatelessWidget {
           ),
         ),
       );
+    } else if ((m.media ?? const {})['card'] is Map) {
+      inner = Column(crossAxisAlignment: mine ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
+        GreetingCard(card: m.media!['card'] as Map, width: 220),
+        Padding(padding: const EdgeInsets.only(top: 3, left: 4, right: 4), child: Text(hhmm(m.createdAt), style: TextStyle(color: c.muted, fontSize: 11.5))),
+      ]);
     } else if (m.kind == 'voice' && '${(m.media ?? const {})['url'] ?? ''}'.isNotEmpty) {
       inner = _box(context, shape, bg, VoiceNote(url: '${m.media!['url']}', seconds: asInt(m.media!['dur']), mine: mine), time);
     } else if (post is Map) {

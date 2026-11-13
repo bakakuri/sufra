@@ -4,7 +4,15 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:peera/people/albums.dart';
+import 'package:peera/people/cards.dart';
+import 'package:peera/people/coins.dart';
+import 'package:peera/people/cv_edit.dart';
+import 'package:peera/people/edu.dart';
+import 'package:peera/people/family.dart';
 import 'package:peera/people/person_screen.dart';
+import 'package:peera/people/profile_parts.dart';
+import 'package:peera/people/verify.dart';
 import 'package:peera/auth/auth_screen.dart';
 import 'package:peera/auth/onboarding_screen.dart';
 import 'package:peera/data/models.dart';
@@ -435,6 +443,50 @@ void main() {
       await t.pump(const Duration(milliseconds: 400));
       await settle(t);
       await _shot(t, '16-search-$k');
+    });
+
+    /// a page opened over my profile, the way its button opens it
+    Future<BuildContext> onMe(WidgetTester t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('tab-me')));
+      await settle(t);
+      return t.element(find.byType(PersonScreen).first);
+    }
+
+    Future<void> page(WidgetTester t, Widget w, String name) async {
+      openPage(await onMe(t), w, full: true);
+      await settle(t);
+      await _shot(t, '$name-$k');
+    }
+
+    testWidgets('albums ($k)', (t) async => page(t, const AlbumsScreen(), '50-albums'));
+    testWidgets('an album ($k)', (t) async => page(t, const AlbumScreen(id: 1), '51-album'));
+    testWidgets('the family tree ($k)', (t) async => page(t, TreeScreen(uid: nino.id), '52-tree'));
+    testWidgets('coins ($k)', (t) async => page(t, const CoinsScreen(), '53-coins'));
+    testWidgets('my CV ($k)', (t) async => page(t, const CvEditScreen(), '54-cv-edit'));
+    testWidgets('a surname ($k)', (t) async => page(t, const SurnameScreen(surname: 'ბერიძე'), '56-surname'));
+    testWidgets('a greeting card ($k)', (t) async => page(t, CardPicker(uid: giorgi.id, toName: giorgi.name), '58-card'));
+    testWidgets('verification ($k)', (t) async => page(t, const VerifyScreen(), '59-verify'));
+    testWidgets('classmates ($k)', (t) async => page(
+        t,
+        const ClassmatesScreen(edu: [
+          {'k': 'school', 'n': '41-ე საჯარო სკოლა', 'c': 'ქუთაისი', 'y1': 2017, 'cls': 'ა', 'key': 'ქუთაისი-41'},
+        ]),
+        '60-classmates'));
+
+    testWidgets('a school added ($k)', (t) async {
+      openPage(await onMe(t), const EduScreen(), full: true);
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('edu-add')));
+      await settle(t);
+      await _shot(t, '55-edu-$k');
+    });
+
+    testWidgets('the games card ($k)', (t) async {
+      gamesCard(await onMe(t), giorgi, const JokerLine(rating: 1640, games: 38, wins: 17), mine: false);
+      await settle(t);
+      await _shot(t, '57-games-card-$k');
     });
   }
 }

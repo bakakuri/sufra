@@ -2,10 +2,10 @@
 // close friends, drafts and scheduled posts, angel's days; and opening a highlight.
 import 'package:flutter/material.dart';
 
-import '../chat/chat_screen.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
 import '../feed/compose_screen.dart';
+import '../feed/photo_viewer.dart';
 import '../feed/post_card.dart';
 import '../feed/post_screen.dart';
 import '../profile/profile.dart';
@@ -15,6 +15,7 @@ import '../ui/icons.dart';
 import '../ui/net_image.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'cards.dart';
 import 'namedays.dart';
 
 /// A highlight's stories, one after another (an empty one just says so).
@@ -224,6 +225,13 @@ class _StoryArchiveScreenState extends State<StoryArchiveScreen> {
 
   Future<void> _openPost(Post p) => openPage(context, PostScreen(post: p), full: true);
 
+  /// a photo opens in the viewer at itself, with its post's other photos beside it (extras.js pvopen)
+  Future<void> _openPhoto((Post, Media) x) {
+    final all = x.$1.media.where((m) => !m.isVideo).toList();
+    final i = all.indexOf(x.$2);
+    return openPhotos(context, all, start: i < 0 ? 0 : i);
+  }
+
   List<Widget> _body() {
     final c = context.pc, app = context.app, st = stories!;
     switch (tab) {
@@ -269,7 +277,7 @@ class _StoryArchiveScreenState extends State<StoryArchiveScreen> {
             ),
           ];
         }
-        return _months<(Post, Media)>(photos, (x) => x.$1.createdAt, (x, _) => _thumb(image: x.$2.small, onTap: () => _openPost(x.$1)), ratio: 1);
+        return _months<(Post, Media)>(photos, (x) => x.$1.createdAt, (x, _) => _thumb(image: x.$2.small, onTap: () => _openPhoto(x)), ratio: 1);
       case 'clips':
         if (clips.isEmpty) return [const Empty(icon: 'clips', title: 'კლიპები ჯერ არ არის', text: 'ატვირთე მოკლე ვიდეო და კლიპებში გამოჩნდება.')];
         return _months<Post>(clips, (p) => p.createdAt, (p, _) {
@@ -479,6 +487,63 @@ class _DraftsScreenState extends State<DraftsScreen> {
     }
   }
 
+  /// when it goes out by itself (home.js dplan): a day and a time, at least half a minute ahead
+  Future<void> _plan(Post p) async {
+    var at = DateTime.now().add(const Duration(hours: 1));
+    at = DateTime(at.year, at.month, at.day, at.hour, at.minute);
+    final when = await showModalBottomSheet<DateTime>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      backgroundColor: context.pc.surface,
+      builder: (s) => StatefulBuilder(builder: (s, set) {
+        final c = s.pc;
+        Widget pick(String key, String icon, String label, String value, VoidCallback onTap) => ListTile(
+              key: ValueKey(key),
+              leading: PIcon(icon, size: 22, color: c.accent),
+              title: Text(label, style: TextStyle(color: c.muted, fontSize: 13)),
+              subtitle: Text(value, style: TextStyle(color: c.ink, fontSize: 16, fontWeight: FontWeight.w700)),
+              onTap: onTap,
+            );
+        return SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 8), child: Text('გამოქვეყნების დრო', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+            pick('dp-day', 'cal', 'დღე', '${at.day} ${monthNames[at.month - 1]}, ${at.year}', () async {
+              final now = DateTime.now();
+              final d = await showDatePicker(context: s, initialDate: at, firstDate: DateTime(now.year, now.month, now.day), lastDate: now.add(const Duration(days: 365)));
+              if (d != null) set(() => at = DateTime(d.year, d.month, d.day, at.hour, at.minute));
+            }),
+            pick('dp-time', 'clock', 'საათი', hhmm(at), () async {
+              final t = await showTimePicker(context: s, initialTime: TimeOfDay.fromDateTime(at));
+              if (t != null) set(() => at = DateTime(at.year, at.month, at.day, t.hour, t.minute));
+            }),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: FilledButton.icon(
+                key: const ValueKey('dp-ok'),
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                onPressed: () {
+                  if (at.isBefore(DateTime.now().add(const Duration(seconds: 30)))) {
+                    toast(s, 'აირჩიე მომავალი დრო');
+                    return;
+                  }
+                  Navigator.of(s).pop(at);
+                },
+                icon: PIcon('clock', size: 18, color: c.onAccent),
+                label: const Text('დაგეგმვა'),
+              ),
+            ),
+          ]),
+        );
+      }),
+    );
+    if (when == null || !mounted) return;
+    if (await attempt(context, () => context.app.api.schedulePost(p.id, when)) && mounted) {
+      toast(context, 'დაიგეგმა: ${fullDate(when)}');
+      _load();
+    }
+  }
+
   Future<void> _delete(Post p) async {
     if (!await confirm(context, title: 'წაშლა', text: 'დრაფტი წაიშლება.', yes: 'წაშლა', danger: true) || !mounted) return;
     if (await attempt(context, () => context.app.api.deletePost(p.id))) _load();
@@ -525,6 +590,7 @@ class _DraftsScreenState extends State<DraftsScreen> {
                         icon: PIcon('send', size: 16, color: c.onAccent),
                         label: const Text('ახლავე'),
                       ),
+                      IconBtn('clock', key: ValueKey('dplan-${p.id}'), label: 'დროის შეცვლა', onTap: () => _plan(p)),
                       IconBtn('trash', label: 'წაშლა', onTap: () => _delete(p)),
                     ]),
                   ),
@@ -755,10 +821,8 @@ class _NamedaysScreenState extends State<NamedaysScreen> {
             subtitle: Text('ანგელოზის დღე დღეს', style: TextStyle(color: c.vine, fontSize: 13)),
             trailing: FilledButton(
               style: FilledButton.styleFrom(minimumSize: const Size(0, 34), padding: const EdgeInsets.symmetric(horizontal: 12)),
-              onPressed: () async {
-                final conv = await context.app.api.startDm(p.id);
-                if (context.mounted) await openChat(context, conv);
-              },
+              key: ValueKey('nd-greet-${p.id}'),
+              onPressed: () => openCardPicker(context, uid: p.id, toName: p.name, kind: 'n'),
               child: const Text('მილოცვა'),
             ),
           ),

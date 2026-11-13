@@ -21,11 +21,17 @@ import '../ui/icons.dart';
 import '../ui/net_image.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'albums.dart';
 import 'badges.dart';
+import 'coins.dart';
+import 'cv_edit.dart';
+import 'edu.dart';
+import 'family.dart';
 import 'my_space.dart';
 import 'namedays.dart';
 import 'post_grid.dart';
 import 'profile_parts.dart';
+import 'verify.dart';
 
 /// Someone's page, or mine ([ownTab]: the profile tab). [extra] goes under my coins (a note when notifications are
 /// off); [actions] in the bar.
@@ -184,6 +190,8 @@ class _PersonScreenState extends State<PersonScreen> {
       homePlace: x.homePlace,
       edu: x.edu,
       guest: m.guest,
+      gender: x.gender ?? m.gender,
+      lastBonus: m.lastBonus,
     );
   }
 
@@ -235,7 +243,8 @@ class _PersonScreenState extends State<PersonScreen> {
   /// a number under the profile: posts and friends go to their tab, the rating to Joker
   void _stat(String k) {
     if (k == 'rating') {
-      if (mine) context.app.goTab?.call('joker');
+      final who = p;
+      if (who != null) gamesCard(context, who, joker, mine: widget.uid == context.me.id);
       return;
     }
     if (k == 'friends' && mine) {
@@ -245,6 +254,82 @@ class _PersonScreenState extends State<PersonScreen> {
     _tab(k == 'mutual' ? 'friends' : k);
     final ctx = _tabsKey.currentContext;
     if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 250));
+  }
+
+  Future<void> _editEdu() async {
+    await openPage(context, const EduScreen(), full: true);
+    if (mounted) _load();
+  }
+
+  Future<void> _editCv() async {
+    final saved = await openPage<bool>(context, const CvEditScreen(), full: true);
+    if (saved == true && mounted) _loadTab('cv', force: true);
+  }
+
+  /// a saved folder: its new name, or removing it (the posts stay saved)
+  Future<void> _folderMenu(int id, String name) async {
+    final app = context.app;
+    final ctl = TextEditingController(text: name);
+    final done = await showModalBottomSheet<bool>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: context.pc.surface,
+      builder: (s) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(s).bottom),
+        child: SafeArea(
+          child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(20, 0, 20, 16), children: [
+            Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 12),
+            TextField(key: const ValueKey('fold-name'), controller: ctl, maxLength: 40, decoration: const InputDecoration(labelText: 'სახელი', counterText: '')),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                child: FilledButton(
+                  key: const ValueKey('fold-save'),
+                  style: FilledButton.styleFrom(minimumSize: const Size(0, 46)),
+                  onPressed: () async {
+                    final v = ctl.text.trim();
+                    if (v.isEmpty) return;
+                    try {
+                      await app.api.renameFolder(id, v);
+                      if (s.mounted) Navigator.of(s).pop(true);
+                    } catch (e) {
+                      if (s.mounted) toast(s, errText(e));
+                    }
+                  },
+                  child: const Text('შენახვა'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  key: const ValueKey('fold-del'),
+                  style: OutlinedButton.styleFrom(minimumSize: const Size(0, 46), foregroundColor: s.pc.nope),
+                  onPressed: () async {
+                    try {
+                      await app.api.deleteFolder(id);
+                      folder = null;
+                      if (s.mounted) Navigator.of(s).pop(true);
+                    } catch (e) {
+                      if (s.mounted) toast(s, errText(e));
+                    }
+                  },
+                  child: const Text('საქაღალდის წაშლა'),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            Text('წაშლისას პოსტები შენახულში დარჩება.', style: TextStyle(color: s.pc.muted, fontSize: 12.5)),
+          ]),
+        ),
+      ),
+    );
+    if (done == true && mounted) {
+      setState(() => saved = null);
+      _loadTab('saved', force: true);
+    }
   }
 
   Future<void> _edit() async {
@@ -300,9 +385,21 @@ class _PersonScreenState extends State<PersonScreen> {
     showChoices(context, [
       SheetItem('gift', 'საჩუქრის გაგზავნა', () => giftSheet(context, who)),
       SheetItem('share', 'პროფილის გაზიარება', () => qrSheet(context, who)),
-      SheetItem('tree', 'ოჯახის ხე', () => openSite('#tree-${who.id}')),
-      if (friend) SheetItem('users', 'ნათესავად მონიშვნა', () => openSite('#tree')),
+      SheetItem('tree', 'ოჯახის ხე', () => openPage(context, TreeScreen(uid: who.id))),
+      if (friend) SheetItem('users', 'ნათესავად მონიშვნა', () => kinAddSheet(context, uid: who.id)),
       SheetItem('flag', 'საჩივარი', () => reportSheet(context, 'user', who.id)),
+      if ((context.me.role == 'admin' || context.me.role == 'moderator') && !who.banned)
+        SheetItem('shield', 'მოდერაცია: შეზღუდვა', () async {
+          if (!await confirm(context,
+                  title: 'მომხმარებლის შეზღუდვა', text: 'შეზღუდული მომხმარებელი ვეღარ დაწერს პოსტებს, კომენტარებს და შეტყობინებებს.', yes: 'შეზღუდვა', danger: true) ||
+              !mounted) {
+            return;
+          }
+          if (await attempt(context, () => context.app.api.banUser(who.id)) && mounted) {
+            toast(context, 'შეიზღუდა');
+            _load();
+          }
+        }, danger: true),
       if (!blocked)
         SheetItem('lock', 'დაბლოკვა', () async {
           if (await blockPerson(context, who) && mounted) setState(() => blocked = true);
@@ -546,11 +643,11 @@ class _PersonScreenState extends State<PersonScreen> {
   Widget _chips(BuildContext context, Profile who, bool isMe) {
     final days = nameDaysOf(who.name, who.nameday, who.namedayLabel).map((d) => (d.$1, daysUntil(d.$1))).toList()..sort((a, b) => a.$2.compareTo(b.$2));
     final chips = <Widget>[
-      for (final e in who.edu) _Chip(icon: e['k'] == 'uni' ? 'school' : 'book', text: _eduText(e)),
-      if (isMe && who.edu.isEmpty) _Chip(icon: 'plus', text: 'სკოლა ან უნივერსიტეტი', onTap: () => openSite('#edu')),
+      for (final e in who.edu) _Chip(icon: e['k'] == 'uni' ? 'school' : 'book', text: _eduText(e), onTap: isMe ? _editEdu : null),
+      if (isMe && who.edu.isEmpty) _Chip(key: const ValueKey('chip-edu'), icon: 'plus', text: 'სკოლა ან უნივერსიტეტი', onTap: _editEdu),
       if (joker != null)
         _Chip(icon: 'cards', text: 'ჯოკერი: ${joker!.rating != null ? '${joker!.rating} რეიტინგი · ' : ''}${joker!.games} თამაში · ${joker!.wins} მოგება'),
-      if ((who.surname ?? '').isNotEmpty) _Chip(icon: 'users', text: 'გვარი: ${who.surname}', onTap: () => openSite('#surname-${Uri.encodeComponent(who.surname!)}')),
+      if ((who.surname ?? '').isNotEmpty) _Chip(key: const ValueKey('chip-surname'), icon: 'users', text: 'გვარი: ${who.surname}', onTap: () => openPage(context, SurnameScreen(surname: who.surname!))),
       if (days.isNotEmpty) _Chip(icon: 'cal', text: 'ანგელოზის დღე: ${mdText(days.first.$1)}'),
       if ((who.homePlace ?? '').isNotEmpty) _Chip(icon: 'pin', text: who.homePlace!),
     ];
@@ -677,7 +774,7 @@ class _PersonScreenState extends State<PersonScreen> {
     );
   }
 
-  /// my coins (the site's wallet card): the balance; history, rules and the shop are on the site
+  /// my coins (the site's wallet card): the balance, and whether today's bonus waits
   Widget _wallet(BuildContext context) {
     final c = context.pc, me = context.me;
     return Material(
@@ -686,7 +783,10 @@ class _PersonScreenState extends State<PersonScreen> {
       child: InkWell(
         key: const ValueKey('pro-wallet'),
         borderRadius: BorderRadius.circular(16),
-        onTap: () => openSite('#coins'),
+        onTap: () async {
+          await openPage(context, const CoinsScreen(), full: true);
+          if (mounted) setState(() {});
+        },
         child: Padding(
           padding: const EdgeInsets.fromLTRB(10, 10, 14, 10),
           child: Row(children: [
@@ -701,7 +801,8 @@ class _PersonScreenState extends State<PersonScreen> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('მონეტები', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
-                Text('ისტორია, წესები, მაღაზია', style: TextStyle(color: c.muted, fontSize: 12.5)),
+                Text(bonusWaits(me.lastBonus) ? 'დღის ბონუსი გელოდება' : 'ისტორია, წესები, ბონუსი',
+                    style: TextStyle(color: bonusWaits(me.lastBonus) ? c.accent : c.muted, fontSize: 12.5, fontWeight: bonusWaits(me.lastBonus) ? FontWeight.w700 : FontWeight.w400)),
               ]),
             ),
             Text(grouped(me.coins), style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: c.ink, fontFeatures: const [FontFeature.tabularFigures()])),
@@ -756,13 +857,14 @@ class _PersonScreenState extends State<PersonScreen> {
       child: ListenableBuilder(
         listenable: app.friends,
         builder: (context, _) => ListView(key: const ValueKey('space-row'), scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(vertical: 2), children: [
-          if (!who.verified) tile('verify', 'shield', 'ვერიფიკაცია', const Color(0xFF3E8EF7), () => openSite('#verify')),
+          if (!who.verified) tile('verify', 'shield', 'ვერიფიკაცია', const Color(0xFF3E8EF7), () => openPage(context, const VerifyScreen(), full: true)),
           tile('friends', 'users', 'მეგობრები', c.accent, () => app.goTab?.call('friends'), badge: app.friends.incoming.length),
           tile('guests', 'eye', 'სტუმრები', const Color(0xFF3E8EF7), () => guestsSheet(context, open: _openPerson, invisible: context.me.guest)),
           tile('badges', 'trophy', 'ნიშნები', c.gold, () => badgesSheet(context, who.id, who.name), note: '$got/${badgeList.length}'),
           tile('gifts', 'gift', 'საჩუქრები', c.nope, () => giftsGotSheet(context)),
           tile('stories', 'story', 'ისტორიები', c.accent, () => openPage(context, const StoryArchiveScreen(), full: true).then((_) => _load())),
-          tile('tree', 'tree', 'ოჯახის ხე', c.vine, () => openSite('#tree')),
+          tile('tree', 'tree', 'ოჯახის ხე', c.vine, () => openPage(context, TreeScreen(uid: who.id), full: true)),
+          tile('albums', 'image', 'ალბომები', c.accent, () => openPage(context, const AlbumsScreen(), full: true).then((_) => _loadTab('albums', force: true))),
           tile('close', 'star', 'ახლო მეგობრები', c.gold, () => openPage(context, const CloseFriendsScreen(), full: true)),
           tile('drafts', 'clock', 'დრაფტები', c.muted, () => openPage(context, const DraftsScreen(), full: true).then((_) => _load())),
           tile('namedays', 'cal', 'ანგელოზის დღე', c.vine, () => openPage(context, const NamedaysScreen(), full: true).then((_) => _load())),
@@ -862,21 +964,10 @@ class _PersonScreenState extends State<PersonScreen> {
             title: isMe ? 'ალბომები ჯერ არ გაქვს' : 'ალბომები ჯერ არ არის',
             text: isMe ? 'შექმენი ალბომი და მოიწვიე მეგობრები.' : null,
             action: isMe ? 'ალბომის შექმნა' : null,
-            onAction: isMe ? () => openSite('#albums') : null,
+            onAction: isMe ? () => albumForm(context, done: () => _loadTab('albums', force: true)) : null,
           );
         }
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: .86,
-            children: [for (final x in a) _AlbumCard(album: x)],
-          ),
-        );
+        return Padding(padding: const EdgeInsets.only(top: 12), child: albumGrid(a, onChanged: () => _loadTab('albums', force: true)));
       case 'cv':
         if (!cvLoaded) return wait;
         final v = cv;
@@ -887,10 +978,10 @@ class _PersonScreenState extends State<PersonScreen> {
             title: isMe ? 'CV ჯერ არ გაქვს' : 'CV არ არის გამოქვეყნებული',
             text: isMe ? 'შექმენი და ვაკანსიებზე ერთი შეხებით გამოეხმაურე.' : null,
             action: isMe ? 'CV-ის შექმნა' : null,
-            onAction: isMe ? () => openSite('#cv') : null,
+            onAction: isMe ? _editCv : null,
           );
         }
-        return CvView(cv: v, who: p!, mine: isMe);
+        return CvView(cv: v, who: p!, mine: isMe, onEdit: _editCv);
       case 'friends':
         final f = friendIds;
         if (f == null) return wait;
@@ -933,6 +1024,11 @@ class _PersonScreenState extends State<PersonScreen> {
                     },
                   ),
                 ),
+              if (folder != null)
+                IconBtn('more', key: const ValueKey('savf-menu'), label: 'საქაღალდის მართვა', size: 22, onTap: () {
+                  final f = folders.where((x) => x.$1 == folder).firstOrNull;
+                  if (f != null) _folderMenu(f.$1, f.$2);
+                }),
             ]),
           ),
           if (s == null)
@@ -969,7 +1065,7 @@ class _PersonScreenState extends State<PersonScreen> {
 }
 
 class _Chip extends StatelessWidget {
-  const _Chip({required this.icon, required this.text, this.onTap});
+  const _Chip({super.key, required this.icon, required this.text, this.onTap});
   final String icon, text;
   final VoidCallback? onTap;
   @override
@@ -994,43 +1090,14 @@ class _Chip extends StatelessWidget {
   }
 }
 
-class _AlbumCard extends StatelessWidget {
-  const _AlbumCard({required this.album});
-  final Album album;
-  @override
-  Widget build(BuildContext context) {
-    final c = context.pc;
-    return Material(
-      color: c.surface,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: c.line)),
-      child: InkWell(
-        key: ValueKey('album-${album.id}'),
-        onTap: () => openSite('#album-${album.id}'),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Expanded(
-            child: (album.cover ?? '').isNotEmpty ? PImage(album.cover!) : ColoredBox(color: c.sunk, child: Center(child: PIcon('image', size: 30, color: c.muted))),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(album.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-              Text('${album.photos} ფოტო · ${dayLabel(album.updatedAt)}', style: TextStyle(color: c.muted, fontSize: 12)),
-            ]),
-          ),
-        ]),
-      ),
-    );
-  }
-}
-
 /// A CV as the site lays it out (jobs.js cvHTML): who, the headline, about, experience, education, skills, languages,
 /// the phone; mine with who sees it and a way to edit it.
 class CvView extends StatelessWidget {
-  const CvView({super.key, required this.cv, required this.who, required this.mine});
+  const CvView({super.key, required this.cv, required this.who, required this.mine, this.onEdit});
   final Map<String, dynamic> cv;
   final Profile who;
   final bool mine;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -1083,7 +1150,7 @@ class CvView extends StatelessWidget {
             PIcon(visible ? 'eye' : 'lock', size: 16, color: visible ? c.vine : c.muted),
             const SizedBox(width: 6),
             Expanded(child: Text(visible ? 'ყველა ხედავს' : 'მხოლოდ დამსაქმებლები ხედავენ', style: TextStyle(color: c.muted, fontSize: 13))),
-            TextButton.icon(onPressed: () => openSite('#cv'), icon: PIcon('edit', size: 16, color: c.accent), label: const Text('რედაქტირება')),
+            TextButton.icon(key: const ValueKey('cv-edit'), onPressed: onEdit, icon: PIcon('edit', size: 16, color: c.accent), label: const Text('რედაქტირება')),
           ]),
         Container(
           padding: const EdgeInsets.all(14),

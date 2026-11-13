@@ -78,6 +78,23 @@ class PostStore extends Store {
     }
   }
 
+  /// a grade for a photo, shown at once and taken back if the server says no; the coins its author got
+  Future<int> grade(int id, String g) async {
+    final s = of(id), old = (s.myGrade, s.gradeN, s.gradeAvg);
+    s.setGrade(g);
+    changed();
+    try {
+      return await api.gradePhoto(id, g);
+    } catch (_) {
+      s
+        ..myGrade = old.$1
+        ..gradeN = old.$2
+        ..gradeAvg = old.$3;
+      changed();
+      rethrow;
+    }
+  }
+
   Future<void> vote(int id, int opt) async {
     final s = of(id);
     s.setVote(opt);

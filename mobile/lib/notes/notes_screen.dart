@@ -9,6 +9,11 @@ import '../data/models.dart';
 import '../data/stores.dart';
 import '../feed/post_screen.dart';
 import '../joker/online_screen.dart';
+import '../people/albums.dart';
+import '../people/coins.dart';
+import '../people/family.dart';
+import '../people/my_space.dart';
+import '../people/verify.dart';
 import '../people/person_screen.dart';
 import '../profile/profile.dart';
 import '../settings/settings_screens.dart';
@@ -108,6 +113,22 @@ class _NotesScreenState extends State<NotesScreen> {
       return;
     }
     if (k == 'admin_msg' || k == 'verified') return;
+    // the parts the app has itself; the rest still opens on the site
+    final Widget? here = k.startsWith('album_') && id('album') > 0
+        ? AlbumScreen(id: id('album'))
+        : (k == 'kin_req' || k == 'kin_ok')
+            ? TreeScreen(uid: app.api.myId)
+            : k == 'verify_rejected'
+                ? const VerifyScreen()
+                : k == 'admin_coins'
+                    ? const CoinsScreen()
+                    : (k == 'nameday_me' || k == 'birthday_me')
+                        ? const NamedaysScreen()
+                        : null;
+    if (here != null) {
+      await openPage<void>(context, here, full: true);
+      return;
+    }
     final path = noteSitePath(k, r);
     if (path != null) {
       await launchUrl(Uri.parse('$siteUrl/$path'), mode: LaunchMode.externalApplication);

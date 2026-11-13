@@ -61,3 +61,9 @@ String errText(Object e) {
   if (has('photo|FormatException')) return 'ფოტო ვერ წავიკითხე';
   return 'ვერ მოხერხდა — სცადე ხელახლა';
 }
+
+const _wdays = ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
+const _months = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
+
+/// a day and time in full, as the site writes it (core.js fdate): "ორშაბათი, 16 ნოემბერი, 14:30"
+String fullDate(DateTime t) => '${_wdays[t.weekday % 7]}, ${t.day} ${_months[t.month - 1]}, ${hhmm(t)}';

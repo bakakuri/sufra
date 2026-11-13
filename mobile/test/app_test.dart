@@ -18,9 +18,17 @@ import 'package:peera/main.dart';
 import 'package:peera/map/live_map.dart';
 import 'package:peera/map/loc_device.dart';
 import 'package:peera/media/voice.dart';
+import 'package:peera/people/albums.dart';
+import 'package:peera/people/cards.dart';
+import 'package:peera/people/coins.dart';
+import 'package:peera/people/cv_edit.dart';
+import 'package:peera/people/edu.dart';
+import 'package:peera/people/family.dart';
 import 'package:peera/people/my_space.dart';
+import 'package:peera/people/verify.dart';
 import 'package:peera/people/person_screen.dart';
 import 'package:peera/notes/notes_screen.dart';
+import 'package:peera/profile/profile.dart';
 import 'package:peera/people/namedays.dart';
 import 'package:peera/push/push.dart';
 import 'package:peera/settings/edit_profile.dart';
@@ -1225,6 +1233,390 @@ void main() {
     expect(api.calls, contains('saved 1'));
     expect(find.text('ეს საქაღალდე ცარიელია'), findsOneWidget);
     expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 6);
+  });
+
+  /// my profile tab, at the top
+  Future<FakeApi> meTab(WidgetTester t) async {
+    phone(t);
+    final api = await shell(t);
+    await _tab(t, 'me');
+    return api;
+  }
+
+  /// the button with this key, brought on screen and tapped
+  Future<void> tapKey(WidgetTester t, String key) async {
+    await t.ensureVisible(find.byKey(ValueKey(key), skipOffstage: false));
+    await settle(t);
+    await t.tap(find.byKey(ValueKey(key)));
+    await settle(t);
+  }
+
+  Future<void> calm(WidgetTester t) async {
+    await t.pump(const Duration(seconds: 5));
+    await settle(t);
+  }
+
+  testWidgets('photo grades: 1 to 5 free, 5+ tells its price once, then it is sent', (t) async {
+    phone(t);
+    final api = await shell(t);
+    await tapKey(t, 'grade-101-4');
+    expect(api.calls, contains('grade 101 4'));
+    await calm(t);
+    await tapKey(t, 'grade-101-5+');
+    expect(find.byKey(const ValueKey('plus-go')), findsOneWidget);
+    // one back closes the price, nothing is sent
+    await _back(t);
+    expect(find.byKey(const ValueKey('plus-go')), findsNothing);
+    expect(api.calls, isNot(contains('grade 101 5+')));
+    await tapKey(t, 'grade-101-5+');
+    await t.tap(find.byKey(const ValueKey('plus-go')));
+    await settle(t);
+    expect(api.calls, contains('grade 101 5+'));
+    await calm(t);
+    // the second time it is not asked again
+    await tapKey(t, 'grade-101-3');
+    await calm(t);
+    await tapKey(t, 'grade-101-5+');
+    expect(find.byKey(const ValueKey('plus-go')), findsNothing);
+    expect(api.calls.where((x) => x == 'grade 101 5+').length, 2);
+  });
+
+  testWidgets("the games card: someone's ratings with their leagues and Joker; one back closes it", (t) async {
+    phone(t);
+    await shell(t);
+    await _tab(t, 'friends');
+    await t.tap(find.byKey(const ValueKey('seg-0')));
+    await settle(t);
+    await t.tap(find.text('გიორგი კაპანაძე').first);
+    await settle(t);
+    await tapPro(t, 'stat-rating');
+    expect(find.text('სათამაშო ბარათი'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('gc-nardi')), matching: find.text('1620')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('gc-nardi')), matching: find.text('ქალაქის ჩემპიონი · 40 პარტია, 25 მოგება')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('gc-shashi')), matching: find.text('უბნის ოსტატი · ჯერ არ უთამაშია')), findsOneWidget);
+    expect(find.byKey(const ValueKey('gc-joker')), findsOneWidget);
+    expect(find.byKey(const ValueKey('gc-play')), findsNothing);
+    await _back(t);
+    expect(find.text('სათამაშო ბარათი'), findsNothing);
+    expect(find.byType(PersonScreen), findsOneWidget);
+  });
+
+  testWidgets('my games card leads to Joker', (t) async {
+    await meTab(t);
+    await tapPro(t, 'stat-rating');
+    expect(find.descendant(of: find.byKey(const ValueKey('gc-chess')), matching: find.text('1500')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('gc-play')));
+    await settle(t);
+    expect(find.text('სათამაშო ბარათი'), findsNothing);
+    expect(find.byType(JokerTab), findsOneWidget);
+  });
+
+  testWidgets('staff: someone restricted from the more menu, after asking; others do not see it', (t) async {
+    phone(t);
+    final api = FakeApi();
+    final mod = Profile(id: nino.id, name: nino.name, surname: nino.surname, username: nino.username, city: nino.city, hue: nino.hue, coins: nino.coins, onboarded: true, role: 'moderator');
+    await t.pumpWidget(PeeraApp(mode: ThemeMode.light, home: HomeShell(me: mod, api: api, onSignOut: () async {})));
+    await settle(t);
+    await _tab(t, 'friends');
+    await t.tap(find.byKey(const ValueKey('seg-0')));
+    await settle(t);
+    await t.tap(find.text('გიორგი კაპანაძე').first);
+    await settle(t);
+    await tapPro(t, 'pro-more');
+    await t.tap(find.text('მოდერაცია: შეზღუდვა'));
+    await settle(t);
+    expect(find.text('შეზღუდული მომხმარებელი ვეღარ დაწერს პოსტებს, კომენტარებს და შეტყობინებებს.'), findsOneWidget);
+    await t.tap(find.widgetWithText(TextButton, 'შეზღუდვა'));
+    await settle(t);
+    expect(api.calls, contains('ban u2'));
+    expect(find.text('შეიზღუდა'), findsOneWidget);
+  });
+
+  testWidgets('without a staff role the more menu has no restricting', (t) async {
+    phone(t);
+    await shell(t);
+    await _tab(t, 'friends');
+    await t.tap(find.byKey(const ValueKey('seg-0')));
+    await settle(t);
+    await t.tap(find.text('გიორგი კაპანაძე').first);
+    await settle(t);
+    await tapPro(t, 'pro-more');
+    expect(find.text('მოდერაცია: შეზღუდვა'), findsNothing);
+    expect(find.text('ოჯახის ხე'), findsOneWidget);
+  });
+
+  testWidgets('coins: the bonus waits on the wallet, is taken on the coins page; back returns to the profile', (t) async {
+    final api = await meTab(t);
+    expect(find.text('დღის ბონუსი გელოდება'), findsOneWidget);
+    await tapPro(t, 'pro-wallet');
+    expect(find.byType(CoinsScreen), findsOneWidget);
+    expect(find.text('12 450'), findsWidgets);
+    expect(find.text('ლარად გატანა'), findsNothing);
+    await tapKey(t, 'coins-bonus');
+    expect(api.calls, contains('bonus'));
+    expect(find.text('დღევანდელი ბონუსი აღებულია'), findsOneWidget);
+    await calm(t);
+    await _back(t);
+    expect(find.byType(CoinsScreen), findsNothing);
+    expect(find.byType(PersonScreen), findsOneWidget);
+  });
+
+  testWidgets('albums: mine opened, photos added, a friend invited, a photo viewed; a new album made; back steps out one at a time', (t) async {
+    final api = await meTab(t);
+    await proTo(t, find.byKey(const ValueKey('ptab-albums')));
+    await t.tap(find.byKey(const ValueKey('ptab-albums')));
+    await settle(t);
+    await tapKey(t, 'album-2');
+    expect(find.byType(AlbumScreen), findsOneWidget);
+    expect(find.text('ნინოს დაბადების დღე'), findsWidgets);
+    expect(find.textContaining('მხოლოდ მონაწილეები'), findsOneWidget);
+    // two photos from the gallery
+    await tapKey(t, 'alb-add');
+    expect(api.calls.where((x) => x == 'album photo 2').length, 2);
+    expect(find.text('დაემატა 2 ფოტო'), findsOneWidget);
+    await calm(t);
+    // a friend invited
+    await tapKey(t, 'alb-invite');
+    expect(find.byKey(const ValueKey('pick-u4')), findsNothing);
+    await t.tap(find.byKey(const ValueKey('pick-u3')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('pick-ok')));
+    await settle(t);
+    expect(api.calls, contains('album invite 2 u3'));
+    await calm(t);
+    // a photo opens; back closes only the photo
+    await tapKey(t, 'albp-21');
+    expect(find.byType(AlbumViewer), findsOneWidget);
+    await _back(t);
+    expect(find.byType(AlbumViewer), findsNothing);
+    expect(find.byType(AlbumScreen), findsOneWidget);
+    await _back(t);
+    expect(find.byType(AlbumScreen), findsNothing);
+    expect(find.byType(PersonScreen), findsOneWidget);
+
+    // a new album from the albums page: it opens, and back goes to the page
+    await spaceTo(t, 'albums');
+    await t.tap(find.byKey(const ValueKey('space-albums')));
+    await settle(t);
+    expect(find.byType(AlbumsScreen), findsOneWidget);
+    expect(find.text('მეგობრების ალბომები'), findsNothing);
+    expect(find.text('სადაც მონაწილე ვარ'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('albums-new')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('al-ok')));
+    await settle(t);
+    expect(find.text('ჩაწერე ალბომის სახელი'), findsOneWidget);
+    await t.enterText(find.byKey(const ValueKey('al-title')), 'ლაშქრობა თუშეთში');
+    await t.tap(find.byKey(const ValueKey('al-ok')));
+    await settle(t);
+    expect(api.calls, contains('album new ლაშქრობა თუშეთში friends'));
+    expect(find.byType(AlbumScreen), findsOneWidget);
+    expect(find.text('ალბომი ცარიელია'), findsOneWidget);
+    await _back(t);
+    expect(find.byType(AlbumScreen), findsNothing);
+    expect(find.byType(AlbumsScreen), findsOneWidget);
+    expect(find.text('ლაშქრობა თუშეთში'), findsOneWidget);
+    await _back(t);
+    expect(find.byType(PersonScreen), findsOneWidget);
+  });
+
+  testWidgets('CV: written from the empty tab; leaving with changes asks first; saved, it shows', (t) async {
+    final api = await meTab(t);
+    await proTo(t, find.byKey(const ValueKey('ptab-cv')));
+    await t.tap(find.byKey(const ValueKey('ptab-cv')));
+    await settle(t);
+    await t.ensureVisible(find.text('CV-ის შექმნა'));
+    await settle(t);
+    await t.tap(find.text('CV-ის შექმნა'));
+    await settle(t);
+    expect(find.byType(CvEditScreen), findsOneWidget);
+    await t.enterText(find.byKey(const ValueKey('cv-head')), 'ბარისტა და ფოტოგრაფი');
+    await settle(t);
+    await _back(t);
+    expect(find.text('ცვლილებები არ შეინახება'), findsOneWidget);
+    await t.tap(find.widgetWithText(TextButton, 'არა'));
+    await settle(t);
+    expect(find.byType(CvEditScreen), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('cv-add-experience')));
+    await settle(t);
+    expect(find.byKey(const ValueKey('cv-experience-1')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('cv-save')));
+    await settle(t);
+    expect(api.calls, contains('cv ბარისტა და ფოტოგრაფი'));
+    expect(api.savedCv!['languages'], ['ქართული']);
+    expect(find.byType(CvEditScreen), findsNothing);
+    expect(find.text('ბარისტა და ფოტოგრაფი'), findsOneWidget);
+  });
+
+  testWidgets('school: added from the chip, then classmates of my year and class first', (t) async {
+    final api = await meTab(t);
+    await tapKey(t, 'chip-edu');
+    expect(find.byType(EduScreen), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('edu-add')));
+    await settle(t);
+    await t.enterText(find.byKey(const ValueKey('edu-n')), '41-ე საჯარო სკოლა');
+    await t.enterText(find.byKey(const ValueKey('edu-დამთავრების წელი')), '17');
+    await t.tap(find.byKey(const ValueKey('edu-ok')));
+    await settle(t);
+    expect(find.text('წელი ოთხი ციფრით ჩაწერე'), findsOneWidget);
+    await t.enterText(find.byKey(const ValueKey('edu-დამთავრების წელი')), '2017');
+    await t.enterText(find.byKey(const ValueKey('edu-cls')), 'ა');
+    await t.tap(find.byKey(const ValueKey('edu-ok')));
+    await settle(t);
+    expect(api.calls, contains('me edu'));
+    expect(api.calls, contains('edu groups'));
+    expect((api.me['edu'] as List).single['key'], 'ქუთაისი-41');
+    expect(find.text('ქუთაისი · 2017 წლის გამოშვება · კლასი „ა“'), findsOneWidget);
+    await calm(t);
+    await t.tap(find.byKey(const ValueKey('edu-mates')));
+    await settle(t);
+    expect(api.calls, contains('mates school ქუთაისი-41'));
+    expect(find.text('კლასელები · 2017 · 1'), findsOneWidget);
+    expect(find.text('იგივე სკოლა, სხვა წელი · 1'), findsOneWidget);
+    expect(find.byKey(const ValueKey('mate-u7')), findsOneWidget);
+    await _back(t);
+    expect(find.byType(ClassmatesScreen), findsNothing);
+    await _back(t);
+    expect(find.byType(EduScreen), findsNothing);
+    expect(find.byType(PersonScreen), findsOneWidget);
+  });
+
+  testWidgets('family tree: generations with the Georgian words, a request answered, an aunt added by name, a friend asked', (t) async {
+    final api = await meTab(t);
+    await spaceTo(t, 'tree');
+    await t.tap(find.byKey(const ValueKey('space-tree')));
+    await settle(t);
+    expect(find.byType(TreeScreen), findsOneWidget);
+    expect(find.text('ბებია-ბაბუები'), findsOneWidget);
+    expect(find.text('მე და ჩემი თაობა'), findsOneWidget);
+    expect(find.text('დედა · 1968'), findsOneWidget);
+    expect(find.text('ბაბუა · 1940–2015'), findsOneWidget);
+    expect(find.text('ძმა · ელოდება'), findsOneWidget);
+    // someone asked to be in their tree
+    expect(find.text('მის ოჯახის ხეში: და ან ძმა'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('kreq-ok-50')));
+    await settle(t);
+    expect(api.calls, contains('kin answer 50 true'));
+    await calm(t);
+    // mother's sister, by name
+    await tapKey(t, 'knode-k1');
+    await t.tap(find.byKey(const ValueKey('kn-add-sibling')));
+    await settle(t);
+    await t.enterText(find.byKey(const ValueKey('kn-name')), 'ნანა ბერიძე');
+    await t.tap(find.byKey(const ValueKey('ksex-f')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('kn-ok')));
+    await settle(t);
+    expect(api.calls, contains('kin sibling ნანა ბერიძე'));
+    expect(find.text('დეიდა'), findsOneWidget);
+    await calm(t);
+    // a friend as my husband: a request goes to him
+    await t.tap(find.byKey(const ValueKey('tree-add')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('krel-spouse')));
+    await t.tap(find.byKey(const ValueKey('kwho-user')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('kfr-u2')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('kn-ok')));
+    await settle(t);
+    expect(api.calls, contains('kin spouse u2'));
+    expect(find.text('მოთხოვნა გაიგზავნა'), findsOneWidget);
+    await calm(t);
+    // a sheet closes with one back, then the tree with another
+    await tapKey(t, 'knode-k2');
+    expect(find.byKey(const ValueKey('kn-del')), findsOneWidget);
+    await _back(t);
+    expect(find.byKey(const ValueKey('kn-del')), findsNothing);
+    expect(find.byType(TreeScreen), findsOneWidget);
+    await _back(t);
+    expect(find.byType(TreeScreen), findsNothing);
+    expect(find.byType(PersonScreen), findsOneWidget);
+  });
+
+  testWidgets('surname: the chip opens its people; its group is made after asking', (t) async {
+    final api = await meTab(t);
+    await tapKey(t, 'chip-surname');
+    expect(find.byType(SurnameScreen), findsOneWidget);
+    expect(find.text('1 ადამიანი Peera-ზე'), findsOneWidget);
+    expect(find.byKey(const ValueKey('snp-u1')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('sn-group')));
+    await settle(t);
+    expect(find.text('გვარის ჯგუფის შექმნა'), findsWidgets);
+    await t.tap(find.widgetWithText(TextButton, 'შექმნა'));
+    await settle(t);
+    expect(api.calls, contains('surname group'));
+    expect(find.text('გვარის ჯგუფი'), findsOneWidget);
+    await calm(t);
+    await _back(t);
+    expect(find.byType(SurnameScreen), findsNothing);
+  });
+
+  testWidgets('a draft gets its time; a saved folder is renamed, then removed', (t) async {
+    final api = await meTab(t);
+    await spaceTo(t, 'drafts');
+    await t.tap(find.byKey(const ValueKey('space-drafts')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('dplan-150')));
+    await settle(t);
+    expect(find.text('გამოქვეყნების დრო'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('dp-ok')));
+    await settle(t);
+    expect(api.calls, contains('plan 150'));
+    expect(find.textContaining('დაიგეგმა: '), findsOneWidget);
+    await calm(t);
+    await _back(t);
+
+    await proTo(t, find.byKey(const ValueKey('ptab-saved')));
+    await t.tap(find.byKey(const ValueKey('ptab-saved')));
+    await settle(t);
+    await tapKey(t, 'savf-1');
+    await tapKey(t, 'savf-menu');
+    await t.enterText(find.byKey(const ValueKey('fold-name')), 'სასწავლო');
+    await t.tap(find.byKey(const ValueKey('fold-save')));
+    await settle(t);
+    expect(api.calls, contains('rename folder 1 სასწავლო'));
+    expect(find.text('სასწავლო'), findsOneWidget);
+    await tapKey(t, 'savf-menu');
+    await t.tap(find.byKey(const ValueKey('fold-del')));
+    await settle(t);
+    expect(api.calls, contains('delete folder 1'));
+    expect(find.byKey(const ValueKey('savf-1')), findsNothing);
+    expect(find.byKey(const ValueKey('savf-menu')), findsNothing);
+  });
+
+  testWidgets('a greeting card: chosen and sent; the conversation takes its place, so one back leaves both', (t) async {
+    final api = await meTab(t);
+    openCardPicker(t.element(find.byType(PersonScreen)), uid: giorgi.id, toName: giorgi.name);
+    await settle(t);
+    expect(find.byType(CardPicker), findsOneWidget);
+    await tapKey(t, 'card-send');
+    expect(api.calls.where((x) => x.startsWith('card u2 ')), isNotEmpty);
+    expect(find.byType(CardPicker), findsNothing);
+    expect(find.byType(ChatScreen), findsOneWidget);
+    expect(find.byType(GreetingCard), findsWidgets);
+    await calm(t);
+    await _back(t);
+    expect(find.byType(ChatScreen), findsNothing);
+    expect(find.byType(CardPicker), findsNothing);
+    expect(find.byType(PersonScreen), findsOneWidget);
+  });
+
+  testWidgets('verification: a selfie taken and sent, then it waits', (t) async {
+    final api = await meTab(t);
+    await spaceTo(t, 'verify');
+    await t.tap(find.byKey(const ValueKey('space-verify')));
+    await settle(t);
+    expect(find.byType(VerifyScreen), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('verify-take')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('verify-send')));
+    await settle(t);
+    expect(api.calls.where((x) => x.startsWith('verify ')), isNotEmpty);
+    expect(find.text('განაცხადი განხილვაშია'), findsOneWidget);
+    await calm(t);
+    await _back(t);
+    expect(find.byType(VerifyScreen), findsNothing);
   });
 }
 

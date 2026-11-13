@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../clips/clip_feed.dart';
@@ -97,6 +98,7 @@ class _PostView extends StatelessWidget {
             ),
           ),
         if (hasMedia) _Gallery(post: post),
+        if (post.media.any((m) => !m.isVideo)) _Grades(post: post),
         if (post.poll != null) Padding(padding: const EdgeInsets.fromLTRB(14, 10, 14, 4), child: _PollView(post: post)),
         if (quote)
           Padding(
@@ -571,4 +573,137 @@ Future<String?> pickReaction(BuildContext context, Rect? anchor) {
       child: ScaleTransition(scale: Tween(begin: .85, end: 1.0).animate(CurvedAnimation(parent: a, curve: Curves.easeOutBack)), child: child),
     ),
   );
+}
+
+/// The 5+ price (the admin sets it; half goes to the photo's author), asked once a session.
+Future<int>? _plusCost;
+Future<int> plusCost(AppState app) => _plusCost ??= app.api.myCoins().then((m) => m['plus_cost'] == null ? 50 : asInt(m['plus_cost'])).catchError((_) {
+      _plusCost = null;
+      return 50;
+    });
+
+/// A photo's grade, as on the site: 1 to 5 free, 5+ for coins (the first time it says so first); the average under it.
+/// The author sees only the average.
+class _Grades extends StatelessWidget {
+  const _Grades({required this.post});
+  final Post post;
+
+  Future<void> _grade(BuildContext context, String g) async {
+    final app = context.app, s = app.posts.of(post.id);
+    if (s.myGrade == g) return;
+    if (g == '5+') {
+      final cost = await plusCost(app);
+      if (!context.mounted) return;
+      var told = false;
+      try {
+        told = (await SharedPreferences.getInstance()).getBool('plus5') == true;
+      } catch (_) {}
+      if (cost > 0 && !told) {
+        if (!context.mounted) return;
+        final coins = context.me.coins;
+        final ok = await showModalBottomSheet<bool>(
+          context: context,
+          useRootNavigator: true,
+          showDragHandle: true,
+          backgroundColor: context.pc.surface,
+          builder: (sh) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                const Text('„5+“ მონეტებით', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 10),
+                Text.rich(TextSpan(children: [
+                  const TextSpan(text: '„5+“-ის დაწერა '),
+                  TextSpan(text: '${grouped(cost)} მონეტა', style: const TextStyle(fontWeight: FontWeight.w800)),
+                  const TextSpan(text: ' ღირს. ნახევარი ფოტოს ავტორს მიდის საჩუქრად.'),
+                ])),
+                const SizedBox(height: 8),
+                Text('ერთ პოსტზე ერთხელ იხდი: შეფასებას თუ შეცვლი და ისევ „5+“-ს დაწერ, აღარ ჩამოგეჭრება. 1-დან 5-მდე შეფასება ისევ უფასოა.',
+                    style: TextStyle(color: sh.pc.muted, fontSize: 13.5, height: 1.4)),
+                const SizedBox(height: 8),
+                Text('ბალანსი: ${grouped(coins)} მონეტა', style: TextStyle(color: sh.pc.muted, fontSize: 13.5)),
+                const SizedBox(height: 14),
+                Row(children: [
+                  Expanded(child: OutlinedButton(onPressed: () => Navigator.of(sh).pop(false), child: const Text('გაუქმება'))),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton(
+                      key: const ValueKey('plus-go'),
+                      onPressed: coins < cost ? null : () => Navigator.of(sh).pop(true),
+                      child: FittedBox(child: Text(coins < cost ? 'მონეტები არ გყოფნის' : '„5+“ · ${grouped(cost)} მონეტა')),
+                    ),
+                  ),
+                ]),
+              ]),
+            ),
+          ),
+        );
+        if (ok != true) return;
+        try {
+          await (await SharedPreferences.getInstance()).setBool('plus5', true);
+        } catch (_) {}
+      }
+    }
+    if (!context.mounted) return;
+    final prev = s.myGrade;
+    try {
+      final paid = await app.posts.grade(post.id, g);
+      if (g == '5+') app.refreshMe?.call();
+      if (context.mounted) {
+        toast(context, (prev != null ? 'შეფასება შეიცვალა' : (g == '5+' ? '„5+“ გაიგზავნა' : 'შეფასება გაიგზავნა')) + (paid > 0 ? ' · ავტორს +$paid მონეტა' : ''));
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      final cost = await plusCost(app);
+      if (context.mounted) toast(context, '$e'.contains('not_enough_coins') ? '„5+“ ${grouped(cost)} მონეტა ღირს: მონეტები არ გყოფნის' : errText(e));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.pc, store = context.app.posts, mine = post.author == context.me.id;
+    return ListenableBuilder(
+      listenable: store,
+      builder: (context, _) {
+        final s = store.of(post.id);
+        final sum = s.gradeN > 0 && s.gradeAvg != null ? 'საშ. ${s.gradeAvg} · ${s.gradeN}' : null;
+        if (mine && sum == null) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+          // as on the site, it wraps when the line is too narrow
+          child: Wrap(crossAxisAlignment: WrapCrossAlignment.center, runSpacing: 4, children: [
+            Padding(padding: const EdgeInsets.only(right: 6), child: Text('შეფასება', style: TextStyle(color: c.muted, fontSize: 12))),
+            if (!mine)
+              for (final g in const ['1', '2', '3', '4', '5', '5+'])
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Material(
+                    color: s.myGrade == g ? c.gold : Colors.transparent,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7), side: BorderSide(color: s.myGrade == g || g == '5+' ? c.gold : c.line)),
+                    child: InkWell(
+                      key: ValueKey('grade-${post.id}-$g'),
+                      borderRadius: BorderRadius.circular(7),
+                      onTap: () => _grade(context, g),
+                      child: Container(
+                        constraints: const BoxConstraints(minWidth: 30),
+                        height: 26,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        alignment: Alignment.center,
+                        child: Text(g,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                              color: s.myGrade == g ? const Color(0xFF1A1205) : (g == '5+' ? c.gold : c.ink),
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            )),
+                      ),
+                    ),
+                  ),
+                ),
+            if (sum != null) Padding(padding: const EdgeInsets.only(left: 4), child: Text(sum, style: TextStyle(color: c.muted, fontSize: 12))),
+          ]),
+        );
+      },
+    );
+  }
 }

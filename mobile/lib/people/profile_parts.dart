@@ -18,8 +18,13 @@ import '../ui/icons.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'badges.dart';
+import 'coins.dart';
 
-Future<void> openSite(String path) => launchUrl(Uri.parse('$siteUrl/$path'), mode: LaunchMode.externalApplication);
+Future<void> openSite(String path) async {
+  try {
+    await launchUrl(Uri.parse('$siteUrl/$path'), mode: LaunchMode.externalApplication);
+  } catch (_) {}
+}
 
 /// a profile's address on the site (what the QR code holds)
 String profileLink(String uid) => '$siteUrl/#user-$uid';
@@ -440,7 +445,7 @@ Future<void> giftSheet(BuildContext context, Profile to) {
                   if (!s.mounted) return;
                   if ('$e'.contains('not_enough')) {
                     toast(s, 'მონეტები არ გყოფნის');
-                    openSite('#coins');
+                    openPage(context, const CoinsScreen(), full: true);
                   } else {
                     toast(s, errText(e));
                   }
@@ -570,6 +575,109 @@ Future<void> qrSheet(BuildContext context, Profile p) {
           ),
         ]),
       ]);
+    },
+  );
+}
+
+const gameLeagues = [(0, 'ეზოს მოთამაშე'), (1450, 'უბნის ოსტატი'), (1550, 'ქალაქის ჩემპიონი'), (1650, 'კუთხის ჩემპიონი'), (1800, 'საქართველოს ჩემპიონი')];
+const ratedGames = [('nardi', 'ნარდი'), ('shashi', 'შაში'), ('chess', 'ჭადრაკი')];
+
+/// the league a rating belongs to
+String gameLeague(int r) {
+  var n = gameLeagues.first.$2;
+  for (final (x, t) in gameLeagues) {
+    if (r >= x) n = t;
+  }
+  return n;
+}
+
+/// The games card (games-core.js): the picture, the rating of each game with its league, Joker, and for me the way to play.
+Future<void> gamesCard(BuildContext context, Profile who, JokerLine? joker, {required bool mine}) {
+  final app = context.app;
+  final rows = app.api.gameRatings(who.id).then<List<(String, int, int, int)>?>((r) => r, onError: (_) => null);
+  return showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: context.pc.surface,
+    builder: (s) {
+      final c = s.pc;
+      Widget cell(String key, String big, String name, String small) => Expanded(
+            child: Container(
+              key: ValueKey(key),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+              decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(16)),
+              child: Column(children: [
+                Text(big, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
+                Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                const SizedBox(height: 2),
+                Text(small, textAlign: TextAlign.center, maxLines: 3, style: TextStyle(color: c.muted, fontSize: 11, height: 1.25)),
+              ]),
+            ),
+          );
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const Text('სათამაშო ბარათი', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 12),
+            Center(child: Avatar(p: who, size: 84)),
+            const SizedBox(height: 8),
+            Text(who.name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 12),
+            FutureBuilder<List<(String, int, int, int)>?>(
+              future: rows,
+              builder: (s, snap) {
+                if (snap.connectionState != ConnectionState.done) return const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator(strokeWidth: 2.4)));
+                final got = snap.data;
+                if (got == null) {
+                  final r = who.rating ?? 1500;
+                  return Row(children: [cell('gc-all', '$r', 'რეიტინგი', gameLeague(r))]);
+                }
+                return Row(children: [
+                  for (final (g, n) in ratedGames)
+                    () {
+                      final r = got.where((x) => x.$1 == g).firstOrNull;
+                      final rt = r?.$2 ?? 1500;
+                      return cell('gc-$g', '$rt', n, '${gameLeague(rt)} · ${r != null && r.$3 > 0 ? '${r.$3} პარტია, ${r.$4} მოგება' : 'ჯერ არ უთამაშია'}');
+                    }(),
+                ]);
+              },
+            ),
+            if (joker != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                key: const ValueKey('gc-joker'),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(16)),
+                child: Row(children: [
+                  PIcon('cards', size: 22, color: c.accent),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text('ჯოკერი: ${joker.rating != null ? '${joker.rating} რეიტინგი · ' : ''}${joker.games} თამაში · ${joker.wins} მოგება',
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ]),
+              ),
+            ],
+            if (mine) ...[
+              const SizedBox(height: 14),
+              FilledButton.icon(
+                key: const ValueKey('gc-play'),
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                onPressed: () {
+                  Navigator.of(s).pop();
+                  app.goTab?.call('joker');
+                },
+                icon: PIcon('play', size: 18, color: c.onAccent),
+                label: const Text('თამაში'),
+              ),
+            ],
+          ]),
+        ),
+      );
     },
   );
 }

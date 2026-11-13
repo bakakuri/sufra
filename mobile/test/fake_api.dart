@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:peera/data/api.dart';
 import 'package:peera/data/models.dart';
@@ -690,8 +691,7 @@ class FakeApi implements PeeraApi {
       ];
 
   @override
-  Future<List<Album>> albums(String uid) async =>
-      uid == giorgi.id ? [Album(id: 1, owner: giorgi.id, title: 'სვანეთი 2026', cover: 'https://t/hills.jpg', photos: 24, updatedAt: DateTime.now().subtract(const Duration(days: 3)))] : const [];
+  Future<List<Album>> albums(String uid) async => [for (final r in albumRows.values) if (r['owner'] == uid) _album(r)];
 
   @override
   Future<Map<String, dynamic>?> cv(String uid) async => uid == giorgi.id
@@ -709,7 +709,7 @@ class FakeApi implements PeeraApi {
           'phone': '+995 555 12 34 56',
           'visible': true,
         }
-      : null;
+      : (uid == myId ? savedCv : null);
 
   @override
   Future<List<String>> friendsOf(String uid) async => uid == giorgi.id ? [nino.id, mariam.id, luka.id] : [for (final r in _rels) if (r.accepted) r.otherThan(uid)];
@@ -720,8 +720,9 @@ class FakeApi implements PeeraApi {
     return folder == null ? _posts.where((p) => p.id == 101 || p.id == 103).toList() : const [];
   }
 
+  final folderList = <(int, String)>[(1, 'კონსპექტები')];
   @override
-  Future<List<(int, String)>> saveFolders() async => const [(1, 'კონსპექტები')];
+  Future<List<(int, String)>> saveFolders() async => [...folderList];
 
   @override
   Future<List<Visit>> guests() async => [
@@ -768,4 +769,288 @@ class FakeApi implements PeeraApi {
       ];
   @override
   Future<void> publishNow(int postId) async => calls.add('publish $postId');
+
+  @override
+  Future<void> schedulePost(int postId, DateTime at) async => calls.add('plan $postId');
+
+  @override
+  Future<void> renameFolder(int id, String name) async {
+    calls.add('rename folder $id $name');
+    final i = folderList.indexWhere((f) => f.$1 == id);
+    if (i >= 0) folderList[i] = (id, name);
+  }
+
+  @override
+  Future<void> deleteFolder(int id) async {
+    calls.add('delete folder $id');
+    folderList.removeWhere((f) => f.$1 == id);
+  }
+
+  @override
+  Future<int> gradePhoto(int postId, String grade) async {
+    calls.add('grade $postId $grade');
+    return grade == '5+' ? 50 : 0;
+  }
+
+  @override
+  Future<void> banUser(String uid) async => calls.add('ban $uid');
+
+  @override
+  Future<List<(String, int, int, int)>> gameRatings(String uid) async => uid == giorgi.id ? const [('nardi', 1620, 40, 25), ('chess', 1480, 10, 4)] : const [];
+
+  @override
+  Future<int> sendCard(String uid, Map<String, dynamic> card) async {
+    calls.add('card $uid ${card['d']} ${card['to']}');
+    final conv = _chats.where((c) => c.other == uid).firstOrNull?.convId ?? 1;
+    await send(conv, body: '🎉 მისალოცი ბარათი', media: {'card': card});
+    return conv;
+  }
+
+  // ---- coins ----
+
+  String? lastBonus;
+  int bonusStreak = 2;
+
+  @override
+  Future<Map<String, dynamic>> myCoins() async {
+    final now = DateTime.now().toUtc().add(const Duration(hours: 4));
+    final today = now.toIso8601String().substring(0, 10), yest = now.subtract(const Duration(days: 1)).toIso8601String().substring(0, 10);
+    return {
+      'coins': me['coins'],
+      'rate': 10000,
+      'today': 35,
+      'daily_max': 150,
+      'by': {'post': 20, 'comment': 15},
+      'done': ['avatar'],
+      'promo': false,
+      'day': today,
+      'last_bonus': lastBonus ?? yest,
+      'streak': bonusStreak,
+      'plus_cost': 50,
+    };
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> coinRules() async => const [
+        {'action': 'post', 'page': 'home', 'label': 'პოსტის დაწერა', 'amount': 10, 'day_cap': 30, 'active': true},
+        {'action': 'comment', 'page': 'home', 'label': 'კომენტარი', 'amount': 5, 'day_cap': 25, 'active': true},
+        {'action': 'avatar', 'page': 'me', 'label': 'პროფილის ფოტო', 'hint': 'ერთხელ', 'amount': 50, 'once': true, 'active': true},
+        {'action': 'story', 'page': 'stories', 'label': 'ისტორიის დადება', 'amount': 5, 'day_cap': 15, 'active': true},
+      ];
+
+  @override
+  Future<List<Map<String, dynamic>>> coinLog() async => [
+        {'label': 'პოსტის დაწერა', 'amount': 10, 'n': 2, 'created_at': DateTime.now().subtract(const Duration(hours: 2)).toUtc().toIso8601String()},
+        {'label': 'საჩუქარი', 'amount': -300, 'created_at': DateTime.now().subtract(const Duration(days: 1)).toUtc().toIso8601String()},
+      ];
+
+  @override
+  Future<Map<String, dynamic>> dailyBonus() async {
+    calls.add('bonus');
+    lastBonus = DateTime.now().toUtc().add(const Duration(hours: 4)).toIso8601String().substring(0, 10);
+    bonusStreak++;
+    me['coins'] = (me['coins'] as int) + 5;
+    return {'coins': me['coins'], 'got': 5, 'streak': bonusStreak};
+  }
+
+  // ---- albums ----
+
+  final albumRows = <int, Map<String, dynamic>>{
+    1: {'id': 1, 'owner': 'u2', 'title': 'სვანეთი 2026', 'about': 'ლაშქრობა უშგულამდე', 'audience': 'friends', 'photos': 2},
+    2: {'id': 2, 'owner': 'u1', 'title': 'ნინოს დაბადების დღე', 'about': null, 'audience': 'members', 'photos': 1},
+  };
+  final albumPics = <int, List<Map<String, dynamic>>>{
+    1: [
+      {'id': 11, 'added_by': 'u2', 'url': 'https://t/hills.jpg', 'md': 'https://t/hills.jpg', 'sm': 'https://t/hills.jpg', 'created_at': DateTime.now().subtract(const Duration(days: 3)).toUtc().toIso8601String()},
+      {'id': 12, 'added_by': 'u1', 'url': 'https://t/sea.jpg', 'md': 'https://t/sea.jpg', 'sm': 'https://t/sea.jpg', 'created_at': DateTime.now().subtract(const Duration(days: 2)).toUtc().toIso8601String()},
+    ],
+    2: [
+      {'id': 21, 'added_by': 'u1', 'url': 'https://t/food.jpg', 'md': 'https://t/food.jpg', 'sm': 'https://t/food.jpg', 'created_at': DateTime.now().subtract(const Duration(days: 1)).toUtc().toIso8601String()},
+    ],
+  };
+  final albumPeople = <int, List<String>>{
+    1: ['u1', 'u3'],
+    2: ['u4'],
+  };
+  var _albumId = 10, _albumPic = 100;
+
+  Album _album(Map<String, dynamic> r) => Album(
+        id: r['id'] as int,
+        owner: '${r['owner']}',
+        title: '${r['title']}',
+        cover: albumPics[r['id']]?.firstOrNull?['sm'] as String?,
+        photos: albumPics[r['id']]?.length ?? 0,
+        updatedAt: DateTime.now().subtract(Duration(days: r['id'] as int)),
+      );
+
+  @override
+  Future<(List<Album>, List<Album>, List<Album>)> albumsPage() async {
+    final all = albumRows.values.map(_album).toList();
+    return (
+      all.where((a) => a.owner == myId).toList(),
+      all.where((a) => a.owner != myId && (albumPeople[a.id] ?? const []).contains(myId)).toList(),
+      all.where((a) => a.owner != myId && !(albumPeople[a.id] ?? const []).contains(myId)).toList(),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>?> album(int id) async => albumRows[id] == null ? null : {...albumRows[id]!, 'photos': albumPics[id]?.length ?? 0};
+  @override
+  Future<List<Map<String, dynamic>>> albumPhotos(int id) async => [...?albumPics[id]];
+  @override
+  Future<List<String>> albumMembers(int id) async => [...?albumPeople[id]];
+  @override
+  Future<bool> albumCanAdd(int id) async => albumRows[id]?['owner'] == myId || (albumPeople[id] ?? const []).contains(myId);
+
+  @override
+  Future<int> createAlbum(String title, String? about, String audience) async {
+    final id = ++_albumId;
+    calls.add('album new $title $audience');
+    albumRows[id] = {'id': id, 'owner': myId, 'title': title, 'about': about, 'audience': audience, 'photos': 0};
+    return id;
+  }
+
+  @override
+  Future<void> updateAlbum(int id, String title, String? about, String audience) async {
+    calls.add('album edit $id $title');
+    albumRows[id] = {...albumRows[id]!, 'title': title, 'about': about, 'audience': audience};
+  }
+
+  @override
+  Future<void> deleteAlbum(int id) async {
+    calls.add('album delete $id');
+    albumRows.remove(id);
+  }
+
+  @override
+  Future<Map<String, dynamic>> addAlbumPhoto(int id, Media m) async {
+    calls.add('album photo $id');
+    final row = {'id': ++_albumPic, 'added_by': myId, 'url': m.url, 'md': m.md ?? m.url, 'sm': m.sm ?? m.url, 'created_at': DateTime.now().toUtc().toIso8601String()};
+    (albumPics[id] ??= []).insert(0, row);
+    return row;
+  }
+
+  @override
+  Future<void> deleteAlbumPhoto(int photoId) async {
+    calls.add('album photo delete $photoId');
+    for (final l in albumPics.values) {
+      l.removeWhere((r) => r['id'] == photoId);
+    }
+  }
+
+  @override
+  Future<void> inviteToAlbum(int id, List<String> uids) async {
+    calls.add('album invite $id ${uids.join(',')}');
+    (albumPeople[id] ??= []).addAll(uids);
+  }
+
+  @override
+  Future<void> removeFromAlbum(int id, String uid) async {
+    calls.add('album remove $id $uid');
+    albumPeople[id]?.remove(uid);
+  }
+
+  // ---- CV, education ----
+
+  Map<String, dynamic>? savedCv;
+  @override
+  Future<void> saveCv(Map<String, dynamic> cv) async {
+    calls.add('cv ${cv['headline']}');
+    savedCv = cv;
+  }
+
+  @override
+  Future<List<int>> joinEduGroups() async {
+    calls.add('edu groups');
+    return const [5, 6];
+  }
+
+  @override
+  Future<List<Profile>> classmates(String k, String key) async {
+    calls.add('mates $k $key');
+    if (k != 'school') return const [];
+    Profile with_(Profile p, int y1, String cls) => Profile(
+          id: p.id,
+          name: p.name,
+          surname: p.surname,
+          username: p.username,
+          city: p.city,
+          hue: p.hue,
+          edu: [
+            {'k': 'school', 'n': '41-ე საჯარო სკოლა', 'c': 'ქუთაისი', 'y1': y1, 'cls': cls, 'key': key},
+          ],
+        );
+    return [with_(tamar, 2017, 'ა'), with_(luka, 2015, 'ბ')];
+  }
+
+  // ---- family tree, surnames ----
+
+  final kinRows = <Map<String, dynamic>>[
+    {'id': 1, 'owner': 'u1', 'anchor': null, 'relative': null, 'name': 'მანანა ბერიძე', 'relation': 'parent', 'sex': 'f', 'born': 1968, 'died': null, 'status': 'ok'},
+    {'id': 2, 'owner': 'u1', 'anchor': 1, 'relative': null, 'name': 'ვახტანგ ბერიძე', 'relation': 'parent', 'sex': 'm', 'born': 1940, 'died': 2015, 'status': 'ok'},
+    {'id': 3, 'owner': 'u1', 'anchor': null, 'relative': 'u4', 'name': null, 'relation': 'sibling', 'sex': 'm', 'born': null, 'died': null, 'status': 'pending'},
+  ];
+  final kinPend = <Map<String, dynamic>>[
+    {'id': 50, 'owner': 'u3', 'relation': 'sibling'},
+  ];
+  var _kinId = 20;
+
+  @override
+  Future<List<Map<String, dynamic>>> kinOf(String uid) async => [for (final r in kinRows) if (r['owner'] == uid) {...r}];
+  @override
+  Future<List<Map<String, dynamic>>> kinRequests() async => [...kinPend];
+  @override
+  Future<void> addKin(Map<String, dynamic> row) async {
+    calls.add('kin ${row['relation']} ${row['relative'] ?? row['name']}');
+    kinRows.add({'id': ++_kinId, 'owner': myId, 'status': row['relative'] != null ? 'pending' : 'ok', 'name': null, 'relative': null, 'sex': null, 'born': null, 'died': null, ...row});
+  }
+
+  @override
+  Future<void> updateKin(int id, Map<String, dynamic> fields) async {
+    calls.add('kin edit $id ${fields['name']}');
+    final r = kinRows.firstWhere((x) => x['id'] == id);
+    r.addAll(fields);
+  }
+
+  @override
+  Future<void> deleteKin(int id) async {
+    calls.add('kin delete $id');
+    final gone = {id};
+    var grew = true;
+    while (grew) {
+      grew = false;
+      for (final r in kinRows) {
+        if (gone.contains(r['anchor']) && gone.add(r['id'] as int)) grew = true;
+      }
+    }
+    kinRows.removeWhere((r) => gone.contains(r['id']));
+  }
+
+  @override
+  Future<void> respondKin(int id, bool accept) async {
+    calls.add('kin answer $id $accept');
+    kinPend.removeWhere((r) => r['id'] == id);
+  }
+
+  @override
+  Future<List<Profile>> surnamePeople(String s) async => everyone.where((p) => p.surname == s || (p.id == myId && me['surname'] == s)).toList();
+  int? surnameGroupId;
+  @override
+  Future<int?> surnameGroup(String s) async => surnameGroupId;
+  @override
+  Future<int> joinSurnameGroup() async {
+    calls.add('surname group');
+    return surnameGroupId ??= 77;
+  }
+
+  // ---- verification ----
+
+  String? verifyState;
+  @override
+  Future<String?> verification() async => verifyState;
+  @override
+  Future<void> requestVerification(Uint8List selfie) async {
+    calls.add('verify ${selfie.length}');
+    verifyState = 'pending';
+  }
 }

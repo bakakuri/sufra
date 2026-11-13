@@ -11,6 +11,8 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
 import '../dating/dating_setup.dart';
+import '../people/coins.dart';
+import '../people/verify.dart';
 import '../profile/profile.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
@@ -282,9 +284,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         SGroup(title: 'ანგარიში', children: [
-          SRow(icon: 'coin', color: c.gold, title: 'მონეტები', sub: 'ბალანსი: ${grouped(coins)}', onTap: () => _site('#coins')),
+          SRow(icon: 'coin', color: c.gold, title: 'მონეტები', sub: 'ბალანსი: ${grouped(coins)}', onTap: () => openPage(context, const CoinsScreen())),
           if (adult) SRow(key: const ValueKey('set-dating'), icon: 'heart', color: c.nope, title: 'გაცნობის პროფილი', sub: m['dating'] == true ? 'ჩართულია' : 'გამორთულია', onTap: _dating),
-          SRow(icon: 'check', color: const Color(0xFF3E8EF7), title: 'ვერიფიკაცია', sub: me.verified ? 'დადასტურებულია ✓' : 'მიიღე ლურჯი ნიშანი ერთი სელფით', onTap: () => _site('#verify')),
+          SRow(icon: 'check', color: const Color(0xFF3E8EF7), title: 'ვერიფიკაცია', sub: me.verified ? 'დადასტურებულია ✓' : 'მიიღე ლურჯი ნიშანი ერთი სელფით', onTap: () => openPage(context, const VerifyScreen())),
         ]),
         SGroup(title: 'პარამეტრები', children: [
           SRow(

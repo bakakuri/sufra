@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'dart:io';
 import 'dart:typed_data';
@@ -228,9 +229,85 @@ abstract class PeeraApi {
   Future<List<String>> closeFriends();
   Future<void> setClose(String uid, bool on);
 
-  /// my drafts and the posts waiting for their time; publishing one now
+  /// my drafts and the posts waiting for their time; publishing one now, or at a time
   Future<List<Post>> drafts();
   Future<void> publishNow(int postId);
+  Future<void> schedulePost(int postId, DateTime at);
+
+  /// a folder of saved posts: renamed, or deleted (the posts stay saved)
+  Future<void> renameFolder(int id, String name);
+  Future<void> deleteFolder(int id);
+
+  /// a grade for someone's photo ('1'…'5', '5+'): the coins the author got (a 5+ costs coins)
+  Future<int> gradePhoto(int postId, String grade);
+
+  /// staff only: a person may no longer post, comment or write
+  Future<void> banUser(String uid);
+
+  /// someone's ratings in the site's games: game, rating, games, wins
+  Future<List<(String, int, int, int)>> gameRatings(String uid);
+
+  /// a greeting card into a conversation with them (made if needed); the conversation
+  Future<int> sendCard(String uid, Map<String, dynamic> card);
+
+  // ---- coins ----
+
+  /// my_coins: balance, today's earnings, the bonus streak, the promotion, the 5+ price…
+  Future<Map<String, dynamic>> myCoins();
+  Future<List<Map<String, dynamic>>> coinRules();
+  Future<List<Map<String, dynamic>>> coinLog();
+
+  /// today's bonus: {coins, got, streak}
+  Future<Map<String, dynamic>> dailyBonus();
+
+  // ---- albums ----
+
+  /// mine, the ones I was invited to, and friends'
+  Future<(List<Album>, List<Album>, List<Album>)> albumsPage();
+  Future<Map<String, dynamic>?> album(int id);
+  Future<List<Map<String, dynamic>>> albumPhotos(int id);
+  Future<List<String>> albumMembers(int id);
+  Future<bool> albumCanAdd(int id);
+  Future<int> createAlbum(String title, String? about, String audience);
+  Future<void> updateAlbum(int id, String title, String? about, String audience);
+  Future<void> deleteAlbum(int id);
+  Future<Map<String, dynamic>> addAlbumPhoto(int id, Media m);
+  Future<void> deleteAlbumPhoto(int photoId);
+  Future<void> inviteToAlbum(int id, List<String> uids);
+  Future<void> removeFromAlbum(int id, String uid);
+
+  // ---- CV, education ----
+
+  Future<void> saveCv(Map<String, dynamic> cv);
+
+  /// joins the class and course groups of my schools (their ids)
+  Future<List<int>> joinEduGroups();
+
+  /// people who put the same school or university ({k, key}) on their profile, with their edu
+  Future<List<Profile>> classmates(String k, String key);
+
+  // ---- family tree, surnames ----
+
+  /// the rows of someone's tree, and the requests to be in others' trees (mine)
+  Future<List<Map<String, dynamic>>> kinOf(String uid);
+  Future<List<Map<String, dynamic>>> kinRequests();
+  Future<void> addKin(Map<String, dynamic> row);
+  Future<void> updateKin(int id, Map<String, dynamic> fields);
+  Future<void> deleteKin(int id);
+  Future<void> respondKin(int id, bool accept);
+
+  /// people with a surname, and its group (null when there is none)
+  Future<List<Profile>> surnamePeople(String s);
+  Future<int?> surnameGroup(String s);
+  Future<int> joinSurnameGroup();
+
+  // ---- verification ----
+
+  /// my last request ('pending', 'rejected', …), null when there was none
+  Future<String?> verification();
+
+  /// the selfie (kept where only moderators see it) and the request
+  Future<void> requestVerification(Uint8List selfie);
 }
 
 class SupaApi implements PeeraApi {
@@ -246,7 +323,7 @@ class SupaApi implements PeeraApi {
       'ap:profiles!posts_author_fkey($_who),page:pages!posts_page_id_fkey(id,name,hue,avatar_url,verified,kind),'
       'grp:groups!posts_group_id_fkey(id,name),pl:places!posts_place_id_fkey(id,name,kind,city)';
   static const commentSel = 'id,post_id,body,media,created_at,author,parent_id,likes,profiles!comments_author_fkey($_who)';
-  static const personSel = 'id,username,name,surname,bio,city,hue,avatar_url,cover_url,verified,last_seen,role,banned,rating,nameday,nameday_label,home_place,edu';
+  static const personSel = 'id,username,name,surname,bio,city,hue,avatar_url,cover_url,verified,last_seen,role,banned,rating,nameday,nameday_label,home_place,edu,gender';
   static const msgSel = 'id,conv_id,sender,body,media,kind,created_at,reply_to,edited_at,deleted,expires_at';
 
   String _id(int n) => List.generate(n, (_) => 'abcdefghijklmnopqrstuvwxyz0123456789'[_rnd.nextInt(36)]).join();
@@ -916,6 +993,184 @@ class SupaApi implements PeeraApi {
 
   @override
   Future<void> publishNow(int postId) => sb.from('posts').update({'draft': false, 'publish_at': null}).eq('id', postId);
+
+  @override
+  Future<void> schedulePost(int postId, DateTime at) => sb.from('posts').update({'draft': false, 'publish_at': at.toUtc().toIso8601String()}).eq('id', postId);
+
+  @override
+  Future<void> renameFolder(int id, String name) => sb.from('save_folders').update({'name': name}).eq('id', id);
+
+  @override
+  Future<void> deleteFolder(int id) => sb.from('save_folders').delete().eq('id', id);
+
+  @override
+  Future<int> gradePhoto(int postId, String grade) async => asInt(await sb.rpc('grade_photo', params: {'p_post': postId, 'p_grade': grade}));
+
+  @override
+  Future<void> banUser(String uid) => sb.rpc('admin_ban', params: {'p_user': uid, 'p_banned': true});
+
+  @override
+  Future<List<(String, int, int, int)>> gameRatings(String uid) async => [
+        for (final r in await sb.from('game_ratings').select('game,rating,games,wins').eq('user_id', uid))
+          ('${r['game']}', asInt(r['rating'], 1500), asInt(r['games']), asInt(r['wins'])),
+      ];
+
+  @override
+  Future<int> sendCard(String uid, Map<String, dynamic> card) async {
+    final conv = await startDm(uid);
+    await send(conv, body: '🎉 მისალოცი ბარათი', media: {'card': card});
+    return conv;
+  }
+
+  @override
+  Future<Map<String, dynamic>> myCoins() async {
+    final r = await sb.rpc('my_coins');
+    return r is Map ? Map<String, dynamic>.from(r) : <String, dynamic>{};
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> coinRules() async =>
+      await sb.from('coin_rules').select('action,page,label,hint,amount,every_n,day_cap,once,active,pos').order('pos');
+
+  @override
+  Future<List<Map<String, dynamic>>> coinLog() async =>
+      await sb.from('coin_log').select('amount,label,created_at,cash,n').eq('user_id', myId).order('created_at', ascending: false).limit(40);
+
+  @override
+  Future<Map<String, dynamic>> dailyBonus() async {
+    final r = await sb.rpc('daily_bonus');
+    return r is Map ? Map<String, dynamic>.from(r) : {'coins': asInt(r), 'got': 5};
+  }
+
+  static const _albSel = 'id,owner,title,cover_url,photos,updated_at,created_at,event_id';
+
+  @override
+  Future<(List<Album>, List<Album>, List<Album>)> albumsPage() async {
+    final mine = await sb.from('albums').select(_albSel).eq('owner', myId).order('updated_at', ascending: false).limit(60);
+    final mem = {for (final r in await sb.from('album_members').select('album_id').eq('user_id', myId).limit(100)) asInt(r['album_id'])};
+    final other = await sb.from('albums').select(_albSel).neq('owner', myId).order('updated_at', ascending: false).limit(40);
+    final o = other.map(Album.fromJson).toList();
+    return (mine.map(Album.fromJson).toList(), o.where((a) => mem.contains(a.id)).toList(), o.where((a) => !mem.contains(a.id)).toList());
+  }
+
+  @override
+  Future<Map<String, dynamic>?> album(int id) => sb.from('albums').select('*').eq('id', id).maybeSingle();
+
+  @override
+  Future<List<Map<String, dynamic>>> albumPhotos(int id) async =>
+      await sb.from('album_photos').select('id,added_by,url,md,sm,w,h,caption,created_at').eq('album_id', id).order('created_at', ascending: false).limit(500);
+
+  @override
+  Future<List<String>> albumMembers(int id) async => [for (final r in await sb.from('album_members').select('user_id').eq('album_id', id)) '${r['user_id']}'];
+
+  @override
+  Future<bool> albumCanAdd(int id) async {
+    try {
+      return await sb.rpc('album_can_add', params: {'a': id, 'u': myId}) == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<int> createAlbum(String title, String? about, String audience) async =>
+      asInt((await sb.from('albums').insert({'title': title, 'about': about, 'audience': audience, 'owner': myId}).select('id').single())['id']);
+
+  @override
+  Future<void> updateAlbum(int id, String title, String? about, String audience) =>
+      sb.from('albums').update({'title': title, 'about': about, 'audience': audience}).eq('id', id);
+
+  @override
+  Future<void> deleteAlbum(int id) => sb.from('albums').delete().eq('id', id);
+
+  @override
+  Future<Map<String, dynamic>> addAlbumPhoto(int id, Media m) => sb
+      .from('album_photos')
+      .insert({'album_id': id, 'added_by': myId, 'url': m.url, 'md': m.md, 'sm': m.sm, 'w': m.w > 0 ? m.w : null, 'h': m.h > 0 ? m.h : null})
+      .select('id,added_by,url,md,sm,w,h,caption,created_at')
+      .single();
+
+  @override
+  Future<void> deleteAlbumPhoto(int photoId) => sb.from('album_photos').delete().eq('id', photoId);
+
+  @override
+  Future<void> inviteToAlbum(int id, List<String> uids) =>
+      sb.from('album_members').insert([for (final u in uids) {'album_id': id, 'user_id': u, 'added_by': myId}]);
+
+  @override
+  Future<void> removeFromAlbum(int id, String uid) => sb.from('album_members').delete().eq('album_id', id).eq('user_id', uid);
+
+  @override
+  Future<void> saveCv(Map<String, dynamic> cv) =>
+      sb.from('cvs').upsert({...cv, 'user_id': myId, 'updated_at': DateTime.now().toUtc().toIso8601String()}, onConflict: 'user_id');
+
+  @override
+  Future<List<int>> joinEduGroups() async {
+    final r = await sb.rpc('join_edu_groups');
+    return r is List ? [for (final x in r) asInt(x)] : const [];
+  }
+
+  @override
+  Future<List<Profile>> classmates(String k, String key) async => [
+        for (final r in await sb
+            .from('profiles')
+            .select(personSel)
+            .filter('edu', 'cs', jsonEncode([
+              {'k': k, 'key': key},
+            ]))
+            .neq('id', myId)
+            .eq('onboarded', true)
+            .limit(200))
+          Profile.fromJson(r),
+      ];
+
+  static const _kinSel = 'id,owner,anchor,relative,name,relation,sex,born,died,status,created_at';
+
+  @override
+  Future<List<Map<String, dynamic>>> kinOf(String uid) async => await sb.from('kin').select(_kinSel).eq('owner', uid).order('id').limit(200);
+
+  @override
+  Future<List<Map<String, dynamic>>> kinRequests() async =>
+      await sb.from('kin').select('id,owner,relation,created_at').eq('relative', myId).eq('status', 'pending');
+
+  @override
+  Future<void> addKin(Map<String, dynamic> row) => sb.from('kin').insert({...row, 'owner': myId});
+
+  @override
+  Future<void> updateKin(int id, Map<String, dynamic> fields) => sb.from('kin').update(fields).eq('id', id);
+
+  @override
+  Future<void> deleteKin(int id) => sb.from('kin').delete().eq('id', id);
+
+  @override
+  Future<void> respondKin(int id, bool accept) => sb.rpc('respond_kin', params: {'p_id': id, 'p_accept': accept});
+
+  @override
+  Future<List<Profile>> surnamePeople(String s) async =>
+      [for (final r in await sb.from('profiles').select(personSel).eq('surname', s).eq('onboarded', true).order('created_at').limit(80)) Profile.fromJson(r)];
+
+  @override
+  Future<int?> surnameGroup(String s) async {
+    final r = await sb.from('groups').select('id').eq('place_key', 'surname:${s.toLowerCase()}').maybeSingle();
+    return r == null ? null : asInt(r['id']);
+  }
+
+  @override
+  Future<int> joinSurnameGroup() async => asInt(await sb.rpc('join_surname_group'));
+
+  @override
+  Future<String?> verification() async {
+    final r = await sb.from('verification_requests').select('status,created_at').eq('user_id', myId).order('created_at', ascending: false).limit(1).maybeSingle();
+    return r == null ? null : '${r['status']}';
+  }
+
+  @override
+  Future<void> requestVerification(Uint8List selfie) async {
+    // the private bucket: a path, not a public link
+    final path = '$myId/${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}-${_id(6)}.jpg';
+    await sb.storage.from('verify').uploadBinary(path, selfie, fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: false));
+    await sb.from('verification_requests').insert({'user_id': myId, 'selfie_url': path});
+  }
 
   @override
   Future<({int coins, int reward})> gameResult(String game, bool win) async {

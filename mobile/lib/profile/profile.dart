@@ -22,7 +22,15 @@ class Profile {
     this.homePlace,
     this.edu = const [],
     this.guest = false,
+    this.gender,
+    this.lastBonus,
   });
+
+  /// 'f', 'm' or nothing (from the dating card; the family tree uses it for the kinship words)
+  final String? gender;
+
+  /// the day (Tbilisi) my daily bonus was last taken, 'YYYY-MM-DD'
+  final String? lastBonus;
 
   final String id;
   final String name;
@@ -81,5 +89,7 @@ class Profile {
         homePlace: j['home_place'] as String?,
         edu: [for (final e in (j['edu'] is List ? j['edu'] as List : const [])) if (e is Map) Map<String, dynamic>.from(e)],
         guest: j['privacy'] is Map && (j['privacy'] as Map)['guest'] == true,
+        gender: j['gender'] as String?,
+        lastBonus: j['last_bonus'] as String?,
       );
 }

@@ -165,9 +165,19 @@ class PostStats {
   bool saved;
 
   /// photo grades ("5+" counts as 6): the average and how many, others' only; and mine
-  final double? gradeAvg;
-  final int gradeN;
-  final String? myGrade;
+  double? gradeAvg;
+  int gradeN;
+  String? myGrade;
+
+  static double _gv(String g) => g == '5+' ? 6 : (double.tryParse(g) ?? 0);
+
+  /// my grade changed: the count and the average as the site recounts them
+  void setGrade(String g) {
+    final prev = myGrade, n = gradeN, avg = gradeAvg ?? 0;
+    myGrade = g;
+    gradeN = prev != null ? n : n + 1;
+    gradeAvg = ((avg * n - (prev != null ? _gv(prev) : 0) + _gv(g)) / gradeN * 10).round() / 10;
+  }
 
   int get total => reactions.values.fold(0, (a, b) => a + b);
   int get voteTotal => votes.values.fold(0, (a, b) => a + b);
