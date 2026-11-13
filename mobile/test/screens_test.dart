@@ -679,6 +679,42 @@ void main() {
       await _shot(t, '82-new-group-$k');
     });
 
+    testWidgets('a text story and its stickers ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('story-me')));
+      await settle(t);
+      await _shot(t, '83-story-add-$k');
+      await t.tap(find.byKey(const ValueKey('as-text')));
+      await settle(t);
+      await t.enterText(find.byKey(const ValueKey('ts-text')), 'შაბათს სად ვიკრიბებით?');
+      await t.tap(find.byKey(const ValueKey('ts-poll')));
+      FocusManager.instance.primaryFocus?.unfocus();
+      await settle(t);
+      await _shot(t, '84-story-text-$k');
+      await t.tap(find.byKey(const ValueKey('ts-next')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('sc-place')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('stk-ok')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('sc-ask')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('stk-ok')));
+      await settle(t);
+      await _shot(t, '85-story-compose-$k');
+    });
+
+    testWidgets("a friend's story with a poll ($k)", (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('story-u3')));
+      await settle(t);
+      await t.tapAt(const Offset(360, 700));
+      await settle(t);
+      await _shot(t, '86-story-poll-$k');
+    });
+
     testWidgets('a school added ($k)', (t) async {
       openPage(await onMe(t), const EduScreen(), full: true);
       await settle(t);

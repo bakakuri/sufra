@@ -386,8 +386,29 @@ class Counts {
 
 /// One story: a photo or a video for a day.
 class Story {
-  const Story({required this.id, required this.author, required this.url, required this.createdAt, this.video = false, this.postId, this.close = false, this.seen = false, this.itemId, this.expiresAt});
+  const Story({
+    required this.id,
+    required this.author,
+    required this.url,
+    required this.createdAt,
+    this.video = false,
+    this.postId,
+    this.close = false,
+    this.seen = false,
+    this.itemId,
+    this.expiresAt,
+    this.poll,
+    this.stickers = const [],
+  });
   final int id;
+
+  /// a poll on it: its question and two to four answers ({q, opts})
+  final Map<String, dynamic>? poll;
+
+  /// things placed on it (people.js storyCompose): a person (mention), a place, a countdown (count), a question (ask);
+  /// each with its place as parts of the picture (x, y)
+  final List<Map<String, dynamic>> stickers;
+
 
   /// in a highlight: its row there (to take it out)
   final int? itemId;
@@ -399,7 +420,10 @@ class Story {
   final bool video, close, seen;
   final int? postId;
 
-  Story seenNow() => Story(id: id, author: author, url: url, createdAt: createdAt, video: video, postId: postId, close: close, seen: true, itemId: itemId, expiresAt: expiresAt);
+  Story seenNow() => Story(
+      id: id, author: author, url: url, createdAt: createdAt, video: video, postId: postId, close: close, seen: true, itemId: itemId, expiresAt: expiresAt, poll: poll, stickers: stickers);
+
+  List<String> get pollOpts => poll != null && poll!['opts'] is List ? [for (final o in poll!['opts'] as List) '$o'] : const [];
 
   factory Story.fromJson(Map<String, dynamic> j, {bool seen = false}) => Story(
         id: asInt(j['id']),
@@ -411,6 +435,8 @@ class Story {
         close: j['audience'] == 'close',
         seen: seen,
         expiresAt: j['expires_at'] == null ? null : asTime(j['expires_at']),
+        poll: _map(j['poll']),
+        stickers: [for (final x in (j['stickers'] is List ? j['stickers'] as List : const [])) if (x is Map) Map<String, dynamic>.from(x)],
       );
 }
 

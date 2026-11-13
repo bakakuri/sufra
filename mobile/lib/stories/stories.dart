@@ -7,14 +7,17 @@ import '../data/models.dart';
 import '../data/stores.dart';
 import '../feed/compose_screen.dart';
 import '../feed/post_screen.dart';
+import '../media/photo_edit.dart';
 import '../media/player.dart';
 import '../media/video_tools.dart';
+import '../people/person_screen.dart';
 import '../profile/profile.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
 import '../ui/net_image.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'story_make.dart';
 
 /// The row of stories at the top of the feed: yours first (or "+" to add one), then [extra] (friends' days coming up,
 /// sponsored stories), then everyone's, the unseen ones ringed.
@@ -139,34 +142,73 @@ Future<void> openStories(BuildContext context, List<StoryGroup> groups, int star
       transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: ScaleTransition(scale: Tween(begin: .94, end: 1.0).animate(a), child: child)),
     ));
 
-/// Adding a story: a photo from the phone or the camera, or a video. It is uploaded and shows in the bar.
+/// Adding a story (people.js addstory): for everyone or my close friends; a photo (cut and coloured in the editor),
+/// one taken now, a video, or a text with a poll; then the stickers' step, and it goes up.
 Future<void> addStory(BuildContext context) async {
-  final app = context.app;
-  String? kind;
-  await showChoices(context, [
-    SheetItem('image', 'ფოტო გალერეიდან', () => kind = 'photo'),
-    SheetItem('camera', 'გადაღება', () => kind = 'camera'),
-    SheetItem('clips', 'ვიდეო', () => kind = 'video'),
-  ]);
+  var close = false;
+  final kind = await showModalBottomSheet<String>(
+    context: context,
+    useRootNavigator: true,
+    showDragHandle: true,
+    backgroundColor: context.pc.surface,
+    builder: (s) => StatefulBuilder(
+      builder: (s, set) {
+        final c = s.pc;
+        Widget item(String k, String icon, String label) => ListTile(
+              key: ValueKey('as-$k'),
+              leading: PIcon(icon, color: c.ink),
+              title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.of(s).pop(k),
+            );
+        return SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 8), child: Text('ახალი ისტორია', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              child: SegmentedButton<bool>(
+                key: const ValueKey('as-aud'),
+                showSelectedIcon: false,
+                segments: [
+                  const ButtonSegment(value: false, label: Text('ყველა')),
+                  ButtonSegment(value: true, icon: PIcon('star', size: 16, color: c.ink), label: const Text('ახლო მეგობრები')),
+                ],
+                selected: {close},
+                onSelectionChanged: (v) => set(() => close = v.first),
+              ),
+            ),
+            item('photo', 'image', 'ფოტო გალერეიდან'),
+            item('camera', 'camera', 'გადაღება'),
+            item('video', 'clips', 'ვიდეო (მაქს. 50 მბ)'),
+            item('text', 'poll', 'ტექსტი ან გამოკითხვა'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
+              child: Text('ისტორია 24 საათის შემდეგ ავტომატურად ქრება.', style: TextStyle(color: c.muted, fontSize: 13)),
+            ),
+          ]),
+        );
+      },
+    ),
+  );
   if (kind == null || !context.mounted) return;
   try {
+    if (kind == 'text') {
+      await openPage<bool>(context, TextStoryScreen(close: close), full: true);
+      return;
+    }
     if (kind == 'video') {
       final path = await videoPicker();
       if (path == null || !context.mounted) return;
       toast(context, 'ვიდეო მზადდება…');
       final v = await videoPrep(path, (_) {});
-      if (context.mounted) toast(context, 'იტვირთება…');
-      final m = await app.api.uploadVideo(v);
-      await app.api.addStory(m.url, video: true);
-    } else {
-      final got = await photoSource(kind == 'camera');
-      if (got.isEmpty || !context.mounted) return;
-      toast(context, 'იტვირთება…');
-      final url = await app.api.uploadStoryPhoto(await photoPrep(got.first));
-      await app.api.addStory(url);
+      if (!context.mounted) return;
+      await openPage<bool>(context, StoryComposeScreen(video: v, close: close), full: true);
+      return;
     }
-    await app.stories.load();
-    if (context.mounted) toast(context, 'ისტორია გამოქვეყნდა');
+    final got = await photoSource(kind == 'camera');
+    if (got.isEmpty || !context.mounted) return;
+    final pic = await photoEdit(context, got.first) ?? got.first;
+    if (!context.mounted) return;
+    await openPage<bool>(context, StoryComposeScreen(photo: pic, close: close), full: true);
   } catch (e) {
     if (context.mounted) toast(context, e is VideoTooBig ? e.toString() : errText(e));
   }
@@ -214,6 +256,9 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   late final AppState app;
   bool _started = false;
 
+  /// the poll's answers on the story on screen (null until known)
+  ({int? mine, int total, List<int> counts})? pollR;
+
   StoryGroup get g => widget.groups[gi];
   Story get s => g.list[si];
 
@@ -255,10 +300,38 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
       video = v;
       if (!held) v.play();
     } else {
-      clock.duration = const Duration(seconds: 5);
+      // a poll stays longer, to be read and answered
+      clock.duration = Duration(seconds: s.poll != null ? 9 : 5);
       if (!held && storyClock) clock.forward(from: 0);
     }
+    pollR = null;
+    final story = s;
+    if (story.poll != null && widget.title == null) {
+      app.api.storyPoll(story.id).then((r) {
+        if (mounted && s.id == story.id) setState(() => pollR = r);
+      }).catchError((_) {});
+    }
     setState(() {});
+  }
+
+  Future<void> _vote(int i) async {
+    final story = s;
+    try {
+      await app.api.voteStory(story.id, i);
+      final r = await app.api.storyPoll(story.id);
+      if (mounted && s.id == story.id) setState(() => pollR = r);
+    } catch (e) {
+      if (mounted) toast(context, '$e'.contains('duplicate') ? 'უკვე მიეცი ხმა' : errText(e));
+    }
+  }
+
+  Future<void> _answer(String t) async {
+    if (await attempt(context, () => app.api.replyStory(s, t)) && mounted) _flash('პასუხი გაიგზავნა — ნახავ ჩატში');
+  }
+
+  void _person(String uid) {
+    Navigator.of(context).maybePop();
+    openPage(context, PersonScreen(uid: uid, initial: app.people[uid]), full: true);
   }
 
   void _videoTick() {
@@ -343,13 +416,16 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
       context: context,
       showDragHandle: true,
       backgroundColor: c.surface,
-      builder: (sheet) => FutureBuilder<List<StoryWatcher>>(
-        future: app.api.storyViewers(story.id).then((v) async {
+      builder: (sheet) => FutureBuilder<(List<StoryWatcher>, Map<String, int>, ({int? mine, int total, List<int> counts})?)>(
+        future: () async {
+          final v = await app.api.storyViewers(story.id);
           await app.people.ensure(v.map((x) => x.user));
-          return v;
-        }),
+          final votes = story.poll == null ? const <String, int>{} : await app.api.storyVoters(story.id).catchError((_) => const <String, int>{});
+          final pr = story.poll == null ? null : await app.api.storyPoll(story.id).catchError((_) => null);
+          return (v, votes, pr);
+        }(),
         builder: (context, snap) {
-          final list = snap.data;
+          final list = snap.data?.$1, votes = snap.data?.$2 ?? const {}, pr = snap.data?.$3, opts = story.pollOpts;
           return SafeArea(
             child: SizedBox(
               height: 380,
@@ -358,6 +434,11 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
                   child: Text(list == null ? 'ნახვები' : 'ნახვები · ${list.length}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
                 ),
+                if (story.poll != null && pr != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Center(child: StoryPollBox(q: '${story.poll!['q'] ?? ''}', opts: opts, result: pr, show: true)),
+                  ),
                 Expanded(
                   child: list == null
                       ? (snap.hasError ? Center(child: Text(errText(snap.error!))) : const Center(child: CircularProgressIndicator(strokeWidth: 2.4)))
@@ -368,6 +449,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                                 ListTile(
                                   leading: Avatar(p: app.people[v.user] ?? Profile(id: v.user, name: '…'), size: 42),
                                   title: NameLine(app.people[v.user] ?? Profile(id: v.user, name: '…'), size: 15),
+                                  subtitle: votes[v.user] != null && votes[v.user]! < opts.length ? Text('ხმა: ${opts[votes[v.user]!]}', style: TextStyle(color: c.muted)) : null,
                                   trailing: v.reaction == null ? null : Text(reactionGlyph(v.reaction!), style: const TextStyle(fontSize: 22)),
                                 ),
                             ]),
@@ -537,6 +619,37 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                   ),
                 ]),
               ),
+              if (s.poll != null && widget.title == null)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: MediaQuery.sizeOf(context).height * .52,
+                  child: Center(
+                    child: StoryPollBox(
+                      key: ValueKey('svpoll-${s.id}'),
+                      q: '${s.poll!['q'] ?? ''}',
+                      opts: s.pollOpts,
+                      result: pollR,
+                      show: mine,
+                      onVote: mine ? null : _vote,
+                    ),
+                  ),
+                ),
+              for (final x in s.stickers)
+                Positioned(
+                  left: (asNum(x['x']) ?? .5) * MediaQuery.sizeOf(context).width - 130,
+                  top: (asNum(x['y']) ?? .5) * MediaQuery.sizeOf(context).height - 24,
+                  width: 260,
+                  child: Center(
+                    child: StorySticker(
+                      x: x,
+                      mine: mine || widget.title != null,
+                      onAnswer: _answer,
+                      onPerson: _person,
+                      onFocus: _hold,
+                    ),
+                  ),
+                ),
               if (note != null)
                 Positioned(
                   left: 24,

@@ -80,7 +80,15 @@ abstract class PeeraApi {
   Future<List<Story>> stories();
   Future<void> storySeen(int id);
   Future<String> uploadStoryPhoto(PreparedPhoto p);
-  Future<void> addStory(String url, {bool video = false, int? postId});
+  /// a story: for everyone or my close friends only, with a poll and stickers
+  Future<void> addStory(String url, {bool video = false, int? postId, bool close = false, Map<String, dynamic>? poll, List<Map<String, dynamic>>? stickers});
+
+  /// a story's poll: my answer (null before voting), how many voted, and each answer's votes (story_poll); voting
+  Future<({int? mine, int total, List<int> counts})?> storyPoll(int id);
+  Future<void> voteStory(int id, int opt);
+
+  /// who voted how on my story's poll
+  Future<Map<String, int>> storyVoters(int id);
   Future<void> deleteStory(int id);
 
   /// a reaction or an answer goes to the author's chat too, as on the site
@@ -1048,7 +1056,7 @@ class SupaApi implements PeeraApi {
   Future<List<Story>> myStories() async => [
         for (final r in await sb
             .from('stories')
-            .select('id,author,media_url,media_type,created_at,expires_at,audience,post_id')
+            .select('id,author,media_url,media_type,created_at,expires_at,audience,post_id,poll,stickers')
             .eq('author', myId)
             .order('created_at', ascending: false)
             .limit(300))
@@ -1359,7 +1367,7 @@ class SupaApi implements PeeraApi {
   Future<List<Story>> stories() async {
     final rows = await sb
         .from('stories')
-        .select('id,author,media_url,media_type,created_at,audience,post_id')
+        .select('id,author,media_url,media_type,created_at,audience,post_id,poll,stickers')
         .gt('expires_at', DateTime.now().toUtc().toIso8601String())
         .order('created_at')
         .limit(200);
@@ -1378,8 +1386,33 @@ class SupaApi implements PeeraApi {
   Future<String> uploadStoryPhoto(PreparedPhoto p) => _put(p.full);
 
   @override
-  Future<void> addStory(String url, {bool video = false, int? postId}) =>
-      sb.from('stories').insert({'author': myId, 'media_url': url, 'media_type': video ? 'video' : 'image', 'audience': 'all', if (postId != null) 'post_id': postId});
+  Future<void> addStory(String url, {bool video = false, int? postId, bool close = false, Map<String, dynamic>? poll, List<Map<String, dynamic>>? stickers}) =>
+      sb.from('stories').insert({
+        'author': myId,
+        'media_url': url,
+        'media_type': video ? 'video' : 'image',
+        'audience': close ? 'close' : 'all',
+        if (postId != null) 'post_id': postId,
+        if (poll != null) 'poll': poll,
+        if (stickers != null && stickers.isNotEmpty) 'stickers': stickers,
+      });
+
+  @override
+  Future<({int? mine, int total, List<int> counts})?> storyPoll(int id) async {
+    final r = await sb.rpc('story_poll', params: {'p_story': id});
+    if (r is! Map) return null;
+    return (
+      mine: r['mine'] == null ? null : asInt(r['mine']),
+      total: asInt(r['total']),
+      counts: [for (final x in (r['counts'] is List ? r['counts'] as List : const [])) asInt(x)],
+    );
+  }
+
+  @override
+  Future<void> voteStory(int id, int opt) => sb.from('story_votes').insert({'story_id': id, 'user_id': myId, 'opt': opt});
+
+  @override
+  Future<Map<String, int>> storyVoters(int id) async => {for (final r in await sb.from('story_votes').select('user_id,opt').eq('story_id', id)) '${r['user_id']}': asInt(r['opt'])};
 
   @override
   Future<void> deleteStory(int id) => sb.from('stories').delete().eq('id', id);

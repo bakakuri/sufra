@@ -28,6 +28,7 @@ import 'package:peera/ui/look.dart';
 import 'package:peera/data/api.dart';
 import 'package:peera/shell/home_shell.dart';
 import 'package:peera/stories/stories.dart';
+import 'package:peera/stories/story_make.dart';
 import 'package:peera/ui/net_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -72,6 +73,7 @@ void useTestImages() {
   // the photo editor gives the photo back unchanged; a post's story card is a few bytes; nothing is hidden or edited yet
   photoEdit = (context, src) async => null;
   storyCard = (context, p) async => Uint8List(8);
+  textStoryImage = (context, text, colour, poll) async => pic('sunset');
   postOverrides.reset();
   themeChoice.value = ThemeMode.system;
   textZoom.value = 1;
@@ -188,6 +190,7 @@ void phone(WidgetTester t, {double w = 390, double h = 844}) {
 /// The signed-in app on the fake server.
 Future<FakeApi> shell(WidgetTester t, {ThemeMode mode = ThemeMode.light, VoidCallback? exit, FakeApi? api, PushService? push}) async {
   final a = api ?? FakeApi();
+  postOverrides.reset();
   await t.pumpWidget(PeeraApp(mode: mode, home: HomeShell(me: nino, api: a, push: push, onSignOut: () async {}, exit: exit)));
   await settle(t);
   return a;

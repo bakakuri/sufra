@@ -101,6 +101,7 @@ void main() {
     await _open(t);
     api.typingLive.add('u2');
     await t.pump();
+    await t.pump();
     expect(find.text('წერს…'), findsOneWidget);
     await t.pump(const Duration(seconds: 5));
     await settle(t);

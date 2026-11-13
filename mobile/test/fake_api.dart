@@ -70,6 +70,17 @@ class FakeApi implements PeeraApi {
       Story(id: 401, author: giorgi.id, url: 'https://t/sunset.jpg', createdAt: ago(90), seen: true),
       Story(id: 402, author: giorgi.id, url: 'https://t/hills.jpg', createdAt: ago(30)),
       Story(id: 403, author: mariam.id, url: 'https://t/sea.jpg', createdAt: ago(200)),
+      Story(
+        id: 405,
+        author: mariam.id,
+        url: 'https://t/sunset.jpg',
+        createdAt: ago(100),
+        poll: const {'q': 'ზღვა თუ მთა?', 'opts': ['ზღვა', 'მთა']},
+        stickers: [
+          {'t': 'place', 'name': 'ბათუმი', 'x': .5, 'y': .2},
+          {'t': 'ask', 'q': 'სად წავიდეთ?', 'x': .5, 'y': .35},
+        ],
+      ),
       Story(id: 404, author: luka.id, url: 'https://t/food.jpg', createdAt: ago(500), seen: true),
     ]);
     final y = DateTime(now.year, now.month, now.day).subtract(const Duration(hours: 4));
@@ -551,8 +562,9 @@ class FakeApi implements PeeraApi {
   }
 
   @override
-  Future<void> addStory(String url, {bool video = false, int? postId}) async {
-    calls.add('story $url${postId == null ? '' : ' post $postId'}');
+  Future<void> addStory(String url, {bool video = false, int? postId, bool close = false, Map<String, dynamic>? poll, List<Map<String, dynamic>>? stickers}) async {
+    calls.add('story $url${postId == null ? '' : ' post $postId'}${close ? ' close' : ''}${poll != null ? ' poll ${(poll['opts'] as List).join('/')}' : ''}'
+        '${stickers != null && stickers.isNotEmpty ? ' stickers ${stickers.map((x) => x['t']).join(',')}' : ''}');
     storyList.add(Story(id: _id++, author: nino.id, url: url, createdAt: DateTime.now(), video: video));
   }
 
@@ -1306,4 +1318,22 @@ class FakeApi implements PeeraApi {
   Future<void> leaveGroupChat(int convId) async => calls.add('gleave $convId');
   @override
   Future<Map<int, int>> streaks() async => {1: 12};
+
+  // ---------- story polls ----------
+  final storyVotes = <int, Map<String, int>>{};
+  @override
+  Future<({int? mine, int total, List<int> counts})?> storyPoll(int id) async {
+    final v = storyVotes[id] ?? const <String, int>{};
+    final opts = storyList.where((x) => x.id == id).firstOrNull?.pollOpts ?? const <String>[];
+    return (mine: v[nino.id], total: v.length, counts: [for (var i = 0; i < opts.length; i++) v.values.where((x) => x == i).length]);
+  }
+
+  @override
+  Future<void> voteStory(int id, int opt) async {
+    calls.add('svote $id $opt');
+    (storyVotes[id] ??= {giorgi.id: 0})[nino.id] = opt;
+  }
+
+  @override
+  Future<Map<String, int>> storyVoters(int id) async => {...?storyVotes[id]};
 }

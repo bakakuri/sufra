@@ -329,6 +329,9 @@ void main() {
     await settle(t);
     await t.tap(find.text('ფოტო გალერეიდან'));
     await settle(t);
+    // the stickers' step, then up it goes
+    await t.tap(find.byKey(const ValueKey('sc-ok')));
+    await settle(t);
     expect(api.calls, containsAll(['story photo', 'story https://t/hills.jpg']));
     await t.tap(find.byKey(const ValueKey('story-me')));
     await settle(t);
