@@ -887,7 +887,11 @@ void main() {
     expect(find.text('ონლაინ სტატუსი დამალულია · მოგწერენ მეგობრები'), findsOneWidget);
 
     // notifications: comments off, the quiet hours kept with their zone
+    await t.pump(const Duration(seconds: 5));
+    await settle(t);
     await t.tap(find.byKey(const ValueKey('set-notif')));
+    await settle(t);
+    await t.ensureVisible(find.byKey(const ValueKey('ncat-comments')));
     await settle(t);
     await t.tap(find.byKey(const ValueKey('ncat-comments')));
     await settle(t);
@@ -895,6 +899,8 @@ void main() {
       'off': {'promo': true, 'comments': true},
       'quiet': {'on': true, 'from': 23, 'to': 8, 'tz': 'Asia/Tbilisi'},
     });
+    await t.ensureVisible(find.byKey(const ValueKey('quiet')));
+    await settle(t);
     await t.tap(find.byKey(const ValueKey('quiet')));
     await settle(t);
     expect(api.me['notif']['quiet']['on'], false);
@@ -930,7 +936,7 @@ void main() {
     await settle(t);
     await _back(t);
     expect(find.text('ცვლილებები არ შეინახება'), findsOneWidget);
-    await t.tap(find.text('არა'));
+    await t.tap(find.widgetWithText(TextButton, 'არა'));
     await settle(t);
     expect(find.byType(EditProfileScreen), findsOneWidget);
 
