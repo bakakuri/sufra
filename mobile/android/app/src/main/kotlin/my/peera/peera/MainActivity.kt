@@ -51,6 +51,16 @@ class MainActivity : FlutterActivity() {
         val video = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "peera/video")
         val tools = VideoTools(this, video)
         video.setMethodCallHandler { call, result -> tools.handle(call, result) }
+        // sharing a link with any app (the phone's own share sheet)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "peera/share").setMethodCallHandler { call, result ->
+            if (call.method == "text") {
+                val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, call.argument<String>("text") ?: "")
+                startActivity(Intent.createChooser(send, null))
+                result.success(true)
+            } else {
+                result.notImplemented()
+            }
+        }
         // voice messages: the microphone
         val rec = VoiceRec(this)
         voice = rec

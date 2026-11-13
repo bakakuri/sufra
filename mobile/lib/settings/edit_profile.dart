@@ -65,7 +65,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       String t(String k) => '${m[k] ?? ''}';
       name.text = t('name');
       user.text = t('username');
-      surname.text = t('surname');
+      // as on the site: no surname yet means the name's last word
+      final words = t('name').trim().split(RegExp(r'\s+'));
+      surname.text = t('surname').isNotEmpty ? t('surname') : (words.length > 1 ? words.last : '');
       bio.text = t('bio');
       city.text = t('city');
       place.text = t('home_place');
@@ -259,7 +261,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 controller: name,
                 maxLength: 60,
                 textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(labelText: 'სახელი', counterText: ''),
+                decoration: const InputDecoration(labelText: 'სახელი და გვარი', counterText: ''),
                 validator: (v) => (v ?? '').trim().isEmpty ? 'ჩაწერე სახელი' : null,
               ),
               const SizedBox(height: 12),

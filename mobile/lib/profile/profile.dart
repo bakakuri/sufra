@@ -14,6 +14,14 @@ class Profile {
     this.onboarded = false,
     this.verified = false,
     this.lastSeen,
+    this.role,
+    this.banned = false,
+    this.rating,
+    this.nameday,
+    this.namedayLabel,
+    this.homePlace,
+    this.edu = const [],
+    this.guest = false,
   });
 
   final String id;
@@ -24,7 +32,27 @@ class Profile {
   final bool onboarded, verified;
   final DateTime? lastSeen;
 
-  String get fullName => [name, surname].where((x) => x != null && x.trim().isNotEmpty).join(' ');
+  /// 'admin', 'moderator' or nothing
+  final String? role;
+  final bool banned;
+
+  /// the games rating (1500 to start, as on the site)
+  final int? rating;
+
+  /// the angel's day chosen by hand ('MM-DD') and its saint; otherwise the calendar decides by the first name
+  final String? nameday, namedayLabel;
+
+  /// the village or town they come from
+  final String? homePlace;
+
+  /// schools and universities: {k: 'school'|'uni', n, key, f, y0, y1, cls}
+  final List<Map<String, dynamic>> edu;
+
+  /// my own setting: visiting others without showing up among their guests
+  final bool guest;
+
+  /// the name as written ("სახელი და გვარი" on the site); the surname is kept apart only for the surname group
+  String get fullName => name;
 
   /// seen in the last three minutes, as the site counts "online"
   bool get online => lastSeen != null && DateTime.now().difference(lastSeen!) < const Duration(minutes: 3);
@@ -45,5 +73,13 @@ class Profile {
         onboarded: j['onboarded'] == true,
         verified: j['verified'] == true,
         lastSeen: DateTime.tryParse('${j['last_seen'] ?? ''}')?.toLocal(),
+        role: j['role'] as String?,
+        banned: j['banned'] == true,
+        rating: j['rating'] == null ? null : _int(j['rating'], 1500),
+        nameday: (j['nameday'] as String?)?.isEmpty == true ? null : j['nameday'] as String?,
+        namedayLabel: j['nameday_label'] as String?,
+        homePlace: j['home_place'] as String?,
+        edu: [for (final e in (j['edu'] is List ? j['edu'] as List : const [])) if (e is Map) Map<String, dynamic>.from(e)],
+        guest: j['privacy'] is Map && (j['privacy'] as Map)['guest'] == true,
       );
 }

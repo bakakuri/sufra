@@ -181,10 +181,10 @@ Future<FakeApi> shell(WidgetTester t, {ThemeMode mode = ThemeMode.light, VoidCal
 }
 
 final _now = DateTime.now();
-final nino = Profile(id: 'u1', name: 'ნინო', surname: 'ბერიძე', username: 'nino.beridze', city: 'ქუთაისი', hue: 312, coins: 12450, onboarded: true);
+final nino = Profile(id: 'u1', name: 'ნინო ბერიძე', surname: 'ბერიძე', username: 'nino.beridze', city: 'ქუთაისი', hue: 312, coins: 12450, onboarded: true);
 final giorgi = Profile(
   id: 'u2',
-  name: 'გიორგი',
+  name: 'გიორგი კაპანაძე',
   surname: 'კაპანაძე',
   username: 'gio.k',
   city: 'თბილისი',
@@ -194,12 +194,12 @@ final giorgi = Profile(
   coverUrl: 'https://t/cover.jpg',
   lastSeen: _now,
 );
-final mariam = Profile(id: 'u3', name: 'მარიამ', surname: 'ჯავახიშვილი', username: 'mariami', city: 'ბათუმი', hue: 340, lastSeen: _now.subtract(const Duration(hours: 2)));
-final luka = Profile(id: 'u4', name: 'ლუკა', surname: 'გელაშვილი', username: 'luka.g', city: 'თბილისი', hue: 140);
-final ana = Profile(id: 'u5', name: 'ანა', surname: 'მელაძე', username: 'ana.m', city: 'რუსთავი', hue: 28);
-final dato = Profile(id: 'u6', name: 'დათო', surname: 'ხარაბაძე', username: 'dato', city: 'გორი', hue: 260);
-final tamar = Profile(id: 'u7', name: 'თამარ', surname: 'ლომიძე', username: 'tamo', city: 'ქუთაისი', hue: 190);
-final nika = Profile(id: 'u8', name: 'ნიკა', surname: 'წიკლაური', username: 'nika.w', city: 'თელავი', hue: 8);
+final mariam = Profile(id: 'u3', name: 'მარიამ ჯავახიშვილი', surname: 'ჯავახიშვილი', username: 'mariami', city: 'ბათუმი', hue: 340, lastSeen: _now.subtract(const Duration(hours: 2)));
+final luka = Profile(id: 'u4', name: 'ლუკა გელაშვილი', surname: 'გელაშვილი', username: 'luka.g', city: 'თბილისი', hue: 140);
+final ana = Profile(id: 'u5', name: 'ანა მელაძე', surname: 'მელაძე', username: 'ana.m', city: 'რუსთავი', hue: 28);
+final dato = Profile(id: 'u6', name: 'დათო ხარაბაძე', surname: 'ხარაბაძე', username: 'dato', city: 'გორი', hue: 260);
+final tamar = Profile(id: 'u7', name: 'თამარ ლომიძე', surname: 'ლომიძე', username: 'tamo', city: 'ქუთაისი', hue: 190);
+final nika = Profile(id: 'u8', name: 'ნიკა წიკლაური', surname: 'წიკლაური', username: 'nika.w', city: 'თელავი', hue: 8);
 final everyone = [nino, giorgi, mariam, luka, ana, dato, tamar, nika];
 
 /// Sign-in that answers from memory

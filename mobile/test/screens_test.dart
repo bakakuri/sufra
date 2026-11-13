@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:peera/people/person_screen.dart';
 import 'package:peera/auth/auth_screen.dart';
 import 'package:peera/auth/onboarding_screen.dart';
 import 'package:peera/data/models.dart';
@@ -149,6 +150,22 @@ void main() {
       await t.tap(find.text('გიორგი კაპანაძე').first);
       await settle(t);
       await _shot(t, '12-person-$k');
+      final list = find.descendant(of: find.byType(PersonScreen).first, matching: find.byType(Scrollable)).first;
+      await t.drag(list, const Offset(0, -420));
+      await settle(t);
+      await _shot(t, '42-person-grid-$k');
+      await t.tap(find.byKey(const ValueKey('ptab-cv')));
+      await settle(t);
+      await t.drag(list, const Offset(0, -300));
+      await settle(t);
+      await _shot(t, '43-person-cv-$k');
+      await t.scrollUntilVisible(find.byKey(const ValueKey('pro-more')), -300, scrollable: list);
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('pro-more')));
+      await settle(t);
+      await t.tap(find.text('საჩუქრის გაგზავნა'));
+      await settle(t);
+      await _shot(t, '44-gift-$k');
     });
 
     testWidgets('my profile ($k)', (t) async {
@@ -157,6 +174,36 @@ void main() {
       await t.tap(find.byKey(const ValueKey('tab-me')));
       await settle(t);
       await _shot(t, '13-profile-$k');
+      final list = find.descendant(of: find.byType(PersonScreen).first, matching: find.byType(Scrollable)).first;
+      await t.drag(list, const Offset(0, -380));
+      await settle(t);
+      await _shot(t, '45-profile-space-$k');
+      await t.ensureVisible(find.byKey(const ValueKey('space-badges')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('space-badges')));
+      await settle(t);
+      await _shot(t, '46-badges-$k');
+      await t.binding.handlePopRoute();
+      await settle(t);
+      await t.ensureVisible(find.byKey(const ValueKey('space-stories')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('space-stories')));
+      await settle(t);
+      await _shot(t, '47-archive-$k');
+      await t.binding.handlePopRoute();
+      await settle(t);
+      await t.ensureVisible(find.byKey(const ValueKey('space-namedays')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('space-namedays')));
+      await settle(t);
+      await _shot(t, '48-namedays-$k');
+      await t.binding.handlePopRoute();
+      await settle(t);
+      await t.scrollUntilVisible(find.byKey(const ValueKey('pro-share')), -300, scrollable: list);
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('pro-share')));
+      await settle(t);
+      await _shot(t, '49-qr-$k');
     });
 
     testWidgets('chats ($k)', (t) async {
@@ -344,7 +391,7 @@ void main() {
       await shell(t, mode: m);
       await t.tap(find.byKey(const ValueKey('tab-me')));
       await settle(t);
-      await t.tap(find.byTooltip('პარამეტრები'));
+      await t.tap(find.byKey(const ValueKey('pro-settings')));
       await settle(t);
       await _shot(t, '37-settings-$k');
       await t.tap(find.byKey(const ValueKey('set-privacy')));

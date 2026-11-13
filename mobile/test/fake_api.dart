@@ -24,6 +24,9 @@ class FakeApi implements PeeraApi {
       _p(103, luka, ago(300), 'ამინდი კარგი იქნება, სადმე წავიდეთ ☀️', const [], poll: const Poll('შაბათს სად წავიდეთ?', ['ზღვაზე', 'მთაში', 'ქალაქში დავრჩეთ'])),
       _p(104, ana, ago(420), '', const [], repostOf: 105),
       _p(106, nino, ago(60 * 26), 'ახალი აპი ვცადე! 📱 სულ სხვა სისწრაფეა', [img('sea', 640, 480)]),
+      _p(107, giorgi, ago(60 * 50), 'სვანეთი, უშგული 🏔️', [img('hills', 480, 600)]),
+      _p(108, giorgi, ago(60 * 80), 'ერთი დღე თბილისში: ძველი უბნები, აბანოები და ხინკალი.', const []),
+      _p(109, giorgi, ago(60 * 120), 'ზღვა სექტემბერში', [img('sea', 640, 480), img('sunset', 640, 480), img('food', 520, 520)]),
     ]);
     _orig[105] = _p(105, dato, ago(60 * 30), 'დედაჩემის ხაჭაპური 😋', [img('food', 520, 520)]);
     for (final p in _posts) {
@@ -34,7 +37,9 @@ class FakeApi implements PeeraApi {
       102: PostStats(reactions: {'👍': 3, '🍷': 5}, comments: 2),
       103: PostStats(votes: {0: 7, 1: 11, 2: 3}),
       105: PostStats(reactions: {'😂': 2, '❤️': 9}, comments: 1),
-      106: PostStats(reactions: {'❤️': 3}),
+      106: PostStats(reactions: {'❤️': 3}, gradeAvg: 5.4, gradeN: 7),
+      107: PostStats(reactions: {'❤️': 22}, gradeAvg: 5.8, gradeN: 12, myGrade: '5+'),
+      109: PostStats(reactions: {'❤️': 9}),
     });
     _comments[101] = [
       Comment(id: 1, postId: 101, author: mariam.id, ap: mariam, body: 'რა ლამაზია! სად არის ზუსტად?', createdAt: ago(10)),
@@ -617,4 +622,150 @@ class FakeApi implements PeeraApi {
     calls.add('unblock $uid');
     blockedIds.remove(uid);
   }
+
+  // ---- the profile ----
+
+  @override
+  Future<int> mutualFriends(String uid) async => uid == giorgi.id ? 12 : 3;
+  @override
+  Future<void> visit(String uid) async => calls.add('visit $uid');
+  @override
+  Future<JokerLine?> jokerLine(String uid) async => switch (uid) {
+        'u2' => const JokerLine(rating: 1640, games: 38, wins: 17),
+        'u1' => const JokerLine(games: 12, wins: 5),
+        _ => null,
+      };
+
+  @override
+  Future<List<(String, DateTime)>> badges(String uid) async {
+    final d = DateTime.now().subtract(const Duration(days: 20));
+    return switch (uid) {
+      'u1' => [('post1', d), ('friends10', d.add(const Duration(days: 3))), ('star', d.add(const Duration(days: 9)))],
+      'u2' => [('post1', d), ('verified', d), ('master', d.add(const Duration(days: 5)))],
+      _ => const [],
+    };
+  }
+
+  @override
+  Future<List<String>> checkBadges() async {
+    calls.add('check badges');
+    return const [];
+  }
+
+  final hlList = <String, List<Highlight>>{
+    'u2': const [Highlight(id: 1, title: 'მთები', cover: 'https://t/hills.jpg'), Highlight(id: 2, title: 'ზღვა', cover: 'https://t/sea.jpg')],
+    'u1': const [Highlight(id: 3, title: 'ქუთაისი')],
+  };
+  @override
+  Future<List<Highlight>> highlights(String uid) async => [...?hlList[uid]];
+  @override
+  Future<List<Story>> highlightItems(int id) async => [
+        Story(id: 410 + id, itemId: 70 + id, author: '', url: 'https://t/hills.jpg', createdAt: DateTime.now().subtract(const Duration(days: 30)), seen: true),
+        Story(id: 420 + id, itemId: 80 + id, author: '', url: 'https://t/sea.jpg', createdAt: DateTime.now().subtract(const Duration(days: 29)), seen: true),
+      ];
+  @override
+  Future<int> newHighlight(String title, int pos) async {
+    calls.add('new highlight $title');
+    return 9;
+  }
+
+  @override
+  Future<bool> addToHighlight(int highlight, int story) async {
+    calls.add('keep $story in $highlight');
+    return true;
+  }
+
+  @override
+  Future<void> removeHighlightItem(int itemId) async => calls.add('unkeep $itemId');
+  @override
+  Future<void> renameHighlight(int id, String title) async => calls.add('rename highlight $id $title');
+  @override
+  Future<void> deleteHighlight(int id) async => calls.add('delete highlight $id');
+
+  @override
+  Future<List<Story>> myStories() async => [
+        ...storyList.where((x) => x.author == nino.id),
+        Story(id: 450, author: nino.id, url: 'https://t/food.jpg', createdAt: DateTime.now().subtract(const Duration(days: 12)), seen: true),
+        Story(id: 451, author: nino.id, url: 'https://t/sea.jpg', createdAt: DateTime.now().subtract(const Duration(days: 40)), seen: true),
+      ];
+
+  @override
+  Future<List<Album>> albums(String uid) async =>
+      uid == giorgi.id ? [Album(id: 1, owner: giorgi.id, title: 'სვანეთი 2026', cover: 'https://t/hills.jpg', photos: 24, updatedAt: DateTime.now().subtract(const Duration(days: 3)))] : const [];
+
+  @override
+  Future<Map<String, dynamic>?> cv(String uid) async => uid == giorgi.id
+      ? {
+          'headline': 'ფოტოგრაფი',
+          'summary': 'ვიღებ ქორწილებს, ბუნებას და რეკლამას.',
+          'experience': [
+            {'a': 'ფოტოგრაფი', 'b': 'სტუდია „კადრი“', 'c': '2021–'},
+          ],
+          'education': [
+            {'a': 'თსუ', 'b': 'ჟურნალისტიკა', 'c': '2016–2020'},
+          ],
+          'skills': ['Lightroom', 'სტუდიური შუქი'],
+          'languages': ['ქართული', 'ინგლისური'],
+          'phone': '+995 555 12 34 56',
+          'visible': true,
+        }
+      : null;
+
+  @override
+  Future<List<String>> friendsOf(String uid) async => uid == giorgi.id ? [nino.id, mariam.id, luka.id] : [for (final r in _rels) if (r.accepted) r.otherThan(uid)];
+
+  @override
+  Future<List<Post>> saved({int? folder}) async {
+    calls.add('saved ${folder ?? 'all'}');
+    return folder == null ? _posts.where((p) => p.id == 101 || p.id == 103).toList() : const [];
+  }
+
+  @override
+  Future<List<(int, String)>> saveFolders() async => const [(1, 'კონსპექტები')];
+
+  @override
+  Future<List<Visit>> guests() async => [
+        Visit(giorgi.id, DateTime.now().subtract(const Duration(minutes: 10))),
+        Visit(mariam.id, DateTime.now().subtract(const Duration(hours: 3))),
+      ];
+  @override
+  Future<int> guestsSince(DateTime since) async => 2;
+
+  @override
+  Future<List<GiftGot>> giftsGot() async => [
+        GiftGot('🌹', giorgi.id, DateTime.now().subtract(const Duration(days: 1))),
+        GiftGot('☕', luka.id, DateTime.now().subtract(const Duration(days: 4))),
+      ];
+
+  @override
+  Future<int> sendGift(String uid, String emoji) async {
+    calls.add('gift $uid $emoji');
+    return 12400;
+  }
+
+  @override
+  Future<void> report(String type, String id, String reason) async => calls.add('report $type $id $reason');
+
+  @override
+  Future<void> block(String uid) async {
+    calls.add('block $uid');
+    blockedIds.add(uid);
+    _rels = _rels.where((r) => r.requester != uid && r.addressee != uid).toList();
+  }
+
+  final closeIds = <String>{'u2'};
+  @override
+  Future<List<String>> closeFriends() async => [...closeIds];
+  @override
+  Future<void> setClose(String uid, bool on) async {
+    calls.add('close $uid $on');
+    on ? closeIds.add(uid) : closeIds.remove(uid);
+  }
+
+  @override
+  Future<List<Post>> drafts() async => [
+        _p(150, nino, DateTime.now().subtract(const Duration(hours: 5)), 'ხვალ ქუთაისში ვიქნები, ვინ ხართ? (დრაფტი)', const []),
+      ];
+  @override
+  Future<void> publishNow(int postId) async => calls.add('publish $postId');
 }

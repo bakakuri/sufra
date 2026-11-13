@@ -171,6 +171,66 @@ abstract class PeeraApi {
   /// people I blocked
   Future<List<String>> blocked();
   Future<void> unblock(String uid);
+
+  // ---- the profile, as on the site ----
+
+  /// friends in common with someone
+  Future<int> mutualFriends(String uid);
+
+  /// I came by someone's profile (they see it among their guests, unless I visit invisibly)
+  Future<void> visit(String uid);
+
+  /// someone's Joker numbers (online rating, games, wins), null when they never played
+  Future<JokerLine?> jokerLine(String uid);
+
+  /// the badges someone earned: code and when; [check] first asks the server for new ones of mine (they bring coins)
+  Future<List<(String, DateTime)>> badges(String uid);
+  Future<List<String>> checkBadges();
+
+  /// highlights: someone's, the stories in one, and mine to change
+  Future<List<Highlight>> highlights(String uid);
+  Future<List<Story>> highlightItems(int id);
+  Future<int> newHighlight(String title, int pos);
+  Future<bool> addToHighlight(int highlight, int story);
+  Future<void> removeHighlightItem(int itemId);
+  Future<void> renameHighlight(int id, String title);
+  Future<void> deleteHighlight(int id);
+
+  /// every story I ever posted, newest first (the archive only I see)
+  Future<List<Story>> myStories();
+
+  Future<List<Album>> albums(String uid);
+
+  /// someone's CV row (null when there is none, or it is not shown)
+  Future<Map<String, dynamic>?> cv(String uid);
+
+  /// a person's friends (ids)
+  Future<List<String>> friendsOf(String uid);
+
+  /// what I saved, newest first, from one folder or all; and the folders
+  Future<List<Post>> saved({int? folder});
+  Future<List<(int, String)>> saveFolders();
+
+  /// who came by my profile, newest first; how many since [since]
+  Future<List<Visit>> guests();
+  Future<int> guestsSince(DateTime since);
+
+  /// the gifts I got; sending one (the server takes the coins and gives half to them), my balance after
+  Future<List<GiftGot>> giftsGot();
+  Future<int> sendGift(String uid, String emoji);
+
+  Future<void> report(String type, String id, String reason);
+
+  /// blocking also ends a friendship
+  Future<void> block(String uid);
+
+  /// close friends: who sees my "close friends" stories
+  Future<List<String>> closeFriends();
+  Future<void> setClose(String uid, bool on);
+
+  /// my drafts and the posts waiting for their time; publishing one now
+  Future<List<Post>> drafts();
+  Future<void> publishNow(int postId);
 }
 
 class SupaApi implements PeeraApi {
@@ -186,7 +246,7 @@ class SupaApi implements PeeraApi {
       'ap:profiles!posts_author_fkey($_who),page:pages!posts_page_id_fkey(id,name,hue,avatar_url,verified,kind),'
       'grp:groups!posts_group_id_fkey(id,name),pl:places!posts_place_id_fkey(id,name,kind,city)';
   static const commentSel = 'id,post_id,body,media,created_at,author,parent_id,likes,profiles!comments_author_fkey($_who)';
-  static const personSel = 'id,username,name,surname,bio,city,hue,avatar_url,cover_url,verified,last_seen';
+  static const personSel = 'id,username,name,surname,bio,city,hue,avatar_url,cover_url,verified,last_seen,role,banned,rating,nameday,nameday_label,home_place,edu';
   static const msgSel = 'id,conv_id,sender,body,media,kind,created_at,reply_to,edited_at,deleted,expires_at';
 
   String _id(int n) => List.generate(n, (_) => 'abcdefghijklmnopqrstuvwxyz0123456789'[_rnd.nextInt(36)]).join();
@@ -700,6 +760,162 @@ class SupaApi implements PeeraApi {
 
   @override
   Future<void> unblock(String uid) => sb.from('blocks').delete().eq('blocker', myId).eq('blocked', uid);
+
+  @override
+  Future<int> mutualFriends(String uid) async => asInt(await sb.rpc('mutual_friends', params: {'other': uid}));
+
+  @override
+  Future<void> visit(String uid) =>
+      sb.from('profile_visits').upsert({'visitor': myId, 'visited': uid, 'visited_at': DateTime.now().toUtc().toIso8601String()}, onConflict: 'visitor,visited');
+
+  @override
+  Future<JokerLine?> jokerLine(String uid) async {
+    final r = await sb.from('jk_ratings').select('rating,games,wins').eq('user_id', uid).maybeSingle();
+    final st = await sb.from('jk_stats').select('g,w,best').eq('user_id', uid).maybeSingle();
+    if (r == null && st == null) return null;
+    final g = asInt(st?['g']) > 0 ? asInt(st?['g']) : asInt(r?['games']);
+    if (g == 0) return null;
+    return JokerLine(rating: r == null ? null : asInt(r['rating']), games: g, wins: asInt(st?['w']) > 0 ? asInt(st?['w']) : asInt(r?['wins']));
+  }
+
+  @override
+  Future<List<(String, DateTime)>> badges(String uid) async => [
+        for (final r in await sb.from('achievements').select('code,created_at').eq('user_id', uid).order('created_at')) ('${r['code']}', asTime(r['created_at'])),
+      ];
+
+  @override
+  Future<List<String>> checkBadges() async {
+    final r = await sb.rpc('check_achievements');
+    return r is List ? [for (final x in r) '$x'] : const [];
+  }
+
+  @override
+  Future<List<Highlight>> highlights(String uid) async =>
+      [for (final r in await sb.from('highlights').select('id,title,cover_url').eq('owner', uid).order('pos').order('id').limit(30)) Highlight.fromJson(r)];
+
+  @override
+  Future<List<Story>> highlightItems(int id) async => [
+        for (final r in await sb.from('highlight_items').select('id,story_id,url,media_type,created_at').eq('highlight_id', id).order('created_at'))
+          Story(
+            id: r['story_id'] == null ? -asInt(r['id']) : asInt(r['story_id']),
+            itemId: asInt(r['id']),
+            author: '',
+            url: '${r['url'] ?? ''}',
+            createdAt: asTime(r['created_at']),
+            video: r['media_type'] == 'video',
+            seen: true,
+          ),
+      ];
+
+  @override
+  Future<int> newHighlight(String title, int pos) async =>
+      asInt((await sb.from('highlights').insert({'owner': myId, 'title': title, 'pos': pos}).select('id').single())['id']);
+
+  @override
+  Future<bool> addToHighlight(int highlight, int story) async => asInt(await sb.rpc('add_to_highlight', params: {'p_highlight': highlight, 'p_story': story})) > 0;
+
+  @override
+  Future<void> removeHighlightItem(int itemId) => sb.from('highlight_items').delete().eq('id', itemId);
+
+  @override
+  Future<void> renameHighlight(int id, String title) => sb.from('highlights').update({'title': title}).eq('id', id);
+
+  @override
+  Future<void> deleteHighlight(int id) => sb.from('highlights').delete().eq('id', id);
+
+  @override
+  Future<List<Story>> myStories() async => [
+        for (final r in await sb
+            .from('stories')
+            .select('id,author,media_url,media_type,created_at,expires_at,audience,post_id')
+            .eq('author', myId)
+            .order('created_at', ascending: false)
+            .limit(300))
+          Story.fromJson(r, seen: true),
+      ];
+
+  @override
+  Future<List<Album>> albums(String uid) async => [
+        for (final r in await sb
+            .from('albums')
+            .select('id,owner,title,cover_url,photos,updated_at,created_at')
+            .eq('owner', uid)
+            .order('updated_at', ascending: false)
+            .limit(40))
+          Album.fromJson(r),
+      ];
+
+  @override
+  Future<Map<String, dynamic>?> cv(String uid) => sb.from('cvs').select('*').eq('user_id', uid).maybeSingle();
+
+  @override
+  Future<List<String>> friendsOf(String uid) async => [
+        for (final r in await sb.from('friendships').select('requester,addressee').eq('status', 'accepted').or('requester.eq.$uid,addressee.eq.$uid').limit(200))
+          r['requester'] == uid ? '${r['addressee']}' : '${r['requester']}',
+      ];
+
+  @override
+  Future<List<Post>> saved({int? folder}) async {
+    var q = sb.from('saves').select('post_id').eq('user_id', myId);
+    if (folder != null) q = q.eq('folder_id', folder);
+    final ids = [for (final r in await q.order('created_at', ascending: false).limit(90)) asInt(r['post_id'])];
+    if (ids.isEmpty) return [];
+    final list = await _hydrate(await _posts().inFilter('id', ids));
+    list.sort((a, b) => ids.indexOf(a.id).compareTo(ids.indexOf(b.id)));
+    return list;
+  }
+
+  @override
+  Future<List<(int, String)>> saveFolders() async =>
+      [for (final r in await sb.from('save_folders').select('id,name').eq('user_id', myId).order('created_at')) (asInt(r['id']), '${r['name'] ?? ''}')];
+
+  @override
+  Future<List<Visit>> guests() async => [
+        for (final r in await sb.from('profile_visits').select('visitor,visited_at').eq('visited', myId).order('visited_at', ascending: false).limit(50))
+          Visit('${r['visitor']}', asTime(r['visited_at'])),
+      ];
+
+  @override
+  Future<int> guestsSince(DateTime since) =>
+      sb.from('profile_visits').count(CountOption.exact).eq('visited', myId).gt('visited_at', since.toUtc().toIso8601String());
+
+  @override
+  Future<List<GiftGot>> giftsGot() async => [
+        for (final r in await sb.from('gifts').select('emoji,sender,created_at').eq('recipient', myId).order('created_at', ascending: false).limit(60))
+          GiftGot('${r['emoji']}', '${r['sender']}', asTime(r['created_at'])),
+      ];
+
+  @override
+  Future<int> sendGift(String uid, String emoji) async => asInt(await sb.rpc('send_gift', params: {'p_to': uid, 'p_emoji': emoji}));
+
+  @override
+  Future<void> report(String type, String id, String reason) =>
+      sb.from('reports').insert({'reporter': myId, 'target_type': type, 'target_id': id, 'reason': reason});
+
+  @override
+  Future<void> block(String uid) async {
+    await sb.from('blocks').insert({'blocker': myId, 'blocked': uid});
+    await sb.from('friendships').delete().or('and(requester.eq.$myId,addressee.eq.$uid),and(requester.eq.$uid,addressee.eq.$myId)');
+  }
+
+  @override
+  Future<List<String>> closeFriends() async => [for (final r in await sb.from('close_friends').select('friend').eq('owner', myId)) '${r['friend']}'];
+
+  @override
+  Future<void> setClose(String uid, bool on) =>
+      on ? sb.from('close_friends').insert({'owner': myId, 'friend': uid}) : sb.from('close_friends').delete().eq('owner', myId).eq('friend', uid);
+
+  @override
+  Future<List<Post>> drafts() async => _hydrate(await sb
+      .from('posts')
+      .select(postSel)
+      .eq('author', myId)
+      .or('draft.eq.true,created_at.gt.${DateTime.now().toUtc().toIso8601String()}')
+      .order('created_at')
+      .limit(60));
+
+  @override
+  Future<void> publishNow(int postId) => sb.from('posts').update({'draft': false, 'publish_at': null}).eq('id', postId);
 
   @override
   Future<({int coins, int reward})> gameResult(String game, bool win) async {

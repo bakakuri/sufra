@@ -2,17 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../data/stores.dart';
 import '../people/person_screen.dart';
-import '../settings/settings_screens.dart';
-import '../ui/format.dart';
 import '../ui/icons.dart';
 import '../ui/theme.dart';
-import '../ui/widgets.dart';
 import 'profile.dart';
 
-String coinsText(int n) => grouped(n);
-
-/// Your own page: the same as anyone's (picture, name, posts), with your coins under it and the settings in the bar
-/// (signing out is there, as on the site).
+/// Your own page: the same as anyone's, with my coins, "my space" and the settings button, as on the site. When the
+/// phone keeps notifications off, a note under the coins says so.
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key, required this.me, required this.onSignOut, this.onRefresh});
   final Profile me;
@@ -22,40 +17,18 @@ class ProfileTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // the newest sign-in profile (it changes on refresh); [me] is the first one
-    final c = context.pc, me = context.me;
+    final me = context.me, push = context.app.push;
     return PersonScreen(
       uid: me.id,
       initial: me,
       ownTab: true,
       onRefresh: onRefresh,
-      actions: [IconBtn('gear', label: 'პარამეტრები', onTap: () => openSettings(context))],
-      extra: Column(children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(colors: [c.gold.withValues(alpha: .2), c.gold.withValues(alpha: .07)]),
-              border: Border.all(color: c.gold.withValues(alpha: .45)),
+      extra: push == null
+          ? null
+          : ValueListenableBuilder<bool?>(
+              valueListenable: push.enabled,
+              builder: (context, on, _) => on == false ? _NotificationsOff(onTap: push.openSettings) : const SizedBox.shrink(),
             ),
-            child: Row(children: [
-              PIcon('coin', size: 24, color: c.gold),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text('${coinsText(me.coins)} ქოინი',
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: c.ink)),
-              ),
-              Text('ბალანსი', style: TextStyle(color: c.muted, fontSize: 13.5)),
-            ]),
-          ),
-        ),
-        if (context.app.push != null)
-          ValueListenableBuilder<bool?>(
-            valueListenable: context.app.push!.enabled,
-            builder: (context, on, _) => on == false ? _NotificationsOff(onTap: context.app.push!.openSettings) : const SizedBox.shrink(),
-          ),
-      ]),
     );
   }
 }
@@ -68,7 +41,7 @@ class _NotificationsOff extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.pc;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      padding: const EdgeInsets.only(top: 10),
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
         decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(16)),

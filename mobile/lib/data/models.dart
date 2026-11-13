@@ -86,7 +86,11 @@ class Post {
     this.hidden = false,
     this.pending = false,
     this.tags = const [],
+    this.isClip = false,
   });
+
+  /// posted as a clip (a short video for the clips tab)
+  final bool isClip;
 
   final int id;
   final String author, body, cursor;
@@ -138,6 +142,7 @@ class Post {
       hidden: j['hidden'] == true,
       pending: j['pending'] == true,
       tags: j['tags'] is List ? (j['tags'] as List).map((x) => '$x').toList() : const [],
+      isClip: j['is_clip'] == true,
     );
   }
 }
@@ -148,7 +153,7 @@ String reactionGlyph(String e) => e == '🍷' ? '💡' : e;
 
 /// Reactions, comments, the poll and "saved" for one post (feed_stats); changed in place when you react.
 class PostStats {
-  PostStats({Map<String, int>? reactions, this.mine, this.comments = 0, Map<int, int>? votes, this.myVote, this.saved = false})
+  PostStats({Map<String, int>? reactions, this.mine, this.comments = 0, Map<int, int>? votes, this.myVote, this.saved = false, this.gradeAvg, this.gradeN = 0, this.myGrade})
       : reactions = reactions ?? {},
         votes = votes ?? {};
 
@@ -158,6 +163,11 @@ class PostStats {
   final Map<int, int> votes;
   int? myVote;
   bool saved;
+
+  /// photo grades ("5+" counts as 6): the average and how many, others' only; and mine
+  final double? gradeAvg;
+  final int gradeN;
+  final String? myGrade;
 
   int get total => reactions.values.fold(0, (a, b) => a + b);
   int get voteTotal => votes.values.fold(0, (a, b) => a + b);
@@ -197,6 +207,9 @@ class PostStats {
       votes: {for (final e in v.entries) asInt(e.key): asInt(e.value)},
       myVote: j['my_vote'] == null ? null : asInt(j['my_vote']),
       saved: j['saved'] == true,
+      gradeAvg: j['grade_avg'] == null ? null : double.tryParse('${j['grade_avg']}'),
+      gradeN: asInt(j['grade_n']),
+      myGrade: j['my_grade'] as String?,
     );
   }
 }
@@ -341,14 +354,20 @@ class Counts {
 
 /// One story: a photo or a video for a day.
 class Story {
-  const Story({required this.id, required this.author, required this.url, required this.createdAt, this.video = false, this.postId, this.close = false, this.seen = false});
+  const Story({required this.id, required this.author, required this.url, required this.createdAt, this.video = false, this.postId, this.close = false, this.seen = false, this.itemId, this.expiresAt});
   final int id;
+
+  /// in a highlight: its row there (to take it out)
+  final int? itemId;
+
+  /// while it is still up for everyone (the archive marks it)
+  final DateTime? expiresAt;
   final String author, url;
   final DateTime createdAt;
   final bool video, close, seen;
   final int? postId;
 
-  Story seenNow() => Story(id: id, author: author, url: url, createdAt: createdAt, video: video, postId: postId, close: close, seen: true);
+  Story seenNow() => Story(id: id, author: author, url: url, createdAt: createdAt, video: video, postId: postId, close: close, seen: true, itemId: itemId, expiresAt: expiresAt);
 
   factory Story.fromJson(Map<String, dynamic> j, {bool seen = false}) => Story(
         id: asInt(j['id']),
@@ -359,6 +378,7 @@ class Story {
         postId: j['post_id'] == null ? null : asInt(j['post_id']),
         close: j['audience'] == 'close',
         seen: seen,
+        expiresAt: j['expires_at'] == null ? null : asTime(j['expires_at']),
       );
 }
 
@@ -572,4 +592,52 @@ class Notif {
         read: j['read'] == true,
         createdAt: DateTime.tryParse('${j['created_at'] ?? ''}')?.toLocal() ?? DateTime.now(),
       );
+}
+
+/// A highlight on a profile: a few stories kept for good, under a name.
+class Highlight {
+  const Highlight({required this.id, required this.title, this.cover});
+  final int id;
+  final String title;
+  final String? cover;
+  factory Highlight.fromJson(Map<String, dynamic> j) => Highlight(id: asInt(j['id']), title: '${j['title'] ?? ''}', cover: j['cover_url'] as String?);
+}
+
+/// A photo album (the site's albums), as its card shows it.
+class Album {
+  const Album({required this.id, required this.owner, required this.title, this.cover, this.photos = 0, required this.updatedAt});
+  final int id;
+  final String owner, title;
+  final String? cover;
+  final int photos;
+  final DateTime updatedAt;
+  factory Album.fromJson(Map<String, dynamic> j) => Album(
+        id: asInt(j['id']),
+        owner: '${j['owner'] ?? ''}',
+        title: '${j['title'] ?? ''}',
+        cover: j['cover_url'] as String?,
+        photos: asInt(j['photos']),
+        updatedAt: asTime(j['updated_at'] ?? j['created_at']),
+      );
+}
+
+/// Someone who came by my profile, and when.
+class Visit {
+  const Visit(this.user, this.at);
+  final String user;
+  final DateTime at;
+}
+
+/// A gift I got: what, from whom, when.
+class GiftGot {
+  const GiftGot(this.emoji, this.sender, this.at);
+  final String emoji, sender;
+  final DateTime at;
+}
+
+/// One of the Joker numbers on a profile.
+class JokerLine {
+  const JokerLine({this.rating, required this.games, required this.wins});
+  final int? rating;
+  final int games, wins;
 }

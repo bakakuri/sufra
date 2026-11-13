@@ -127,11 +127,12 @@ class _Ring extends StatelessWidget {
 bool storyClock = true;
 
 /// Opens the stories over everything, from person [start]; back closes them in one step.
-Future<void> openStories(BuildContext context, List<StoryGroup> groups, int start) => Navigator.of(context, rootNavigator: true).push(PageRouteBuilder(
+Future<void> openStories(BuildContext context, List<StoryGroup> groups, int start, {String? title, int? highlight}) =>
+    Navigator.of(context, rootNavigator: true).push(PageRouteBuilder(
       opaque: true,
       transitionDuration: const Duration(milliseconds: 220),
       reverseTransitionDuration: const Duration(milliseconds: 180),
-      pageBuilder: (_, __, ___) => AppScope(app: context.app, me: context.me, child: StoryViewer(groups: groups, start: start)),
+      pageBuilder: (_, __, ___) => AppScope(app: context.app, me: context.me, child: StoryViewer(groups: groups, start: start, title: title, highlight: highlight)),
       transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: ScaleTransition(scale: Tween(begin: .94, end: 1.0).animate(a), child: child)),
     ));
 
@@ -172,9 +173,15 @@ Future<void> addStory(BuildContext context) async {
 /// goes on, on the left back, a held finger pauses, a pull down closes. Others' stories take a reaction or an answer
 /// (it goes to the chat); your own show who saw them and can be deleted.
 class StoryViewer extends StatefulWidget {
-  const StoryViewer({super.key, required this.groups, this.start = 0});
+  const StoryViewer({super.key, required this.groups, this.start = 0, this.title, this.highlight});
   final List<StoryGroup> groups;
   final int start;
+
+  /// kept stories (a highlight, or one from my archive): shown under this name, not counted as seen, no answers
+  final String? title;
+
+  /// the highlight they are from (mine: a story can be taken out of it)
+  final int? highlight;
   @override
   State<StoryViewer> createState() => _StoryViewerState();
 }
@@ -238,7 +245,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     video = null;
     clock.stop();
     clock.value = 0;
-    app.stories.seen(s);
+    if (widget.title == null) app.stories.seen(s);
     if (s.video) {
       final v = makePlayer(s.url, loop: false)..mute(false);
       v.addListener(_videoTick);
@@ -394,6 +401,31 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     _show();
   }
 
+  /// out of this highlight (it stays in the archive)
+  Future<void> _unkeep() async {
+    _hold(true);
+    final story = s, item = story.itemId;
+    if (item == null) return;
+    if (!await confirm(context, title: 'რჩეულიდან ამოღება', text: 'ისტორია არქივში დარჩება, მხოლოდ ამ რჩეულიდან ამოიღება.', yes: 'ამოღება', danger: true) || !mounted) {
+      if (mounted) _hold(false);
+      return;
+    }
+    if (!await attempt(context, () => app.api.removeHighlightItem(item)) || !mounted) {
+      if (mounted) _hold(false);
+      return;
+    }
+    toast(context, 'ამოღებულია');
+    Navigator.of(context).maybePop();
+  }
+
+  /// a story of mine into a highlight
+  Future<void> _keep() async {
+    _hold(true);
+    final story = s;
+    await pickHighlight(context, story.id);
+    if (mounted) _hold(false);
+  }
+
   Future<void> _post() async {
     final id = s.postId;
     if (id == null) return;
@@ -481,12 +513,20 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                     child: Row(children: [
                       Avatar(p: who, size: 36),
                       const SizedBox(width: 9),
-                      Flexible(child: NameLine(who, size: 15, color: Colors.white)),
+                      Flexible(
+                        child: widget.title != null
+                            ? Text(widget.title!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15))
+                            : NameLine(who, size: 15, color: Colors.white),
+                      ),
                       const SizedBox(width: 8),
-                      Text(ago(s.createdAt), style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                      Text(widget.title != null ? dayLabel(s.createdAt) : ago(s.createdAt), style: const TextStyle(color: Colors.white70, fontSize: 13)),
                       const Spacer(),
-                      if (mine) ...[
+                      if (widget.title != null) ...[
+                        if (mine && widget.highlight != null && s.itemId != null)
+                          IconBtn('trash', key: const ValueKey('hl-remove'), label: 'რჩეულიდან ამოღება', color: Colors.white, onTap: _unkeep),
+                      ] else if (mine) ...[
                         IconBtn('eye', key: const ValueKey('story-views'), label: 'ვინ ნახა', color: Colors.white, onTap: _viewers),
+                        IconBtn('star', key: const ValueKey('story-keep'), label: 'რჩეულებში დამატება', color: Colors.white, onTap: _keep),
                         IconBtn('trash', label: 'წაშლა', color: Colors.white, onTap: _delete),
                       ],
                       IconBtn('x', label: 'დახურვა', color: Colors.white, onTap: () => Navigator.of(context).maybePop()),
@@ -513,7 +553,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                 Positioned(
                   left: 0,
                   right: 0,
-                  bottom: pad.bottom + (mine ? 28 : 128),
+                  bottom: pad.bottom + (mine || widget.title != null ? 28 : 128),
                   child: Center(
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(minimumSize: const Size(0, 42), backgroundColor: Colors.white, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(horizontal: 18)),
@@ -523,7 +563,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                     ),
                   ),
                 ),
-              if (!mine)
+              if (!mine && widget.title == null)
                 Positioned(
                   left: 0,
                   right: 0,
@@ -579,4 +619,85 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
       ),
     );
   }
+}
+
+/// Into a highlight: one of mine, or a new one by name (people.js hlPick).
+Future<void> pickHighlight(BuildContext context, int storyId) async {
+  final app = context.app;
+  List<Highlight> mine = const [];
+  try {
+    mine = await app.api.highlights(app.api.myId);
+  } catch (_) {}
+  if (!context.mounted) return;
+  final name = TextEditingController();
+  await showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: context.pc.surface,
+    builder: (s) {
+      final c = s.pc;
+      Future<void> add(int id, String title) async {
+        try {
+          final n = await app.api.addToHighlight(id, storyId);
+          if (s.mounted) Navigator.of(s).pop();
+          if (context.mounted) toast(context, n ? 'დაემატა რჩეულში „$title“' : 'ეს ისტორია უკვე ამ რჩეულშია');
+        } catch (e) {
+          if (s.mounted) toast(s, errText(e));
+        }
+      }
+
+      return Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(s).bottom),
+        child: SafeArea(
+          child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), children: [
+            const Padding(padding: EdgeInsets.fromLTRB(4, 0, 4, 10), child: Text('რჩეულებში დამატება', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+            for (final h in mine)
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                leading: ClipOval(
+                  child: SizedBox.square(
+                    dimension: 42,
+                    child: (h.cover ?? '').isNotEmpty ? PImage(h.cover!) : ColoredBox(color: c.sunk, child: Center(child: PIcon('star', size: 18, color: c.muted))),
+                  ),
+                ),
+                title: Text(h.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                trailing: PIcon('plus', size: 20, color: c.accent),
+                onTap: () => add(h.id, h.title),
+              ),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                child: TextField(
+                  key: const ValueKey('hl-new'),
+                  controller: name,
+                  maxLength: 24,
+                  decoration: const InputDecoration(hintText: 'ახალი რჩეული, მაგ. ზღვა, კლასი', counterText: ''),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                key: const ValueKey('hl-create'),
+                onPressed: () async {
+                  final t = name.text.trim();
+                  if (t.isEmpty) {
+                    toast(s, 'დაარქვი სახელი');
+                    return;
+                  }
+                  try {
+                    final id = await app.api.newHighlight(t, mine.length);
+                    await add(id, t);
+                  } catch (e) {
+                    if (s.mounted) toast(s, errText(e));
+                  }
+                },
+                child: const Text('შექმნა'),
+              ),
+            ]),
+          ]),
+        ),
+      );
+    },
+  );
 }

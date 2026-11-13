@@ -18,8 +18,10 @@ import 'package:peera/main.dart';
 import 'package:peera/map/live_map.dart';
 import 'package:peera/map/loc_device.dart';
 import 'package:peera/media/voice.dart';
+import 'package:peera/people/my_space.dart';
 import 'package:peera/people/person_screen.dart';
 import 'package:peera/notes/notes_screen.dart';
+import 'package:peera/people/namedays.dart';
 import 'package:peera/push/push.dart';
 import 'package:peera/settings/edit_profile.dart';
 import 'package:peera/settings/settings_screens.dart';
@@ -115,7 +117,7 @@ void main() {
     expect(find.descendant(of: find.byKey(const ValueKey('tab-friends')), matching: find.text('1')), findsOneWidget);
     await _tab(t, 'me');
     expect(find.text('@nino.beridze'), findsOneWidget);
-    expect(find.text('12 450 ქოინი'), findsOneWidget);
+    expect(find.text('12 450'), findsOneWidget);
   });
 
   testWidgets('the feed: posts, a reaction picked and taken back, a vote', (t) async {
@@ -373,7 +375,7 @@ void main() {
     await t.tap(find.text('ჩართვა'));
     expect(push.calls, contains('settings'));
     // signing out is in the settings now, as on the site
-    await t.tap(find.byTooltip('პარამეტრები'));
+    await t.tap(find.byKey(const ValueKey('pro-settings')));
     await settle(t);
     await t.scrollUntilVisible(find.byKey(const ValueKey('set-out')), 300, scrollable: find.descendant(of: find.byType(SettingsScreen), matching: find.byType(Scrollable)).first);
     await t.tap(find.byKey(const ValueKey('set-out')));
@@ -863,7 +865,7 @@ void main() {
     phone(t);
     final api = await shell(t);
     await _tab(t, 'me');
-    await t.tap(find.byTooltip('პარამეტრები'));
+    await t.tap(find.byKey(const ValueKey('pro-settings')));
     await settle(t);
     expect(find.byType(SettingsScreen), findsOneWidget);
     expect(find.text('1 ტიპი გამორთულია · ღამით ჩუმად'), findsOneWidget);
@@ -1008,6 +1010,207 @@ void main() {
     await t.tap(find.byKey(const ValueKey('voice-play')).first);
     await settle(t);
     expect(icon('pause'), isNull);
+  });
+
+  Finder pro() => find.descendant(of: find.byType(PersonScreen).first, matching: find.byType(Scrollable)).first;
+  Future<void> proTo(WidgetTester t, Finder f) async {
+    await t.scrollUntilVisible(f, 250, scrollable: pro());
+    await settle(t);
+  }
+
+  testWidgets("someone's profile as on the site: the visit, chips, numbers, grid, tabs, more, block", (t) async {
+    phone(t);
+    final api = await shell(t);
+    await _tab(t, 'friends');
+    await t.tap(find.byKey(const ValueKey('seg-0')));
+    await settle(t);
+    await t.tap(find.text('გიორგი კაპანაძე').first);
+    await settle(t);
+    // my visit counts among their guests
+    expect(api.calls, contains('visit u2'));
+    expect(find.text('@gio.k'), findsOneWidget);
+    expect(find.text('ჯოკერი: 1640 რეიტინგი · 38 თამაში · 17 მოგება'), findsOneWidget);
+    expect(find.text('გვარი: კაპანაძე'), findsOneWidget);
+    // the numbers: posts, friends, rating, in common
+    expect(find.descendant(of: find.byKey(const ValueKey('stat-mutual')), matching: find.text('12')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('stat-friends')), matching: find.text('248')), findsOneWidget);
+
+    // the posts are a grid; a square opens the post, back comes back
+    await proTo(t, find.byKey(const ValueKey('grid-107')));
+    await t.tap(find.byKey(const ValueKey('grid-107')));
+    await settle(t);
+    expect(find.byType(PostScreen), findsOneWidget);
+    await _back(t);
+    expect(find.byType(PostScreen), findsNothing);
+    expect(find.byType(PersonScreen), findsOneWidget);
+
+    // the tabs: albums, friends, CV
+    await proTo(t, find.byKey(const ValueKey('ptab-albums')));
+    await t.tap(find.byKey(const ValueKey('ptab-albums')));
+    await settle(t);
+    expect(find.text('სვანეთი 2026'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('ptab-friends')));
+    await settle(t);
+    expect(find.byKey(const ValueKey('pfriend-u3')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('ptab-cv')));
+    await settle(t);
+    expect(find.text('ფოტოგრაფი'), findsWidgets);
+    expect(find.text('Lightroom'), findsOneWidget);
+
+    // a highlight plays, and one back closes it
+    await t.scrollUntilVisible(find.byKey(const ValueKey('hl-1')), -250, scrollable: pro());
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('hl-1')));
+    await t.pump(const Duration(milliseconds: 400));
+    expect(find.byType(StoryViewer), findsOneWidget);
+    expect(find.text('მთები'), findsWidgets);
+    expect(api.calls.where((x) => x.startsWith('seen ')), isEmpty);
+    await _back(t);
+    expect(find.byType(StoryViewer), findsNothing);
+
+    // more: a complaint, then a gift
+    await t.tap(find.byKey(const ValueKey('pro-more')));
+    await settle(t);
+    await t.tap(find.text('საჩივარი'));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('reason-ყალბი პროფილი')));
+    await settle(t);
+    expect(api.calls, contains('report user u2 ყალბი პროფილი'));
+    await t.pump(const Duration(seconds: 5));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('pro-more')));
+    await settle(t);
+    await t.tap(find.text('საჩუქრის გაგზავნა'));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('gift-🌹')));
+    await settle(t);
+    expect(api.calls, contains('gift u2 🌹'));
+    await t.pump(const Duration(seconds: 5));
+    await settle(t);
+
+    // a sheet closes with one back, the page stays
+    await t.tap(find.byKey(const ValueKey('pro-more')));
+    await settle(t);
+    expect(find.text('დაბლოკვა'), findsOneWidget);
+    await _back(t);
+    expect(find.text('დაბლოკვა'), findsNothing);
+    expect(find.byType(PersonScreen), findsOneWidget);
+
+    // block: asked first, then only "unblock" and "more" are left
+    await t.tap(find.byKey(const ValueKey('pro-more')));
+    await settle(t);
+    await t.tap(find.text('დაბლოკვა'));
+    await settle(t);
+    await t.tap(find.widgetWithText(TextButton, 'დაბლოკვა'));
+    await settle(t);
+    expect(api.calls, contains('block u2'));
+    expect(find.byKey(const ValueKey('pro-unblock')), findsOneWidget);
+    expect(find.byKey(const ValueKey('pro-message')), findsNothing);
+    await t.pump(const Duration(seconds: 5));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('pro-unblock')));
+    await settle(t);
+    expect(api.calls, contains('unblock u2'));
+    expect(find.byKey(const ValueKey('pro-message')), findsOneWidget);
+  });
+
+  testWidgets('my profile: coins, my space (guests, badges, archive, close friends, drafts, angel days), saved', (t) async {
+    phone(t);
+    final api = await shell(t);
+    await _tab(t, 'me');
+    expect(api.calls, contains('check badges'));
+    expect(api.calls.where((x) => x.startsWith('visit')), isEmpty);
+    expect(find.text('12 450'), findsOneWidget);
+    // the chips: the calendar knows ნინო's day; the school is still to add
+    expect(find.text('ანგელოზის დღე: ${mdText(daysOfName('ნინო').map((d) => (d.$1, daysUntil(d.$1))).reduce((a, b) => a.$2 <= b.$2 ? a : b).$1)}'), findsOneWidget);
+    expect(find.text('სკოლა ან უნივერსიტეტი'), findsOneWidget);
+
+    // guests: who came by; one back closes the sheet
+    await proTo(t, find.byKey(const ValueKey('space-guests')));
+    await t.tap(find.byKey(const ValueKey('space-guests')));
+    await settle(t);
+    expect(find.byKey(const ValueKey('guest-u2')), findsOneWidget);
+    await _back(t);
+    expect(find.byKey(const ValueKey('guest-u2')), findsNothing);
+
+    // badges: 3 of all, the best one first
+    await t.ensureVisible(find.byKey(const ValueKey('space-badges')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('space-badges')));
+    await settle(t);
+    expect(find.text('ჩემი ნიშნები'), findsOneWidget);
+    expect(find.text('ვარსკვლავი'), findsWidgets);
+    await _back(t);
+
+    // the archive: stories, then the highlights tab (a tab, not a step back)
+    await t.ensureVisible(find.byKey(const ValueKey('space-stories')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('space-stories')));
+    await settle(t);
+    expect(find.byType(StoryArchiveScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('arch-450')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('arch-450')));
+    await settle(t);
+    await t.tap(find.text('რჩეულებში დამატება'));
+    await settle(t);
+    await t.tap(find.text('ქუთაისი').last);
+    await settle(t);
+    expect(api.calls, contains('keep 450 in 3'));
+    await t.pump(const Duration(seconds: 5));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('archtab-hl')));
+    await settle(t);
+    expect(find.byKey(const ValueKey('archhl-3')), findsOneWidget);
+    await _back(t);
+    expect(find.byType(StoryArchiveScreen), findsNothing);
+
+    // close friends: one more
+    await t.ensureVisible(find.byKey(const ValueKey('space-close')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('space-close')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('close-u3')));
+    await settle(t);
+    expect(api.calls, contains('close u3 true'));
+    await _back(t);
+    await t.pump(const Duration(seconds: 5));
+    await settle(t);
+
+    // drafts: published now
+    await t.ensureVisible(find.byKey(const ValueKey('space-drafts')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('space-drafts')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('dpub-150')));
+    await settle(t);
+    expect(api.calls, contains('publish 150'));
+    await _back(t);
+    await t.pump(const Duration(seconds: 5));
+    await settle(t);
+
+    // angel's days
+    await t.ensureVisible(find.byKey(const ValueKey('space-namedays')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('space-namedays')));
+    await settle(t);
+    expect(find.byType(NamedaysScreen), findsOneWidget);
+    expect(find.textContaining('ნინოობა'), findsWidgets);
+    await _back(t);
+    expect(find.byType(NamedaysScreen), findsNothing);
+
+    // saved: a grid, and a folder
+    await proTo(t, find.byKey(const ValueKey('ptab-saved')));
+    await t.tap(find.byKey(const ValueKey('ptab-saved')));
+    await settle(t);
+    await proTo(t, find.byKey(const ValueKey('grid-101')));
+    expect(find.byKey(const ValueKey('grid-103')), findsOneWidget);
+    await t.scrollUntilVisible(find.byKey(const ValueKey('savf-1')), -250, scrollable: pro());
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('savf-1')));
+    await settle(t);
+    expect(api.calls, contains('saved 1'));
+    expect(find.text('ეს საქაღალდე ცარიელია'), findsOneWidget);
+    expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 6);
   });
 }
 

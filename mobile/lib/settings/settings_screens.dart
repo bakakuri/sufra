@@ -543,8 +543,9 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
 
   Future<void> _set(String k, Object v) async {
     setState(() => priv = {...priv, k: v});
-    final api = context.app.api;
-    await attempt(context, () => api.updateMe({'privacy': priv}));
+    final app = context.app;
+    // the invisible-guest switch decides how my visits count, so my own copy is fetched again
+    if (await attempt(context, () => app.api.updateMe({'privacy': priv})) && k == 'guest') app.refreshMe?.call();
   }
 
   Future<void> _unblock(String uid) async {
