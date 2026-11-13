@@ -701,9 +701,9 @@ class _TrickViewState extends State<_TrickView> {
     _watch();
     final g = widget.g;
     return LayoutBuilder(builder: (context, box) {
-      final w = box.maxWidth, h = box.maxHeight, cw = 52.0, ch = cw * cardRatio;
+      final w = box.maxWidth, h = box.maxHeight, cw = 54.0, ch = cw * cardRatio;
       final c = Offset(w / 2, h / 2 + 6);
-      const slot = {0: Offset(0, 46), 1: Offset(-50, 0), 2: Offset(0, -46), 3: Offset(50, 0)};
+      const slot = {0: Offset(0, 62), 1: Offset(-62, 0), 2: Offset(0, -62), 3: Offset(62, 0)};
       const turn = {0: 0.0, 1: -.1, 2: .05, 3: .1};
       return Stack(clipBehavior: Clip.none, children: [
         for (final e in g.trick)

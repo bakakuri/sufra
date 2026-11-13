@@ -42,6 +42,9 @@ class JokerSession extends ChangeNotifier {
 
   JokerGame? g;
 
+  /// the player's name: nobody drawn at the table has the same first name
+  String myName = '';
+
   /// who sits in seats 1–3 (left, across, right)
   List<String> seats = ['f1', 'm1', 'f2'];
   int level = 2;
@@ -127,7 +130,8 @@ class JokerSession extends ChangeNotifier {
   void start(String len) {
     _t?.cancel();
     final rng = jokerRandom();
-    final free = cast.map((c) => c.id).toList()..shuffle(rng);
+    final mine = myName.trim().split(' ').first;
+    final free = [for (final c in cast) if (c.name != mine) c.id]..shuffle(rng);
     seats = free.take(3).toList();
     g = JokerGame.start(len, rng: rng);
     reported = false;

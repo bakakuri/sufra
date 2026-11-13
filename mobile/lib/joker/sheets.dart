@@ -330,5 +330,5 @@ Future<void> showHandReview(BuildContext context, JokerGame g, String Function(i
 String _said(HandRow? h, int p) => h == null ? '' : '${h.b[p] == 0 ? 'პასი' : h.b[p]}, წაიღო ${h.t[p]}';
 
 /// a fixed font for numbers on the table (the Georgian font has no digits of its own on every phone)
-const numFont = TextStyle(fontFamily: 'NotoSans', fontFamilyFallback: ['Roboto']);
+const numFont = TextStyle(fontFamily: 'NotoSans', fontFamilyFallback: [fontBody, 'Roboto']);
 const tableText = TextStyle(fontFamily: fontBody, fontFamilyFallback: fontFallback, color: light);

@@ -39,7 +39,7 @@ Future<JokerSession> _joker(WidgetTester t, ThemeMode m, String len, int seed, b
   }
   final s = JokerSession()
     ..g = g
-    ..seats = ['f1', 'm1', 'f2'];
+    ..seats = ['f1', 'm1', 'f3'];
   await t.pumpWidget(PeeraApp(mode: m, home: AppScope(app: AppState(FakeApi()), me: nino, child: JokerTableScreen(session: s))));
   await settle(t);
   return s;

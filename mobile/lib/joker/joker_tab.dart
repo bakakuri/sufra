@@ -42,7 +42,9 @@ class _JokerTabState extends State<JokerTab> {
     super.didChangeDependencies();
     if (_s != null) return;
     final api = context.app.api;
-    _s = JokerSession(onOver: (won) async => won ? (await api.gameResult('joker', true)).reward : 0)..load();
+    _s = JokerSession(onOver: (won) async => won ? (await api.gameResult('joker', true)).reward : 0)
+      ..myName = context.me.name
+      ..load();
   }
 
   @override
