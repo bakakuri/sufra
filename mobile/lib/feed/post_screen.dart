@@ -245,7 +245,7 @@ class _InputBar extends StatelessWidget {
                 PIcon('reply', size: 17, color: c.accent),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text('პასუხი: ${replyTo!.ap?.name ?? ''}',
+                  child: Text('პასუხი: ${(replyTo!.ap?.name ?? '').split(' ').first}',
                       maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.accent, fontWeight: FontWeight.w700, fontSize: 13.5)),
                 ),
                 IconBtn('x', label: 'პასუხის გაუქმება', size: 18, color: c.muted, onTap: onCancelReply),

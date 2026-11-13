@@ -372,6 +372,8 @@ void main() {
     push.on.value = false;
     await t.pump();
     expect(find.text('შეტყობინებები გამორთულია'), findsOneWidget);
+    await t.ensureVisible(find.text('ჩართვა'));
+    await settle(t);
     await t.tap(find.text('ჩართვა'));
     expect(push.calls, contains('settings'));
     // signing out is in the settings now, as on the site
@@ -1015,6 +1017,13 @@ void main() {
   Finder pro() => find.descendant(of: find.byType(PersonScreen).first, matching: find.byType(Scrollable)).first;
   Future<void> proTo(WidgetTester t, Finder f) async {
     await t.scrollUntilVisible(f, 250, scrollable: pro());
+    await t.ensureVisible(f);
+    await settle(t);
+  }
+
+  /// a shortcut in the sideways "my space" row (the ones past the edge count as off screen for finders)
+  Future<void> spaceTo(WidgetTester t, String k) async {
+    await t.ensureVisible(find.byKey(ValueKey('space-$k'), skipOffstage: false));
     await settle(t);
   }
 
@@ -1058,11 +1067,12 @@ void main() {
     expect(find.text('Lightroom'), findsOneWidget);
 
     // a highlight plays, and one back closes it
-    await t.scrollUntilVisible(find.byKey(const ValueKey('hl-1')), -250, scrollable: pro());
+    await t.ensureVisible(find.byKey(const ValueKey('hl-1'), skipOffstage: false));
     await settle(t);
     await t.tap(find.byKey(const ValueKey('hl-1')));
-    await t.pump(const Duration(milliseconds: 400));
-    expect(find.byType(StoryViewer), findsOneWidget);
+    await settle(t);
+    expect(find.byType(StoryViewer), findsOneWidget,
+        reason: find.byType(SnackBar, skipOffstage: false).evaluate().map((e) => '${((e.widget as SnackBar).content as Text).data}').join(' | '));
     expect(find.text('მთები'), findsWidgets);
     expect(api.calls.where((x) => x.startsWith('seen ')), isEmpty);
     await _back(t);
@@ -1126,7 +1136,7 @@ void main() {
     expect(find.text('სკოლა ან უნივერსიტეტი'), findsOneWidget);
 
     // guests: who came by; one back closes the sheet
-    await proTo(t, find.byKey(const ValueKey('space-guests')));
+    await spaceTo(t, 'guests');
     await t.tap(find.byKey(const ValueKey('space-guests')));
     await settle(t);
     expect(find.byKey(const ValueKey('guest-u2')), findsOneWidget);
@@ -1134,8 +1144,7 @@ void main() {
     expect(find.byKey(const ValueKey('guest-u2')), findsNothing);
 
     // badges: 3 of all, the best one first
-    await t.ensureVisible(find.byKey(const ValueKey('space-badges')));
-    await settle(t);
+    await spaceTo(t, 'badges');
     await t.tap(find.byKey(const ValueKey('space-badges')));
     await settle(t);
     expect(find.text('ჩემი ნიშნები'), findsOneWidget);
@@ -1143,8 +1152,7 @@ void main() {
     await _back(t);
 
     // the archive: stories, then the highlights tab (a tab, not a step back)
-    await t.ensureVisible(find.byKey(const ValueKey('space-stories')));
-    await settle(t);
+    await spaceTo(t, 'stories');
     await t.tap(find.byKey(const ValueKey('space-stories')));
     await settle(t);
     expect(find.byType(StoryArchiveScreen), findsOneWidget);
@@ -1165,8 +1173,7 @@ void main() {
     expect(find.byType(StoryArchiveScreen), findsNothing);
 
     // close friends: one more
-    await t.ensureVisible(find.byKey(const ValueKey('space-close')));
-    await settle(t);
+    await spaceTo(t, 'close');
     await t.tap(find.byKey(const ValueKey('space-close')));
     await settle(t);
     await t.tap(find.byKey(const ValueKey('close-u3')));
@@ -1177,8 +1184,7 @@ void main() {
     await settle(t);
 
     // drafts: published now
-    await t.ensureVisible(find.byKey(const ValueKey('space-drafts')));
-    await settle(t);
+    await spaceTo(t, 'drafts');
     await t.tap(find.byKey(const ValueKey('space-drafts')));
     await settle(t);
     await t.tap(find.byKey(const ValueKey('dpub-150')));
@@ -1189,8 +1195,7 @@ void main() {
     await settle(t);
 
     // angel's days
-    await t.ensureVisible(find.byKey(const ValueKey('space-namedays')));
-    await settle(t);
+    await spaceTo(t, 'namedays');
     await t.tap(find.byKey(const ValueKey('space-namedays')));
     await settle(t);
     expect(find.byType(NamedaysScreen), findsOneWidget);
@@ -1204,7 +1209,7 @@ void main() {
     await settle(t);
     await proTo(t, find.byKey(const ValueKey('grid-101')));
     expect(find.byKey(const ValueKey('grid-103')), findsOneWidget);
-    await t.scrollUntilVisible(find.byKey(const ValueKey('savf-1')), -250, scrollable: pro());
+    await t.ensureVisible(find.byKey(const ValueKey('savf-1'), skipOffstage: false));
     await settle(t);
     await t.tap(find.byKey(const ValueKey('savf-1')));
     await settle(t);

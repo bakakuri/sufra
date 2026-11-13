@@ -830,14 +830,18 @@ class _PersonScreenState extends State<PersonScreen> {
                 child: Container(
                   height: 46,
                   decoration: BoxDecoration(border: Border(bottom: BorderSide(color: tab == t.$1 ? c.accent : Colors.transparent, width: 2))),
-                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    PIcon(t.$2, size: 18, color: tab == t.$1 ? c.ink : c.muted),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(t.$3,
-                          maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: tab == t.$1 ? c.ink : c.muted)),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  // the whole word, made a little smaller when four do not fit
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        PIcon(t.$2, size: 18, color: tab == t.$1 ? c.ink : c.muted),
+                        const SizedBox(width: 5),
+                        Text(t.$3, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: tab == t.$1 ? c.ink : c.muted)),
+                      ]),
                     ),
-                  ]),
+                  ),
                 ),
               ),
             ),
