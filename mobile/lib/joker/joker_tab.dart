@@ -194,7 +194,7 @@ class _JokerTabState extends State<JokerTab> {
         Row(children: [
           PIcon('users', size: 22, color: c.accent),
           const SizedBox(width: 8),
-          const Text('ონლაინ, ადამიანებთან', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800)),
+          const Expanded(child: Text('ონლაინ თამაში', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800))),
         ]),
         const SizedBox(height: 4),
         Text('სწრაფი თამაში ღია მაგიდაზე გსვამს. ცარიელ ადგილებზე ბოტები ჩასხდებიან.', style: TextStyle(color: c.muted, fontSize: 13.5, height: 1.4)),

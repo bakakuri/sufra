@@ -326,7 +326,7 @@ void main() {
     expect(PushTarget.fromData({'url': '/#chat-12', 'kind': 'message'})!.conv, 12);
     expect(PushTarget.fromData({'url': '/#post-34', 'kind': 'comment'})!.post, 34);
     expect(PushTarget.fromData({'url': '/#notifications', 'kind': 'friend_req'})!.tab, 'friends');
-    expect(PushTarget.fromData({'url': '/#date', 'kind': 'match'}), isNull);
+    expect(PushTarget.fromData({'url': '/#games', 'kind': 'game'}), isNull);
   });
 
   testWidgets('notifications: this phone is registered, a tap opens its place, sign-out stops them', (t) async {
@@ -647,6 +647,9 @@ void main() {
     await t.tap(find.byKey(const ValueKey('jinvite-send')));
     await settle(t);
     expect(api.calls, contains('jk invite 50 u2'));
+    // the line that says it was sent goes away by itself
+    await t.pump(const Duration(seconds: 5));
+    await settle(t);
     // start: three bots sit down
     await t.scrollUntilVisible(find.byKey(const ValueKey('jstart')), 200, scrollable: find.descendant(of: find.byType(OnlineTableScreen), matching: find.byType(Scrollable)).first);
     await t.tap(find.byKey(const ValueKey('jstart')));

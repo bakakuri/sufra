@@ -145,6 +145,7 @@ class _DatingTabState extends State<DatingTab> {
     try {
       final paired = await context.app.api.swipe(p.id, kind);
       if (!mounted) return;
+      if (p.likedMe) _count();
       if (kind == 'super') toast(context, 'სუპერ მოწონება გაიგზავნა · −$superCost მონეტა');
       if (paired) await _pairSheet(p);
     } catch (e) {

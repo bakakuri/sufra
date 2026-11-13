@@ -118,7 +118,7 @@ class _WaitRoom extends StatelessWidget {
       final Profile? p = u == null ? null : (people[u] ?? Profile(id: u, name: '…'));
       return Container(
         key: ValueKey('jseat-$i'),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
           color: c.surface,
           borderRadius: BorderRadius.circular(16),
@@ -166,7 +166,7 @@ class _WaitRoom extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
-          childAspectRatio: 1.35,
+          childAspectRatio: 1.2,
           children: [for (var i = 0; i < 4; i++) seat(i)],
         ),
         const SizedBox(height: 18),
