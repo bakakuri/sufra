@@ -277,7 +277,10 @@ class _TreeScreenState extends State<TreeScreen> {
                           style: TextStyle(color: c.muted, fontSize: 13)),
                     ]),
                   ),
-                  FilledButton(key: ValueKey('kreq-ok-${x['id']}'), onPressed: () => _respond(x, true), child: const Text('დადასტურება')),
+                  FilledButton(
+                      key: ValueKey('kreq-ok-${x['id']}'),
+                      style: FilledButton.styleFrom(minimumSize: const Size(0, 38), padding: const EdgeInsets.symmetric(horizontal: 12)),
+                      onPressed: () => _respond(x, true), child: const Text('დადასტურება')),
                   IconBtn('x', key: ValueKey('kreq-no-${x['id']}'), label: 'უარყოფა', onTap: () => _respond(x, false)),
                 ]),
               ),
@@ -288,8 +291,10 @@ class _TreeScreenState extends State<TreeScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: Wrap(spacing: 8, runSpacing: 8, children: [
-                OutlinedButton.icon(key: const ValueKey('kin-add'), onPressed: () => _add(), icon: PIcon('plus', size: 18, color: c.ink), label: const Text('ნათესავის დამატება')),
+                OutlinedButton.icon(key: const ValueKey('kin-add'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 14)),
+onPressed: () => _add(), icon: PIcon('plus', size: 18, color: c.ink), label: const Text('ნათესავის დამატება')),
                 OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 14)),
                   onPressed: () => openSurname(context, me.surname),
                   icon: PIcon('users', size: 18, color: c.ink),
                   label: const Text('ჩემი გვარი'),
@@ -821,6 +826,7 @@ class _SurnameScreenState extends State<SurnameScreen> {
               if (mine)
                 FilledButton.icon(
                   key: const ValueKey('sn-group'),
+                  style: FilledButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 16)),
                   onPressed: _join,
                   icon: PIcon('users', size: 18, color: c.onAccent),
                   label: Text(group != null ? 'გვარის ჯგუფი' : 'გვარის ჯგუფის შექმნა'),
@@ -828,12 +834,14 @@ class _SurnameScreenState extends State<SurnameScreen> {
               else if (group != null)
                 FilledButton.icon(
                   key: const ValueKey('sn-group'),
+                  style: FilledButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 16)),
                   onPressed: () => openSite('#group-$group'),
                   icon: PIcon('users', size: 18, color: c.onAccent),
                   label: const Text('გვარის ჯგუფი'),
                 ),
               OutlinedButton.icon(
                 key: const ValueKey('sn-tree'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 14)),
                 onPressed: () => openPage(context, TreeScreen(uid: me.id)),
                 icon: PIcon('tree', size: 18, color: c.ink),
                 label: const Text('ჩემი ოჯახის ხე'),
@@ -841,6 +849,7 @@ class _SurnameScreenState extends State<SurnameScreen> {
               if (mine || (my ?? '').isEmpty)
                 OutlinedButton.icon(
                   key: const ValueKey('sn-set'),
+                  style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 14)),
                   onPressed: _set,
                   icon: PIcon('edit', size: 18, color: c.ink),
                   label: Text(mine ? 'გვარის შეცვლა' : 'ჩემი გვარის მითითება'),

@@ -39,7 +39,7 @@ class GreetingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final d = _designs.firstWhere((x) => x.$1 == '${card['d']}', orElse: () => _designs.first);
-    final rad = (d.$7 - 90) * math.pi / 180;
+    final rad = (d.$7 - 90) * math.pi / 180, f = (width / 240).clamp(.75, 1.2).toDouble();
     final to = '${card['to'] ?? ''}'.trim(), text = '${card['text'] ?? ''}'.trim(), from = '${card['from'] ?? ''}'.trim();
     return Container(
       width: width,
@@ -68,14 +68,23 @@ class GreetingCard extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: small ? 6 : 16, vertical: small ? 6 : 18),
             child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-              Text(d.$3, textAlign: TextAlign.center, style: TextStyle(color: d.$8, fontSize: small ? 9.5 : 21, fontWeight: FontWeight.w800, height: 1.15)),
+              Text(d.$3, textAlign: TextAlign.center, style: TextStyle(color: d.$8, fontSize: small ? 9.5 : 21 * f, fontWeight: FontWeight.w800, height: 1.15)),
               if (!small) ...[
-                if (to.isNotEmpty) ...[const SizedBox(height: 6), Text(to, style: TextStyle(color: d.$8.withValues(alpha: .9), fontSize: 17, fontWeight: FontWeight.w700))],
-                if (text.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(text, textAlign: TextAlign.center, style: TextStyle(color: d.$8.withValues(alpha: .95), fontSize: 12.5, height: 1.45)),
+                if (to.isNotEmpty) ...[
+                  SizedBox(height: 5 * f),
+                  Text(to, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: d.$8.withValues(alpha: .9), fontSize: 17 * f, fontWeight: FontWeight.w700)),
                 ],
-                if (from.isNotEmpty) ...[const SizedBox(height: 6), Text('— $from', style: TextStyle(color: d.$8.withValues(alpha: .75), fontSize: 12, fontWeight: FontWeight.w700))],
+                if (text.isNotEmpty) ...[
+                  SizedBox(height: 5 * f),
+                  Flexible(
+                    child: Text(text,
+                        textAlign: TextAlign.center, overflow: TextOverflow.fade, style: TextStyle(color: d.$8.withValues(alpha: .95), fontSize: 12.5 * f, height: 1.4)),
+                  ),
+                ],
+                if (from.isNotEmpty) ...[
+                  SizedBox(height: 5 * f),
+                  Text('— $from', maxLines: 1, style: TextStyle(color: d.$8.withValues(alpha: .75), fontSize: 12 * f, fontWeight: FontWeight.w700)),
+                ],
               ],
             ]),
           ),

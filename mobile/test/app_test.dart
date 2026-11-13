@@ -161,6 +161,10 @@ void main() {
     await settle(t);
     await t.tap(find.byKey(const ValueKey('comments-101')));
     await settle(t);
+    // under the post (its photos and their grades) come the comments
+    await t.scrollUntilVisible(find.text('ჯვრის მონასტერთან ახლოს 🙂'), 100,
+        scrollable: find.descendant(of: find.byType(PostScreen), matching: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)).first);
+    await settle(t);
     expect(find.text('ჯვრის მონასტერთან ახლოს 🙂'), findsOneWidget);
     await t.tap(find.text('პასუხი').first);
     await settle(t);

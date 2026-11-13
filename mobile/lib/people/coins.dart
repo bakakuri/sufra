@@ -218,7 +218,9 @@ class _CoinsScreenState extends State<CoinsScreen> {
             Container(
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: c.line)),
-              child: Theme(
+              child: Material(
+                type: MaterialType.transparency,
+                child: Theme(
                 data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
                   key: ValueKey('crgrp-${e.key}'),
@@ -260,7 +262,7 @@ class _CoinsScreenState extends State<CoinsScreen> {
                       }),
                   ],
                 ),
-              ),
+              )),
             ),
           Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text('ისტორია', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
           if (log.isEmpty)

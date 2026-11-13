@@ -402,15 +402,18 @@ class _AlbumScreenState extends State<AlbumScreen> {
                 if (canAdd)
                   FilledButton.icon(
                     key: const ValueKey('alb-add'),
+                    style: FilledButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 16)),
                     onPressed: uploading != null ? null : _add,
                     icon: PIcon('image', size: 18, color: c.onAccent),
                     label: Text(uploading == null ? 'ფოტოების დამატება' : 'იტვირთება ${uploading!.$1}/${uploading!.$2}'),
                   ),
                 if (own) ...[
-                  OutlinedButton.icon(key: const ValueKey('alb-invite'), onPressed: _invite, icon: PIcon('users', size: 18, color: c.ink), label: const Text('მოწვევა')),
+                  OutlinedButton.icon(key: const ValueKey('alb-invite'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 14)),
+onPressed: _invite, icon: PIcon('users', size: 18, color: c.ink), label: const Text('მოწვევა')),
                   IconBtn('more', key: const ValueKey('alb-more'), label: 'მეტი', onTap: _more),
                 ],
-                if (!own && members.contains(me)) OutlinedButton(onPressed: _leave, child: const Text('დატოვება')),
+                if (!own && members.contains(me)) OutlinedButton(style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 14)),
+onPressed: _leave, child: const Text('დატოვება')),
               ]),
             ]),
           ),

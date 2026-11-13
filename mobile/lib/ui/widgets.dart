@@ -303,9 +303,13 @@ class SheetItem {
 Future<void> showChoices(BuildContext context, List<SheetItem> items) => showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       backgroundColor: context.pc.surface,
       builder: (s) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(s).height * .8),
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
           for (final it in items)
             ListTile(
               leading: PIcon(it.icon, size: 22, color: it.danger ? context.pc.nope : context.pc.ink),
@@ -316,6 +320,8 @@ Future<void> showChoices(BuildContext context, List<SheetItem> items) => showMod
               },
             ),
           const SizedBox(height: 8),
-        ]),
+            ]),
+          ),
+        ),
       ),
     );

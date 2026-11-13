@@ -164,11 +164,13 @@ class _EduScreenState extends State<EduScreen> {
             child: Wrap(spacing: 8, runSpacing: 8, children: [
               FilledButton.icon(
                 key: const ValueKey('edu-mates'),
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 16)),
                 onPressed: () => openPage(context, ClassmatesScreen(edu: list)),
                 icon: PIcon('users', size: 18, color: c.onAccent),
                 label: const Text('კლასელები და კურსელები'),
               ),
-              OutlinedButton.icon(onPressed: _groups, icon: PIcon('users', size: 18, color: c.ink), label: const Text('კლასისა და კურსის ჯგუფები')),
+              OutlinedButton.icon(style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 14)),
+onPressed: _groups, icon: PIcon('users', size: 18, color: c.ink), label: const Text('კლასისა და კურსის ჯგუფები')),
             ]),
           ),
         ],
