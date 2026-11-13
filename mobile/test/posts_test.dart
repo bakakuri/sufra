@@ -19,6 +19,14 @@ Future<void> _back(WidgetTester t) async {
 final _feed = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
 
 Future<void> _tap(WidgetTester t, String key) async {
+  await t.scrollUntilVisible(find.byKey(ValueKey(key)), 300, scrollable: _feed);
+  await settle(t);
+  await t.tap(find.byKey(ValueKey(key)));
+  await settle(t);
+}
+
+/// a button in a row that scrolls sideways, brought into view first
+Future<void> _side(WidgetTester t, String key) async {
   await t.ensureVisible(find.byKey(ValueKey(key), skipOffstage: false));
   await settle(t);
   await t.tap(find.byKey(ValueKey(key)));
@@ -149,7 +157,10 @@ void main() {
     final api = await shell(t);
     await _to(t, 'comments-106');
     expect(find.byType(PostScreen), findsOneWidget);
-    expect(find.byType(StickerView), findsOneWidget);
+    final list = find.descendant(of: find.byType(PostScreen), matching: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)).first;
+    await t.scrollUntilVisible(find.byKey(const ValueKey('cm-22')), 200, scrollable: list);
+    await settle(t);
+    expect(find.byType(StickerView, skipOffstage: false), findsOneWidget);
     // the sticker's placeholder words are not shown
     expect(find.text('🥟 ხინკალი'), findsNothing);
     // English: "თარგმნა"; Georgian in Latin letters: "ქართული ასოებით"
@@ -174,7 +185,7 @@ void main() {
     await t.tap(find.byKey(const ValueKey('stk-khinkali')));
     await settle(t);
     expect(api.calls, contains('comment 106 🥟 ხინკალი khinkali'));
-    expect(find.byType(StickerView), findsNWidgets(2));
+    expect(find.byType(StickerView, skipOffstage: false), findsNWidgets(2));
 
     await t.tap(find.byKey(const ValueKey('c-img')));
     await settle(t);
@@ -204,14 +215,12 @@ void main() {
     expect(find.text('გამარჯობა @mariami '), findsOneWidget);
     expect(find.byKey(const ValueKey('mentions')), findsNothing);
 
-    await t.tap(find.byKey(const ValueKey('c-place')));
-    await settle(t);
+    await _side(t, 'c-place');
     await t.tap(find.byKey(const ValueKey('pp-9')));
     await settle(t);
     expect(find.byKey(const ValueKey('c-place-chip')), findsOneWidget);
 
-    await t.tap(find.byKey(const ValueKey('c-vid')));
-    await settle(t);
+    await _side(t, 'c-vid');
     expect(find.byKey(const ValueKey('c-video')), findsOneWidget);
 
     await t.tap(find.byKey(const ValueKey('c-later')));
@@ -239,8 +248,7 @@ void main() {
     expect(find.text('მთის ამბები'), findsOneWidget);
     expect(find.text('მთის მოყვარულები'), findsOneWidget);
     expect(find.text('პოსტები'), findsWidgets);
-    await t.tap(find.byKey(const ValueKey('stab-groups')));
-    await settle(t);
+    await _side(t, 'stab-groups');
     expect(find.text('მთის ამბები'), findsNothing);
     expect(find.text('მთის მოყვარულები'), findsOneWidget);
 

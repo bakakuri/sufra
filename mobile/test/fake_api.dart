@@ -225,9 +225,9 @@ class FakeApi implements PeeraApi {
       before == null ? [...?_msgs[convId]] : const [];
 
   @override
-  Future<Message> send(int convId, {String body = '', String kind = 'text', Map<String, dynamic>? media}) async {
-    calls.add('send $convId $kind $body');
-    final m = Message(id: _id++, convId: convId, sender: nino.id, body: body, kind: kind, media: media, createdAt: DateTime.now());
+  Future<Message> send(int convId, {String body = '', String kind = 'text', Map<String, dynamic>? media, int? replyTo}) async {
+    calls.add('send $convId $kind $body${replyTo == null ? '' : ' ↩$replyTo'}${media?['fwd'] != null ? ' fwd ${media!['fwd']}' : ''}${media?['sticker'] != null ? ' sticker ${media!['sticker']}' : ''}${media?['loc'] != null ? ' loc' : ''}');
+    final m = Message(id: _id++, convId: convId, sender: nino.id, body: body, kind: kind, media: media, replyTo: replyTo, createdAt: DateTime.now());
     _msgs[convId] = [m, ...?_msgs[convId]];
     return m;
   }
@@ -1237,4 +1237,73 @@ class FakeApi implements PeeraApi {
         ])
           if (q.isEmpty || '${p['name']}'.contains(q)) p,
       ];
+
+  // ---------- chat in full ----------
+  final msgReacts = <int, Map<String, String>>{
+    509: {'u2': '❤️'},
+  };
+  int? pinnedMsg = 507;
+  int? chatTtl;
+  final reactLive = StreamController<(int, String, String?)>.broadcast();
+  final typingLive = StreamController<String>.broadcast();
+  @override
+  Future<Map<int, Map<String, String>>> messageReactions(List<int> ids) async => {for (final i in ids) if (msgReacts[i] != null) i: {...msgReacts[i]!}};
+  @override
+  Future<void> reactMessage(int id, String? emoji, {bool had = false}) async {
+    calls.add('mreact $id $emoji');
+    emoji == null ? msgReacts[id]?.remove(nino.id) : (msgReacts[id] ??= {})[nino.id] = emoji;
+  }
+
+  @override
+  Stream<(int, String, String?)> liveReactions(int convId) => reactLive.stream;
+  @override
+  Stream<String> typing(int convId) => typingLive.stream;
+  @override
+  void sendTyping(int convId) => calls.add('typing $convId');
+  @override
+  Future<void> editMessage(int id, String body) async => calls.add('medit $id $body');
+  @override
+  Future<void> unsendMessage(int id) async => calls.add('unsend $id');
+  @override
+  Future<Message?> message(int id) async => _msgs.values.expand((l) => l).where((m) => m.id == id).firstOrNull;
+  @override
+  Future<(int?, int?)> chatMeta(int convId) async => convId == 1 ? (pinnedMsg, chatTtl) : (null, null);
+  @override
+  Future<void> pinMessage(int convId, int? id) async {
+    calls.add('pin $convId $id');
+    pinnedMsg = id;
+  }
+
+  @override
+  Future<void> setChatTtl(int convId, int? seconds) async {
+    calls.add('ttl $convId $seconds');
+    chatTtl = seconds;
+  }
+
+  @override
+  Future<Map<String, DateTime?>> chatSeen(int convId) async => {giorgi.id: DateTime.now()};
+  @override
+  Future<void> muteChat(int convId, DateTime? until) async => calls.add('mute $convId ${until == null ? 'off' : 'on'}');
+  @override
+  Future<void> archiveChat(int convId, bool on) async => calls.add('archive $convId $on');
+  @override
+  Future<List<Message>> searchMessages(int convId, String q) async => [for (final m in _msgs[convId] ?? const <Message>[]) if (m.body.contains(q)) m];
+  @override
+  Future<({List<Message> photos, List<Message> links, List<Message> places})> chatMedia(int convId) async =>
+      (photos: [for (final m in _msgs[convId] ?? const <Message>[]) if (m.kind == 'image') m], links: <Message>[], places: <Message>[]);
+  @override
+  Future<int> createGroupChat(String title, List<String> members) async {
+    calls.add('group $title ${members.join(',')}');
+    _chats.insert(0, Chat(convId: 30, isGroup: true, title: title, members: members, lastAt: DateTime.now()));
+    return 30;
+  }
+
+  @override
+  Future<void> addToGroupChat(int convId, List<String> members) async => calls.add('gadd $convId ${members.join(',')}');
+  @override
+  Future<void> renameGroupChat(int convId, String title) async => calls.add('grename $convId $title');
+  @override
+  Future<void> leaveGroupChat(int convId) async => calls.add('gleave $convId');
+  @override
+  Future<Map<int, int>> streaks() async => {1: 12};
 }

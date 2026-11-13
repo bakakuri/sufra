@@ -331,6 +331,21 @@ class Message {
   bool get gone => expiresAt != null && expiresAt!.isBefore(DateTime.now());
   Media? get photo => kind == 'image' ? Media.fromJson(media) : null;
 
+  Message copyWith({String? body, bool? edited, bool? deleted, bool clearMedia = false}) => Message(
+        id: id,
+        convId: convId,
+        sender: sender,
+        createdAt: createdAt,
+        body: body ?? this.body,
+        kind: kind,
+        media: clearMedia ? null : media,
+        replyTo: replyTo,
+        edited: edited ?? this.edited,
+        deleted: deleted ?? this.deleted,
+        expiresAt: expiresAt,
+        sending: sending,
+      );
+
   factory Message.fromJson(Map<String, dynamic> j) => Message(
         id: asInt(j['id']),
         convId: asInt(j['conv_id']),

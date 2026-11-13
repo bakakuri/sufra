@@ -45,7 +45,7 @@ abstract class PeeraApi {
 
   Future<List<Chat>> chats();
   Future<List<Message>> messages(int convId, {DateTime? before, int limit = 50});
-  Future<Message> send(int convId, {String body = '', String kind = 'text', Map<String, dynamic>? media});
+  Future<Message> send(int convId, {String body = '', String kind = 'text', Map<String, dynamic>? media, int? replyTo});
   Future<void> markRead(int convId);
   Future<int> startDm(String uid);
 
@@ -396,6 +396,52 @@ abstract class PeeraApi {
 
   /// places for a post: by name, or the ones near (places_near) when [q] is empty
   Future<List<Map<String, dynamic>>> findPlaces(String q, {double? lat, double? lng});
+
+  // ---------- chat in full (chat.js): reactions, edits, pins, disappearing, search, groups, mute, archive ----------
+
+  /// who reacted how to these messages: message → (person → emoji)
+  Future<Map<int, Map<String, String>>> messageReactions(List<int> ids);
+
+  /// my reaction on a message (null takes it away); [had] when I had one before
+  Future<void> reactMessage(int id, String? emoji, {bool had = false});
+
+  /// reactions as they change in a conversation: (message, person, emoji or null)
+  Stream<(int, String, String?)> liveReactions(int convId);
+
+  /// someone typing in a conversation (a person's id), and telling the others I am
+  Stream<String> typing(int convId);
+  void sendTyping(int convId);
+
+  Future<void> editMessage(int id, String body);
+  Future<void> unsendMessage(int id);
+  Future<Message?> message(int id);
+
+  /// the pinned message and the disappearing time (seconds) of a conversation
+  Future<(int?, int?)> chatMeta(int convId);
+  Future<void> pinMessage(int convId, int? id);
+  Future<void> setChatTtl(int convId, int? seconds);
+
+  /// when the others last saw the conversation (read receipts)
+  Future<Map<String, DateTime?>> chatSeen(int convId);
+
+  /// muted until (null: sound on), in the archive or not
+  Future<void> muteChat(int convId, DateTime? until);
+  Future<void> archiveChat(int convId, bool on);
+
+  /// messages with the words, newest first
+  Future<List<Message>> searchMessages(int convId, String q);
+
+  /// photos, links and places shared in a conversation
+  Future<({List<Message> photos, List<Message> links, List<Message> places})> chatMedia(int convId);
+
+  /// a group conversation: made with friends (its id), more added, renamed, left
+  Future<int> createGroupChat(String title, List<String> members);
+  Future<void> addToGroupChat(int convId, List<String> members);
+  Future<void> renameGroupChat(int convId, String title);
+  Future<void> leaveGroupChat(int convId);
+
+  /// days in a row of writing to each other (dm_streaks): conversation → days
+  Future<Map<int, int>> streaks();
 }
 
 class SupaApi implements PeeraApi {
@@ -612,10 +658,10 @@ class SupaApi implements PeeraApi {
   }
 
   @override
-  Future<Message> send(int convId, {String body = '', String kind = 'text', Map<String, dynamic>? media}) async =>
+  Future<Message> send(int convId, {String body = '', String kind = 'text', Map<String, dynamic>? media, int? replyTo}) async =>
       Message.fromJson(await sb
           .from('messages')
-          .insert({'conv_id': convId, 'sender': myId, 'body': body, 'kind': kind, 'media': media})
+          .insert({'conv_id': convId, 'sender': myId, 'body': body, 'kind': kind, 'media': media, if (replyTo != null) 'reply_to': replyTo})
           .select(msgSel)
           .single());
 
@@ -1606,4 +1652,156 @@ class SupaApi implements PeeraApi {
     final r = await sb.rpc('places_near', params: {'p_lat': lat ?? 41.7151, 'p_lng': lng ?? 44.8271, 'p_km': 40, 'p_kind': null, 'p_q': null, 'p_limit': 20});
     return [for (final x in (r as List? ?? const [])) if (x is Map) Map<String, dynamic>.from(x)];
   }
+  @override
+  Future<Map<int, Map<String, String>>> messageReactions(List<int> ids) async {
+    if (ids.isEmpty) return {};
+    final out = <int, Map<String, String>>{};
+    for (final r in await sb.from('message_reactions').select('message_id,user_id,emoji').inFilter('message_id', ids.take(400).toList())) {
+      if (r['emoji'] != null) (out[asInt(r['message_id'])] ??= {})['${r['user_id']}'] = '${r['emoji']}';
+    }
+    return out;
+  }
+
+  @override
+  Future<void> reactMessage(int id, String? emoji, {bool had = false}) async {
+    Future<void> upd() => sb.from('message_reactions').update({'emoji': emoji}).eq('message_id', id).eq('user_id', myId);
+    if (had || emoji == null) return upd();
+    try {
+      await sb.from('message_reactions').upsert({'message_id': id, 'user_id': myId, 'emoji': emoji}, onConflict: 'message_id,user_id');
+    } on PostgrestException catch (e) {
+      if (RegExp('duplicate|conflict', caseSensitive: false).hasMatch(e.message)) return upd();
+      rethrow;
+    }
+  }
+
+  @override
+  Stream<(int, String, String?)> liveReactions(int convId) {
+    RealtimeChannel? ch;
+    late final StreamController<(int, String, String?)> out;
+    out = StreamController<(int, String, String?)>(
+      onListen: () {
+        ch = sb
+            .channel('app-react-$convId-${_id(5)}')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'message_reactions',
+              filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'conv_id', value: convId),
+              callback: (pl) {
+                final r = pl.newRecord;
+                if (r.isNotEmpty && r['message_id'] != null && !out.isClosed) out.add((asInt(r['message_id']), '${r['user_id']}', r['emoji'] as String?));
+              },
+            )
+            .subscribe();
+      },
+      onCancel: () async {
+        final c = ch;
+        if (c != null) await sb.removeChannel(c);
+      },
+    );
+    return out.stream;
+  }
+
+  final _typingCh = <int, RealtimeChannel>{};
+
+  @override
+  Stream<String> typing(int convId) {
+    late final StreamController<String> out;
+    out = StreamController<String>(
+      onListen: () {
+        _typingCh[convId] = sb.channel('conv-$convId').onBroadcast(
+          event: 'typing',
+          callback: (p) {
+            final u = p['u'] ?? (p['payload'] is Map ? (p['payload'] as Map)['u'] : null);
+            if (u != null && u != myId && !out.isClosed) out.add('$u');
+          },
+        )..subscribe();
+      },
+      onCancel: () async {
+        final c = _typingCh.remove(convId);
+        if (c != null) await sb.removeChannel(c);
+      },
+    );
+    return out.stream;
+  }
+
+  @override
+  void sendTyping(int convId) {
+    try {
+      _typingCh[convId]?.sendBroadcastMessage(event: 'typing', payload: {'u': myId});
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> editMessage(int id, String body) => sb.rpc('edit_message', params: {'p_id': id, 'p_body': body});
+
+  @override
+  Future<void> unsendMessage(int id) => sb.rpc('unsend_message', params: {'p_id': id});
+
+  @override
+  Future<Message?> message(int id) async {
+    final r = await sb.from('messages').select(msgSel).eq('id', id).maybeSingle();
+    return r == null ? null : Message.fromJson(r);
+  }
+
+  @override
+  Future<(int?, int?)> chatMeta(int convId) async {
+    final r = await sb.from('conversations').select('pinned_msg,ttl').eq('id', convId).maybeSingle();
+    if (r == null) return (null, null);
+    return (r['pinned_msg'] == null ? null : asInt(r['pinned_msg']), r['ttl'] == null ? null : asInt(r['ttl']));
+  }
+
+  @override
+  Future<void> pinMessage(int convId, int? id) => sb.rpc('pin_message', params: {'p_conv': convId, 'p_msg': id});
+
+  @override
+  Future<void> setChatTtl(int convId, int? seconds) => sb.rpc('set_chat_ttl', params: {'p_conv': convId, 'p_ttl': seconds});
+
+  @override
+  Future<Map<String, DateTime?>> chatSeen(int convId) async => {
+        for (final r in await sb.from('conversation_members').select('user_id,seen_at').eq('conv_id', convId))
+          if ('${r['user_id']}' != myId) '${r['user_id']}': r['seen_at'] == null ? null : asTime(r['seen_at']),
+      };
+
+  @override
+  Future<void> muteChat(int convId, DateTime? until) =>
+      sb.from('conversation_members').update({'muted_until': until?.toUtc().toIso8601String()}).eq('conv_id', convId).eq('user_id', myId);
+
+  @override
+  Future<void> archiveChat(int convId, bool on) => sb.from('conversation_members').update({'archived': on}).eq('conv_id', convId).eq('user_id', myId);
+
+  @override
+  Future<List<Message>> searchMessages(int convId, String q) async {
+    final s = q.replaceAll(RegExp(r'[%_\\]'), ' ').trim();
+    if (s.length < 2) return [];
+    return (await sb.from('messages').select(msgSel).eq('conv_id', convId).eq('deleted', false).ilike('body', '%$s%').order('created_at', ascending: false).limit(40))
+        .map(Message.fromJson)
+        .toList();
+  }
+
+  @override
+  Future<({List<Message> photos, List<Message> links, List<Message> places})> chatMedia(int convId) async {
+    final ph = sb.from('messages').select(msgSel).eq('conv_id', convId).eq('kind', 'image').eq('deleted', false).order('created_at', ascending: false).limit(150);
+    final lk = sb.from('messages').select(msgSel).eq('conv_id', convId).eq('deleted', false).ilike('body', '%http%').order('created_at', ascending: false).limit(80);
+    final lc = sb.from('messages').select(msgSel).eq('conv_id', convId).eq('deleted', false).not('media->loc', 'is', null).order('created_at', ascending: false).limit(40);
+    return (photos: (await ph).map(Message.fromJson).toList(), links: (await lk).map(Message.fromJson).toList(), places: (await lc).map(Message.fromJson).toList());
+  }
+
+  @override
+  Future<int> createGroupChat(String title, List<String> members) async => asInt(await sb.rpc('create_group_chat', params: {'p_title': title, 'p_members': members}));
+
+  @override
+  Future<void> addToGroupChat(int convId, List<String> members) => sb.rpc('add_to_group_chat', params: {'c': convId, 'p_members': members});
+
+  @override
+  Future<void> renameGroupChat(int convId, String title) => sb.from('conversations').update({'title': title}).eq('id', convId);
+
+  @override
+  Future<void> leaveGroupChat(int convId) => sb.from('conversation_members').delete().eq('conv_id', convId).eq('user_id', myId);
+
+  @override
+  Future<Map<int, int>> streaks() async => {
+        for (final x in (await sb.rpc('dm_streaks') as List? ?? const []))
+          if (x is Map && asInt(x['streak']) > 0) asInt(x['conv_id']): asInt(x['streak']),
+      };
 }

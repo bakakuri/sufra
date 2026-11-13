@@ -9,6 +9,7 @@ import '../ui/icons.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'chat_screen.dart';
+import 'chat_tools.dart';
 
 /// The conversations, newest first, with what was said last and how many are unread.
 class ChatsTab extends StatelessWidget {
@@ -27,11 +28,17 @@ class ChatsTab extends StatelessWidget {
     }
   }
 
+  Future<void> _group(BuildContext context) async {
+    final id = await openPage<int>(context, const NewGroupChatScreen(), full: true);
+    if (id != null && context.mounted) await openChat(context, id);
+  }
+
   @override
   Widget build(BuildContext context) {
     final app = context.app, c = context.pc;
     return Scaffold(
       appBar: peeraBar(context, title: archived ? 'არქივი' : 'მიმოწერა', actions: [
+        if (!archived) IconBtn('users', key: const ValueKey('new-group'), label: 'ახალი ჯგუფი', onTap: () => _group(context)),
         if (!archived) IconBtn('edit', label: 'ახალი მიმოწერა', onTap: () => _new(context)),
       ]),
       body: ListenableBuilder(
@@ -57,7 +64,7 @@ class ChatsTab extends StatelessWidget {
             ]);
           } else {
             body = ListView(padding: const EdgeInsets.symmetric(vertical: 4), children: [
-              for (final ch in list) ChatRow(chat: ch),
+              for (final ch in list) ChatRow(key: ValueKey('chat-${ch.convId}'), chat: ch),
               if (!archived && arch.isNotEmpty)
                 ListTile(
                   leading: Container(
@@ -71,6 +78,11 @@ class ChatsTab extends StatelessWidget {
                   subtitle: Text('${arch.length} მიმოწერა', style: TextStyle(color: c.muted)),
                   trailing: PIcon('chev', size: 20, color: c.muted),
                   onTap: () => openPage(context, const ChatsTab(archived: true)),
+                ),
+              if (list.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                  child: Text('საუბარს დიდხანს დააჭირე: დადუმება ან არქივი.', style: TextStyle(color: c.muted, fontSize: 12.5)),
                 ),
             ]);
           }
@@ -96,8 +108,10 @@ class ChatRow extends StatelessWidget {
             ? '${app.people[chat.lastSender!]!.name}: '
             : '';
     final last = '$from${chat.lastText}';
+    final fire = app.chats.streaks[chat.convId];
     return InkWell(
       onTap: () => openChat(context, chat.convId),
+      onLongPress: () => chatMenu(context, chat),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(children: [
@@ -111,6 +125,7 @@ class ChatRow extends StatelessWidget {
                       maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15.5, fontWeight: unread ? FontWeight.w800 : FontWeight.w700)),
                 ),
                 if (other?.verified == true) const Verified(size: 14),
+                if (fire != null) Padding(padding: const EdgeInsets.only(left: 5), child: Text('🔥$fire', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
                 if (chat.muted) Padding(padding: const EdgeInsets.only(left: 5), child: PIcon('mute', size: 15, color: c.muted)),
               ]),
               const SizedBox(height: 3),

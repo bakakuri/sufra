@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/post_actions.dart';
+import 'package:peera/feed/post_screen.dart';
 import 'package:peera/feed/tag_screen.dart';
 import 'package:peera/media/photo_edit.dart';
 import 'package:peera/ui/stickers.dart';
@@ -580,8 +581,9 @@ void main() {
       await settle(t);
       await t.tap(find.byKey(const ValueKey('comments-106')));
       await settle(t);
-      final list = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).last;
+      final list = find.descendant(of: find.byType(PostScreen), matching: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)).first;
       await t.scrollUntilVisible(find.byKey(const ValueKey('cm-22')), 200, scrollable: list);
+      await settle(t);
       await t.tap(find.text('თარგმნა'));
       await settle(t);
       await _shot(t, '72-comments-$k');
@@ -622,10 +624,14 @@ void main() {
       await shell(t, mode: m);
       await t.tap(find.byKey(const ValueKey('compose')));
       await settle(t);
+      await t.ensureVisible(find.byKey(const ValueKey('c-place')));
+      await settle(t);
       await t.tap(find.byKey(const ValueKey('c-place')));
       await settle(t);
       await _shot(t, '77-place-pick-$k');
       await t.tap(find.byKey(const ValueKey('pp-9')));
+      await settle(t);
+      await t.ensureVisible(find.byKey(const ValueKey('c-vid')));
       await settle(t);
       await t.tap(find.byKey(const ValueKey('c-vid')));
       await settle(t);
@@ -639,6 +645,38 @@ void main() {
       pickSticker(await onMe(t));
       await settle(t);
       await _shot(t, '78-stickers-$k');
+    });
+
+    testWidgets("a message's menu and a reply ($k)", (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('tab-chats')));
+      await settle(t);
+      await t.tap(find.text('გიორგი კაპანაძე').first);
+      await settle(t);
+      await t.longPress(find.text('ხვალ 7-ზე შევხვდეთ?'));
+      await settle(t);
+      await _shot(t, '79-chat-actions-$k');
+      await t.tap(find.byKey(const ValueKey('ma-reply')));
+      await settle(t);
+      FocusManager.instance.primaryFocus?.unfocus();
+      await settle(t);
+      await _shot(t, '80-chat-reply-$k');
+      await t.tap(find.byKey(const ValueKey('chat-more')));
+      await settle(t);
+      await _shot(t, '81-chat-more-$k');
+    });
+
+    testWidgets('a new group conversation ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('tab-chats')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('new-group')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('gc-u2')));
+      await settle(t);
+      await _shot(t, '82-new-group-$k');
     });
 
     testWidgets('a school added ($k)', (t) async {

@@ -196,6 +196,9 @@ class ChatStore extends Store {
   bool loaded = false;
   Object? error;
 
+  /// days in a row of writing to each other, by conversation (🔥)
+  Map<int, int> streaks = {};
+
   /// the conversation on screen: its messages are read as they come
   int? open;
 
@@ -212,6 +215,10 @@ class ChatStore extends Store {
       error = null;
       changed();
       await people.ensure(list.expand((c) => c.members), fresh: fresh);
+      try {
+        streaks = await api.streaks();
+        changed();
+      } catch (_) {}
     } catch (e) {
       error = e;
       loaded = true;
