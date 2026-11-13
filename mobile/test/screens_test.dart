@@ -178,21 +178,33 @@ void main() {
       await t.drag(list, const Offset(0, -380));
       await settle(t);
       await _shot(t, '45-profile-space-$k');
-      await t.ensureVisible(find.byKey(const ValueKey('space-badges'), skipOffstage: false));
+      await t.ensureVisible(find.byKey(const ValueKey('space-row')));
+      await settle(t);
+      await t.scrollUntilVisible(find.byKey(const ValueKey('space-badges')), 120,
+          scrollable: find.descendant(of: find.byKey(const ValueKey('space-row')), matching: find.byType(Scrollable)).first);
+      await t.ensureVisible(find.byKey(const ValueKey('space-badges')));
       await settle(t);
       await t.tap(find.byKey(const ValueKey('space-badges')));
       await settle(t);
       await _shot(t, '46-badges-$k');
       await t.binding.handlePopRoute();
       await settle(t);
-      await t.ensureVisible(find.byKey(const ValueKey('space-stories'), skipOffstage: false));
+      await t.ensureVisible(find.byKey(const ValueKey('space-row')));
+      await settle(t);
+      await t.scrollUntilVisible(find.byKey(const ValueKey('space-stories')), 120,
+          scrollable: find.descendant(of: find.byKey(const ValueKey('space-row')), matching: find.byType(Scrollable)).first);
+      await t.ensureVisible(find.byKey(const ValueKey('space-stories')));
       await settle(t);
       await t.tap(find.byKey(const ValueKey('space-stories')));
       await settle(t);
       await _shot(t, '47-archive-$k');
       await t.binding.handlePopRoute();
       await settle(t);
-      await t.ensureVisible(find.byKey(const ValueKey('space-namedays'), skipOffstage: false));
+      await t.ensureVisible(find.byKey(const ValueKey('space-row')));
+      await settle(t);
+      await t.scrollUntilVisible(find.byKey(const ValueKey('space-namedays')), 120,
+          scrollable: find.descendant(of: find.byKey(const ValueKey('space-row')), matching: find.byType(Scrollable)).first);
+      await t.ensureVisible(find.byKey(const ValueKey('space-namedays')));
       await settle(t);
       await t.tap(find.byKey(const ValueKey('space-namedays')));
       await settle(t);

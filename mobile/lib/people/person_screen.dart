@@ -755,7 +755,7 @@ class _PersonScreenState extends State<PersonScreen> {
       height: 46,
       child: ListenableBuilder(
         listenable: app.friends,
-        builder: (context, _) => ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(vertical: 2), children: [
+        builder: (context, _) => ListView(key: const ValueKey('space-row'), scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(vertical: 2), children: [
           if (!who.verified) tile('verify', 'shield', 'ვერიფიკაცია', const Color(0xFF3E8EF7), () => openSite('#verify')),
           tile('friends', 'users', 'მეგობრები', c.accent, () => app.goTab?.call('friends'), badge: app.friends.incoming.length),
           tile('guests', 'eye', 'სტუმრები', const Color(0xFF3E8EF7), () => guestsSheet(context, open: _openPerson, invisible: context.me.guest)),

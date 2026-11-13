@@ -377,6 +377,8 @@ void main() {
     await t.tap(find.text('ჩართვა'));
     expect(push.calls, contains('settings'));
     // signing out is in the settings now, as on the site
+    await t.ensureVisible(find.byKey(const ValueKey('pro-settings')));
+    await settle(t);
     await t.tap(find.byKey(const ValueKey('pro-settings')));
     await settle(t);
     await t.scrollUntilVisible(find.byKey(const ValueKey('set-out')), 300, scrollable: find.descendant(of: find.byType(SettingsScreen), matching: find.byType(Scrollable)).first);
@@ -1023,7 +1025,19 @@ void main() {
 
   /// a shortcut in the sideways "my space" row (the ones past the edge count as off screen for finders)
   Future<void> spaceTo(WidgetTester t, String k) async {
-    await t.ensureVisible(find.byKey(ValueKey('space-$k'), skipOffstage: false));
+    await t.ensureVisible(find.byKey(const ValueKey('space-row')));
+    await settle(t);
+    await t.scrollUntilVisible(find.byKey(ValueKey('space-$k')), 120,
+        scrollable: find.descendant(of: find.byKey(const ValueKey('space-row')), matching: find.byType(Scrollable)).first);
+    await t.ensureVisible(find.byKey(ValueKey('space-$k')));
+    await settle(t);
+  }
+
+  /// a button of the profile page, brought on screen first
+  Future<void> tapPro(WidgetTester t, String key) async {
+    await t.ensureVisible(find.byKey(ValueKey(key)));
+    await settle(t);
+    await t.tap(find.byKey(ValueKey(key)));
     await settle(t);
   }
 
@@ -1079,8 +1093,7 @@ void main() {
     expect(find.byType(StoryViewer), findsNothing);
 
     // more: a complaint, then a gift
-    await t.tap(find.byKey(const ValueKey('pro-more')));
-    await settle(t);
+    await tapPro(t, 'pro-more');
     await t.tap(find.text('საჩივარი'));
     await settle(t);
     await t.tap(find.byKey(const ValueKey('reason-ყალბი პროფილი')));
@@ -1088,8 +1101,7 @@ void main() {
     expect(api.calls, contains('report user u2 ყალბი პროფილი'));
     await t.pump(const Duration(seconds: 5));
     await settle(t);
-    await t.tap(find.byKey(const ValueKey('pro-more')));
-    await settle(t);
+    await tapPro(t, 'pro-more');
     await t.tap(find.text('საჩუქრის გაგზავნა'));
     await settle(t);
     await t.tap(find.byKey(const ValueKey('gift-🌹')));
@@ -1099,16 +1111,14 @@ void main() {
     await settle(t);
 
     // a sheet closes with one back, the page stays
-    await t.tap(find.byKey(const ValueKey('pro-more')));
-    await settle(t);
+    await tapPro(t, 'pro-more');
     expect(find.text('დაბლოკვა'), findsOneWidget);
     await _back(t);
     expect(find.text('დაბლოკვა'), findsNothing);
     expect(find.byType(PersonScreen), findsOneWidget);
 
     // block: asked first, then only "unblock" and "more" are left
-    await t.tap(find.byKey(const ValueKey('pro-more')));
-    await settle(t);
+    await tapPro(t, 'pro-more');
     await t.tap(find.text('დაბლოკვა'));
     await settle(t);
     await t.tap(find.widgetWithText(TextButton, 'დაბლოკვა'));
@@ -1118,8 +1128,7 @@ void main() {
     expect(find.byKey(const ValueKey('pro-message')), findsNothing);
     await t.pump(const Duration(seconds: 5));
     await settle(t);
-    await t.tap(find.byKey(const ValueKey('pro-unblock')));
-    await settle(t);
+    await tapPro(t, 'pro-unblock');
     expect(api.calls, contains('unblock u2'));
     expect(find.byKey(const ValueKey('pro-message')), findsOneWidget);
   });

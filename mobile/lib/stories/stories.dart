@@ -679,6 +679,7 @@ Future<void> pickHighlight(BuildContext context, int storyId) async {
               const SizedBox(width: 8),
               FilledButton(
                 key: const ValueKey('hl-create'),
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
                 onPressed: () async {
                   final t = name.text.trim();
                   if (t.isEmpty) {
