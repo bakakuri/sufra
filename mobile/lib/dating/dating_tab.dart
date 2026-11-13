@@ -158,6 +158,7 @@ class _DatingTabState extends State<DatingTab> {
   Future<void> _pairSheet(DatingCard p) async {
     final go = await showModalBottomSheet<bool>(
       context: context,
+      useRootNavigator: true,
       showDragHandle: true,
       isScrollControlled: true,
       builder: (ctx) => SafeArea(child: _PairSheet(me: context.me, p: p)),

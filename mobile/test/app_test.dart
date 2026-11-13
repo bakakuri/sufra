@@ -5,6 +5,7 @@ import 'package:peera/chat/chat_screen.dart';
 import 'package:peera/clips/clip_composer.dart';
 import 'package:peera/clips/clip_feed.dart';
 import 'package:peera/data/models.dart';
+import 'package:peera/dating/dating_setup.dart';
 import 'package:peera/stories/stories.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/post_screen.dart';
@@ -23,6 +24,12 @@ import 'helpers.dart';
 
 Future<void> _back(WidgetTester t) async {
   await t.binding.handlePopRoute();
+  await settle(t);
+}
+
+/// scrolls the dating card's form until [f] is built and on screen ([delta] < 0 goes up)
+Future<void> _formTo(WidgetTester t, Finder f, [double delta = 250]) async {
+  await t.scrollUntilVisible(f, delta, scrollable: find.descendant(of: find.byType(DatingSetup), matching: find.byType(Scrollable)).first);
   await settle(t);
 }
 
@@ -516,23 +523,19 @@ void main() {
     await _tab(t, 'date');
     expect(find.text('გაიცანი ახალი ადამიანები'), findsOneWidget);
     final save = find.byKey(const ValueKey('dating-save'));
-    await t.ensureVisible(save);
-    await settle(t);
+    await _formTo(t, save);
     await t.tap(save);
     await settle(t);
     expect(find.text('აირჩიე, ვინ ხარ'), findsOneWidget);
-    await t.ensureVisible(find.byKey(const ValueKey('gender-f')));
-    await settle(t);
+    await _formTo(t, find.byKey(const ValueKey('gender-f')), -250);
     await t.tap(find.byKey(const ValueKey('gender-f')));
     await t.tap(find.byKey(const ValueKey('seeking-m')));
     for (final x in ['მთა', 'ყავა']) {
-      await t.ensureVisible(find.byKey(ValueKey('interest-$x')));
-      await settle(t);
+      await _formTo(t, find.byKey(ValueKey('interest-$x')));
       await t.tap(find.byKey(ValueKey('interest-$x')));
       await t.pump();
     }
-    await t.ensureVisible(save);
-    await settle(t);
+    await _formTo(t, save);
     await t.tap(save);
     await settle(t);
     expect(api.calls, contains('dating on f m მთა,ყავა'));
@@ -596,8 +599,7 @@ void main() {
     // off
     await t.tap(find.byTooltip('გაცნობის პროფილი'));
     await settle(t);
-    await t.ensureVisible(find.byKey(const ValueKey('dating-off')));
-    await settle(t);
+    await _formTo(t, find.byKey(const ValueKey('dating-off')));
     await t.tap(find.byKey(const ValueKey('dating-off')));
     await settle(t);
     await t.tap(find.text('გამორთვა').last);
