@@ -62,7 +62,7 @@ class _FriendsTabState extends State<FriendsTab> {
     return Scaffold(
       appBar: peeraBar(context, title: 'მეგობრები', actions: [
         IconBtn('locate', label: 'ლაივ რუკა', onTap: () => openLiveMap(context)),
-        IconBtn('search', label: 'ხალხის ძებნა', onTap: () => openPage(context, const SearchScreen())),
+        IconBtn('search', label: 'ხალხის ძებნა', onTap: () => openPage(context, const SearchScreen(tab: 'people'))),
       ]),
       body: ListenableBuilder(
         listenable: Listenable.merge([f, people]),

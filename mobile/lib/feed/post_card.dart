@@ -4,18 +4,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../clips/clip_feed.dart';
-import '../config.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
 import '../people/person_screen.dart';
+import '../people/profile_parts.dart';
 import '../profile/profile.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
 import '../ui/net_image.dart';
-import '../ui/rich_body.dart';
 import '../ui/theme.dart';
+import '../ui/translate.dart';
 import '../ui/widgets.dart';
 import 'photo_viewer.dart';
+import 'post_actions.dart';
 import 'post_screen.dart';
 
 /// One post as the site draws it: who wrote it, the words, photos (swipe, double tap for ❤️), a poll,
@@ -32,7 +33,21 @@ class PostCard extends StatelessWidget {
   final bool inPostScreen;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: postOverrides,
+        builder: (context, _) {
+          final o = postOverrides;
+          if (!inPostScreen && (o.hidden.contains(post.id) || (post.original != null && post.plainRepost && o.hidden.contains(post.original!.id)))) {
+            return const SizedBox.shrink();
+          }
+          final p = o.edited[post.id] ?? post;
+          if (p.original == null && post.original != null) p.original = post.original;
+          if (p.original != null && o.edited[p.original!.id] != null) p.original = o.edited[p.original!.id];
+          return _build(context, p);
+        },
+      );
+
+  Widget _build(BuildContext context, Post post) {
     if (post.plainRepost && post.original != null) {
       final c = context.pc, who = post.ap, mine = post.author == context.me.id;
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -98,7 +113,7 @@ class _PostView extends StatelessWidget {
             onTap: () => _open(context),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-              child: RichBody(post.body.trim(), maxLines: inPostScreen ? null : (hasMedia ? 3 : 6)),
+              child: TranslatableBody(post.body.trim(), maxLines: inPostScreen ? null : (hasMedia ? 3 : 6)),
             ),
           ),
         if (hasMedia) _Gallery(post: post),
@@ -122,19 +137,44 @@ class _Head extends StatelessWidget {
   final bool inPostScreen, sponsored;
 
   Future<void> _more(BuildContext context) async {
-    final mine = post.author == context.me.id;
-    final link = '$siteUrl/#post-${post.id}';
+    final app = context.app, mine = post.author == context.me.id, staff = isStaff(context);
+    final link = postLink(post.id), who = post.ap ?? Profile(id: post.author, name: '');
+    final hiddenNow = postOverrides.modHidden[post.id] ?? post.hidden;
     await showChoices(context, [
       SheetItem('copy', 'ბმულის კოპირება', () {
         Clipboard.setData(ClipboardData(text: link));
         toast(context, 'ბმული დაკოპირდა');
       }),
+      if (mine && !(post.plainRepost))
+        SheetItem('edit', 'რედაქტირება', () => openPage<Post>(context, EditPostScreen(post: post), full: true)),
+      if (!mine) ...[
+        SheetItem('eyeoff', 'დამალვა ჩემს ფიდში', () {
+          postOverrides.hide(post.id);
+          toast(context, 'პოსტი დაიმალა');
+        }),
+        SheetItem('flag', 'საჩივარი პოსტზე', () => reportSheet(context, 'post', '${post.id}')),
+        if (!post.byPage) SheetItem('lock', 'ავტორის დაბლოკვა', () => blockPerson(context, who), danger: true),
+      ],
+      if (staff) ...[
+        SheetItem('shield', hiddenNow ? 'მოდერაცია: გამოჩენა' : 'მოდერაცია: დამალვა ყველასთვის', () async {
+          final ok = await attempt(context, () => app.api.modHide('post', post.id, !hiddenNow));
+          if (!ok || !context.mounted) return;
+          postOverrides.modHide(post.id, !hiddenNow);
+          toast(context, hiddenNow ? 'ისევ ჩანს' : 'დაიმალა ყველასთვის');
+        }),
+        if (!mine && !post.byPage)
+          SheetItem('shield', 'ავტორის შეზღუდვა', () async {
+            final yes = await confirm(context, title: 'მომხმარებლის შეზღუდვა', text: 'შეზღუდული მომხმარებელი ვეღარ დაწერს პოსტებს, კომენტარებს და შეტყობინებებს.', yes: 'შეზღუდვა', danger: true);
+            if (!yes || !context.mounted) return;
+            if (await attempt(context, () => app.api.banUser(post.author)) && context.mounted) toast(context, 'შეიზღუდა');
+          }, danger: true),
+      ],
       SheetItem('globe', 'საიტზე გახსნა', () => launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication)),
       if (mine)
         SheetItem('trash', 'პოსტის წაშლა', () async {
           final yes = await confirm(context, title: 'წაიშალოს პოსტი?', text: 'აღარ გამოჩნდება არც შენთან, არც სხვებთან.', yes: 'წაშლა', danger: true);
           if (!yes || !context.mounted) return;
-          final ok = await attempt(context, () => context.app.api.deletePost(post.id));
+          final ok = await attempt(context, () => app.api.deletePost(post.id));
           if (ok && context.mounted) {
             toast(context, 'პოსტი წაიშალა');
             onDeleted?.call();
@@ -152,7 +192,7 @@ class _Head extends StatelessWidget {
       if (post.byPage) const _Tag('არხი'),
       if (post.groupName != null) _Tag(post.groupName!),
       if (post.placeName != null) _Tag('📍 ${post.placeName}'),
-      if (post.hidden) _Tag('დამალულია', warn: true),
+      if (postOverrides.modHidden[post.id] ?? post.hidden) const _Tag('დამალულია', warn: true),
       if (post.pending) _Tag('ელოდება დამტკიცებას', warn: true),
     ];
     return Padding(
@@ -174,7 +214,7 @@ class _Head extends StatelessWidget {
             ]),
           ),
         ),
-        IconBtn('more', label: 'მეტი მოქმედება', size: 22, color: c.muted, onTap: () => _more(context)),
+        IconBtn('more', key: ValueKey('more-${post.id}'), label: 'მეტი მოქმედება', size: 22, color: c.muted, onTap: () => _more(context)),
       ]),
     );
   }
@@ -463,12 +503,10 @@ class _Actions extends StatelessWidget {
             ),
             _Act(key: ValueKey('comments-${post.id}'), label: 'კომენტარები', icon: PIcon('comment', size: 23, color: c.ink), count: s.comments, onTap: onComments),
             _Act(
-              label: 'ბმულის გაზიარება',
+              key: ValueKey('share-${post.id}'),
+              label: 'გაზიარება',
               icon: PIcon('send', size: 22, color: c.ink),
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: '$siteUrl/#post-${post.id}'));
-                toast(context, 'ბმული დაკოპირდა — ჩასვი სადაც გინდა');
-              },
+              onTap: () => shareSheet(context, post),
             ),
             _Act(
               key: ValueKey('save-${post.id}'),
@@ -477,7 +515,12 @@ class _Actions extends StatelessWidget {
               icon: PIcon(s.saved ? 'bookmarked' : 'bookmark', size: 22, color: s.saved ? c.accent : c.ink),
               onTap: () async {
                 final ok = await attempt(context, () => store.save(post.id));
-                if (ok && context.mounted) toast(context, store.of(post.id).saved ? 'შენახულია' : 'შენახულიდან ამოიშალა');
+                if (!ok || !context.mounted) return;
+                if (store.of(post.id).saved) {
+                  savedNotice(context, post.id);
+                } else {
+                  toast(context, 'შენახულიდან ამოიშალა');
+                }
               },
             ),
             const Spacer(),

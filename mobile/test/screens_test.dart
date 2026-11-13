@@ -1,10 +1,15 @@
 // Pictures of the screens at phone size, light and dark: test/goldens/*.png.
 // They are written with `flutter test --update-goldens` (the build does that) and are there to be looked at.
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:peera/feed/compose_screen.dart';
+import 'package:peera/feed/post_actions.dart';
+import 'package:peera/feed/tag_screen.dart';
+import 'package:peera/media/photo_edit.dart';
+import 'package:peera/ui/stickers.dart';
 import 'package:peera/home/calendar.dart';
 import 'package:peera/home/home_cards.dart';
 import 'package:peera/home/services.dart';
@@ -557,6 +562,83 @@ void main() {
       await settle(t);
       await _shot(t, '70-compose-poll-$k');
       expect(find.byType(ComposeScreen), findsOneWidget);
+    });
+
+    testWidgets('sharing a post ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('share-101')));
+      await settle(t);
+      await _shot(t, '71-share-$k');
+    });
+
+    testWidgets('comments with a sticker and translations ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      final feed = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
+      await t.scrollUntilVisible(find.byKey(const ValueKey('comments-106')), 300, scrollable: feed);
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('comments-106')));
+      await settle(t);
+      final list = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).last;
+      await t.scrollUntilVisible(find.byKey(const ValueKey('cm-22')), 200, scrollable: list);
+      await t.tap(find.text('თარგმნა'));
+      await settle(t);
+      await _shot(t, '72-comments-$k');
+    });
+
+    testWidgets('search ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byTooltip('ძებნა'));
+      await settle(t);
+      await _shot(t, '73-search-empty-$k');
+      await t.enterText(find.byKey(const ValueKey('s-q')), 'მთ');
+      await t.pump(const Duration(milliseconds: 400));
+      FocusManager.instance.primaryFocus?.unfocus();
+      await settle(t);
+      await _shot(t, '73-search-$k');
+    });
+
+    testWidgets("a topic's page ($k)", (t) async => page(t, const TagScreen(tag: 'საქართველო'), '74-tag'));
+
+    testWidgets('a post edited ($k)', (t) async {
+      final ctx = await onMe(t);
+      final p = await FakeApi().post(106);
+      openPage(ctx, EditPostScreen(post: p!), full: true);
+      await settle(t);
+      FocusManager.instance.primaryFocus?.unfocus();
+      await settle(t);
+      await _shot(t, '75-edit-post-$k');
+    });
+
+    testWidgets('the photo editor ($k)', (t) async {
+      final bytes = File('test/img/sunset.jpg').readAsBytesSync();
+      await page(t, PhotoEditScreen(src: bytes, size: const Size(640, 480)), '76-photo-edit');
+    });
+
+    testWidgets('the composer with a place, a video and @mentions ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('compose')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('c-place')));
+      await settle(t);
+      await _shot(t, '77-place-pick-$k');
+      await t.tap(find.byKey(const ValueKey('pp-9')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('c-vid')));
+      await settle(t);
+      await t.enterText(find.byType(TextField).first, 'ხვალ ვიქნებით @');
+      await t.pump(const Duration(milliseconds: 400));
+      await settle(t);
+      await _shot(t, '77-compose-extras-$k');
+    });
+
+    testWidgets('the stickers ($k)', (t) async {
+      pickSticker(await onMe(t));
+      await settle(t);
+      await _shot(t, '78-stickers-$k');
     });
 
     testWidgets('a school added ($k)', (t) async {

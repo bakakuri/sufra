@@ -10,11 +10,13 @@ import 'package:peera/auth/auth_api.dart';
 import 'package:peera/data/photos.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/feed_tab.dart';
+import 'package:peera/feed/post_actions.dart';
 import 'package:peera/home/home_cards.dart';
 import 'package:peera/home/services.dart';
 import 'package:peera/joker/session.dart';
 import 'package:peera/map/live_map.dart';
 import 'package:peera/map/loc_device.dart';
+import 'package:peera/media/photo_edit.dart';
 import 'package:peera/media/player.dart';
 import 'package:peera/media/video_tools.dart';
 import 'package:peera/media/voice.dart';
@@ -67,6 +69,10 @@ void useTestImages() {
   photoSource = (camera) async => camera ? [pic('food')] : [pic('sunset'), pic('hills')];
   photoPrep = (b) async => PreparedPhoto(b, 640, 480);
   photoFrame = (context, src, {required aspect, required max, required title}) async => (bytes: src, w: max, h: (max / aspect).round());
+  // the photo editor gives the photo back unchanged; a post's story card is a few bytes; nothing is hidden or edited yet
+  photoEdit = (context, src) async => null;
+  storyCard = (context, p) async => Uint8List(8);
+  postOverrides.reset();
   themeChoice.value = ThemeMode.system;
   textZoom.value = 1;
   makePlayer = (u, {bool loop = true}) => FakePlayer();

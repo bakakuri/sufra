@@ -17,6 +17,7 @@ import '../ui/format.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'compose_screen.dart';
+import 'post_actions.dart';
 import 'post_card.dart';
 
 /// how the feed starts: 'for' (you), 'friends' or 'new' (the tests start with the newest first)
@@ -88,6 +89,7 @@ class FeedTabState extends State<FeedTab> {
     super.didChangeDependencies();
     if (!_started) {
       _started = true;
+      postOverrides.load();
       _extras();
       load(true);
       WidgetsBinding.instance.addPostFrameCallback((_) {

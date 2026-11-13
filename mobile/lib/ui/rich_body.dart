@@ -2,11 +2,34 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../data/stores.dart';
+import '../feed/tag_screen.dart';
+import '../people/person_screen.dart';
+import 'format.dart';
 import 'theme.dart';
+import 'widgets.dart';
 
 final _marks = RegExp(r'(https?://[^\s]+)|(#[\p{L}\p{N}_]+)|(@[a-zA-Z0-9_.]{3,24})', unicode: true);
 
-/// A post's or a comment's words: links open, #topics and @names in colour; long text folds under "მეტი".
+/// Opens the person behind an @username.
+Future<void> openUsername(BuildContext context, String u) async {
+  final app = context.app;
+  try {
+    final p = await app.api.personByUsername(u);
+    if (!context.mounted) return;
+    if (p == null) {
+      toast(context, 'მომხმარებელი ვერ მოიძებნა');
+      return;
+    }
+    app.people.put(p);
+    await openPage(context, PersonScreen(uid: p.id, initial: p));
+  } catch (e) {
+    if (context.mounted) toast(context, errText(e));
+  }
+}
+
+/// A post's or a comment's words: links open, #topics and @names in colour and open their page; long text folds
+/// under "მეტი".
 class RichBody extends StatefulWidget {
   const RichBody(this.text, {super.key, this.maxLines, this.style});
   final String text;
@@ -49,7 +72,11 @@ class _RichBodyState extends State<RichBody> {
         out.add(TextSpan(text: url, style: TextStyle(color: accent, decoration: TextDecoration.underline, decorationColor: accent.withValues(alpha: .5)), recognizer: tap));
         if (tail.isNotEmpty) out.add(TextSpan(text: tail));
       } else {
-        out.add(TextSpan(text: s, style: TextStyle(color: accent, fontWeight: FontWeight.w600)));
+        final tag = m.group(2) != null;
+        final tap = TapGestureRecognizer()
+          ..onTap = () => tag ? openPage(context, TagScreen(tag: s.substring(1).toLowerCase())) : openUsername(context, s.substring(1));
+        _taps.add(tap);
+        out.add(TextSpan(text: s, style: TextStyle(color: accent, fontWeight: FontWeight.w600), recognizer: tap));
       }
       at = m.end;
     }

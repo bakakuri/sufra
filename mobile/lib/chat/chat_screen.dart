@@ -18,6 +18,7 @@ import '../ui/format.dart';
 import '../ui/icons.dart';
 import '../ui/net_image.dart';
 import '../ui/rich_body.dart';
+import '../ui/stickers.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'chats_tab.dart';
@@ -395,7 +396,7 @@ class _Bubble extends StatelessWidget {
     final md = m.media ?? const {};
     if (m.kind == 'voice') return ('🎤', 'ხმოვანი შეტყობინება'); // one without a link
     if (md['story'] != null) return ('📸', 'ისტორიაზე პასუხი');
-    if (md['sticker'] != null) return ('🙂', 'სტიკერი');
+    if (md['sticker'] != null && stickerSvg('${md['sticker']}') == null) return ('🙂', 'სტიკერი');
     if (md['card'] != null) return ('💌', 'ბარათი');
     if (md['loc'] != null) return ('📍', 'მდებარეობა');
     if (md['game'] != null) return ('🎲', 'თამაშის მოწვევა');
@@ -455,6 +456,11 @@ class _Bubble extends StatelessWidget {
           ),
         ),
       );
+    } else if ((m.media ?? const {})['sticker'] is String && stickerSvg('${m.media!['sticker']}') != null) {
+      inner = Column(crossAxisAlignment: mine ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
+        StickerView('${m.media!['sticker']}', size: 130),
+        Padding(padding: const EdgeInsets.only(top: 3, left: 4, right: 4), child: Text(hhmm(m.createdAt), style: TextStyle(color: c.muted, fontSize: 11.5))),
+      ]);
     } else if ((m.media ?? const {})['card'] is Map) {
       inner = Column(crossAxisAlignment: mine ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
         GreetingCard(card: m.media!['card'] as Map, width: 220),

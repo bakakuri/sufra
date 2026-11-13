@@ -28,9 +28,10 @@ abstract class PeeraApi {
   Future<void> save(int postId, bool on);
   Future<void> deletePost(int postId);
   Future<List<Comment>> comments(int postId);
-  Future<Comment> addComment(int postId, String body, {int? parentId});
+  Future<Comment> addComment(int postId, String body, {int? parentId, Map<String, dynamic>? media});
   Future<Media> uploadPhoto(PreparedPhoto p);
-  Future<Post> createPost(String body, List<Media> media, {Poll? poll});
+  /// a post: now, as a draft, or waiting for [publishAt]; with a place, or quoting another post ([repostOf])
+  Future<Post> createPost(String body, List<Media> media, {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf});
 
   Future<Profile?> person(String uid);
   Future<Counts> counts(String uid);
@@ -79,7 +80,7 @@ abstract class PeeraApi {
   Future<List<Story>> stories();
   Future<void> storySeen(int id);
   Future<String> uploadStoryPhoto(PreparedPhoto p);
-  Future<void> addStory(String url, {bool video = false});
+  Future<void> addStory(String url, {bool video = false, int? postId});
   Future<void> deleteStory(int id);
 
   /// a reaction or an answer goes to the author's chat too, as on the site
@@ -350,6 +351,51 @@ abstract class PeeraApi {
   /// the coins for inviting (coin_rules welcome and invite) and who came by my link (count, paid)
   Future<Map<String, int>> inviteRules();
   Future<(int, int)> referrals();
+
+  // ---------- posts: sharing, editing, moderation, comments (feed.js), tags and search (home.js) ----------
+
+  /// how many shared each post and my own repost's id (repost_stats)
+  Future<Map<int, (int, int?)>> repostStats(List<int> ids);
+
+  /// a plain repost (its id); taking it back
+  Future<int> repost(int postId);
+  Future<void> unrepost(int repostId);
+
+  /// my post changed: the words, the photos left and the place ([setPlace] with a null [placeId] takes it away)
+  Future<Post> updatePost(int id, String body, {List<Media>? media, int? placeId, bool setPlace = false});
+
+  /// staff: hidden for everyone, or shown again (admin_hide)
+  Future<void> modHide(String type, int id, bool hidden);
+
+  /// a saved post put into a folder (null: none); a new folder
+  Future<void> saveToFolder(int postId, int? folder);
+  Future<(int, String)> newFolder(String name);
+
+  /// the words in [target] (the translate function): the translation and the language it found
+  Future<(String, String?)> translate(String text, String source, String target);
+
+  /// which of these comments I like; liking one; deleting one (its replies go with it)
+  Future<Set<int>> commentLikes(List<int> ids);
+  Future<void> likeComment(int id, bool on);
+  Future<void> deleteComment(int id);
+
+  /// people whose @username starts so (for @mentions); one by @username
+  Future<List<Profile>> mentionPeople(String prefix);
+  Future<Profile?> personByUsername(String username);
+
+  /// posts with a #tag, the newest first
+  Future<List<Post>> postsTagged(String tag, {int limit = 40});
+
+  /// the tags used most lately (trending_tags): the tag and its uses
+  Future<List<(String, int)>> trendingTags();
+
+  /// search: posts with the words, pages and channels, groups
+  Future<List<Post>> searchPosts(String q);
+  Future<List<Map<String, dynamic>>> searchPages(String q);
+  Future<List<Map<String, dynamic>>> searchGroups(String q);
+
+  /// places for a post: by name, or the ones near (places_near) when [q] is empty
+  Future<List<Map<String, dynamic>>> findPlaces(String q, {double? lat, double? lng});
 }
 
 class SupaApi implements PeeraApi {
@@ -457,9 +503,9 @@ class SupaApi implements PeeraApi {
       (await sb.from('comments').select(commentSel).eq('post_id', postId).order('created_at').limit(400)).map(Comment.fromJson).toList();
 
   @override
-  Future<Comment> addComment(int postId, String body, {int? parentId}) async => Comment.fromJson(await sb
+  Future<Comment> addComment(int postId, String body, {int? parentId, Map<String, dynamic>? media}) async => Comment.fromJson(await sb
       .from('comments')
-      .insert({'post_id': postId, 'author': myId, 'body': body, 'parent_id': parentId})
+      .insert({'post_id': postId, 'author': myId, 'body': body, 'parent_id': parentId, if (media != null) 'media': media})
       .select(commentSel)
       .single());
 
@@ -480,7 +526,7 @@ class SupaApi implements PeeraApi {
   }
 
   @override
-  Future<Post> createPost(String body, List<Media> media, {Poll? poll}) async {
+  Future<Post> createPost(String body, List<Media> media, {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf}) async {
     final r = await sb
         .from('posts')
         .insert({
@@ -488,6 +534,11 @@ class SupaApi implements PeeraApi {
           'body': body,
           'media': media.map((m) => m.toJson()).toList(),
           if (poll != null) 'poll': {'q': poll.q, 'opts': poll.opts},
+          if (placeId != null) 'place_id': placeId,
+          if (repostOf != null) 'repost_of': repostOf,
+          if (draft) 'draft': true,
+          if (publishAt != null) 'publish_at': publishAt.toUtc().toIso8601String(),
+          if (media.length == 1 && media.first.isVideo && RegExp(r'#კლიპი|#clip', caseSensitive: false).hasMatch(body)) 'is_clip': true,
         })
         .select(postSel)
         .single();
@@ -1281,8 +1332,8 @@ class SupaApi implements PeeraApi {
   Future<String> uploadStoryPhoto(PreparedPhoto p) => _put(p.full);
 
   @override
-  Future<void> addStory(String url, {bool video = false}) =>
-      sb.from('stories').insert({'author': myId, 'media_url': url, 'media_type': video ? 'video' : 'image', 'audience': 'all'});
+  Future<void> addStory(String url, {bool video = false, int? postId}) =>
+      sb.from('stories').insert({'author': myId, 'media_url': url, 'media_type': video ? 'video' : 'image', 'audience': 'all', if (postId != null) 'post_id': postId});
 
   @override
   Future<void> deleteStory(int id) => sb.from('stories').delete().eq('id', id);
@@ -1426,5 +1477,133 @@ class SupaApi implements PeeraApi {
   Future<(int, int)> referrals() async {
     final rows = await sb.from('referrals').select('paid').eq('inviter', myId);
     return (rows.length, rows.where((x) => x['paid'] == true).length);
+  }
+  @override
+  Future<Map<int, (int, int?)>> repostStats(List<int> ids) async {
+    if (ids.isEmpty) return {};
+    final r = await sb.rpc('repost_stats', params: {'p_ids': ids});
+    return {
+      for (final x in (r as List? ?? const []))
+        if (x is Map) asInt(x['post_id']): (asInt(x['n']), x['mine'] == null ? null : asInt(x['mine'])),
+    };
+  }
+
+  @override
+  Future<int> repost(int postId) async => asInt((await sb.from('posts').insert({'author': myId, 'body': '', 'repost_of': postId}).select('id').single())['id']);
+
+  @override
+  Future<void> unrepost(int repostId) => sb.from('posts').delete().eq('id', repostId).eq('author', myId);
+
+  @override
+  Future<Post> updatePost(int id, String body, {List<Media>? media, int? placeId, bool setPlace = false}) async {
+    final r = await sb
+        .from('posts')
+        .update({
+          'body': body,
+          if (media != null) 'media': media.map((m) => m.toJson()).toList(),
+          if (setPlace) 'place_id': placeId,
+        })
+        .eq('id', id)
+        .eq('author', myId)
+        .select(postSel)
+        .single();
+    return (await _hydrate([r])).firstOrNull ?? Post.fromJson(r);
+  }
+
+  @override
+  Future<void> modHide(String type, int id, bool hidden) => sb.rpc('admin_hide', params: {'p_type': type, 'p_id': id, 'p_hidden': hidden});
+
+  @override
+  Future<void> saveToFolder(int postId, int? folder) => sb.from('saves').update({'folder_id': folder}).eq('user_id', myId).eq('post_id', postId);
+
+  @override
+  Future<(int, String)> newFolder(String name) async {
+    final r = await sb.from('save_folders').insert({'user_id': myId, 'name': name}).select('id,name').single();
+    return (asInt(r['id']), '${r['name'] ?? name}');
+  }
+
+  @override
+  Future<(String, String?)> translate(String text, String source, String target) async {
+    final r = await sb.functions.invoke('translate', body: {'text': text, 'source': source, 'target': target});
+    final d = r.data;
+    if (d is Map && d['text'] is String && '${d['text']}'.trim().isNotEmpty) return ('${d['text']}', d['source'] as String?);
+    throw Exception('თარგმნა ახლა ვერ მოხერხდა. სცადე ცოტა ხანში');
+  }
+
+  @override
+  Future<Set<int>> commentLikes(List<int> ids) async {
+    if (ids.isEmpty) return {};
+    return {for (final r in await sb.from('comment_likes').select('comment_id').eq('user_id', myId).inFilter('comment_id', ids.take(400).toList())) asInt(r['comment_id'])};
+  }
+
+  @override
+  Future<void> likeComment(int id, bool on) async {
+    if (on) {
+      try {
+        await sb.from('comment_likes').insert({'comment_id': id, 'user_id': myId});
+      } on PostgrestException catch (e) {
+        if (!'${e.message}'.contains('duplicate')) rethrow;
+      }
+    } else {
+      await sb.from('comment_likes').delete().eq('comment_id', id).eq('user_id', myId);
+    }
+  }
+
+  @override
+  Future<void> deleteComment(int id) => sb.from('comments').delete().eq('id', id);
+
+  static String _like(String q) => q.replaceAll(RegExp(r'[,()%*\\:"]'), ' ').trim();
+
+  @override
+  Future<List<Profile>> mentionPeople(String prefix) async {
+    final s = prefix.replaceAll(RegExp(r'[^A-Za-z0-9_.]'), '');
+    if (s.isEmpty) return [];
+    final r = await sb.from('profiles').select(personSel).ilike('username', '${s.replaceAll('_', r'\_')}%').eq('onboarded', true).neq('id', myId).limit(6);
+    return r.map(Profile.fromJson).toList();
+  }
+
+  @override
+  Future<Profile?> personByUsername(String username) async {
+    final r = await sb.from('profiles').select(personSel).eq('username', username).maybeSingle();
+    return r == null ? null : Profile.fromJson(r);
+  }
+
+  @override
+  Future<List<Post>> postsTagged(String tag, {int limit = 40}) async =>
+      _hydrate(await _posts().eq('hidden', false).contains('tags', [tag]).order('created_at', ascending: false).limit(limit));
+
+  @override
+  Future<List<(String, int)>> trendingTags() async => [
+        for (final x in (await sb.rpc('trending_tags', params: {'p_limit': 12}) as List? ?? const []))
+          if (x is Map) ('${x['tag']}', asInt(x['uses'])),
+      ];
+
+  @override
+  Future<List<Post>> searchPosts(String q) async {
+    final s = _like(q);
+    if (s.isEmpty) return [];
+    return _hydrate(await _posts().eq('hidden', false).ilike('body', '%$s%').order('created_at', ascending: false).limit(20));
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> searchPages(String q) async {
+    final s = _like(q);
+    if (s.isEmpty) return [];
+    return await sb.from('pages').select('id,name,kind,hue,verified,category,avatar_url').ilike('name', '%$s%').limit(30);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> searchGroups(String q) async {
+    final s = _like(q);
+    if (s.isEmpty) return [];
+    return await sb.from('groups').select('id,name,hue,is_private,description,avatar_url').ilike('name', '%$s%').limit(30);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> findPlaces(String q, {double? lat, double? lng}) async {
+    final s = _like(q);
+    if (s.isNotEmpty) return await sb.from('places').select('id,name,kind,city,lat,lng').ilike('name', '%$s%').eq('hidden', false).limit(20);
+    final r = await sb.rpc('places_near', params: {'p_lat': lat ?? 41.7151, 'p_lng': lng ?? 44.8271, 'p_km': 40, 'p_kind': null, 'p_q': null, 'p_limit': 20});
+    return [for (final x in (r as List? ?? const [])) if (x is Map) Map<String, dynamic>.from(x)];
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -6,10 +7,15 @@ import 'package:image_picker/image_picker.dart';
 import '../data/models.dart';
 import '../data/photos.dart';
 import '../data/stores.dart';
+import '../media/photo_edit.dart';
+import '../media/video_tools.dart';
+import '../people/namedays.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
+import '../ui/mentions.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'place_pick.dart';
 
 /// Where the photos come from: the gallery (several) or the camera (one). The tests put in their own.
 typedef PhotoSource = Future<List<Uint8List>> Function(bool camera);
@@ -30,8 +36,9 @@ Future<List<Uint8List>> pickPhotos(bool camera) async {
 
 const maxPhotos = 10;
 
-/// Writing a post: words, up to ten photos and a poll. "გამოქვეყნება" uploads the photos (made upright and in the
-/// site's three sizes) and publishes; the new post comes back to the feed.
+/// Writing a post: words (with @mentions), up to ten photos (each can be cut, filtered and turned), a video, a poll and
+/// a place. "გამოქვეყნება" uploads them (photos made upright and in the site's three sizes) and publishes, and the new
+/// post comes back to the feed; the clock button keeps it as a draft or plans it for later.
 class ComposeScreen extends StatefulWidget {
   const ComposeScreen({super.key, this.startWithPhotos = false, this.startWithPoll = false, this.text = ''});
   final bool startWithPhotos, startWithPoll;
@@ -46,6 +53,9 @@ class ComposeScreen extends StatefulWidget {
 class _ComposeScreenState extends State<ComposeScreen> {
   final field = TextEditingController();
   final photos = <Uint8List>[];
+  VideoReady? video;
+  double? preparing;
+  (int, String)? place;
   bool busy = false;
   String? stage;
 
@@ -57,7 +67,8 @@ class _ComposeScreenState extends State<ComposeScreen> {
   void initState() {
     super.initState();
     field.text = widget.text;
-    field.selection = TextSelection.collapsed(offset: field.text.length);
+    // " #tag" from a tag's page: the cursor before it
+    field.selection = TextSelection.collapsed(offset: widget.text.startsWith(' #') ? 0 : field.text.length);
     field.addListener(() => setState(() {}));
     if (widget.startWithPoll) _pollOn();
     if (widget.startWithPhotos) WidgetsBinding.instance.addPostFrameCallback((_) => _add(false));
@@ -93,7 +104,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
     q?.dispose();
   }
 
-  bool get _empty => field.text.trim().isEmpty && photos.isEmpty && pollQ == null;
+  bool get _empty => field.text.trim().isEmpty && photos.isEmpty && pollQ == null && video == null && place == null;
 
   Future<void> _add(bool camera) async {
     if (photos.length >= maxPhotos) {
@@ -109,7 +120,77 @@ class _ComposeScreenState extends State<ComposeScreen> {
     }
   }
 
-  Future<void> _publish() async {
+  Future<void> _edit(int i) async {
+    final out = await photoEdit(context, photos[i]);
+    if (out != null && mounted) setState(() => photos[i] = out);
+  }
+
+  Future<void> _video() async {
+    String? path;
+    try {
+      path = await videoPicker();
+    } catch (_) {}
+    if (path == null || !mounted) return;
+    setState(() => preparing = 0);
+    try {
+      final v = await videoPrep(path, (x) {
+        if (mounted) setState(() => preparing = x);
+      });
+      if (mounted) {
+        setState(() {
+          video = v;
+          preparing = null;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => preparing = null);
+      toast(context, e is VideoTooBig ? e.toString() : 'ვიდეო ვერ მომზადდა');
+    }
+  }
+
+  Future<void> _place() async {
+    final pl = await pickPlace(context);
+    if (pl != null && mounted) setState(() => place = pl);
+  }
+
+  /// the clock: a draft, or a time to publish it
+  Future<void> _later() async {
+    if (_empty || busy) return;
+    final c = context.pc;
+    final how = await showModalBottomSheet<String>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      backgroundColor: c.surface,
+      builder: (s) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 6), child: Text('მოგვიანებით', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+          ListTile(key: const ValueKey('c-draft'), leading: PIcon('edit', color: s.pc.ink), title: const Text('დრაფტად შენახვა'), onTap: () => Navigator.of(s).pop('draft')),
+          ListTile(key: const ValueKey('c-plan'), leading: PIcon('clock', color: s.pc.ink), title: const Text('დაგეგმვა'), subtitle: const Text('აირჩიე დღე და საათი'), onTap: () => Navigator.of(s).pop('plan')),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
+            child: Text('დრაფტები და დაგეგმილი პოსტები ჩანს „დრაფტებში“.', style: TextStyle(color: s.pc.muted, fontSize: 13)),
+          ),
+        ]),
+      ),
+    );
+    if (how == null || !mounted) return;
+    if (how == 'draft') return _publish(draft: true);
+    final now = DateTime.now();
+    final d = await showDatePicker(context: context, initialDate: now, firstDate: now, lastDate: now.add(const Duration(days: 365)));
+    if (d == null || !mounted) return;
+    final t = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(now.add(const Duration(hours: 1))));
+    if (t == null || !mounted) return;
+    final when = DateTime(d.year, d.month, d.day, t.hour, t.minute);
+    if (when.isBefore(DateTime.now().add(const Duration(seconds: 30)))) {
+      toast(context, 'აირჩიე მომავალი დრო');
+      return;
+    }
+    await _publish(at: when);
+  }
+
+  Future<void> _publish({bool draft = false, DateTime? at}) async {
     if (_empty || busy) return;
     final app = context.app;
     Poll? poll;
@@ -129,9 +210,19 @@ class _ComposeScreenState extends State<ComposeScreen> {
         setState(() => stage = photos.length == 1 ? 'ფოტო იტვირთება…' : 'ფოტოები იტვირთება · ${i + 1}/${photos.length}');
         media.add(await app.api.uploadPhoto(await photoPrep(photos[i])));
       }
+      final v = video;
+      if (v != null) {
+        setState(() => stage = 'ვიდეო იტვირთება · ${(v.bytes / 1048576).toStringAsFixed(1)} მბ…');
+        media.add(await app.api.uploadVideo(v));
+      }
       setState(() => stage = 'ქვეყნდება…');
-      final post = await app.api.createPost(field.text.trim(), media, poll: poll);
+      final post = await app.api.createPost(field.text.trim(), media, poll: poll, placeId: place?.$1, draft: draft, publishAt: at);
       if (!mounted) return;
+      if (draft || at != null) {
+        toast(context, at == null ? 'დრაფტი შენახულია' : 'დაიგეგმა: ${at.day} ${monthNames[at.month - 1]}, ${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}');
+        Navigator.of(context).pop();
+        return;
+      }
       Navigator.of(context).pop(post);
     } catch (e) {
       if (!mounted) return;
@@ -166,10 +257,12 @@ class _ComposeScreenState extends State<ComposeScreen> {
           leading: IconBtn('x', label: 'დახურვა', onTap: _leave),
           title: const Text('ახალი პოსტი'),
           actions: [
+            IconBtn('clock', key: const ValueKey('c-later'), label: 'დრაფტი ან დაგეგმვა', onTap: _empty || busy || preparing != null ? null : _later),
             Padding(
               padding: const EdgeInsets.only(right: 12),
               child: FilledButton(
-                onPressed: _empty || busy ? null : _publish,
+                key: const ValueKey('c-pub'),
+                onPressed: _empty || busy || preparing != null ? null : _publish,
                 style: FilledButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 18)),
                 child: const Text('გამოქვეყნება'),
               ),
@@ -224,7 +317,27 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   children: [
                     for (var i = 0; i < photos.length; i++)
                       Stack(fit: StackFit.expand, children: [
-                        ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.memory(photos[i], fit: BoxFit.cover, cacheWidth: 600)),
+                        GestureDetector(
+                          key: ValueKey('c-photo-$i'),
+                          onTap: busy ? null : () => _edit(i),
+                          child: ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.memory(photos[i], fit: BoxFit.cover, cacheWidth: 600, gaplessPlayback: true)),
+                        ),
+                        if (!busy)
+                          Positioned(
+                            left: 6,
+                            bottom: 6,
+                            child: IgnorePointer(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(10)),
+                                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                                  PIcon('edit', size: 13, color: Colors.white),
+                                  SizedBox(width: 3),
+                                  Text('რედაქტირება', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                                ]),
+                              ),
+                            ),
+                          ),
                         if (!busy)
                           Positioned(
                             top: 6,
@@ -243,6 +356,62 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   ],
                 ),
               ],
+              if (preparing != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('ვიდეო მზადდება… ${((preparing ?? 0) * 100).round()}%', style: TextStyle(color: c.muted, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    LinearProgressIndicator(value: preparing, minHeight: 4, color: c.accent, backgroundColor: c.accentSoft),
+                  ]),
+                ),
+              if (video != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  key: const ValueKey('c-video'),
+                  height: 150,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(color: const Color(0xFF14161E), borderRadius: BorderRadius.circular(12)),
+                  child: Stack(fit: StackFit.expand, children: [
+                    if (video!.poster != null && File(video!.poster!).existsSync()) Image.file(File(video!.poster!), fit: BoxFit.cover),
+                    const Center(child: PIcon('play', size: 40, color: Colors.white)),
+                    Positioned(
+                      left: 10,
+                      bottom: 8,
+                      child: Text('${video!.dur.round() ~/ 60}:${(video!.dur.round() % 60).toString().padLeft(2, '0')} · ${(video!.bytes / 1048576).toStringAsFixed(1)} მბ',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12.5)),
+                    ),
+                    if (!busy)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Material(
+                          color: Colors.black54,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            key: const ValueKey('c-video-x'),
+                            customBorder: const CircleBorder(),
+                            onTap: () => setState(() => video = null),
+                            child: const Padding(padding: EdgeInsets.all(5), child: PIcon('x', size: 16, color: Colors.white, stroke: 2.4)),
+                          ),
+                        ),
+                      ),
+                  ]),
+                ),
+              ],
+              if (place != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: InputChip(
+                      key: const ValueKey('c-place-chip'),
+                      label: Text('📍 ${place!.$2}'),
+                      onPressed: busy ? null : _place,
+                      onDeleted: busy ? null : () => setState(() => place = null),
+                    ),
+                  ),
+                ),
               if (pollQ != null) ...[
                 const SizedBox(height: 10),
                 Container(
@@ -308,6 +477,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
               ],
             ]),
           ),
+          MentionSuggest(field: field),
           Container(
             decoration: BoxDecoration(color: c.surface, border: Border(top: BorderSide(color: c.line))),
             child: SafeArea(
@@ -330,10 +500,22 @@ class _ComposeScreenState extends State<ComposeScreen> {
                           label: Text('კამერა', style: TextStyle(color: c.ink)),
                         ),
                         TextButton.icon(
+                          key: const ValueKey('c-vid'),
+                          onPressed: busy || preparing != null ? null : _video,
+                          icon: PIcon('video', size: 22, color: c.nope),
+                          label: Text('ვიდეო', style: TextStyle(color: c.ink)),
+                        ),
+                        TextButton.icon(
                           key: const ValueKey('c-poll'),
                           onPressed: busy || pollQ != null ? null : _pollOn,
                           icon: PIcon('poll', size: 22, color: c.gold),
                           label: Text('გამოკითხვა', style: TextStyle(color: c.ink)),
+                        ),
+                        TextButton.icon(
+                          key: const ValueKey('c-place'),
+                          onPressed: busy ? null : _place,
+                          icon: PIcon('pin', size: 22, color: c.accent),
+                          label: Text('ადგილი', style: TextStyle(color: c.ink)),
                         ),
                       ]),
                     ),

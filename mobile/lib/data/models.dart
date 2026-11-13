@@ -83,6 +83,7 @@ class Post {
     this.pageName,
     this.groupName,
     this.placeName,
+    this.placeId,
     this.hidden = false,
     this.pending = false,
     this.tags = const [],
@@ -104,6 +105,7 @@ class Post {
   /// who wrote it: the person, or the page drawn as one (id "page:…")
   final Profile? ap;
   final String? pageName, groupName, placeName;
+  final int? placeId;
 
   /// the shared post, for reposts
   Post? original;
@@ -139,6 +141,7 @@ class Post {
       pageName: page == null ? null : '${page['name'] ?? ''}',
       groupName: _map(j['grp'])?['name'] as String?,
       placeName: _map(j['pl'])?['name'] as String?,
+      placeId: _map(j['pl'])?['id'] == null ? null : asInt(_map(j['pl'])!['id']),
       hidden: j['hidden'] == true,
       pending: j['pending'] == true,
       tags: j['tags'] is List ? (j['tags'] as List).map((x) => '$x').toList() : const [],
@@ -225,7 +228,7 @@ class PostStats {
 }
 
 class Comment {
-  Comment({required this.id, required this.postId, required this.author, required this.body, required this.createdAt, this.parentId, this.ap, this.likes = 0, this.media});
+  Comment({required this.id, required this.postId, required this.author, required this.body, required this.createdAt, this.parentId, this.ap, this.likes = 0, this.media, this.sticker});
   final int id, postId;
   final String author, body;
   final DateTime createdAt;
@@ -233,6 +236,9 @@ class Comment {
   final Profile? ap;
   final int likes;
   final Media? media;
+
+  /// a sticker comment's sticker (its words are only the server's placeholder)
+  final String? sticker;
 
   factory Comment.fromJson(Map<String, dynamic> j) {
     final m = j['media'];
@@ -246,6 +252,7 @@ class Comment {
       ap: _map(j['profiles']) == null ? null : Profile.fromJson(_map(j['profiles'])!),
       likes: asInt(j['likes']),
       media: m is List ? Media.listOf(m).firstOrNull : Media.fromJson(m),
+      sticker: m is Map && m['sticker'] is String ? m['sticker'] as String : null,
     );
   }
 }

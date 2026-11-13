@@ -48,6 +48,11 @@ class FakeApi implements PeeraApi {
       Comment(id: 3, postId: 101, author: luka.id, ap: luka, body: 'შემდეგ ჯერზე მეც წამიყვანეთ!', createdAt: ago(5), likes: 2),
       Comment(id: 4, postId: 101, author: ana.id, ap: ana, body: '👏👏👏', createdAt: ago(2)),
     ];
+    _comments[106] = [
+      Comment(id: 20, postId: 106, author: tamar.id, ap: tamar, body: 'Looks amazing! Which app is this?', createdAt: ago(60 * 20), likes: 1),
+      Comment(id: 21, postId: 106, author: luka.id, ap: luka, body: '🥟 ხინკალი', createdAt: ago(60 * 19), sticker: 'khinkali'),
+      Comment(id: 22, postId: 106, author: mariam.id, ap: mariam, body: 'gamarjoba, rogor xar? dzalian lamazia', createdAt: ago(60 * 18)),
+    ];
     _chats.addAll([
       Chat(convId: 1, members: [giorgi.id], lastBody: 'ხვალ 7-ზე შევხვდეთ?', lastKind: 'text', lastSender: giorgi.id, lastAt: ago(3), unread: 2),
       Chat(convId: 3, isGroup: true, title: 'კლასელები', members: [luka.id, ana.id, dato.id], lastKind: 'image', lastSender: ana.id, lastAt: ago(50), unread: 5),
@@ -144,9 +149,18 @@ class FakeApi implements PeeraApi {
   Future<List<Comment>> comments(int postId) async => [...?_comments[postId]];
 
   @override
-  Future<Comment> addComment(int postId, String body, {int? parentId}) async {
-    calls.add('comment $postId $body${parentId == null ? '' : ' ↩$parentId'}');
-    final c = Comment(id: _id++, postId: postId, author: nino.id, ap: nino, body: body, createdAt: DateTime.now(), parentId: parentId);
+  Future<Comment> addComment(int postId, String body, {int? parentId, Map<String, dynamic>? media}) async {
+    calls.add('comment $postId $body${parentId == null ? '' : ' ↩$parentId'}${media == null ? '' : ' ${media['sticker'] ?? 'photo'}'}');
+    final c = Comment(
+        id: _id++,
+        postId: postId,
+        author: nino.id,
+        ap: nino,
+        body: body,
+        createdAt: DateTime.now(),
+        parentId: parentId,
+        media: media == null ? null : Media.fromJson(media),
+        sticker: media?['sticker'] as String?);
     (_comments[postId] ??= []).add(c);
     return c;
   }
@@ -158,10 +172,11 @@ class FakeApi implements PeeraApi {
   }
 
   @override
-  Future<Post> createPost(String body, List<Media> media, {Poll? poll}) async {
-    calls.add('post $body ${media.length}${poll != null ? ' poll ${poll.q} ${poll.opts.join('/')}' : ''}');
-    final p = _p(_id++, nino, DateTime.now(), body, media, poll: poll);
-    _posts.insert(0, p);
+  Future<Post> createPost(String body, List<Media> media, {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf}) async {
+    calls.add('post $body ${media.length}${poll != null ? ' poll ${poll.q} ${poll.opts.join('/')}' : ''}'
+        '${placeId != null ? ' place $placeId' : ''}${draft ? ' draft' : ''}${publishAt != null ? ' at' : ''}${repostOf != null ? ' quote $repostOf' : ''}');
+    final p = _p(_id++, nino, DateTime.now(), body, media, poll: poll, repostOf: repostOf);
+    if (!draft && publishAt == null) _posts.insert(0, p);
     return p;
   }
 
@@ -536,8 +551,8 @@ class FakeApi implements PeeraApi {
   }
 
   @override
-  Future<void> addStory(String url, {bool video = false}) async {
-    calls.add('story $url');
+  Future<void> addStory(String url, {bool video = false, int? postId}) async {
+    calls.add('story $url${postId == null ? '' : ' post $postId'}');
     storyList.add(Story(id: _id++, author: nino.id, url: url, createdAt: DateTime.now(), video: video));
   }
 
@@ -1133,4 +1148,93 @@ class FakeApi implements PeeraApi {
   Future<Map<String, int>> inviteRules() async => const {'welcome': 100, 'invite': 50};
   @override
   Future<(int, int)> referrals() async => (3, 2);
+
+  // ---------- posts: sharing, editing, comments, tags, search ----------
+  final liked = <int>{3};
+  @override
+  Future<Map<int, (int, int?)>> repostStats(List<int> ids) async => {for (final i in ids) i: i == 101 ? (3, null) : (0, null)};
+  @override
+  Future<int> repost(int postId) async {
+    calls.add('repost $postId');
+    return _id++;
+  }
+
+  @override
+  Future<void> unrepost(int repostId) async => calls.add('unrepost $repostId');
+  @override
+  Future<Post> updatePost(int id, String body, {List<Media>? media, int? placeId, bool setPlace = false}) async {
+    calls.add('edit $id $body ${media?.length}${setPlace ? ' place $placeId' : ''}');
+    final old = _posts.firstWhere((p) => p.id == id);
+    final n = Post(id: id, author: old.author, ap: old.ap, createdAt: old.createdAt, cursor: old.cursor, body: body, media: media ?? old.media, poll: old.poll, edited: true, repostOf: old.repostOf, tags: old.tags);
+    n.original = old.original;
+    _posts[_posts.indexOf(old)] = n;
+    return n;
+  }
+
+  @override
+  Future<void> modHide(String type, int id, bool hidden) async => calls.add('modhide $type $id $hidden');
+  @override
+  Future<void> saveToFolder(int postId, int? folder) async => calls.add('folder $postId $folder');
+  @override
+  Future<(int, String)> newFolder(String name) async {
+    calls.add('newfolder $name');
+    return (77, name);
+  }
+
+  @override
+  Future<(String, String?)> translate(String text, String source, String target) async {
+    calls.add('translate $source');
+    return ('ნათარგმნი: $text', source);
+  }
+
+  @override
+  Future<Set<int>> commentLikes(List<int> ids) async => {...liked.where(ids.contains)};
+  @override
+  Future<void> likeComment(int id, bool on) async {
+    calls.add('clike $id $on');
+    on ? liked.add(id) : liked.remove(id);
+  }
+
+  @override
+  Future<void> deleteComment(int id) async {
+    calls.add('cdel $id');
+    for (final l in _comments.values) {
+      l.removeWhere((c) => c.id == id || c.parentId == id);
+    }
+  }
+
+  @override
+  Future<List<Profile>> mentionPeople(String prefix) async => everyone.where((p) => p.id != nino.id && (p.username ?? '').startsWith(prefix)).take(6).toList();
+  @override
+  Future<Profile?> personByUsername(String username) async => everyone.where((p) => p.username == username).firstOrNull;
+  @override
+  Future<List<Post>> postsTagged(String tag, {int limit = 40}) async => _posts.where((p) => p.tags.contains(tag)).toList();
+  @override
+  Future<List<(String, int)>> trendingTags() async => const [('საქართველო', 12), ('მთა', 7), ('ზამთარი', 4)];
+  @override
+  Future<List<Post>> searchPosts(String q) async => _posts.where((p) => p.body.contains(q)).toList();
+  @override
+  Future<List<Map<String, dynamic>>> searchPages(String q) async => [
+        for (final g in const [
+          {'id': 1, 'name': 'Peera სიახლეები', 'kind': 'channel', 'hue': 200, 'verified': true, 'category': 'სიახლეები'},
+          {'id': 2, 'name': 'მთის ამბები', 'kind': 'business', 'hue': 120, 'category': 'ტურიზმი'},
+        ])
+          if ('${g['name']}'.contains(q)) g,
+      ];
+  @override
+  Future<List<Map<String, dynamic>>> searchGroups(String q) async => [
+        for (final g in const [
+          {'id': 5, 'name': 'მთის მოყვარულები', 'hue': 150, 'is_private': false, 'description': 'ლაშქრობები ყოველ შაბათს'},
+          {'id': 6, 'name': 'თსუ სტუდენტები', 'hue': 30, 'is_private': true},
+        ])
+          if ('${g['name']}'.contains(q)) g,
+      ];
+  @override
+  Future<List<Map<String, dynamic>>> findPlaces(String q, {double? lat, double? lng}) async => [
+        for (final p in const [
+          {'id': 9, 'name': 'ჯვრის მონასტერი', 'kind': 'sight', 'city': 'მცხეთა', 'km': 12.4},
+          {'id': 10, 'name': 'ფაბრიკა', 'kind': 'cafe', 'city': 'თბილისი', 'km': 0.8},
+        ])
+          if (q.isEmpty || '${p['name']}'.contains(q)) p,
+      ];
 }

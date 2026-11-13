@@ -19,7 +19,7 @@ final _cache = <String, List<_Op>>{};
 final _tagRe = RegExp(r'<(/?)([a-zA-Z]+)((?:\s+[a-zA-Z-]+="[^"]*")*)\s*(/?)>|([^<]+)');
 final _attrRe = RegExp(r'([a-zA-Z-]+)="([^"]*)"');
 final _tfRe = RegExp(r'([a-zA-Z]+)\(([^)]*)\)');
-const _inherit = {'fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'font-size', 'font-weight', 'text-anchor', 'opacity'};
+const _inherit = {'fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'font-size', 'font-weight', 'text-anchor', 'opacity', 'paint-order'};
 
 List<(String, List<double>)> _tfs(String? v) => v == null
     ? const []
@@ -129,17 +129,24 @@ class _SvgPainter extends CustomPainter {
     if (op.tag == 'text') {
       if (fill == null) return;
       final w = int.tryParse(a['font-weight'] ?? '') ?? (a['font-weight'] == 'bold' ? 700 : 400);
-      final tp = TextPainter(
-        text: TextSpan(
-          text: op.text.trim(),
-          style: font.copyWith(color: fill, fontSize: _n(a, 'font-size', 16), fontWeight: FontWeight.values[((w ~/ 100) - 1).clamp(0, 8)], height: 1, decoration: TextDecoration.none),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
+      final st = font.copyWith(fontSize: _n(a, 'font-size', 16), fontWeight: FontWeight.values[((w ~/ 100) - 1).clamp(0, 8)], height: 1, decoration: TextDecoration.none);
+      TextPainter painter(TextStyle ts) => TextPainter(text: TextSpan(text: op.text.trim(), style: ts), textDirection: TextDirection.ltr)..layout();
+      final tp = painter(st.copyWith(color: fill));
       final anchor = a['text-anchor'];
       final dx = anchor == 'middle' ? tp.width / 2 : (anchor == 'end' ? tp.width : 0);
       final base = tp.computeDistanceToActualBaseline(TextBaseline.alphabetic);
-      tp.paint(canvas, Offset(_n(a, 'x') - dx, _n(a, 'y') - base));
+      final at = Offset(_n(a, 'x') - dx, _n(a, 'y') - base);
+      // a stroke under the letters (the stickers' white outline)
+      if (stroke != null) {
+        painter(st.copyWith(
+          foreground: Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = _n(a, 'stroke-width', 1)
+            ..strokeJoin = StrokeJoin.round
+            ..color = stroke,
+        )).paint(canvas, at);
+      }
+      tp.paint(canvas, at);
       return;
     }
     Path path;
@@ -160,7 +167,9 @@ class _SvgPainter extends CustomPainter {
       default:
         return;
     }
-    if (fill != null) canvas.drawPath(path, Paint()..color = fill);
+    // paint-order="stroke": the outline first, the fill over it
+    final under = (a['paint-order'] ?? '').startsWith('stroke');
+    if (fill != null && !under) canvas.drawPath(path, Paint()..color = fill);
     if (stroke != null) {
       final p = Paint()
         ..color = stroke
@@ -183,6 +192,7 @@ class _SvgPainter extends CustomPainter {
         }
       }
     }
+    if (fill != null && under) canvas.drawPath(path, Paint()..color = fill);
   }
 
   @override
