@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:peera/auth/auth_api.dart';
 import 'package:peera/data/photos.dart';
 import 'package:peera/feed/compose_screen.dart';
+import 'package:peera/ui/bits.dart';
 import 'package:peera/feed/feed_tab.dart';
 import 'package:peera/feed/post_actions.dart';
 import 'package:peera/home/home_cards.dart';
@@ -75,6 +76,11 @@ void useTestImages() {
   photoEdit = (context, src) async => null;
   storyCard = (context, p) async => Uint8List(8);
   textStoryImage = (context, text, colour, poll) async => pic('sunset');
+  openedLinks.clear();
+  openExternal = (u) async {
+    openedLinks.add('$u');
+    return true;
+  };
   saveFile = (name, bytes, mime) async {
     savedFiles[name] = bytes;
     return 'saved';
@@ -196,11 +202,14 @@ void phone(WidgetTester t, {double w = 390, double h = 844}) {
 /// files the app saved to the phone's Downloads, by name
 final savedFiles = <String, Uint8List>{};
 
+/// the links opened outside the app (a route, a call, a site)
+final openedLinks = <String>[];
+
 /// The signed-in app on the fake server.
-Future<FakeApi> shell(WidgetTester t, {ThemeMode mode = ThemeMode.light, VoidCallback? exit, FakeApi? api, PushService? push}) async {
+Future<FakeApi> shell(WidgetTester t, {ThemeMode mode = ThemeMode.light, VoidCallback? exit, FakeApi? api, PushService? push, Profile? me}) async {
   final a = api ?? FakeApi();
   postOverrides.reset();
-  await t.pumpWidget(PeeraApp(mode: mode, home: HomeShell(me: nino, api: a, push: push, onSignOut: () async {}, exit: exit)));
+  await t.pumpWidget(PeeraApp(mode: mode, home: HomeShell(me: me ?? nino, api: a, push: push, onSignOut: () async {}, exit: exit)));
   await settle(t);
   return a;
 }
@@ -334,4 +343,19 @@ class FakeLoc implements LocDevice {
 
   @override
   Future<void> settings() async => calls.add('settings');
+}
+
+/// A list builds only what is near the screen: the page's own list (the tallest one scrolling down) is moved from the
+/// top, a screen at a time, until [f] is built.
+Future<void> reveal(WidgetTester t, Finder f) async {
+  if (f.evaluate().isNotEmpty) return;
+  final states = t.stateList<ScrollableState>(find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)).toList()
+    ..sort((a, b) => (b.context.size?.height ?? 0).compareTo(a.context.size?.height ?? 0));
+  if (states.isEmpty) return;
+  final pos = states.first.position;
+  for (var y = 0.0;; y += 300) {
+    pos.jumpTo(y.clamp(pos.minScrollExtent, pos.maxScrollExtent));
+    await t.pump();
+    if (f.evaluate().isNotEmpty || y >= pos.maxScrollExtent) break;
+  }
 }

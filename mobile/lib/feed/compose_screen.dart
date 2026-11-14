@@ -40,7 +40,7 @@ const maxPhotos = 10;
 /// a place. "გამოქვეყნება" uploads them (photos made upright and in the site's three sizes) and publishes, and the new
 /// post comes back to the feed; the clock button keeps it as a draft or plans it for later.
 class ComposeScreen extends StatefulWidget {
-  const ComposeScreen({super.key, this.startWithPhotos = false, this.startWithPoll = false, this.text = '', this.groupId, this.pageId, this.where});
+  const ComposeScreen({super.key, this.startWithPhotos = false, this.startWithPoll = false, this.text = '', this.groupId, this.pageId, this.where, this.place});
   final bool startWithPhotos, startWithPoll;
 
   /// a post into a group or as a page, and its name for the title
@@ -49,6 +49,9 @@ class ComposeScreen extends StatefulWidget {
 
   /// words to begin with (a first post's idea, a memory shared)
   final String text;
+
+  /// "აქ ვარ" on a place's page: the post is from there
+  final (int, String)? place;
 
   @override
   State<ComposeScreen> createState() => _ComposeScreenState();
@@ -59,7 +62,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
   final photos = <Uint8List>[];
   VideoReady? video;
   double? preparing;
-  (int, String)? place;
+  late (int, String)? place = widget.place;
   bool busy = false;
   String? stage;
 
@@ -111,7 +114,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
   bool get _empty => field.text.trim().isEmpty && photos.isEmpty && pollQ == null && video == null && place == null;
 
   /// nothing of mine would be lost on leaving: empty, or only the words it began with (a library's tags)
-  bool get _untouched => (field.text.trim().isEmpty || field.text == widget.text) && photos.isEmpty && pollQ == null && video == null && place == null;
+  bool get _untouched => (field.text.trim().isEmpty || field.text == widget.text) && photos.isEmpty && pollQ == null && video == null && place == widget.place;
 
   Future<void> _add(bool camera) async {
     if (photos.length >= maxPhotos) {

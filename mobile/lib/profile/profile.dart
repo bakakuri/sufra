@@ -20,6 +20,7 @@ class Profile {
     this.nameday,
     this.namedayLabel,
     this.homePlace,
+    this.homeRegion,
     this.edu = const [],
     this.guest = false,
     this.gender,
@@ -52,6 +53,9 @@ class Profile {
 
   /// the village or town they come from
   final String? homePlace;
+
+  /// the region they come from (help and places default to it)
+  final String? homeRegion;
 
   /// schools and universities: {k: 'school'|'uni', n, key, f, y0, y1, cls}
   final List<Map<String, dynamic>> edu;
@@ -87,6 +91,7 @@ class Profile {
         nameday: (j['nameday'] as String?)?.isEmpty == true ? null : j['nameday'] as String?,
         namedayLabel: j['nameday_label'] as String?,
         homePlace: j['home_place'] as String?,
+        homeRegion: j['home_region'] as String?,
         edu: [for (final e in (j['edu'] is List ? j['edu'] as List : const [])) if (e is Map) Map<String, dynamic>.from(e)],
         guest: j['privacy'] is Map && (j['privacy'] as Map)['guest'] == true,
         gender: j['gender'] as String?,

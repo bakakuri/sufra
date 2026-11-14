@@ -579,6 +579,105 @@ abstract class PeeraApi {
 
   /// posts with all of these tags (and the words), the newest first
   Future<List<Post>> postsWithTags(List<String> tags, {String q = ''});
+
+  // ---------- places (places.js): on a map, with reviews and check-ins ----------
+
+  /// places around a point (within [km]), of a kind and with words
+  Future<List<Map<String, dynamic>>> placesNear({required double lat, required double lng, double km = 30, String? kind, String? q, int limit = 60});
+  Future<Map<String, dynamic>?> place(int id);
+  Future<List<Map<String, dynamic>>> placeReviews(int id);
+  Future<List<Post>> placePosts(int id);
+
+  /// my review of a place (rating, body, photos), to change it
+  Future<Map<String, dynamic>?> myPlaceReview(int id);
+  Future<void> reviewPlace(int id, int rating, String body, List<String> photos);
+
+  /// a new place (its id) or one changed
+  Future<int> savePlace(Map<String, dynamic> row, {int? id});
+  Future<void> deletePlace(int id);
+
+  // ---------- help (help.js): blood donors, lost and found pets and things, volunteers ----------
+
+  /// open requests (or the resolved ones too) by kind ('pets', 'items' or one kind) and region
+  Future<List<Map<String, dynamic>>> helpRequests({String kind = '', String region = '', bool done = false});
+  Future<(Map<String, dynamic>, List<Map<String, dynamic>>)?> helpRequest(int id);
+  Future<int> createHelp(Map<String, dynamic> row);
+  Future<void> offerHelp(int id, String note);
+  Future<void> unofferHelp(int id);
+  Future<void> resolveHelp(int id);
+  Future<void> deleteHelp(int id);
+
+  /// what help I am told about (region, blood type, kinds), or null
+  Future<Map<String, dynamic>?> helperSettings();
+  Future<void> saveHelper(Map<String, dynamic>? row);
+
+  // ---------- rides (rides.js): one car between cities ----------
+
+  Future<List<Map<String, dynamic>>> rides({String from = '', String to = '', DateTime? day, bool mine = false});
+
+  /// the ride, the seats left, my booking, and (for its driver) everyone's bookings
+  Future<({Map<String, dynamic> r, int left, Map<String, dynamic>? mine, List<Map<String, dynamic>> books})?> ride(int id);
+  Future<int> createRide(Map<String, dynamic> row);
+  Future<void> bookRide(int id, int seats);
+  Future<void> cancelBooking(int id);
+  Future<void> respondBooking(int id, String uid, bool accept);
+  Future<void> cancelRide(int id);
+
+  // ---------- the match room (sport.js): fixtures, free predictions, the chat ----------
+
+  /// 'up', 'done' or 'mine' (with my predictions by fixture)
+  Future<(List<Map<String, dynamic>>, Map<int, Map<String, dynamic>>)> fixtures(String tab);
+  Future<({Map<String, dynamic> f, Map<String, dynamic>? my, Map<String, dynamic> pool})?> fixture(int id);
+
+  /// a free prediction ('1', 'X', '2'): my coins after it
+  Future<int> predict(int id, String pick);
+  Future<int> createFixture({required String league, required String home, required String away, required DateTime startsAt});
+  Future<void> settleFixture(int id, int home, int away);
+  Future<void> cancelFixture(int id);
+  Future<List<Map<String, dynamic>>> fixtureChat(int id);
+  Future<Map<String, dynamic>> sayInFixture(int id, String body);
+  Stream<Map<String, dynamic>> liveFixtureChat(int id);
+
+  // ---------- jobs (jobs.js): vacancies, applying with the CV ----------
+
+  Future<List<Map<String, dynamic>>> jobs({String cat = '', String type = '', String q = ''});
+
+  /// the vacancy, my application, and (for who posted it) all the applications
+  Future<({Map<String, dynamic> j, Map<String, dynamic>? mine, List<Map<String, dynamic>> apps})?> job(int id);
+  Future<int> createJob(Map<String, dynamic> row);
+  Future<void> applyJob(int id, String cover);
+  Future<void> setApplication(int job, String uid, String status);
+  Future<void> setJobStatus(int id, String status);
+  Future<void> deleteJob(int id);
+
+  /// the vacancies I posted, my applications and their vacancies
+  Future<({List<Map<String, dynamic>> posted, List<Map<String, dynamic>> applied, List<Map<String, dynamic>> jobs})> myJobs();
+
+  /// my pages and channels (a vacancy's company can be one)
+  Future<List<Map<String, dynamic>>> myPages();
+
+  // ---------- the Georgian kitchen (kitchen.js) ----------
+
+  Future<List<Map<String, dynamic>>> recipes({String cat = '', String q = ''});
+  Future<({Map<String, dynamic> r, bool liked, List<Map<String, dynamic>> cooks})?> recipe(int id);
+  Future<void> likeRecipe(int id, bool on);
+  Future<int> saveRecipe(Map<String, dynamic> row, {int? id});
+  Future<void> deleteRecipe(int id);
+
+  /// "I made it too": a photo and a few words
+  Future<void> cookedRecipe(int id, String? photo, String note);
+
+  /// my coming events (mine and the ones I said yes to), for a recipe's ingredients
+  Future<List<Map<String, dynamic>>> myComingEvents();
+  Future<void> addEventItems(int event, List<String> names);
+
+  // ---------- the toast book (toasts.js) ----------
+
+  /// by occasion, the best or the newest; which of them I liked
+  Future<(List<Map<String, dynamic>>, Set<int>)> toasts({String occ = '', String sort = 'top'});
+  Future<void> likeToast(int id, bool on);
+  Future<void> saveToast({int? id, required String occasion, required String title, required String body});
+  Future<void> deleteToast(int id);
 }
 
 class SupaApi implements PeeraApi {
@@ -594,7 +693,7 @@ class SupaApi implements PeeraApi {
       'ap:profiles!posts_author_fkey($_who),page:pages!posts_page_id_fkey(id,name,hue,avatar_url,verified,kind),'
       'grp:groups!posts_group_id_fkey(id,name),pl:places!posts_place_id_fkey(id,name,kind,city)';
   static const commentSel = 'id,post_id,body,media,created_at,author,parent_id,likes,profiles!comments_author_fkey($_who)';
-  static const personSel = 'id,username,name,surname,bio,city,hue,avatar_url,cover_url,verified,last_seen,role,banned,rating,nameday,nameday_label,home_place,edu,gender';
+  static const personSel = 'id,username,name,surname,bio,city,hue,avatar_url,cover_url,verified,last_seen,role,banned,rating,nameday,nameday_label,home_place,home_region,edu,gender';
   static const msgSel = 'id,conv_id,sender,body,media,kind,created_at,reply_to,edited_at,deleted,expires_at';
 
   String _id(int n) => List.generate(n, (_) => 'abcdefghijklmnopqrstuvwxyz0123456789'[_rnd.nextInt(36)]).join();
@@ -2383,4 +2482,333 @@ class SupaApi implements PeeraApi {
     if (s.isNotEmpty) b = b.ilike('body', '%$s%');
     return _hydrate(await b.order('created_at', ascending: false).limit(60));
   }
+
+  // ---------- places ----------
+  static const _placeSel = 'id,name,kind,region,city,address,lat,lng,phone,website,about,photo,tags,created_by,rating,reviews,hidden,created_at';
+
+  @override
+  Future<List<Map<String, dynamic>>> placesNear({required double lat, required double lng, double km = 30, String? kind, String? q, int limit = 60}) async {
+    final s = _like(q ?? '');
+    final r = await sb.rpc('places_near', params: {'p_lat': lat, 'p_lng': lng, 'p_km': km, 'p_kind': (kind ?? '').isEmpty ? null : kind, 'p_q': s.isEmpty ? null : s, 'p_limit': limit});
+    return [for (final x in r as List) Map<String, dynamic>.from(x as Map)];
+  }
+
+  @override
+  Future<Map<String, dynamic>?> place(int id) => sb.from('places').select(_placeSel).eq('id', id).maybeSingle();
+
+  @override
+  Future<List<Map<String, dynamic>>> placeReviews(int id) async =>
+      await sb.from('place_reviews').select('id,author,rating,body,photos,created_at,updated_at,hidden').eq('place_id', id).order('updated_at', ascending: false).limit(60);
+
+  @override
+  Future<List<Post>> placePosts(int id) async => _hydrate(await _posts().eq('place_id', id).eq('hidden', false).order('created_at', ascending: false).limit(20));
+
+  @override
+  Future<Map<String, dynamic>?> myPlaceReview(int id) => sb.from('place_reviews').select('rating,body,photos').eq('place_id', id).eq('author', myId).maybeSingle();
+
+  @override
+  Future<void> reviewPlace(int id, int rating, String body, List<String> photos) =>
+      sb.rpc('review_place', params: {'p_place': id, 'p_rating': rating, 'p_body': body, 'p_photos': photos});
+
+  @override
+  Future<int> savePlace(Map<String, dynamic> row, {int? id}) async {
+    if (id != null) {
+      await sb.from('places').update(row).eq('id', id);
+      return id;
+    }
+    final r = await sb.from('places').insert({...row, 'created_by': myId}).select('id').single();
+    return asInt(r['id']);
+  }
+
+  @override
+  Future<void> deletePlace(int id) => sb.from('places').delete().eq('id', id);
+
+  // ---------- help ----------
+  @override
+  Future<List<Map<String, dynamic>>> helpRequests({String kind = '', String region = '', bool done = false}) async {
+    var b = sb.from('help_requests').select('id,author,kind,title,region,city,blood_type,urgent,status,media,created_at').eq('hidden', false);
+    if (!done) b = b.eq('status', 'open').gt('expires_at', DateTime.now().toUtc().toIso8601String());
+    if (region.isNotEmpty) b = b.eq('region', region);
+    if (kind == 'pets') {
+      b = b.inFilter('kind', ['lost_pet', 'found_pet']);
+    } else if (kind == 'items') {
+      b = b.inFilter('kind', ['lost_item', 'found_item']);
+    } else if (kind.isNotEmpty) {
+      b = b.eq('kind', kind);
+    }
+    return await b.order('status', ascending: false).order('urgent', ascending: false).order('created_at', ascending: false).limit(60);
+  }
+
+  @override
+  Future<(Map<String, dynamic>, List<Map<String, dynamic>>)?> helpRequest(int id) async {
+    final h = await sb.from('help_requests').select().eq('id', id).maybeSingle();
+    if (h == null) return null;
+    final o = await sb.from('help_offers').select('user_id,note,created_at').eq('request_id', id).order('created_at');
+    return (h, o);
+  }
+
+  @override
+  Future<int> createHelp(Map<String, dynamic> row) async => asInt((await sb.from('help_requests').insert({...row, 'author': myId}).select('id').single())['id']);
+
+  @override
+  Future<void> offerHelp(int id, String note) => sb.from('help_offers').insert({'request_id': id, 'user_id': myId, 'note': note});
+
+  @override
+  Future<void> unofferHelp(int id) => sb.from('help_offers').delete().eq('request_id', id).eq('user_id', myId);
+
+  @override
+  Future<void> resolveHelp(int id) => sb.from('help_requests').update({'status': 'resolved'}).eq('id', id);
+
+  @override
+  Future<void> deleteHelp(int id) => sb.from('help_requests').delete().eq('id', id);
+
+  @override
+  Future<Map<String, dynamic>?> helperSettings() => sb.from('helpers').select().eq('user_id', myId).maybeSingle();
+
+  @override
+  Future<void> saveHelper(Map<String, dynamic>? row) => row == null
+      ? sb.from('helpers').delete().eq('user_id', myId)
+      : sb.from('helpers').upsert({...row, 'user_id': myId, 'updated_at': DateTime.now().toUtc().toIso8601String()}, onConflict: 'user_id');
+
+  // ---------- rides ----------
+  @override
+  Future<List<Map<String, dynamic>>> rides({String from = '', String to = '', DateTime? day, bool mine = false}) async {
+    final d = day == null ? null : '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+    final r = await sb.rpc('ride_list', params: mine ? {'p_mine': true} : {'p_from': from.isEmpty ? null : from, 'p_to': to.isEmpty ? null : to, 'p_day': d, 'p_mine': false});
+    return [for (final x in r as List) Map<String, dynamic>.from(x as Map)];
+  }
+
+  @override
+  Future<({Map<String, dynamic> r, int left, Map<String, dynamic>? mine, List<Map<String, dynamic>> books})?> ride(int id) async {
+    final r = await sb.from('rides').select().eq('id', id).maybeSingle();
+    if (r == null) return null;
+    final left = asInt(await sb.rpc('ride_seats_left', params: {'p_ride': id}));
+    final mine = await sb.from('ride_bookings').select().eq('ride_id', id).eq('user_id', myId).maybeSingle();
+    final books = r['driver'] == myId ? await sb.from('ride_bookings').select().eq('ride_id', id).order('created_at') : <Map<String, dynamic>>[];
+    return (r: r, left: left, mine: mine, books: books);
+  }
+
+  @override
+  Future<int> createRide(Map<String, dynamic> row) async => asInt((await sb.from('rides').insert({...row, 'driver': myId}).select('id').single())['id']);
+
+  @override
+  Future<void> bookRide(int id, int seats) => sb.rpc('book_ride', params: {'p_ride': id, 'p_seats': seats});
+
+  @override
+  Future<void> cancelBooking(int id) => sb.rpc('cancel_booking', params: {'p_ride': id});
+
+  @override
+  Future<void> respondBooking(int id, String uid, bool accept) => sb.rpc('respond_booking', params: {'p_ride': id, 'p_user': uid, 'p_accept': accept});
+
+  @override
+  Future<void> cancelRide(int id) => sb.from('rides').update({'status': 'cancelled'}).eq('id', id);
+
+  // ---------- the match room ----------
+  @override
+  Future<(List<Map<String, dynamic>>, Map<int, Map<String, dynamic>>)> fixtures(String tab) async {
+    if (tab == 'mine') {
+      final p = await sb.from('predictions').select('fixture_id,pick,stake,payout').eq('user_id', myId).order('created_at', ascending: false).limit(60);
+      final mine = {for (final x in p) asInt(x['fixture_id']): x};
+      if (mine.isEmpty) return (<Map<String, dynamic>>[], mine);
+      final rows = await sb.from('fixtures').select().inFilter('id', mine.keys.toList());
+      rows.sort((a, b) => asTime(b['starts_at']).compareTo(asTime(a['starts_at'])));
+      return (rows, mine);
+    }
+    if (tab == 'up') {
+      final since = DateTime.now().subtract(const Duration(hours: 3)).toUtc().toIso8601String();
+      return (await sb.from('fixtures').select().eq('status', 'upcoming').gt('starts_at', since).order('starts_at').limit(60), <int, Map<String, dynamic>>{});
+    }
+    return (await sb.from('fixtures').select().neq('status', 'upcoming').order('starts_at', ascending: false).limit(40), <int, Map<String, dynamic>>{});
+  }
+
+  @override
+  Future<({Map<String, dynamic> f, Map<String, dynamic>? my, Map<String, dynamic> pool})?> fixture(int id) async {
+    final f = await sb.from('fixtures').select().eq('id', id).maybeSingle();
+    if (f == null) return null;
+    final my = await sb.from('predictions').select().eq('fixture_id', id).eq('user_id', myId).maybeSingle();
+    final pool = await sb.rpc('fixture_pool', params: {'p_fixture': id});
+    return (f: f, my: my, pool: pool is Map ? Map<String, dynamic>.from(pool) : <String, dynamic>{});
+  }
+
+  @override
+  Future<int> predict(int id, String pick) async => asInt(await sb.rpc('predict', params: {'p_fixture': id, 'p_pick': pick, 'p_stake': 0}));
+
+  @override
+  Future<int> createFixture({required String league, required String home, required String away, required DateTime startsAt}) async => asInt((await sb
+      .from('fixtures')
+      .insert({'league': league, 'home': home, 'away': away, 'starts_at': startsAt.toUtc().toIso8601String(), 'created_by': myId})
+      .select('id')
+      .single())['id']);
+
+  @override
+  Future<void> settleFixture(int id, int home, int away) => sb.rpc('admin_settle_fixture', params: {'p_fixture': id, 'p_home': home, 'p_away': away});
+
+  @override
+  Future<void> cancelFixture(int id) => sb.rpc('admin_cancel_fixture', params: {'p_fixture': id});
+
+  @override
+  Future<List<Map<String, dynamic>>> fixtureChat(int id) async =>
+      (await sb.from('fixture_chat').select('id,user_id,body,created_at').eq('fixture_id', id).order('created_at', ascending: false).limit(80)).reversed.toList();
+
+  @override
+  Future<Map<String, dynamic>> sayInFixture(int id, String body) =>
+      sb.from('fixture_chat').insert({'fixture_id': id, 'user_id': myId, 'body': body}).select('id,user_id,body,created_at').single();
+
+  @override
+  Stream<Map<String, dynamic>> liveFixtureChat(int id) {
+    RealtimeChannel? ch;
+    late final StreamController<Map<String, dynamic>> out;
+    out = StreamController<Map<String, dynamic>>(
+      onListen: () {
+        ch = sb
+            .channel('app-fx-$id-${_id(5)}')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.insert,
+              schema: 'public',
+              table: 'fixture_chat',
+              filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'fixture_id', value: id),
+              callback: (pl) {
+                if (pl.newRecord.isNotEmpty && !out.isClosed) out.add(pl.newRecord);
+              },
+            )
+            .subscribe();
+      },
+      onCancel: () async {
+        final c = ch;
+        if (c != null) await sb.removeChannel(c);
+      },
+    );
+    return out.stream;
+  }
+
+  // ---------- jobs ----------
+  static const _jobSel = 'id,poster,title,company,city,job_type,category,salary_from,salary_to,status,created_at';
+
+  @override
+  Future<List<Map<String, dynamic>>> jobs({String cat = '', String type = '', String q = ''}) async {
+    var b = sb.from('jobs').select(_jobSel).eq('status', 'open').eq('hidden', false);
+    if (cat.isNotEmpty) b = b.eq('category', cat);
+    if (type.isNotEmpty) b = b.eq('job_type', type);
+    final t = _like(q);
+    if (t.isNotEmpty) b = b.or('title.ilike.%$t%,company.ilike.%$t%,city.ilike.%$t%');
+    return await b.order('created_at', ascending: false).limit(60);
+  }
+
+  @override
+  Future<({Map<String, dynamic> j, Map<String, dynamic>? mine, List<Map<String, dynamic>> apps})?> job(int id) async {
+    final j = await sb.from('jobs').select().eq('id', id).maybeSingle();
+    if (j == null) return null;
+    if (j['poster'] == myId) {
+      return (j: j, mine: null, apps: await sb.from('job_applications').select().eq('job_id', id).order('created_at', ascending: false));
+    }
+    return (j: j, mine: await sb.from('job_applications').select().eq('job_id', id).eq('user_id', myId).maybeSingle(), apps: <Map<String, dynamic>>[]);
+  }
+
+  @override
+  Future<int> createJob(Map<String, dynamic> row) async => asInt((await sb.from('jobs').insert({...row, 'poster': myId}).select('id').single())['id']);
+
+  @override
+  Future<void> applyJob(int id, String cover) => sb.from('job_applications').insert({'job_id': id, 'user_id': myId, 'cover': cover});
+
+  @override
+  Future<void> setApplication(int job, String uid, String status) {
+    var b = sb.from('job_applications').update({'status': status}).eq('job_id', job).eq('user_id', uid);
+    // "seen" only once, when the CV is first opened
+    if (status == 'seen') b = b.eq('status', 'new');
+    return b;
+  }
+
+  @override
+  Future<void> setJobStatus(int id, String status) => sb.from('jobs').update({'status': status}).eq('id', id);
+
+  @override
+  Future<void> deleteJob(int id) => sb.from('jobs').delete().eq('id', id);
+
+  @override
+  Future<({List<Map<String, dynamic>> posted, List<Map<String, dynamic>> applied, List<Map<String, dynamic>> jobs})> myJobs() async {
+    final posted = await sb.from('jobs').select(_jobSel).eq('poster', myId).order('created_at', ascending: false);
+    final applied = await sb.from('job_applications').select('job_id,status,created_at').eq('user_id', myId).order('created_at', ascending: false);
+    final js = applied.isEmpty ? <Map<String, dynamic>>[] : await sb.from('jobs').select(_jobSel).inFilter('id', [for (final a in applied) a['job_id']]);
+    return (posted: posted, applied: applied, jobs: js);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> myPages() async => await sb.from('pages').select('id,name').eq('owner', myId).limit(40);
+
+  // ---------- the kitchen ----------
+  static const _recipeSel = 'id,author,title,about,photo_url,category,region,servings,minutes,ingredients,steps,likes,cooks,created_at';
+
+  @override
+  Future<List<Map<String, dynamic>>> recipes({String cat = '', String q = ''}) async {
+    var b = sb.from('recipes').select(_recipeSel);
+    if (cat.isNotEmpty) b = b.eq('category', cat);
+    final t = _like(q);
+    if (t.isNotEmpty) b = b.ilike('title', '%$t%');
+    return await b.order('likes', ascending: false).order('created_at', ascending: false).limit(80);
+  }
+
+  @override
+  Future<({Map<String, dynamic> r, bool liked, List<Map<String, dynamic>> cooks})?> recipe(int id) async {
+    final r = await sb.from('recipes').select(_recipeSel).eq('id', id).maybeSingle();
+    if (r == null) return null;
+    final lk = await sb.from('recipe_likes').select('user_id').eq('recipe_id', id).eq('user_id', myId).maybeSingle();
+    final ck = await sb.from('recipe_cooks').select('id,user_id,photo_url,note,created_at').eq('recipe_id', id).order('created_at', ascending: false).limit(30);
+    return (r: r, liked: lk != null, cooks: ck);
+  }
+
+  @override
+  Future<void> likeRecipe(int id, bool on) =>
+      on ? sb.from('recipe_likes').insert({'recipe_id': id, 'user_id': myId}) : sb.from('recipe_likes').delete().eq('recipe_id', id).eq('user_id', myId);
+
+  @override
+  Future<int> saveRecipe(Map<String, dynamic> row, {int? id}) async {
+    if (id != null) {
+      await sb.from('recipes').update(row).eq('id', id);
+      return id;
+    }
+    return asInt((await sb.from('recipes').insert({...row, 'author': myId}).select('id').single())['id']);
+  }
+
+  @override
+  Future<void> deleteRecipe(int id) => sb.from('recipes').delete().eq('id', id);
+
+  @override
+  Future<void> cookedRecipe(int id, String? photo, String note) => sb.from('recipe_cooks').insert({'recipe_id': id, 'user_id': myId, 'photo_url': photo, 'note': note});
+
+  @override
+  Future<List<Map<String, dynamic>>> myComingEvents() async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    final own = await sb.from('events').select('id,title,starts_at').eq('host', myId).gte('starts_at', now);
+    final rs = await sb.from('event_rsvps').select('event_id').eq('user_id', myId).eq('status', 'yes');
+    final ids = [for (final x in rs) if (!own.any((e) => e['id'] == x['event_id'])) x['event_id']];
+    final other = ids.isEmpty ? <Map<String, dynamic>>[] : await sb.from('events').select('id,title,starts_at').inFilter('id', ids).gte('starts_at', now);
+    return [...own, ...other]..sort((a, b) => '${a['starts_at']}'.compareTo('${b['starts_at']}'));
+  }
+
+  @override
+  Future<void> addEventItems(int event, List<String> names) =>
+      sb.from('event_items').insert([for (final n in names) {'event_id': event, 'name': n.length > 80 ? n.substring(0, 80) : n, 'added_by': myId}]);
+
+  // ---------- the toast book ----------
+  @override
+  Future<(List<Map<String, dynamic>>, Set<int>)> toasts({String occ = '', String sort = 'top'}) async {
+    var b = sb.from('toasts').select('id,author,occasion,title,body,likes,hidden,created_at').eq('hidden', false);
+    if (occ.isNotEmpty) b = b.eq('occasion', occ);
+    final rows = await (sort == 'new' ? b.order('created_at', ascending: false) : b.order('likes', ascending: false).order('created_at', ascending: true)).limit(60);
+    if (rows.isEmpty) return (rows, <int>{});
+    final lk = await sb.from('toast_likes').select('toast_id').eq('user_id', myId).inFilter('toast_id', [for (final r in rows) r['id']]);
+    return (rows, {for (final x in lk) asInt(x['toast_id'])});
+  }
+
+  @override
+  Future<void> likeToast(int id, bool on) =>
+      on ? sb.from('toast_likes').insert({'toast_id': id, 'user_id': myId}) : sb.from('toast_likes').delete().eq('toast_id', id).eq('user_id', myId);
+
+  @override
+  Future<void> saveToast({int? id, required String occasion, required String title, required String body}) => id == null
+      ? sb.from('toasts').insert({'author': myId, 'occasion': occasion, 'title': title, 'body': body})
+      : sb.from('toasts').update({'occasion': occasion, 'title': title, 'body': body}).eq('id', id);
+
+  @override
+  Future<void> deleteToast(int id) => sb.from('toasts').delete().eq('id', id);
 }

@@ -1735,4 +1735,513 @@ class FakeApi implements PeeraApi {
     calls.add('tagged ${tags.join('+')}');
     return tags.length == 1 && tags.first == 'კონსპექტი' ? [_posts.firstWhere((p) => p.id == 108)] : <Post>[];
   }
+
+  // ---------- places ----------
+  final placeRows = <Map<String, dynamic>>[
+    {
+      'id': 1, 'name': 'ეროვნული ბიბლიოთეკა', 'kind': 'winery', 'region': 'თბილისი', 'city': 'თბილისი', 'address': 'გუდიაშვილის 7', 'lat': 41.6995, 'lng': 44.7980, //
+      'phone': '+995 32 200 00 00', 'website': 'https://nplg.gov.ge', 'about': 'მყუდრო სამკითხველო დარბაზები და სწრაფი ინტერნეტი.', 'photo': null,
+      'tags': ['სწავლა', 'wifi'], 'created_by': 'u2', 'rating': 4.5, 'reviews': 2, 'km': 1.2, 'hidden': false,
+      'created_at': DateTime.now().subtract(const Duration(days: 40)).toIso8601String(),
+    },
+    {
+      'id': 2, 'name': 'კაფე კამპუსთან', 'kind': 'cafe', 'region': 'თბილისი', 'city': 'თბილისი', 'address': 'ჭავჭავაძის 1', 'lat': 41.7110, 'lng': 44.7780, //
+      'phone': '', 'website': '', 'about': '', 'photo': null, 'tags': <String>[], 'created_by': 'u1', 'rating': 0, 'reviews': 0, 'km': 0.4, 'hidden': false,
+      'created_at': DateTime.now().subtract(const Duration(days: 3)).toIso8601String(),
+    },
+  ];
+  final reviewRows = <Map<String, dynamic>>[
+    {'id': 1, 'place_id': 1, 'author': 'u2', 'rating': 5, 'body': 'საუკეთესო ადგილი სასწავლად', 'photos': [], 'hidden': false, 'updated_at': DateTime.now().subtract(const Duration(days: 5)).toIso8601String()},
+    {'id': 2, 'place_id': 1, 'author': 'u3', 'rating': 4, 'body': 'შაბათობით ცოტა ხმაურიანია', 'photos': [], 'hidden': false, 'updated_at': DateTime.now().subtract(const Duration(days: 9)).toIso8601String()},
+  ];
+
+  @override
+  Future<List<Map<String, dynamic>>> placesNear({required double lat, required double lng, double km = 30, String? kind, String? q, int limit = 60}) async {
+    calls.add('places ${kind ?? ''} ${q ?? ''}'.trim());
+    return [
+      for (final p in placeRows)
+        if ((kind ?? '').isEmpty || p['kind'] == kind)
+          if ((q ?? '').isEmpty || '${p['name']} ${p['city']}'.contains(q!)) {...p},
+    ];
+  }
+
+  @override
+  Future<Map<String, dynamic>?> place(int id) async {
+    final p = placeRows.where((x) => x['id'] == id).firstOrNull;
+    return p == null ? null : {...p};
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> placeReviews(int id) async => [for (final r in reviewRows) if (r['place_id'] == id) {...r}];
+  @override
+  Future<List<Post>> placePosts(int id) async => id == 1 ? [_posts.firstWhere((p) => p.id == 108)] : <Post>[];
+  @override
+  Future<Map<String, dynamic>?> myPlaceReview(int id) async => reviewRows.where((r) => r['place_id'] == id && r['author'] == nino.id).firstOrNull;
+
+  @override
+  Future<void> reviewPlace(int id, int rating, String body, List<String> photos) async {
+    calls.add('review $id $rating $body ${photos.length}');
+    reviewRows.removeWhere((r) => r['place_id'] == id && r['author'] == nino.id);
+    reviewRows.insert(0, {'id': _id++, 'place_id': id, 'author': nino.id, 'rating': rating, 'body': body, 'photos': photos, 'hidden': false, 'updated_at': DateTime.now().toIso8601String()});
+    final p = placeRows.firstWhere((x) => x['id'] == id), all = reviewRows.where((r) => r['place_id'] == id);
+    p['reviews'] = all.length;
+    p['rating'] = all.fold<int>(0, (a, r) => a + (r['rating'] as int)) / all.length;
+  }
+
+  @override
+  Future<int> savePlace(Map<String, dynamic> row, {int? id}) async {
+    calls.add('place ${id ?? 'new'} ${row['name']} ${row['kind']}');
+    if (id != null) {
+      placeRows.firstWhere((x) => x['id'] == id).addAll(row);
+      return id;
+    }
+    placeRows.add({...row, 'id': 3, 'created_by': nino.id, 'rating': 0, 'reviews': 0, 'hidden': false, 'created_at': DateTime.now().toIso8601String()});
+    return 3;
+  }
+
+  @override
+  Future<void> deletePlace(int id) async {
+    calls.add('placedel $id');
+    placeRows.removeWhere((x) => x['id'] == id);
+  }
+
+  // ---------- help ----------
+  final helpRows = <Map<String, dynamic>>[
+    {
+      'id': 1, 'author': 'u3', 'kind': 'blood', 'title': 'საჭიროა A+ სისხლი რესპუბლიკურში', 'body': 'ოპერაცია ხვალ დილით არის, ნებისმიერი დახმარება გვჭირდება.', //
+      'region': 'თბილისი', 'city': 'თბილისი', 'blood_type': 'A+', 'urgent': true, 'status': 'open', 'media': [], 'contact': '+995 555 12 34 56',
+      'created_at': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
+    },
+    {
+      'id': 2, 'author': 'u1', 'kind': 'lost_pet', 'title': 'დაიკარგა ძაღლი ვაკეში', 'body': 'ყავისფერი ლაბრადორი, სახელად ბობი.', 'region': 'თბილისი', 'city': 'თბილისი', //
+      'blood_type': null, 'urgent': false, 'status': 'open', 'media': [], 'contact': '', 'created_at': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
+    },
+    {
+      'id': 3, 'author': 'u4', 'kind': 'found_item', 'title': 'ნაპოვნია გასაღებები', 'body': '', 'region': 'იმერეთი', 'city': 'ქუთაისი', 'blood_type': null, //
+      'urgent': false, 'status': 'resolved', 'media': [], 'contact': '', 'created_at': DateTime.now().subtract(const Duration(days: 6)).toIso8601String(),
+    },
+  ];
+  final helpOffers = <Map<String, dynamic>>[
+    {'request_id': 2, 'user_id': 'u2', 'note': 'ვაკის პარკთან ვნახე დილით', 'created_at': DateTime.now().subtract(const Duration(hours: 5)).toIso8601String()},
+  ];
+  Map<String, dynamic>? helper;
+
+  @override
+  Future<List<Map<String, dynamic>>> helpRequests({String kind = '', String region = '', bool done = false}) async {
+    calls.add('help $kind $region $done');
+    bool fits(String k) => kind.isEmpty || (kind == 'pets' ? k.endsWith('_pet') : kind == 'items' ? k.endsWith('_item') : k == kind);
+    return [
+      for (final h in helpRows)
+        if ((done || h['status'] == 'open') && (region.isEmpty || h['region'] == region) && fits('${h['kind']}')) {...h},
+    ];
+  }
+
+  @override
+  Future<(Map<String, dynamic>, List<Map<String, dynamic>>)?> helpRequest(int id) async {
+    final h = helpRows.where((x) => x['id'] == id).firstOrNull;
+    return h == null ? null : ({...h}, [for (final o in helpOffers) if (o['request_id'] == id) {...o}]);
+  }
+
+  @override
+  Future<int> createHelp(Map<String, dynamic> row) async {
+    calls.add('helpnew ${row['kind']} ${row['title']}${row['urgent'] == true ? ' urgent' : ''}');
+    helpRows.insert(0, {...row, 'id': 4, 'author': nino.id, 'status': 'open', 'created_at': DateTime.now().toIso8601String()});
+    return 4;
+  }
+
+  @override
+  Future<void> offerHelp(int id, String note) async {
+    calls.add('offer $id $note'.trim());
+    helpOffers.add({'request_id': id, 'user_id': nino.id, 'note': note, 'created_at': DateTime.now().toIso8601String()});
+  }
+
+  @override
+  Future<void> unofferHelp(int id) async {
+    calls.add('unoffer $id');
+    helpOffers.removeWhere((o) => o['request_id'] == id && o['user_id'] == nino.id);
+  }
+
+  @override
+  Future<void> resolveHelp(int id) async {
+    calls.add('resolve $id');
+    helpRows.firstWhere((x) => x['id'] == id)['status'] = 'resolved';
+  }
+
+  @override
+  Future<void> deleteHelp(int id) async {
+    calls.add('helpdel $id');
+    helpRows.removeWhere((x) => x['id'] == id);
+  }
+
+  @override
+  Future<Map<String, dynamic>?> helperSettings() async => helper == null ? null : {...helper!};
+  @override
+  Future<void> saveHelper(Map<String, dynamic>? row) async {
+    calls.add(row == null ? 'helper off' : 'helper ${row['region']} ${row['blood_type']} ${row['notify_blood']} ${row['notify_pets']} ${row['notify_volunteer']}');
+    helper = row;
+  }
+
+  // ---------- rides ----------
+  final rideRows = <Map<String, dynamic>>[
+    {
+      'id': 1, 'driver': 'u2', 'from_city': 'თბილისი', 'to_city': 'ბათუმი', 'seats': 3, 'price': 25, 'car': 'თეთრი Prius', 'note': 'ბარგი ცოტა მქონდეს', 'status': 'open', //
+      'depart_at': DateTime.now().add(const Duration(days: 1)).toUtc().toIso8601String(),
+    },
+    {
+      'id': 2, 'driver': 'u1', 'from_city': 'თბილისი', 'to_city': 'ქუთაისი', 'seats': 2, 'price': 0, 'car': '', 'note': '', 'status': 'open', //
+      'depart_at': DateTime.now().add(const Duration(days: 2)).toUtc().toIso8601String(),
+    },
+  ];
+  final bookings = <Map<String, dynamic>>[
+    {'ride_id': 2, 'user_id': 'u4', 'seats': 1, 'status': 'pending', 'created_at': DateTime.now().subtract(const Duration(hours: 1)).toIso8601String()},
+  ];
+  int _left(Map<String, dynamic> r) => asInt(r['seats']) - bookings.where((b) => b['ride_id'] == r['id'] && b['status'] == 'accepted').fold<int>(0, (a, b) => a + asInt(b['seats']));
+
+  @override
+  Future<List<Map<String, dynamic>>> rides({String from = '', String to = '', DateTime? day, bool mine = false}) async {
+    calls.add(mine ? 'rides mine' : 'rides $from $to'.trim());
+    return [
+      for (final r in rideRows)
+        if (mine ? (r['driver'] == nino.id || bookings.any((b) => b['ride_id'] == r['id'] && b['user_id'] == nino.id)) : ('${r['from_city']}'.contains(from) && '${r['to_city']}'.contains(to)))
+          {
+            ...r,
+            'seats_left': _left(r),
+            'my_status': bookings.where((b) => b['ride_id'] == r['id'] && b['user_id'] == nino.id).firstOrNull?['status'],
+            'pending': r['driver'] == nino.id ? bookings.where((b) => b['ride_id'] == r['id'] && b['status'] == 'pending').length : 0,
+          },
+    ];
+  }
+
+  @override
+  Future<({Map<String, dynamic> r, int left, Map<String, dynamic>? mine, List<Map<String, dynamic>> books})?> ride(int id) async {
+    final r = rideRows.where((x) => x['id'] == id).firstOrNull;
+    if (r == null) return null;
+    return (
+      r: {...r},
+      left: _left(r),
+      mine: bookings.where((b) => b['ride_id'] == id && b['user_id'] == nino.id).firstOrNull,
+      books: r['driver'] == nino.id ? [for (final b in bookings) if (b['ride_id'] == id) {...b}] : <Map<String, dynamic>>[],
+    );
+  }
+
+  @override
+  Future<int> createRide(Map<String, dynamic> row) async {
+    calls.add('ride ${row['from_city']} ${row['to_city']} ${row['seats']} ${row['price']}');
+    rideRows.add({...row, 'id': 3, 'driver': nino.id, 'status': 'open'});
+    return 3;
+  }
+
+  @override
+  Future<void> bookRide(int id, int seats) async {
+    calls.add('book $id $seats');
+    bookings.add({'ride_id': id, 'user_id': nino.id, 'seats': seats, 'status': 'pending', 'created_at': DateTime.now().toIso8601String()});
+  }
+
+  @override
+  Future<void> cancelBooking(int id) async {
+    calls.add('unbook $id');
+    bookings.removeWhere((b) => b['ride_id'] == id && b['user_id'] == nino.id);
+  }
+
+  @override
+  Future<void> respondBooking(int id, String uid, bool accept) async {
+    calls.add('respond $id $uid $accept');
+    bookings.firstWhere((b) => b['ride_id'] == id && b['user_id'] == uid)['status'] = accept ? 'accepted' : 'declined';
+  }
+
+  @override
+  Future<void> cancelRide(int id) async {
+    calls.add('ridecancel $id');
+    rideRows.firstWhere((x) => x['id'] == id)['status'] = 'cancelled';
+  }
+
+  // ---------- the match room ----------
+  final fixtureRows = <Map<String, dynamic>>[
+    {'id': 1, 'league': 'ეროვნული ლიგა', 'home': 'დინამო თბილისი', 'away': 'ტორპედო', 'status': 'upcoming', 'starts_at': DateTime.now().add(const Duration(days: 1)).toUtc().toIso8601String()},
+    {
+      'id': 2, 'league': 'შესარჩევი', 'home': 'საქართველო', 'away': 'ესპანეთი', 'status': 'finished', 'home_score': 2, 'away_score': 1, //
+      'starts_at': DateTime.now().subtract(const Duration(days: 3)).toUtc().toIso8601String(),
+    },
+  ];
+  final predictionRows = <Map<String, dynamic>>[
+    {'fixture_id': 2, 'user_id': 'u1', 'pick': '1', 'stake': 0, 'payout': 5},
+  ];
+  final fixtureMsgs = <Map<String, dynamic>>[
+    {'id': 1, 'fixture_id': 1, 'user_id': 'u2', 'body': 'დღეს ვიგებთ!', 'created_at': DateTime.now().subtract(const Duration(minutes: 30)).toIso8601String()},
+  ];
+  final fxLive = StreamController<Map<String, dynamic>>.broadcast();
+
+  @override
+  Future<(List<Map<String, dynamic>>, Map<int, Map<String, dynamic>>)> fixtures(String tab) async {
+    final mine = {for (final p in predictionRows) if (p['user_id'] == nino.id) asInt(p['fixture_id']): {...p}};
+    final rows = [
+      for (final f in fixtureRows)
+        if (tab == 'mine' ? mine.containsKey(f['id']) : (tab == 'up') == (f['status'] == 'upcoming')) {...f},
+    ];
+    return (rows, tab == 'mine' ? mine : <int, Map<String, dynamic>>{});
+  }
+
+  @override
+  Future<({Map<String, dynamic> f, Map<String, dynamic>? my, Map<String, dynamic> pool})?> fixture(int id) async {
+    final f = fixtureRows.where((x) => x['id'] == id).firstOrNull;
+    if (f == null) return null;
+    final ps = predictionRows.where((p) => p['fixture_id'] == id);
+    return (
+      f: {...f},
+      my: ps.where((p) => p['user_id'] == nino.id).firstOrNull,
+      pool: <String, dynamic>{'n': 9 + ps.length, 'c1': 6 + ps.where((p) => p['pick'] == '1').length, 'cX': 1, 'c2': 2},
+    );
+  }
+
+  @override
+  Future<int> predict(int id, String pick) async {
+    calls.add('predict $id $pick');
+    predictionRows.add({'fixture_id': id, 'user_id': nino.id, 'pick': pick, 'stake': 0, 'payout': null});
+    return 1211;
+  }
+
+  @override
+  Future<int> createFixture({required String league, required String home, required String away, required DateTime startsAt}) async {
+    calls.add('fixture $home $away');
+    fixtureRows.add({'id': 3, 'league': league, 'home': home, 'away': away, 'status': 'upcoming', 'starts_at': startsAt.toUtc().toIso8601String()});
+    return 3;
+  }
+
+  @override
+  Future<void> settleFixture(int id, int home, int away) async {
+    calls.add('settle $id $home $away');
+    fixtureRows.firstWhere((x) => x['id'] == id).addAll({'status': 'finished', 'home_score': home, 'away_score': away});
+  }
+
+  @override
+  Future<void> cancelFixture(int id) async {
+    calls.add('fxcancel $id');
+    fixtureRows.firstWhere((x) => x['id'] == id)['status'] = 'cancelled';
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> fixtureChat(int id) async => [for (final m in fixtureMsgs) if (m['fixture_id'] == id) {...m}];
+
+  @override
+  Future<Map<String, dynamic>> sayInFixture(int id, String body) async {
+    calls.add('fxsay $id $body');
+    final m = {'id': _id++, 'fixture_id': id, 'user_id': nino.id, 'body': body, 'created_at': DateTime.now().toIso8601String()};
+    fixtureMsgs.add(m);
+    return m;
+  }
+
+  @override
+  Stream<Map<String, dynamic>> liveFixtureChat(int id) => fxLive.stream.where((m) => m['fixture_id'] == id);
+
+  // ---------- jobs ----------
+  final jobRows = <Map<String, dynamic>>[
+    {
+      'id': 1, 'poster': 'u2', 'title': 'ფრონტენდ დეველოპერი', 'company': 'ტექნოპარკი', 'city': 'თბილისი', 'job_type': 'full', 'category': 'it', //
+      'salary_from': 2500, 'salary_to': 4000, 'status': 'open', 'description': 'React და TypeScript, ორი წლის გამოცდილება.',
+      'created_at': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
+    },
+    {
+      'id': 2, 'poster': 'u1', 'title': 'ბარისტა', 'company': 'კაფე კამპუსთან', 'city': 'თბილისი', 'job_type': 'part', 'category': 'food', //
+      'salary_from': 1200, 'salary_to': null, 'status': 'open', 'description': 'საღამოს ცვლა.', 'created_at': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
+    },
+  ];
+  final applications = <Map<String, dynamic>>[
+    {'job_id': 2, 'user_id': 'u2', 'status': 'new', 'cover': 'ერთი წელი ვმუშაობდი ყავის სახლში.', 'created_at': DateTime.now().subtract(const Duration(hours: 3)).toIso8601String()},
+  ];
+
+  @override
+  Future<List<Map<String, dynamic>>> jobs({String cat = '', String type = '', String q = ''}) async {
+    calls.add('jobs $cat $type $q'.trim());
+    return [
+      for (final j in jobRows)
+        if (j['status'] == 'open' && (cat.isEmpty || j['category'] == cat) && (type.isEmpty || j['job_type'] == type) && (q.isEmpty || '${j['title']} ${j['company']} ${j['city']}'.contains(q))) {...j},
+    ];
+  }
+
+  @override
+  Future<({Map<String, dynamic> j, Map<String, dynamic>? mine, List<Map<String, dynamic>> apps})?> job(int id) async {
+    final j = jobRows.where((x) => x['id'] == id).firstOrNull;
+    if (j == null) return null;
+    final mine = j['poster'] == nino.id;
+    return (
+      j: {...j},
+      mine: mine ? null : applications.where((a) => a['job_id'] == id && a['user_id'] == nino.id).firstOrNull,
+      apps: mine ? [for (final a in applications) if (a['job_id'] == id) {...a}] : <Map<String, dynamic>>[],
+    );
+  }
+
+  @override
+  Future<int> createJob(Map<String, dynamic> row) async {
+    calls.add('job ${row['title']} ${row['category']} ${row['job_type']} ${row['salary_from']}');
+    jobRows.add({...row, 'id': 3, 'poster': nino.id, 'status': 'open', 'created_at': DateTime.now().toIso8601String()});
+    return 3;
+  }
+
+  @override
+  Future<void> applyJob(int id, String cover) async {
+    calls.add('apply $id $cover'.trim());
+    applications.add({'job_id': id, 'user_id': nino.id, 'status': 'new', 'cover': cover, 'created_at': DateTime.now().toIso8601String()});
+  }
+
+  @override
+  Future<void> setApplication(int job, String uid, String status) async {
+    calls.add('appst $job $uid $status');
+    final a = applications.firstWhere((a) => a['job_id'] == job && a['user_id'] == uid);
+    if (status != 'seen' || a['status'] == 'new') a['status'] = status;
+  }
+
+  @override
+  Future<void> setJobStatus(int id, String status) async {
+    calls.add('jobst $id $status');
+    jobRows.firstWhere((x) => x['id'] == id)['status'] = status;
+  }
+
+  @override
+  Future<void> deleteJob(int id) async {
+    calls.add('jobdel $id');
+    jobRows.removeWhere((x) => x['id'] == id);
+  }
+
+  @override
+  Future<({List<Map<String, dynamic>> posted, List<Map<String, dynamic>> applied, List<Map<String, dynamic>> jobs})> myJobs() async {
+    final applied = [for (final a in applications) if (a['user_id'] == nino.id) {...a}];
+    return (
+      posted: [for (final j in jobRows) if (j['poster'] == nino.id) {...j}],
+      applied: applied,
+      jobs: [for (final j in jobRows) if (applied.any((a) => a['job_id'] == j['id'])) {...j}],
+    );
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> myPages() async => [for (final p in pageRows) if (p['owner'] == nino.id) {'id': p['id'], 'name': p['name']}];
+
+  // ---------- the kitchen ----------
+  final recipeRows = <Map<String, dynamic>>[
+    {
+      'id': 1, 'author': null, 'title': 'ხინკალი', 'about': 'მთის კლასიკა: წვნიანი და ცხარე.', 'photo_url': null, 'category': 'ცომეული', 'region': 'მთიულეთი', //
+      'servings': 4, 'minutes': 90, 'likes': 12, 'cooks': 1, 'created_at': DateTime.now().subtract(const Duration(days: 90)).toIso8601String(),
+      'ingredients': [
+        {'n': 'ფქვილი', 'q': '500 გ'},
+        {'n': 'საქონლის ხორცი', 'q': '1 კგ'},
+        {'n': 'ხახვი', 'q': '2'},
+        {'n': 'ცერეცო', 'q': '½ კონა'},
+      ],
+      'steps': ['მოზილე ცომი და დატოვე 30 წუთი.', 'მოამზადე გული: ხორცი, ხახვი, მწვანილი და წყალი.', 'გაახვიე და მოხარშე 12–15 წუთი.'],
+    },
+    {
+      'id': 2, 'author': 'u1', 'title': 'ბადრიჯანი ნიგვზით', 'about': '', 'photo_url': null, 'category': 'ბოსტნეული', 'region': '', 'servings': 2, 'minutes': 40, //
+      'likes': 0, 'cooks': 0, 'created_at': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
+      'ingredients': [
+        {'n': 'ბადრიჯანი', 'q': '3'},
+        {'n': 'ნიგოზი', 'q': '200 გ'},
+      ],
+      'steps': ['შეწვი ბადრიჯანი.', 'წაუსვი ნიგვზის ფარში და დაახვიე.'],
+    },
+  ];
+  final recipeLikes = <int>{};
+  final recipeCooks = <Map<String, dynamic>>[
+    {'id': 1, 'recipe_id': 1, 'user_id': 'u3', 'photo_url': null, 'note': 'ძალიან გემრიელი გამოვიდა', 'created_at': DateTime.now().subtract(const Duration(days: 4)).toIso8601String()},
+  ];
+
+  @override
+  Future<List<Map<String, dynamic>>> recipes({String cat = '', String q = ''}) async {
+    calls.add('recipes $cat $q'.trim());
+    return [for (final r in recipeRows) if ((cat.isEmpty || r['category'] == cat) && (q.isEmpty || '${r['title']}'.contains(q))) {...r}];
+  }
+
+  @override
+  Future<({Map<String, dynamic> r, bool liked, List<Map<String, dynamic>> cooks})?> recipe(int id) async {
+    final r = recipeRows.where((x) => x['id'] == id).firstOrNull;
+    return r == null ? null : (r: {...r}, liked: recipeLikes.contains(id), cooks: [for (final c in recipeCooks) if (c['recipe_id'] == id) {...c}]);
+  }
+
+  @override
+  Future<void> likeRecipe(int id, bool on) async {
+    calls.add('rlike $id $on');
+    on ? recipeLikes.add(id) : recipeLikes.remove(id);
+    final r = recipeRows.firstWhere((x) => x['id'] == id);
+    r['likes'] = asInt(r['likes']) + (on ? 1 : -1);
+  }
+
+  @override
+  Future<int> saveRecipe(Map<String, dynamic> row, {int? id}) async {
+    calls.add('recipe ${id ?? 'new'} ${row['title']} ${(row['ingredients'] as List).length} ${(row['steps'] as List).length}');
+    if (id != null) {
+      recipeRows.firstWhere((x) => x['id'] == id).addAll(row);
+      return id;
+    }
+    recipeRows.add({...row, 'id': 3, 'author': nino.id, 'likes': 0, 'cooks': 0, 'created_at': DateTime.now().toIso8601String()});
+    return 3;
+  }
+
+  @override
+  Future<void> deleteRecipe(int id) async {
+    calls.add('recipedel $id');
+    recipeRows.removeWhere((x) => x['id'] == id);
+  }
+
+  @override
+  Future<void> cookedRecipe(int id, String? photo, String note) async {
+    calls.add('cooked $id ${photo != null} $note'.trim());
+    recipeCooks.insert(0, {'id': _id++, 'recipe_id': id, 'user_id': nino.id, 'photo_url': photo, 'note': note, 'created_at': DateTime.now().toIso8601String()});
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> myComingEvents() async => [
+        for (final e in eventRows)
+          if (asTime(e['starts_at']).isAfter(DateTime.now()) && (e['host'] == nino.id || rsvps.any((r) => r['event_id'] == e['id'] && r['user_id'] == nino.id && r['status'] == 'yes')))
+            {'id': e['id'], 'title': e['title'], 'starts_at': e['starts_at']},
+      ];
+
+  @override
+  Future<void> addEventItems(int event, List<String> names) async {
+    calls.add('items $event ${names.join('|')}');
+    for (final n in names) {
+      items.add({'id': _id++, 'event_id': event, 'name': n, 'added_by': nino.id, 'claimed_by': null});
+    }
+  }
+
+  // ---------- the toast book ----------
+  final toastRows = <Map<String, dynamic>>[
+    {
+      'id': 1, 'author': null, 'occasion': 'supra', 'title': 'სუფრის სადღეგრძელო', 'likes': 30, 'hidden': false, //
+      'body': 'გაუმარჯოს ამ სუფრას და ყველას, ვინც დღეს აქ შეიკრიბა. ღმერთმა ბევრჯერ შეგვყაროს ასე ერთად, ჯანმრთელები და ბედნიერები.',
+      'created_at': DateTime.now().subtract(const Duration(days: 300)).toIso8601String(),
+    },
+    {
+      'id': 2, 'author': 'u1', 'occasion': 'friends', 'title': 'მეგობრობის სადღეგრძელო', 'likes': 3, 'hidden': false, //
+      'body': 'მეგობარი ის არის, ვინც გაჭირვებაში გვერდით დაგიდგება.', 'created_at': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
+    },
+  ];
+  final toastLikes = <int>{};
+
+  @override
+  Future<(List<Map<String, dynamic>>, Set<int>)> toasts({String occ = '', String sort = 'top'}) async {
+    calls.add('toasts $occ $sort');
+    final r = [for (final t in toastRows) if (occ.isEmpty || t['occasion'] == occ) {...t}];
+    r.sort((a, b) => sort == 'new' ? '${b['created_at']}'.compareTo('${a['created_at']}') : asInt(b['likes']).compareTo(asInt(a['likes'])));
+    return (r, {...toastLikes});
+  }
+
+  @override
+  Future<void> likeToast(int id, bool on) async {
+    calls.add('tlike $id $on');
+    on ? toastLikes.add(id) : toastLikes.remove(id);
+  }
+
+  @override
+  Future<void> saveToast({int? id, required String occasion, required String title, required String body}) async {
+    calls.add('toast ${id ?? 'new'} $occasion $title');
+    if (id != null) {
+      toastRows.firstWhere((t) => t['id'] == id).addAll({'occasion': occasion, 'title': title, 'body': body});
+    } else {
+      toastRows.add({'id': 3, 'author': nino.id, 'occasion': occasion, 'title': title, 'body': body, 'likes': 0, 'hidden': false, 'created_at': DateTime.now().toIso8601String()});
+    }
+  }
+
+  @override
+  Future<void> deleteToast(int id) async {
+    calls.add('toastdel $id');
+    toastRows.removeWhere((t) => t['id'] == id);
+  }
 }

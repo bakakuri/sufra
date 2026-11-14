@@ -9,19 +9,27 @@ import 'package:flutter/material.dart';
 import '../clips/clip_composer.dart';
 import '../community/events.dart';
 import '../community/groups.dart';
+import '../community/help.dart';
+import '../community/jobs.dart';
+import '../community/kitchen.dart';
 import '../community/market.dart';
 import '../community/pages.dart';
+import '../community/rides.dart';
+import '../community/sport.dart';
+import '../community/toasts.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
 import '../feed/post_card.dart';
 import '../map/live_map.dart';
 import '../people/albums.dart';
 import '../people/coins.dart';
+import '../people/cv_edit.dart';
 import '../people/edu.dart';
 import '../people/family.dart';
 import '../people/my_space.dart';
 import '../people/profile_parts.dart';
 import '../people/verify.dart';
+import '../places/places.dart';
 import '../settings/settings_screens.dart';
 import '../stories/stories.dart';
 import '../study/study.dart';
@@ -79,6 +87,8 @@ const List<(String, String, String, String?)> allServices = [
   ('sport', 'trophy', 'მატჩის ოთახი', null),
   ('help', 'help', 'დახმარება', null),
   ('rides', 'pin', 'ერთად წავიდეთ', null),
+  ('recipes', 'book', 'ქართული სამზარეულო', null),
+  ('toasts', 'wine', 'სადღეგრძელოები', null),
   ('namedays', 'cal', 'სახელის დღეები', null),
   ('tree', 'tree', 'ოჯახის ხე', null),
   ('calendar', 'gift', 'კალენდარი', null),
@@ -95,7 +105,9 @@ const List<(String, String, String, String?)> allServices = [
 const nativeServices = {
   'classmates', 'albums', 'friends', 'calendar', 'map', 'namedays', 'tree', 'saved', 'storyarch', 'drafts', 'coins', 'verify', 'settings', //
   'groups', 'group', 'pages', 'pagev', 'events', 'event', 'evnew', 'market', //
-  'study', 'schedule', 'exams', 'notes', 'tips',
+  'study', 'schedule', 'exams', 'notes', 'tips', //
+  'places', 'place', 'placenew', 'help', 'helpnew', 'helpreq', 'rides', 'ride', 'ridenew', 'sport', 'fixture', //
+  'jobs', 'job', 'jobnew', 'myjobs', 'cv', 'recipes', 'recipe', 'toasts',
 };
 
 /// the sections the admin can switch off (promo.js FEATS) that each page belongs to
@@ -103,7 +115,8 @@ const _featOf = {
   'rooms': 'rooms', 'places': 'places', 'sport': 'sport', 'help': 'help', 'rides': 'rides', 'jobs': 'jobs', 'market': 'market', //
   'events': 'events', 'albums': 'albums', 'groups': 'groups', 'pages': 'pages', 'tree': 'tree', 'namedays': 'namedays', 'map': 'map',
   'calendar': 'calendar', 'study': 'study', 'schedule': 'study', 'exams': 'study', 'notes': 'study', 'classmates': 'study', 'tips': 'study',
-  'tour': 'tour',
+  'tour': 'tour', 'place': 'places', 'placenew': 'places', 'helpnew': 'help', 'helpreq': 'help', 'ride': 'rides', 'ridenew': 'rides', //
+  'fixture': 'sport', 'job': 'jobs', 'jobnew': 'jobs', 'myjobs': 'jobs', 'cv': 'jobs', 'recipes': 'recipes', 'recipe': 'recipes', 'toasts': 'toasts',
 };
 
 /// whether a page is on (the admin sees everything, so a switched-off one can be checked)
@@ -169,6 +182,56 @@ Future<void> openService(BuildContext context, String k, {String? arg}) async {
       await openPage(context, const LibraryScreen(kind: 'notes'), full: true);
     case 'tips':
       await openPage(context, const LibraryScreen(kind: 'tips'), full: true);
+    case 'places':
+      await openPage(context, const PlacesScreen(), full: true);
+    case 'place':
+      await openPage(context, PlaceScreen(id: int.tryParse(arg ?? '') ?? 0), full: true);
+    case 'placenew':
+      {
+        final id = await openPage<int>(context, const PlaceFormScreen(), full: true);
+        if (id != null && context.mounted) await openPage(context, PlaceScreen(id: id), full: true);
+      }
+    case 'help':
+      await openPage(context, const HelpScreen(), full: true);
+    case 'helpnew':
+      {
+        final id = await openPage<int>(context, const HelpNewScreen(), full: true);
+        if (id != null && context.mounted) await openPage(context, HelpRequestScreen(id: id), full: true);
+      }
+    case 'helpreq':
+      await openPage(context, HelpRequestScreen(id: int.tryParse(arg ?? '') ?? 0), full: true);
+    case 'rides':
+      await openPage(context, const RidesScreen(), full: true);
+    case 'ride':
+      await openPage(context, RideScreen(id: int.tryParse(arg ?? '') ?? 0), full: true);
+    case 'ridenew':
+      {
+        final id = await openPage<int>(context, const RideFormScreen(), full: true);
+        if (id != null && context.mounted) await openPage(context, RideScreen(id: id), full: true);
+      }
+    case 'sport':
+      await openPage(context, const SportScreen(), full: true);
+    case 'fixture':
+      await openPage(context, FixtureScreen(id: int.tryParse(arg ?? '') ?? 0), full: true);
+    case 'jobs':
+      await openPage(context, const JobsScreen(), full: true);
+    case 'job':
+      await openPage(context, JobScreen(id: int.tryParse(arg ?? '') ?? 0), full: true);
+    case 'jobnew':
+      {
+        final id = await openPage<int>(context, const JobFormScreen(), full: true);
+        if (id != null && context.mounted) await openPage(context, JobScreen(id: id), full: true);
+      }
+    case 'myjobs':
+      await openPage(context, const MyJobsScreen(), full: true);
+    case 'cv':
+      await openPage(context, const CvEditScreen(), full: true);
+    case 'recipes':
+      await openPage(context, const RecipesScreen(), full: true);
+    case 'recipe':
+      await openPage(context, RecipeScreen(id: int.tryParse(arg ?? '') ?? 0), full: true);
+    case 'toasts':
+      await openPage(context, const ToastsScreen(), full: true);
     default:
       await openSite('#$k${arg != null ? '-$arg' : ''}');
   }

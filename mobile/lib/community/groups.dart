@@ -322,10 +322,11 @@ class _GroupScreenState extends State<GroupScreen> {
     return showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
+      isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: context.pc.surface,
       builder: (s) => SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Text(k.$1, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
