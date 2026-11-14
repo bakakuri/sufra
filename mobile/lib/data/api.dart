@@ -1992,7 +1992,10 @@ class SupaApi implements PeeraApi {
   @override
   void sendTyping(int convId) {
     try {
-      _typingCh[convId]?.sendBroadcastMessage(event: 'typing', payload: {'u': myId});
+      // the site reads the message's own payload (realtime-js: {type, event, payload})
+      _typingCh[convId]?.sendBroadcastMessage(event: 'typing', payload: {
+        'payload': {'u': myId},
+      });
     } catch (_) {}
   }
 

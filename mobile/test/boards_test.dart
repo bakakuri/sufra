@@ -14,6 +14,7 @@ import 'package:peera/people/person_screen.dart';
 import 'package:peera/places/places.dart';
 import 'package:peera/profile/profile.dart';
 
+import 'fake_api.dart';
 import 'helpers.dart';
 
 Future<void> _open(WidgetTester t, String service) async {
