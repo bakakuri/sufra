@@ -24,6 +24,7 @@ import '../people/profile_parts.dart';
 import '../people/verify.dart';
 import '../settings/settings_screens.dart';
 import '../stories/stories.dart';
+import '../study/study.dart';
 import '../ui/icons.dart';
 import '../ui/mini_svg.dart';
 import '../ui/theme.dart';
@@ -93,7 +94,8 @@ const List<(String, String, String, String?)> allServices = [
 /// the services the app opens itself; the others open on the site
 const nativeServices = {
   'classmates', 'albums', 'friends', 'calendar', 'map', 'namedays', 'tree', 'saved', 'storyarch', 'drafts', 'coins', 'verify', 'settings', //
-  'groups', 'group', 'pages', 'pagev', 'events', 'event', 'evnew', 'market',
+  'groups', 'group', 'pages', 'pagev', 'events', 'event', 'evnew', 'market', //
+  'study', 'schedule', 'exams', 'notes', 'tips',
 };
 
 /// the sections the admin can switch off (promo.js FEATS) that each page belongs to
@@ -157,6 +159,16 @@ Future<void> openService(BuildContext context, String k, {String? arg}) async {
       await openPage(context, EventFormScreen(groupId: int.tryParse(arg ?? '')), full: true);
     case 'market':
       await openPage(context, const MarketScreen(), full: true);
+    case 'study':
+      await openPage(context, const StudyScreen(), full: true);
+    case 'schedule':
+      await openPage(context, const ScheduleScreen(), full: true);
+    case 'exams':
+      await openPage(context, const ExamsScreen(), full: true);
+    case 'notes':
+      await openPage(context, const LibraryScreen(kind: 'notes'), full: true);
+    case 'tips':
+      await openPage(context, const LibraryScreen(kind: 'tips'), full: true);
     default:
       await openSite('#$k${arg != null ? '-$arg' : ''}');
   }

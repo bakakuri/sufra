@@ -200,6 +200,7 @@ class _EventScreenState extends State<EventScreen> {
   bool gone = false, _started = false;
   final item = TextEditingController(), point = TextEditingController(), what = TextEditingController(), amount = TextEditingController();
   String? payer;
+  bool payerSet = false;
 
   @override
   void didChangeDependencies() {
@@ -443,7 +444,7 @@ class _EventScreenState extends State<EventScreen> {
     Widget link(String text, VoidCallback onTap, {Key? key}) => GestureDetector(key: key, onTap: onTap, child: Text(text, style: TextStyle(color: c.accent, fontWeight: FontWeight.w700)));
     final m = money, showMoney = host || my == 'yes' || my == 'maybe';
     final people = {hostId, ...going}.toList();
-    if (payer == null || !people.contains(payer)) payer = people.contains(me) ? me : people.first;
+    if (!payerSet || payer == null || !people.contains(payer)) payer = people.contains(me) ? me : people.first;
     final total = m == null ? 0.0 : m.$1.fold<double>(0, (a, x) => a + (asNum(x['amount']) ?? 0));
     final moves = m == null ? const <(String, String, double)>[] : settleUp(people, m.$1, m.$2);
     final cur = (agenda ?? const []).where((r) => r['done'] != true).firstOrNull;
@@ -704,13 +705,20 @@ class _EventScreenState extends State<EventScreen> {
                   const SizedBox(height: 8),
                   Row(children: [
                     Expanded(
-                      child: DropdownButtonFormField<String>(
-                        key: const ValueKey('cost-payer'),
-                        isExpanded: true,
-                        initialValue: payer,
-                        items: [for (final u in people) DropdownMenuItem(value: u, child: Text(u == me ? 'მე' : (app.people[u]?.name ?? '…'), overflow: TextOverflow.ellipsis))],
-                        onChanged: (v) => setState(() => payer = v),
-                        decoration: const InputDecoration(labelText: 'ვინ გადაიხადა'),
+                      // the field keeps its first value, so it is made anew when the default (me, once I come) changes
+                      child: KeyedSubtree(
+                        key: ValueKey('cp-${payerSet ? '' : payer}'),
+                        child: DropdownButtonFormField<String>(
+                          key: const ValueKey('cost-payer'),
+                          isExpanded: true,
+                          initialValue: payer,
+                          items: [for (final u in people) DropdownMenuItem(value: u, child: Text(u == me ? 'მე' : (app.people[u]?.name ?? '…'), overflow: TextOverflow.ellipsis))],
+                          onChanged: (v) => setState(() {
+                            payer = v;
+                            payerSet = true;
+                          }),
+                          decoration: const InputDecoration(labelText: 'ვინ გადაიხადა'),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),

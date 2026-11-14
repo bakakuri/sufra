@@ -559,6 +559,26 @@ abstract class PeeraApi {
   Future<void> setListingStatus(int id, String status);
   Future<void> deleteListing(int id);
   Future<void> createListing({required String title, required double price, required String category, required String city, String description = '', List<Media> media = const []});
+
+  // ---------- study (study.js): the timetable, exams and assignments, notes and tips ----------
+
+  /// my lessons and the ones my groups share
+  Future<List<Map<String, dynamic>>> lessons();
+  Future<Map<String, dynamic>> putLesson(Map<String, dynamic> row);
+  Future<void> deleteLesson(int id);
+
+  /// my exams and assignments and my groups' ones; which I marked done
+  Future<List<Map<String, dynamic>>> deadlines();
+  Future<Map<String, dynamic>> putDeadline(Map<String, dynamic> row);
+  Future<void> deleteDeadline(int id);
+  Future<Set<int>> deadlinesDone();
+  Future<void> markDeadline(int id, bool done);
+
+  /// my groups for "who is it for": a class or a course shares with all its members, elsewhere only its admins
+  Future<List<({int id, String name, String kind, bool admin, bool share})>> studyGroups();
+
+  /// posts with all of these tags (and the words), the newest first
+  Future<List<Post>> postsWithTags(List<String> tags, {String q = ''});
 }
 
 class SupaApi implements PeeraApi {
@@ -2294,4 +2314,73 @@ class SupaApi implements PeeraApi {
         'description': description,
         'media': media.map((m) => m.toJson()).toList(),
       });
+  static Map<String, dynamic> _row(Map<String, dynamic> r) => {...r}
+    ..remove('id')
+    ..remove('owner')
+    ..remove('created_at');
+
+  @override
+  Future<List<Map<String, dynamic>>> lessons() async => await sb.from('lessons').select().limit(500);
+
+  @override
+  Future<Map<String, dynamic>> putLesson(Map<String, dynamic> row) async {
+    final id = row['id'];
+    return id == null
+        ? await sb.from('lessons').insert(_row(row)).select().single()
+        : await sb.from('lessons').update(_row(row)).eq('id', id as Object).select().single();
+  }
+
+  @override
+  Future<void> deleteLesson(int id) => sb.from('lessons').delete().eq('id', id);
+
+  @override
+  Future<List<Map<String, dynamic>>> deadlines() async => await sb.from('deadlines').select().limit(500);
+
+  @override
+  Future<Map<String, dynamic>> putDeadline(Map<String, dynamic> row) async {
+    final id = row['id'];
+    return id == null
+        ? await sb.from('deadlines').insert(_row(row)).select().single()
+        : await sb.from('deadlines').update(_row(row)).eq('id', id as Object).select().single();
+  }
+
+  @override
+  Future<void> deleteDeadline(int id) => sb.from('deadlines').delete().eq('id', id);
+
+  @override
+  Future<Set<int>> deadlinesDone() async => {for (final r in await sb.from('deadline_done').select('deadline_id')) asInt(r['deadline_id'])};
+
+  @override
+  Future<void> markDeadline(int id, bool done) =>
+      done ? sb.from('deadline_done').insert({'deadline_id': id}) : sb.from('deadline_done').delete().eq('deadline_id', id).eq('user_id', myId);
+
+  @override
+  Future<List<({int id, String name, String kind, bool admin, bool share})>> studyGroups() async {
+    final mine = await sb.from('group_members').select('group_id,role').eq('user_id', myId).limit(300);
+    final ids = [for (final x in mine) asInt(x['group_id'])];
+    if (ids.isEmpty) return [];
+    final role = {for (final x in mine) asInt(x['group_id']): '${x['role'] ?? ''}'};
+    final gs = await sb.from('groups').select('id,name,kind,owner').inFilter('id', ids);
+    int rank(String k) => const {'class': 0, 'course': 1}[k] ?? 2;
+    final out = [
+      for (final g in gs)
+        (
+          id: asInt(g['id']),
+          name: '${g['name'] ?? ''}',
+          kind: '${g['kind'] ?? ''}',
+          admin: g['owner'] == myId || role[asInt(g['id'])] == 'admin',
+          share: const ['class', 'course'].contains('${g['kind']}') || g['owner'] == myId || role[asInt(g['id'])] == 'admin',
+        ),
+    ];
+    out.sort((a, b) => rank(a.kind) != rank(b.kind) ? rank(a.kind).compareTo(rank(b.kind)) : a.name.compareTo(b.name));
+    return out;
+  }
+
+  @override
+  Future<List<Post>> postsWithTags(List<String> tags, {String q = ''}) async {
+    var b = _posts().contains('tags', tags).eq('hidden', false);
+    final s = _like(q);
+    if (s.isNotEmpty) b = b.ilike('body', '%$s%');
+    return _hydrate(await b.order('created_at', ascending: false).limit(60));
+  }
 }

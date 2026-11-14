@@ -27,6 +27,7 @@ import 'package:peera/people/family.dart';
 import 'package:peera/people/person_screen.dart';
 import 'package:peera/people/profile_parts.dart';
 import 'package:peera/people/verify.dart';
+import 'package:peera/study/study.dart';
 import 'package:peera/auth/auth_screen.dart';
 import 'package:peera/auth/onboarding_screen.dart';
 import 'package:peera/data/models.dart';
@@ -729,6 +730,12 @@ void main() {
     testWidgets('a new event ($k)', (t) async => page(t, const EventFormScreen(), '94-event-new'));
     testWidgets('the market ($k)', (t) async => page(t, const MarketScreen(), '95-market'));
     testWidgets('an item for sale ($k)', (t) async => page(t, const ListingScreen(id: 90), '96-listing'));
+    testWidgets('study ($k)', (t) async => page(t, const StudyScreen(), '97-study'));
+    testWidgets('the timetable ($k)', (t) async => page(t, const ScheduleScreen(), '98-schedule'));
+    testWidgets('a new lesson ($k)', (t) async => page(t, LessonFormScreen(groups: const [(id: 7, name: 'მე-11 ბ', kind: 'class', admin: true, share: true)]), '99-lesson-new'));
+    testWidgets('exams and assignments ($k)', (t) async => page(t, const ExamsScreen(), '100-exams'));
+    testWidgets('a new exam ($k)', (t) async => page(t, const DeadlineFormScreen(groups: [], subjects: ['მაკროეკონომიკა', 'სტატისტიკა']), '101-exam-new'));
+    testWidgets('notes ($k)', (t) async => page(t, const LibraryScreen(kind: 'notes'), '102-notes'));
 
     testWidgets('a school added ($k)', (t) async {
       openPage(await onMe(t), const EduScreen(), full: true);

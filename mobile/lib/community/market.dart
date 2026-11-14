@@ -178,11 +178,10 @@ class _ItemCard extends StatelessWidget {
           if (changed == true) onChanged();
         },
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          AspectRatio(
-            aspectRatio: 1,
+          Expanded(
             child: media.isEmpty
-                ? Container(color: HSLColor.fromAHSL(1, (id * 47 % 360).toDouble(), .35, .6).toColor(), child: const Center(child: PIcon('store', size: 34, color: Colors.white)))
-                : PImage(media.first.small),
+                ? Container(width: double.infinity, color: HSLColor.fromAHSL(1, (id * 47 % 360).toDouble(), .35, .6).toColor(), child: const Center(child: PIcon('store', size: 34, color: Colors.white)))
+                : SizedBox(width: double.infinity, child: PImage(media.first.small)),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
@@ -196,6 +195,7 @@ class _ItemCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text('${i['city'] ?? ''} · ${ago(asTime(i['created_at']))}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 12)),
           ),
+          const SizedBox(height: 8),
         ]),
       ),
     );

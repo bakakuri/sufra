@@ -1665,4 +1665,74 @@ class FakeApi implements PeeraApi {
     calls.add('listing $title $price $category $city ${media.length}');
     listingRows.insert(0, {'id': 92, 'title': title, 'price': price, 'city': city, 'media': [], 'status': 'active', 'seller': nino.id, 'category': category, 'created_at': DateTime.now().toIso8601String()});
   }
+
+  // ---------- study ----------
+  final lessonRows = <Map<String, dynamic>>[
+    {'id': 1, 'owner': 'u1', 'title': 'მაკროეკონომიკა', 'kind': 'lecture', 'day': DateTime.now().weekday, 'starts': '00:00', 'ends': '23:59', 'place': 'II კორპუსი, 312', 'teacher': 'ნ. ბერიძე', 'weeks': 'all', 'hue': 250},
+    {'id': 2, 'owner': 'u2', 'title': 'სტატისტიკა', 'kind': 'seminar', 'day': DateTime.now().weekday % 7 + 1, 'starts': '12:00', 'ends': '13:30', 'place': '105', 'weeks': 'all', 'hue': 160, 'group_id': 7},
+  ];
+  final deadlineRows = <Map<String, dynamic>>[
+    {'id': 1, 'owner': 'u1', 'kind': 'exam', 'title': 'შუალედური: თავები 1–4', 'subject': 'მაკროეკონომიკა', 'due_at': DateTime.now().add(const Duration(days: 2)).toUtc().toIso8601String(), 'notes': 'გავიმეორო გრაფიკები'},
+    {'id': 2, 'owner': 'u2', 'kind': 'task', 'title': 'რეფერატი', 'subject': 'ისტორია', 'due_at': DateTime.now().add(const Duration(days: 10)).toUtc().toIso8601String(), 'group_id': 7},
+  ];
+  final doneIds = <int>{};
+  @override
+  Future<List<Map<String, dynamic>>> lessons() async => [for (final l in lessonRows) {...l}];
+  @override
+  Future<Map<String, dynamic>> putLesson(Map<String, dynamic> row) async {
+    calls.add('lesson ${row['id'] ?? 'new'} ${row['title']} ${row['day']}${row['group_id'] != null ? ' group ${row['group_id']}' : ''}');
+    if (row['id'] != null) {
+      final i = lessonRows.indexWhere((l) => l['id'] == row['id']);
+      lessonRows[i] = {...lessonRows[i], ...row};
+      return lessonRows[i];
+    }
+    final n = {...row, 'id': _id++, 'owner': nino.id};
+    lessonRows.add(n);
+    return n;
+  }
+
+  @override
+  Future<void> deleteLesson(int id) async {
+    calls.add('lessondel $id');
+    lessonRows.removeWhere((l) => l['id'] == id);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> deadlines() async => [for (final d in deadlineRows) {...d}];
+  @override
+  Future<Map<String, dynamic>> putDeadline(Map<String, dynamic> row) async {
+    calls.add('deadline ${row['id'] ?? 'new'} ${row['kind']} ${row['title']}');
+    if (row['id'] != null) {
+      final i = deadlineRows.indexWhere((l) => l['id'] == row['id']);
+      deadlineRows[i] = {...deadlineRows[i], ...row};
+      return deadlineRows[i];
+    }
+    final n = {...row, 'id': _id++, 'owner': nino.id};
+    deadlineRows.add(n);
+    return n;
+  }
+
+  @override
+  Future<void> deleteDeadline(int id) async {
+    calls.add('deadlinedel $id');
+    deadlineRows.removeWhere((l) => l['id'] == id);
+  }
+
+  @override
+  Future<Set<int>> deadlinesDone() async => {...doneIds};
+  @override
+  Future<void> markDeadline(int id, bool done) async {
+    calls.add('done $id $done');
+    done ? doneIds.add(id) : doneIds.remove(id);
+  }
+
+  @override
+  Future<List<({int id, String name, String kind, bool admin, bool share})>> studyGroups() async => [
+        (id: 7, name: 'მე-11 ბ', kind: 'class', admin: true, share: true),
+      ];
+  @override
+  Future<List<Post>> postsWithTags(List<String> tags, {String q = ''}) async {
+    calls.add('tagged ${tags.join('+')}');
+    return tags.length == 1 && tags.first == 'კონსპექტი' ? [_posts.firstWhere((p) => p.id == 108)] : <Post>[];
+  }
 }

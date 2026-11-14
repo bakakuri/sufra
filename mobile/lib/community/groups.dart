@@ -398,7 +398,7 @@ class _GroupScreenState extends State<GroupScreen> {
       final child = Row(mainAxisSize: MainAxisSize.min, children: [
         PIcon(icon, size: 17, color: filled ? c.onAccent : c.ink),
         const SizedBox(width: 6),
-        Text(label),
+        Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis)),
         if (badge > 0)
           Container(
             margin: const EdgeInsets.only(left: 6),
@@ -912,7 +912,7 @@ class _GroupManageScreenState extends State<GroupManageScreen> {
                   for (final x in p) ...[
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                      child: Row(children: [
+                      child: Wrap(spacing: 8, runSpacing: 8, children: [
                         FilledButton.icon(
                           key: ValueKey('gp-ok-${x.id}'),
                           style: FilledButton.styleFrom(minimumSize: const Size(0, 38)),
@@ -925,7 +925,6 @@ class _GroupManageScreenState extends State<GroupManageScreen> {
                           icon: PIcon('check', size: 16, color: c.onAccent),
                           label: const Text('დამტკიცება'),
                         ),
-                        const SizedBox(width: 8),
                         OutlinedButton(
                           key: ValueKey('gp-no-${x.id}'),
                           style: OutlinedButton.styleFrom(minimumSize: const Size(0, 38), foregroundColor: c.nope),

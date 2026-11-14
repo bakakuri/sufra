@@ -50,6 +50,8 @@ void main() {
     final api = await shell(t);
     await _settings(t);
     await t.scrollUntilVisible(find.byKey(const ValueKey('set-export')), 300, scrollable: _list);
+    await t.ensureVisible(find.byKey(const ValueKey('set-export')));
+    await settle(t);
     await t.tap(find.byKey(const ValueKey('set-export')));
     await settle(t);
     expect(api.calls, contains('export'));

@@ -110,6 +110,9 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
   bool get _empty => field.text.trim().isEmpty && photos.isEmpty && pollQ == null && video == null && place == null;
 
+  /// nothing of mine would be lost on leaving: empty, or only the words it began with (a library's tags)
+  bool get _untouched => (field.text.trim().isEmpty || field.text == widget.text) && photos.isEmpty && pollQ == null && video == null && place == null;
+
   Future<void> _add(bool camera) async {
     if (photos.length >= maxPhotos) {
       toast(context, 'მაქსიმუმ $maxPhotos ფოტო');
@@ -241,7 +244,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
   Future<void> _leave() async {
     if (busy) return;
-    if (_empty || await confirm(context, title: 'პოსტი არ გამოქვეყნდება', text: 'დაწერილი და არჩეული ფოტოები წაიშლება.', yes: 'გასვლა', danger: true)) {
+    if (_untouched || await confirm(context, title: 'პოსტი არ გამოქვეყნდება', text: 'დაწერილი და არჩეული ფოტოები წაიშლება.', yes: 'გასვლა', danger: true)) {
       if (mounted) Navigator.of(context).pop();
     }
   }
@@ -250,7 +253,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
   Widget build(BuildContext context) {
     final c = context.pc, me = context.me;
     return PopScope(
-      canPop: _empty && !busy,
+      canPop: _untouched && !busy,
       onPopInvokedWithResult: (did, _) {
         if (!did) _leave();
       },

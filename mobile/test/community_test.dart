@@ -19,7 +19,16 @@ Future<void> _open(WidgetTester t, String service) async {
   await settle(t);
 }
 
+/// the page's own list: the tallest one scrolling down
+Finder mainList() {
+  final all = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).evaluate().toList()
+    ..sort((a, b) => ((b.renderObject as RenderBox?)?.size.height ?? 0).compareTo((a.renderObject as RenderBox?)?.size.height ?? 0));
+  return find.byElementPredicate((e) => e == all.first);
+}
+
 Future<void> _tap(WidgetTester t, String key) async {
+  // a list builds only what is near the screen
+  if (find.byKey(ValueKey(key), skipOffstage: false).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(ValueKey(key)), 250, scrollable: mainList());
   await t.ensureVisible(find.byKey(ValueKey(key), skipOffstage: false));
   await settle(t);
   await t.tap(find.byKey(ValueKey(key)));
