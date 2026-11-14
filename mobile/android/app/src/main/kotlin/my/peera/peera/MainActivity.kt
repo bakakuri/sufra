@@ -57,6 +57,31 @@ class MainActivity : FlutterActivity() {
                 val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, call.argument<String>("text") ?: "")
                 startActivity(Intent.createChooser(send, null))
                 result.success(true)
+            } else if (call.method == "save") {
+                // a file into the phone's Downloads (Android 10+: no permission needed)
+                val name = call.argument<String>("name") ?: "peera.json"
+                val mime = call.argument<String>("mime") ?: "application/octet-stream"
+                val bytes = call.argument<ByteArray>("bytes") ?: ByteArray(0)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    try {
+                        val values = android.content.ContentValues().apply {
+                            put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, name)
+                            put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mime)
+                            put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS)
+                        }
+                        val uri = contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                        if (uri == null) {
+                            result.success("fail")
+                        } else {
+                            contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
+                            result.success("saved")
+                        }
+                    } catch (e: Exception) {
+                        result.success("fail")
+                    }
+                } else {
+                    result.success("old")
+                }
             } else {
                 result.notImplemented()
             }

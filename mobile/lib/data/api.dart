@@ -450,6 +450,14 @@ abstract class PeeraApi {
 
   /// days in a row of writing to each other (dm_streaks): conversation → days
   Future<Map<int, int>> streaks();
+
+  // ---------- my data and my account (settings.js) ----------
+
+  /// everything of mine in one map: profile, posts, comments, listings, events, friendships, coins, gifts
+  Future<Map<String, dynamic>> exportMyData();
+
+  /// deletes my account for good (the account function)
+  Future<void> deleteAccount();
 }
 
 class SupaApi implements PeeraApi {
@@ -1837,4 +1845,38 @@ class SupaApi implements PeeraApi {
         for (final x in (await sb.rpc('dm_streaks') as List? ?? const []))
           if (x is Map && asInt(x['streak']) > 0) asInt(x['conv_id']): asInt(x['streak']),
       };
+  @override
+  Future<Map<String, dynamic>> exportMyData() async {
+    Future<Object?> safe(Future<Object?> f) => f.catchError((_) => <Object?>[]);
+    final r = await Future.wait([
+      safe(sb.rpc('my_profile')),
+      safe(sb.from('posts').select('id,body,media,poll,tags,created_at').eq('author', myId)),
+      safe(sb.from('comments').select('id,post_id,body,created_at').eq('author', myId)),
+      safe(sb.from('listings').select().eq('seller', myId)),
+      safe(sb.from('events').select().eq('host', myId)),
+      safe(sb.from('friendships').select().or('requester.eq.$myId,addressee.eq.$myId')),
+      safe(sb.from('coin_log').select().eq('user_id', myId)),
+      safe(sb.from('gifts').select().or('sender.eq.$myId,recipient.eq.$myId')),
+      safe(sb.from('payouts').select().eq('user_id', myId)),
+    ]);
+    return {
+      'exported_at': DateTime.now().toUtc().toIso8601String(),
+      'profile': r[0],
+      'posts': r[1],
+      'comments': r[2],
+      'listings': r[3],
+      'events': r[4],
+      'friendships': r[5],
+      'coin_log': r[6],
+      'gifts': r[7],
+      'payouts': r[8],
+    };
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    final r = await sb.functions.invoke('account', body: {'action': 'delete'});
+    final d = r.data;
+    if (d is! Map || d['ok'] != true) throw Exception(d is Map && d['error'] != null ? '${d['error']}' : 'ანგარიში ვერ წაიშალა');
+  }
 }

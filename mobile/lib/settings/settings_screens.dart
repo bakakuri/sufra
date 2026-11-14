@@ -2,6 +2,8 @@
 // My profile, coins, dating, verification; notifications (the phone, quiet hours, kinds); privacy (online status,
 // "seen", invisible guest, who may write or challenge, the blocked); the look; the rules; signing out.
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -14,6 +16,7 @@ import '../dating/dating_setup.dart';
 import '../people/coins.dart';
 import '../people/verify.dart';
 import '../profile/profile.dart';
+import '../ui/files.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
 import '../ui/look.dart';
@@ -230,6 +233,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// "ჩემი მონაცემების ჩამოტვირთვა": everything in one JSON file, into the phone's Downloads
+  Future<void> _export() async {
+    final app = context.app;
+    toast(context, 'ვამზადებ ფაილს…');
+    try {
+      final d = await app.api.exportMyData();
+      final bytes = utf8.encode(const JsonEncoder.withIndent('  ').convert(d));
+      final r = await saveFile('peera-data.json', Uint8List.fromList(bytes), 'application/json');
+      if (!mounted) return;
+      if (r == 'saved') {
+        toast(context, 'შენახულია ჩამოტვირთვებში: peera-data.json');
+      } else if (r == 'old') {
+        toast(context, 'ამ ტელეფონზე ფაილს საიტიდან ჩამოტვირთავ');
+        _site('#settings');
+      } else {
+        toast(context, 'ფაილი ვერ შეინახა');
+      }
+    } catch (e) {
+      if (mounted) toast(context, errText(e));
+    }
+  }
+
   Future<void> _out() async {
     if (!await confirm(context, title: 'გასვლა', text: 'ანგარიშიდან გახვალ ამ ტელეფონზე.', yes: 'გასვლა', danger: true)) return;
     if (!mounted) return;
@@ -306,13 +331,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () => _go(const PrivacyScreen()),
           ),
           ListenableBuilder(
-            listenable: Listenable.merge([themeChoice, textZoom]),
+            listenable: Listenable.merge([themeChoice, textZoom, ecoMode]),
             builder: (context, _) => SRow(
               key: const ValueKey('set-look'),
               icon: 'eye',
               color: const Color(0xFF3E8EF7),
               title: 'ეკრანი',
-              sub: '${const {ThemeMode.system: 'როგორც ტელეფონში', ThemeMode.light: 'ღია', ThemeMode.dark: 'მუქი'}[themeChoice.value]} · ტექსტი: ${_zoomName(textZoom.value)}',
+              sub: '${const {ThemeMode.system: 'როგორც ტელეფონში', ThemeMode.light: 'ღია', ThemeMode.dark: 'მუქი'}[themeChoice.value]} · ტექსტი: ${_zoomName(textZoom.value)}${ecoMode.value ? ' · ეკონომიური რეჟიმი' : ''}',
               onTap: () => _go(const LookScreen()),
             ),
           ),
@@ -325,16 +350,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: 'კონფიდენციალურობის პოლიტიკა',
             onTap: () => openPage(context, const TextScreen(title: 'კონფიდენციალურობის პოლიტიკა', sections: privacyText), full: true),
           ),
-          SRow(icon: 'globe', color: c.muted, title: 'ჩემი მონაცემების ჩამოტვირთვა', sub: 'ყველაფერი ერთ ფაილში, საიტზე', onTap: () => _site('#settings')),
+          SRow(key: const ValueKey('set-export'), icon: 'download', color: c.muted, title: 'ჩემი მონაცემების ჩამოტვირთვა', sub: 'ყველაფერი ერთ ფაილში', onTap: _export),
         ]),
         SGroup(children: [
           SRow(key: const ValueKey('set-out'), icon: 'out', title: 'გასვლა', danger: true, onTap: _out),
         ]),
         const SizedBox(height: 14),
         Center(
-          child: TextButton(
-            onPressed: () => _site('#settings'),
-            child: Text('ანგარიშის წაშლა საიტზე', style: TextStyle(color: c.muted, fontSize: 13.5)),
+          child: TextButton.icon(
+            key: const ValueKey('set-delete'),
+            onPressed: () => openPage(context, const DeleteAccountScreen(), full: true),
+            icon: PIcon('trash', size: 17, color: c.nope),
+            label: Text('ანგარიშის წაშლა', style: TextStyle(color: c.nope, fontSize: 13.5, fontWeight: FontWeight.w700)),
           ),
         ),
         Center(child: Text('Peera $appVersion', style: TextStyle(color: c.muted, fontSize: 12))),
@@ -637,7 +664,7 @@ class LookScreen extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
         appBar: peeraBar(context, title: 'ეკრანი'),
         body: ListenableBuilder(
-          listenable: Listenable.merge([themeChoice, textZoom]),
+          listenable: Listenable.merge([themeChoice, textZoom, ecoMode]),
           builder: (context, _) => ListView(padding: const EdgeInsets.only(bottom: 28), children: [
             SGroup(title: 'ფერები', children: [
               SChoice<ThemeMode>(
@@ -657,6 +684,16 @@ class LookScreen extends StatelessWidget {
                 onChanged: setZoom,
               ),
             ]),
+            SGroup(title: 'ინტერნეტი', children: [
+              SSwitch(
+                key: const ValueKey('look-eco'),
+                icon: 'download',
+                title: 'ეკონომიური რეჟიმი',
+                sub: 'ვიდეო თავისით არ ჩაირთვება, ფიდში ფოტოები შეხებით ჩნდება, ატვირთვა უფრო მსუბუქია. გამოგადგება ნელ ან ძვირ ინტერნეტზე.',
+                value: ecoMode.value,
+                onChanged: setEco,
+              ),
+            ]),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: Text('ეს მხოლოდ ამ ტელეფონზე ინახება.', style: TextStyle(color: context.pc.muted, fontSize: 13)),
@@ -664,6 +701,84 @@ class LookScreen extends StatelessWidget {
           ]),
         ),
       );
+}
+
+// ---------- deleting the account ----------
+
+/// "ანგარიშის წაშლა" (settings.js delaccount): what goes, and "წაშლა" typed to be sure; then out of the app.
+class DeleteAccountScreen extends StatefulWidget {
+  const DeleteAccountScreen({super.key});
+  @override
+  State<DeleteAccountScreen> createState() => _DeleteAccountScreenState();
+}
+
+class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
+  final field = TextEditingController();
+  bool busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    field.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    field.dispose();
+    super.dispose();
+  }
+
+  Future<void> _go() async {
+    final app = context.app;
+    setState(() => busy = true);
+    try {
+      await app.api.deleteAccount();
+      if (!mounted) return;
+      toast(context, 'ანგარიში წაიშალა');
+      final out = app.signOut;
+      Navigator.of(context).popUntil((r) => r.isFirst);
+      await out?.call();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => busy = false);
+      toast(context, errText(e));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.pc, ok = field.text.trim() == 'წაშლა' && !busy;
+    return Scaffold(
+      appBar: peeraBar(context, title: 'ანგარიშის წაშლა'),
+      body: ListView(padding: const EdgeInsets.fromLTRB(20, 16, 20, 32), children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(color: c.nope.withValues(alpha: .08), borderRadius: BorderRadius.circular(14), border: Border.all(color: c.nope.withValues(alpha: .35))),
+          child: Text(
+            'წაიშლება შენი პროფილი, პოსტები, კომენტარები, მესიჯები, განცხადებები და ატვირთული ფაილები. ამას ვეღარ დააბრუნებ.',
+            style: TextStyle(color: c.ink, fontSize: 15, height: 1.5),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text('სანამ წაშლი, შეგიძლია პარამეტრებიდან შენი მონაცემები ჩამოტვირთო.', style: TextStyle(color: c.muted, fontSize: 13.5)),
+        const SizedBox(height: 18),
+        TextField(
+          key: const ValueKey('del-confirm'),
+          controller: field,
+          enabled: !busy,
+          autocorrect: false,
+          decoration: const InputDecoration(labelText: 'დასადასტურებლად ჩაწერე: წაშლა'),
+        ),
+        const SizedBox(height: 16),
+        FilledButton(
+          key: const ValueKey('del-go'),
+          style: FilledButton.styleFrom(backgroundColor: c.nope, minimumSize: const Size.fromHeight(48)),
+          onPressed: ok ? _go : null,
+          child: Text(busy ? 'იშლება…' : 'სამუდამოდ წაშლა'),
+        ),
+      ]),
+    );
+  }
 }
 
 // ---------- the rules ----------

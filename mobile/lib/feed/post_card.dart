@@ -11,6 +11,7 @@ import '../people/profile_parts.dart';
 import '../profile/profile.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
+import '../ui/look.dart';
 import '../ui/net_image.dart';
 import '../ui/theme.dart';
 import '../ui/translate.dart';
@@ -246,10 +247,22 @@ class _Gallery extends StatefulWidget {
 
 class _GalleryState extends State<_Gallery> with SingleTickerProviderStateMixin {
   int at = 0;
+
+  /// in the economy mode the photos load only when asked
+  bool shown = false;
   late final burst = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+
+  void _eco() => setState(() {});
+
+  @override
+  void initState() {
+    super.initState();
+    ecoMode.addListener(_eco);
+  }
 
   @override
   void dispose() {
+    ecoMode.removeListener(_eco);
     burst.dispose();
     super.dispose();
   }
@@ -275,6 +288,29 @@ class _GalleryState extends State<_Gallery> with SingleTickerProviderStateMixin 
   @override
   Widget build(BuildContext context) {
     final c = context.pc, media = widget.post.media, n = media.length;
+    if (ecoMode.value && !shown) {
+      final vids = media.where((m) => m.isVideo).length;
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Material(
+          color: c.sunk,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            key: ValueKey('eco-${widget.post.id}'),
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => setState(() => shown = true),
+            child: SizedBox(
+              height: 64,
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                PIcon(vids > 0 ? 'play' : 'image', size: 20, color: c.muted),
+                const SizedBox(width: 8),
+                Text(vids > 0 ? 'ვიდეოს ჩვენება' : (n > 1 ? '$n ფოტოს ჩვენება' : 'ფოტოს ჩვენება'), style: TextStyle(color: c.ink, fontWeight: FontWeight.w700)),
+              ]),
+            ),
+          ),
+        ),
+      );
+    }
     return Column(children: [
       AspectRatio(
         aspectRatio: media.first.box,

@@ -652,9 +652,10 @@ class _StoryComposeScreenState extends State<StoryComposeScreen> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
             child: Column(children: [
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(children: [
+              Wrap(
+                alignment: WrapAlignment.center,
+                runSpacing: 4,
+                children: [
                   for (final (k, icon, label, f) in [
                     ('mention', 'user', 'მონიშვნა', _mention),
                     ('place', 'pin', 'ადგილი', _place),
@@ -671,7 +672,7 @@ class _StoryComposeScreenState extends State<StoryComposeScreen> {
                         label: Text(label),
                       ),
                     ),
-                ]),
+                ],
               ),
               Padding(
                 padding: const EdgeInsets.only(top: 6),

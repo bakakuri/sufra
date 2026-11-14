@@ -11,6 +11,7 @@ import '../media/player.dart';
 import '../profile/profile.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
+import '../ui/look.dart';
 import '../ui/widgets.dart';
 
 /// Clips sound on or off, the same for every clip (off at first, as on the site).
@@ -100,7 +101,7 @@ class ClipFeedState extends State<ClipFeed> with WidgetsBindingObserver {
     for (var i = at - 1; i <= at + 1; i++) {
       final p = player(i);
       if (p == null) continue;
-      if (i == at && _live && !_held.contains(widget.posts[i].id)) {
+      if (i == at && _live && !_held.contains(widget.posts[i].id) && (!ecoMode.value || _asked.contains(widget.posts[i].id))) {
         p.mute(!clipSound.value);
         p.play();
       } else if (i == at) {
@@ -116,6 +117,9 @@ class ClipFeedState extends State<ClipFeed> with WidgetsBindingObserver {
 
   final _held = <int>{};
 
+  /// in the economy mode a clip plays only once touched
+  final _asked = <int>{};
+
   void _toggle(Post p) {
     final pl = _players[p.id];
     if (pl == null) return;
@@ -124,6 +128,7 @@ class ClipFeedState extends State<ClipFeed> with WidgetsBindingObserver {
       pl.pause();
     } else {
       _held.remove(p.id);
+      _asked.add(p.id);
       _sync();
     }
     setState(() {});

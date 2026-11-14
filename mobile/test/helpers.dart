@@ -29,6 +29,7 @@ import 'package:peera/data/api.dart';
 import 'package:peera/shell/home_shell.dart';
 import 'package:peera/stories/stories.dart';
 import 'package:peera/stories/story_make.dart';
+import 'package:peera/ui/files.dart';
 import 'package:peera/ui/net_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -74,6 +75,11 @@ void useTestImages() {
   photoEdit = (context, src) async => null;
   storyCard = (context, p) async => Uint8List(8);
   textStoryImage = (context, text, colour, poll) async => pic('sunset');
+  saveFile = (name, bytes, mime) async {
+    savedFiles[name] = bytes;
+    return 'saved';
+  };
+  ecoMode.value = false;
   postOverrides.reset();
   themeChoice.value = ThemeMode.system;
   textZoom.value = 1;
@@ -186,6 +192,9 @@ void phone(WidgetTester t, {double w = 390, double h = 844}) {
   t.view.devicePixelRatio = 2;
   addTearDown(t.view.reset);
 }
+
+/// files the app saved to the phone's Downloads, by name
+final savedFiles = <String, Uint8List>{};
 
 /// The signed-in app on the fake server.
 Future<FakeApi> shell(WidgetTester t, {ThemeMode mode = ThemeMode.light, VoidCallback? exit, FakeApi? api, PushService? push}) async {

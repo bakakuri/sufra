@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 
+import '../ui/look.dart';
+
 /// A photo ready to upload, the way the site keeps photos: the full one (up to 2048 px), a ~1080 px copy
 /// for lists (md, only when the photo is bigger than 1200) and a ~480 px one (sm, when bigger than 560).
 class PreparedPhoto {
@@ -13,9 +15,12 @@ class PreparedPhoto {
 }
 
 /// Turned upright (the camera's orientation tag), resized and saved as JPEG, away from the screen's thread.
-Future<PreparedPhoto> preparePhoto(Uint8List src) => compute(preparePhotoNow, src);
+/// In the economy mode the full one is at most 1080 px.
+Future<PreparedPhoto> preparePhoto(Uint8List src) => ecoMode.value ? compute(_prepareEco, src) : compute(preparePhotoNow, src);
 
-PreparedPhoto preparePhotoNow(Uint8List src) {
+PreparedPhoto _prepareEco(Uint8List src) => preparePhotoNow(src, max: 1080);
+
+PreparedPhoto preparePhotoNow(Uint8List src, {int max = 2048}) {
   final d = img.decodeImage(src);
   if (d == null) throw const FormatException('photo');
   final im = img.bakeOrientation(d);
@@ -27,7 +32,7 @@ PreparedPhoto preparePhotoNow(Uint8List src) {
         : img.copyResize(a, height: max, interpolation: img.Interpolation.average);
   }
 
-  final full = fit(im, 2048), md = fit(full, 1080);
+  final full = fit(im, max), md = fit(full, 1080);
   final big = full.width > full.height ? full.width : full.height;
   return PreparedPhoto(
     img.encodeJpg(full, quality: 86, chroma: img.JpegChroma.yuv420),

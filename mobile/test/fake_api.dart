@@ -1336,4 +1336,14 @@ class FakeApi implements PeeraApi {
 
   @override
   Future<Map<String, int>> storyVoters(int id) async => {...?storyVotes[id]};
+
+  // ---------- my data, my account ----------
+  @override
+  Future<Map<String, dynamic>> exportMyData() async {
+    calls.add('export');
+    return {'profile': {'id': nino.id, 'name': nino.name}, 'posts': [for (final p in _posts) if (p.author == nino.id) {'id': p.id, 'body': p.body}]};
+  }
+
+  @override
+  Future<void> deleteAccount() async => calls.add('delete account');
 }

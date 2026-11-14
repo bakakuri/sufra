@@ -140,15 +140,15 @@ void main() {
   testWidgets('saved, then put into a new folder', (t) async {
     phone(t);
     final api = await shell(t);
-    await _tap(t, 'save-102');
-    expect(api.calls, contains('save 102 true'));
+    await _tap(t, 'save-101');
+    expect(api.calls, contains('save 101 true'));
     expect(find.text('საქაღალდეში'), findsOneWidget);
     await t.tap(find.text('საქაღალდეში'));
     await settle(t);
     await t.enterText(find.byKey(const ValueKey('fold-name')), 'რეცეპტები');
     await t.tap(find.byKey(const ValueKey('fold-new')));
     await settle(t);
-    expect(api.calls, containsAll(['newfolder რეცეპტები', 'folder 102 77']));
+    expect(api.calls, containsAll(['newfolder რეცეპტები', 'folder 101 77']));
     expect(find.text('ჩაიდო საქაღალდეში „რეცეპტები“'), findsOneWidget);
   });
 

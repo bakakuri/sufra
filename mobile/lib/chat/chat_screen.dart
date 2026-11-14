@@ -24,6 +24,7 @@ import '../people/profile_parts.dart';
 import '../profile/profile.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
+import '../ui/look.dart';
 import '../ui/net_image.dart';
 import '../ui/rich_body.dart';
 import '../ui/stickers.dart';
@@ -1282,6 +1283,8 @@ class LocCard extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.line)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          // the economy mode draws no map
+          if (!ecoMode.value)
           SizedBox(
             height: 130,
             child: IgnorePointer(
@@ -1299,9 +1302,8 @@ class LocCard extends StatelessWidget {
             child: Row(children: [
               PIcon('pin', size: 18, color: c.accent),
               const SizedBox(width: 6),
-              const Text('ლოკაცია', style: TextStyle(fontWeight: FontWeight.w700)),
-              const Spacer(),
-              Text('${acc != null && acc! > 0 ? '±${acc!.round()} მ · ' : ''}რუკაზე', style: TextStyle(color: c.muted, fontSize: 12.5)),
+              const Expanded(child: Text('ლოკაცია', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w700))),
+              Text('${acc != null && acc! > 0 && acc! < 1000 ? '±${acc!.round()} მ · ' : ''}რუკაზე', style: TextStyle(color: c.muted, fontSize: 12.5)),
             ]),
           ),
         ]),
