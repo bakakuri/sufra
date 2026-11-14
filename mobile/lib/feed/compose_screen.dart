@@ -40,8 +40,12 @@ const maxPhotos = 10;
 /// a place. "გამოქვეყნება" uploads them (photos made upright and in the site's three sizes) and publishes, and the new
 /// post comes back to the feed; the clock button keeps it as a draft or plans it for later.
 class ComposeScreen extends StatefulWidget {
-  const ComposeScreen({super.key, this.startWithPhotos = false, this.startWithPoll = false, this.text = ''});
+  const ComposeScreen({super.key, this.startWithPhotos = false, this.startWithPoll = false, this.text = '', this.groupId, this.pageId, this.where});
   final bool startWithPhotos, startWithPoll;
+
+  /// a post into a group or as a page, and its name for the title
+  final int? groupId, pageId;
+  final String? where;
 
   /// words to begin with (a first post's idea, a memory shared)
   final String text;
@@ -216,7 +220,8 @@ class _ComposeScreenState extends State<ComposeScreen> {
         media.add(await app.api.uploadVideo(v));
       }
       setState(() => stage = 'ქვეყნდება…');
-      final post = await app.api.createPost(field.text.trim(), media, poll: poll, placeId: place?.$1, draft: draft, publishAt: at);
+      final post = await app.api.createPost(field.text.trim(), media,
+          poll: poll, placeId: place?.$1, draft: draft, publishAt: at, groupId: widget.groupId, pageId: widget.pageId);
       if (!mounted) return;
       if (draft || at != null) {
         toast(context, at == null ? 'დრაფტი შენახულია' : 'დაიგეგმა: ${at.day} ${monthNames[at.month - 1]}, ${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}');
@@ -255,7 +260,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
           toolbarHeight: 60,
           titleSpacing: 0,
           leading: IconBtn('x', label: 'დახურვა', onTap: _leave),
-          title: const Text('ახალი პოსტი'),
+          title: Text(widget.where == null ? 'ახალი პოსტი' : 'პოსტი: ${widget.where}', maxLines: 1, overflow: TextOverflow.ellipsis),
           actions: [
             IconBtn('clock', key: const ValueKey('c-later'), label: 'დრაფტი ან დაგეგმვა', onTap: _empty || busy || preparing != null ? null : _later),
             Padding(

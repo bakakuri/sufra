@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../clips/clip_feed.dart';
+import '../community/groups.dart';
+import '../community/pages.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
 import '../people/person_screen.dart';
@@ -78,7 +80,11 @@ class PostCard extends StatelessWidget {
 }
 
 Future<void> openPerson(BuildContext context, Profile p) async {
-  if (p.id.startsWith('page:')) return;
+  if (p.id.startsWith('page:')) {
+    final id = int.tryParse(p.id.substring(5));
+    if (id != null) await openPage(context, PageScreen(id: id), full: true);
+    return;
+  }
   await openPage(context, PersonScreen(uid: p.id, initial: p));
 }
 
@@ -191,7 +197,12 @@ class _Head extends StatelessWidget {
     final tags = <Widget>[
       if (sponsored) const _Tag('რეკლამა', warn: true),
       if (post.byPage) const _Tag('არხი'),
-      if (post.groupName != null) _Tag(post.groupName!),
+      if (post.groupName != null)
+        GestureDetector(
+          key: ValueKey('gtag-${post.id}'),
+          onTap: post.groupId == null ? null : () => openPage(context, GroupScreen(id: post.groupId!), full: true),
+          child: _Tag(post.groupName!),
+        ),
       if (post.placeName != null) _Tag('📍 ${post.placeName}'),
       if (postOverrides.modHidden[post.id] ?? post.hidden) const _Tag('დამალულია', warn: true),
       if (post.pending) _Tag('ელოდება დამტკიცებას', warn: true),

@@ -13,7 +13,7 @@ import 'helpers.dart';
 Future<void> _settings(WidgetTester t) async {
   await t.tap(find.byKey(const ValueKey('tab-me')));
   await settle(t);
-  openPage(t.element(find.byType(PersonScreen).first), const SettingsScreen());
+  openPage(t.element(find.byType(PersonScreen).first), const SettingsScreen(), full: true);
   await settle(t);
 }
 

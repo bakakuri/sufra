@@ -183,9 +183,11 @@ class FakeApi implements PeeraApi {
   }
 
   @override
-  Future<Post> createPost(String body, List<Media> media, {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf}) async {
+  Future<Post> createPost(String body, List<Media> media,
+      {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf, int? groupId, int? pageId}) async {
     calls.add('post $body ${media.length}${poll != null ? ' poll ${poll.q} ${poll.opts.join('/')}' : ''}'
-        '${placeId != null ? ' place $placeId' : ''}${draft ? ' draft' : ''}${publishAt != null ? ' at' : ''}${repostOf != null ? ' quote $repostOf' : ''}');
+        '${placeId != null ? ' place $placeId' : ''}${draft ? ' draft' : ''}${publishAt != null ? ' at' : ''}${repostOf != null ? ' quote $repostOf' : ''}'
+        '${groupId != null ? ' group $groupId' : ''}${pageId != null ? ' page $pageId' : ''}');
     final p = _p(_id++, nino, DateTime.now(), body, media, poll: poll, repostOf: repostOf);
     if (!draft && publishAt == null) _posts.insert(0, p);
     return p;
@@ -1346,4 +1348,321 @@ class FakeApi implements PeeraApi {
 
   @override
   Future<void> deleteAccount() async => calls.add('delete account');
+
+  // ---------- groups and pages ----------
+  String _at(int minutes) => DateTime.now().subtract(Duration(minutes: minutes)).toIso8601String();
+  final groupRows = <Map<String, dynamic>>[
+    {'id': 5, 'name': 'მთის მოყვარულები', 'hue': 150, 'is_private': false, 'description': 'ლაშქრობები ყოველ შაბათს', 'owner': 'u2', 'rules': '1. პატივი ეცით ერთმანეთს.', 'join_mode': 'open', 'kind': null},
+    {'id': 6, 'name': 'თსუ სტუდენტები', 'hue': 30, 'is_private': true, 'description': 'თბილისის უნივერსიტეტი', 'owner': 'u3', 'join_mode': 'request', 'kind': 'uni'},
+    {'id': 7, 'name': 'მე-11 ბ', 'hue': 260, 'is_private': true, 'description': 'ქუთაისის მე-2 სკოლა', 'owner': 'u1', 'join_mode': 'request', 'post_approval': true, 'kind': 'class'},
+  ];
+  final groupIn = <int>{7};
+  final groupAdmins = <int, Set<String>>{7: {}};
+  final pageRows = <Map<String, dynamic>>[
+    {'id': 1, 'name': 'Peera სიახლეები', 'kind': 'channel', 'hue': 200, 'verified': true, 'category': 'სიახლეები', 'owner': 'u2', 'description': 'რა არის ახალი Peera-ზე'},
+    {'id': 2, 'name': 'მთის ამბები', 'kind': 'business', 'hue': 120, 'category': 'ტურიზმი', 'owner': 'u1', 'description': 'ტურები სვანეთში'},
+  ];
+  final pageFollows = <int>{1};
+  @override
+  Future<(Set<int>, List<Map<String, dynamic>>)> groups() async => ({...groupIn}, [for (final g in groupRows) {...g}]);
+  @override
+  Future<({Map<String, dynamic> g, int count, String? role, String? request})?> group(int id) async {
+    final g = groupRows.where((x) => x['id'] == id).firstOrNull;
+    if (g == null) return null;
+    final role = g['owner'] == nino.id ? 'owner' : (groupAdmins[id]?.contains(nino.id) == true ? 'admin' : (groupIn.contains(id) ? 'member' : null));
+    return (g: {...g}, count: 12 + (groupIn.contains(id) ? 1 : 0), role: role, request: calls.contains('greq $id') && !calls.contains('greqx $id') ? 'pending' : null);
+  }
+
+  @override
+  Future<List<Post>> groupPosts(int id) async => id == 5 ? [_posts.firstWhere((p) => p.id == 107)] : [];
+  @override
+  Future<int> createGroup({required String name, String description = '', bool private = false, String? avatarUrl}) async {
+    calls.add('newgroup $name $private');
+    groupRows.add({'id': 40, 'name': name, 'hue': 10, 'is_private': private, 'description': description, 'owner': nino.id, 'join_mode': 'open'});
+    groupIn.add(40);
+    return 40;
+  }
+
+  @override
+  Future<void> updateGroup(int id, Map<String, dynamic> changes) async {
+    calls.add('gupdate $id ${changes.keys.join(',')}');
+    groupRows.firstWhere((x) => x['id'] == id).addAll(changes);
+  }
+
+  @override
+  Future<void> deleteGroup(int id) async {
+    calls.add('gdelete $id');
+    groupRows.removeWhere((x) => x['id'] == id);
+  }
+
+  @override
+  Future<void> joinGroup(int id) async {
+    calls.add('gjoin $id');
+    groupIn.add(id);
+  }
+
+  @override
+  Future<void> leaveGroup(int id) async {
+    calls.add('gleave $id');
+    groupIn.remove(id);
+  }
+
+  @override
+  Future<void> requestGroup(int id, String? note) async => calls.add('greq $id');
+  @override
+  Future<void> cancelGroupRequest(int id) async => calls.add('greqx $id');
+  @override
+  Future<List<Map<String, dynamic>>> groupRequests(int id) async => [
+        {'user_id': luka.id, 'note': 'მე-11 ბ-ში ვსწავლობდი', 'created_at': _at(60)},
+      ];
+  @override
+  Future<void> groupRespond(int id, String uid, bool accept) async => calls.add('grespond $id $uid $accept');
+  @override
+  Future<List<Post>> groupPending(int id) async => [_posts.firstWhere((p) => p.id == 102)];
+  @override
+  Future<void> reviewGroupPost(int postId, bool ok) async => calls.add('greview $postId $ok');
+  @override
+  Future<List<Map<String, dynamic>>> groupMembers(int id) async => [
+        {'user_id': nino.id, 'role': 'admin', 'created_at': _at(9000)},
+        {'user_id': giorgi.id, 'role': 'member', 'created_at': _at(8000)},
+        {'user_id': mariam.id, 'role': 'member', 'created_at': _at(7000)},
+      ];
+  @override
+  Future<void> setGroupRole(int id, String uid, String role) async => calls.add('grole $id $uid $role');
+  @override
+  Future<void> kickFromGroup(int id, String uid) async => calls.add('gkick $id $uid');
+  @override
+  Future<int> groupWaiting(int id) async => 2;
+  @override
+  Future<List<String>> groupStarostas(int id, String owner) async => [...?groupAdmins[id]];
+  @override
+  Future<void> claimStarosta(int id) async {
+    calls.add('starosta $id');
+    (groupAdmins[id] ??= {}).add(nino.id);
+  }
+
+  @override
+  Future<void> leaveStarosta(int id) async {
+    calls.add('starosta- $id');
+    groupAdmins[id]?.remove(nino.id);
+  }
+
+  @override
+  Future<(Set<int>, List<Map<String, dynamic>>)> pages() async => ({...pageFollows}, [for (final p in pageRows) {...p}]);
+  @override
+  Future<({Map<String, dynamic> p, int count, bool following})?> page(int id) async {
+    final p = pageRows.where((x) => x['id'] == id).firstOrNull;
+    return p == null ? null : (p: {...p}, count: 340 + (pageFollows.contains(id) ? 1 : 0), following: pageFollows.contains(id));
+  }
+
+  @override
+  Future<List<Post>> pagePosts(int id) async => [];
+  @override
+  Future<int> createPage({required String kind, required String name, String category = '', String description = '', String? avatarUrl}) async {
+    calls.add('newpage $kind $name');
+    pageRows.add({'id': 50, 'name': name, 'kind': kind, 'hue': 40, 'category': category, 'owner': nino.id, 'description': description});
+    return 50;
+  }
+
+  @override
+  Future<void> updatePage(int id, Map<String, dynamic> changes) async {
+    calls.add('pupdate $id ${changes['name']}');
+    pageRows.firstWhere((x) => x['id'] == id).addAll(changes);
+  }
+
+  @override
+  Future<void> deletePage(int id) async {
+    calls.add('pdelete $id');
+    pageRows.removeWhere((x) => x['id'] == id);
+  }
+
+  @override
+  Future<void> followPage(int id, bool on) async {
+    calls.add('pfollow $id $on');
+    on ? pageFollows.add(id) : pageFollows.remove(id);
+  }
+
+  @override
+  Future<void> verifyPage(int id, bool on) async => calls.add('pverify $id $on');
+  @override
+  Future<List<Map<String, dynamic>>> pageAds(int id) async => [];
+
+  // ---------- events and the market ----------
+  final eventRows = <Map<String, dynamic>>[
+    {
+      'id': 70,
+      'title': 'შაბათის სასწავლო შეხვედრა',
+      'starts_at': DateTime.now().add(const Duration(days: 3)).toUtc().toIso8601String(),
+      'place': 'ქუთაისი, ბიბლიოთეკა',
+      'host': 'u2',
+      'hue': 30,
+      'description': 'მოვემზადოთ გამოცდისთვის ერთად',
+      'tamada': null,
+    },
+  ];
+  final rsvps = <Map<String, dynamic>>[
+    {'event_id': 70, 'user_id': 'u2', 'status': 'yes'},
+    {'event_id': 70, 'user_id': 'u3', 'status': 'yes'},
+    {'event_id': 70, 'user_id': 'u4', 'status': 'maybe'},
+  ];
+  final items = <Map<String, dynamic>>[
+    {'id': 1, 'event_id': 70, 'name': 'ყავა', 'added_by': 'u2', 'claimed_by': 'u2'},
+    {'id': 2, 'event_id': 70, 'name': 'კონსპექტები', 'added_by': 'u2', 'claimed_by': null},
+  ];
+  final agenda = <Map<String, dynamic>>[];
+  final costs = <Map<String, dynamic>>[
+    {'id': 1, 'event_id': 70, 'paid_by': 'u2', 'amount': 30, 'what': 'ყავა', 'added_by': 'u2'},
+  ];
+  final pays = <Map<String, dynamic>>[];
+  @override
+  Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)> events() async => ([for (final e in eventRows) {...e}], [for (final r in rsvps) {...r}]);
+  @override
+  Future<(Map<String, dynamic>, List<Map<String, dynamic>>, List<Map<String, dynamic>>)?> event(int id) async {
+    final e = eventRows.where((x) => x['id'] == id).firstOrNull;
+    if (e == null) return null;
+    return ({...e}, [for (final r in rsvps) if (r['event_id'] == id) {...r}], [for (final i in items) if (i['event_id'] == id) {...i}]);
+  }
+
+  @override
+  Future<void> rsvp(int id, String status) async {
+    calls.add('rsvp $id $status');
+    rsvps.removeWhere((r) => r['event_id'] == id && r['user_id'] == nino.id);
+    rsvps.add({'event_id': id, 'user_id': nino.id, 'status': status});
+  }
+
+  @override
+  Future<void> addEventItem(int id, String name) async {
+    calls.add('item $id $name');
+    items.add({'id': _id++, 'event_id': id, 'name': name, 'added_by': nino.id, 'claimed_by': nino.id});
+  }
+
+  @override
+  Future<void> claimEventItem(int itemId, bool on) async {
+    calls.add('claim $itemId $on');
+    items.firstWhere((i) => i['id'] == itemId)['claimed_by'] = on ? nino.id : null;
+  }
+
+  @override
+  Future<void> deleteEventItem(int itemId) async => items.removeWhere((i) => i['id'] == itemId);
+  @override
+  Future<void> deleteEvent(int id) async {
+    calls.add('evdelete $id');
+    eventRows.removeWhere((e) => e['id'] == id);
+  }
+
+  @override
+  Future<int> createEvent({required String title, required DateTime startsAt, required String place, String description = '', String? tamada, int? groupId, List<String> items = const []}) async {
+    calls.add('event $title $place ${items.join(',')}${groupId != null ? ' group $groupId' : ''}');
+    eventRows.add({'id': 71, 'title': title, 'starts_at': startsAt.toUtc().toIso8601String(), 'place': place, 'host': nino.id, 'hue': 200, 'description': description, 'tamada': tamada});
+    rsvps.add({'event_id': 71, 'user_id': nino.id, 'status': 'yes'});
+    for (final n in items) {
+      this.items.add({'id': _id++, 'event_id': 71, 'name': n, 'added_by': nino.id, 'claimed_by': null});
+    }
+    return 71;
+  }
+
+  @override
+  Future<void> setTamada(int id, String? uid) async {
+    calls.add('tamada $id $uid');
+    eventRows.firstWhere((e) => e['id'] == id)['tamada'] = uid;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> eventAgenda(int id) async => [for (final a in agenda) if (a['event_id'] == id) {...a}];
+  @override
+  Future<void> addAgenda(int id, List<(String, int?)> rows, int afterPos) async {
+    calls.add('agenda $id ${rows.length}');
+    for (var i = 0; i < rows.length; i++) {
+      agenda.add({'id': _id++, 'event_id': id, 'pos': afterPos + i + 1, 'title': rows[i].$1, 'done': false, 'toast_id': rows[i].$2});
+    }
+  }
+
+  @override
+  Future<void> agendaDone(int rowId, bool done) async {
+    calls.add('agdone $rowId $done');
+    agenda.firstWhere((a) => a['id'] == rowId)['done'] = done;
+  }
+
+  @override
+  Future<void> agendaPos(int rowId, int pos) async => agenda.firstWhere((a) => a['id'] == rowId)['pos'] = pos;
+  @override
+  Future<void> agendaDelete(int rowId) async => agenda.removeWhere((a) => a['id'] == rowId);
+  @override
+  Future<List<Map<String, dynamic>>> toastBook() async => [
+        {'id': 1, 'title': 'მშვიდობის სადღეგრძელო'},
+      ];
+  @override
+  Future<Map<String, dynamic>?> toastText(int id) async => {'title': 'მშვიდობის სადღეგრძელო', 'body': 'გაუმარჯოს მშვიდობას!'};
+  @override
+  Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)> eventCosts(int id) async =>
+      ([for (final c in costs) if (c['event_id'] == id) {...c}], [for (final p in pays) if (p['event_id'] == id) {...p}]);
+  @override
+  Future<void> addEventCost(int id, String paidBy, double amount, String what) async {
+    calls.add('cost $id $paidBy $amount $what');
+    costs.add({'id': _id++, 'event_id': id, 'paid_by': paidBy, 'amount': amount, 'what': what, 'added_by': nino.id});
+  }
+
+  @override
+  Future<void> deleteEventCost(int costId) async => costs.removeWhere((c) => c['id'] == costId);
+  @override
+  Future<void> addEventPayment(int id, String from, String to, double amount) async {
+    calls.add('pay $id $from $to $amount');
+    pays.add({'id': _id++, 'event_id': id, 'from_user': from, 'to_user': to, 'amount': amount, 'added_by': nino.id});
+  }
+
+  @override
+  Future<void> deleteEventPayment(int payId) async => pays.removeWhere((p) => p['id'] == payId);
+  @override
+  Future<int> inviteToEvent(int id, List<String> users) async {
+    calls.add('evinvite $id ${users.join(',')}');
+    return users.length;
+  }
+
+  @override
+  Future<int?> eventAlbum(int id) async => null;
+  @override
+  Future<int> makeEventAlbum(int id, String title) async {
+    calls.add('evalbum $id');
+    return 1;
+  }
+
+  final listingRows = <Map<String, dynamic>>[
+    {'id': 90, 'title': 'ნარდის დაფა', 'price': 45, 'city': 'თბილისი', 'media': [], 'status': 'active', 'seller': 'u2', 'category': 'home', 'created_at': DateTime.now().toIso8601String(), 'description': 'ხის, ხელნაკეთი'},
+    {'id': 91, 'title': 'ველოსიპედი', 'price': 300, 'city': 'ქუთაისი', 'media': [], 'status': 'active', 'seller': 'u1', 'category': 'sport', 'created_at': DateTime.now().toIso8601String()},
+  ];
+  final listingSaves = <int>{};
+  @override
+  Future<List<Map<String, dynamic>>> listings({String cat = 'all', String q = ''}) async => [
+        for (final l in listingRows)
+          if ((cat == 'all' || l['category'] == cat) && (q.isEmpty || '${l['title']}'.contains(q))) {...l},
+      ];
+  @override
+  Future<(Map<String, dynamic>, bool)?> listing(int id) async {
+    final l = listingRows.where((x) => x['id'] == id).firstOrNull;
+    return l == null ? null : ({...l}, listingSaves.contains(id));
+  }
+
+  @override
+  Future<void> saveListing(int id, bool on) async {
+    calls.add('lsave $id $on');
+    on ? listingSaves.add(id) : listingSaves.remove(id);
+  }
+
+  @override
+  Future<void> setListingStatus(int id, String status) async {
+    calls.add('lstatus $id $status');
+    listingRows.firstWhere((l) => l['id'] == id)['status'] = status;
+  }
+
+  @override
+  Future<void> deleteListing(int id) async {
+    calls.add('ldelete $id');
+    listingRows.removeWhere((l) => l['id'] == id);
+  }
+
+  @override
+  Future<void> createListing({required String title, required double price, required String category, required String city, String description = '', List<Media> media = const []}) async {
+    calls.add('listing $title $price $category $city ${media.length}');
+    listingRows.insert(0, {'id': 92, 'title': title, 'price': price, 'city': city, 'media': [], 'status': 'active', 'seller': nino.id, 'category': category, 'created_at': DateTime.now().toIso8601String()});
+  }
 }

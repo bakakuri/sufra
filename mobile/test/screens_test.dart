@@ -5,6 +5,10 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:peera/community/events.dart';
+import 'package:peera/community/groups.dart';
+import 'package:peera/community/market.dart';
+import 'package:peera/community/pages.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/post_actions.dart';
 import 'package:peera/feed/post_screen.dart';
@@ -714,6 +718,17 @@ void main() {
       await settle(t);
       await _shot(t, '86-story-poll-$k');
     });
+
+    testWidgets('groups ($k)', (t) async => page(t, const GroupsScreen(), '87-groups'));
+    testWidgets('a group ($k)', (t) async => page(t, const GroupScreen(id: 5), '88-group'));
+    testWidgets("my class's group ($k)", (t) async => page(t, const GroupScreen(id: 7), '89-group-class'));
+    testWidgets('pages ($k)', (t) async => page(t, const PagesScreen(), '90-pages'));
+    testWidgets('a page ($k)', (t) async => page(t, const PageScreen(id: 1), '91-page'));
+    testWidgets('events ($k)', (t) async => page(t, const EventsScreen(), '92-events'));
+    testWidgets('an event ($k)', (t) async => page(t, const EventScreen(id: 70), '93-event'));
+    testWidgets('a new event ($k)', (t) async => page(t, const EventFormScreen(), '94-event-new'));
+    testWidgets('the market ($k)', (t) async => page(t, const MarketScreen(), '95-market'));
+    testWidgets('an item for sale ($k)', (t) async => page(t, const ListingScreen(id: 90), '96-listing'));
 
     testWidgets('a school added ($k)', (t) async {
       openPage(await onMe(t), const EduScreen(), full: true);

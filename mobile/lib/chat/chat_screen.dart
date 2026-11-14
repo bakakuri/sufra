@@ -35,7 +35,17 @@ import 'chat_tools.dart';
 import 'chats_tab.dart';
 
 /// Opens a conversation over the whole app (the tab bar steps aside); back returns to where you were.
-Future<void> openChat(BuildContext context, int convId) => openPage(context, ChatScreen(convId: convId), full: true);
+Future<void> openChat(BuildContext context, int convId, {String? draft}) => openPage(context, ChatScreen(convId: convId, draft: draft), full: true);
+
+/// A conversation with someone (made when there is none yet), with words ready to send.
+Future<void> chatWith(BuildContext context, String uid, {String? draft}) async {
+  try {
+    final id = await context.app.api.startDm(uid);
+    if (context.mounted) await openChat(context, id, draft: draft);
+  } catch (e) {
+    if (context.mounted) toast(context, errText(e));
+  }
+}
 
 /// the reactions offered first under a message (chat.js MREACT)
 const messageReactions = ['❤️', '😂', '😮', '😢', '👍', '🍷', '🔥', '🙏'];
@@ -61,8 +71,11 @@ String snip(Message? m) {
 /// edit, delete for everyone, complaint), a double tap for ❤️; who is typing, who has seen it, the pinned message,
 /// disappearing messages.
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key, required this.convId});
+  const ChatScreen({super.key, required this.convId, this.draft});
   final int convId;
+
+  /// words ready in the field (a market item's question)
+  final String? draft;
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
@@ -119,6 +132,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_started) return;
     _started = true;
     app = context.app;
+    if (widget.draft != null) field.text = widget.draft!;
     // after this frame: the tab bar's badge listens to the same store
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) app.chats.opened(widget.convId);

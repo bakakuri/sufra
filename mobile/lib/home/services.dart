@@ -7,6 +7,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../clips/clip_composer.dart';
+import '../community/events.dart';
+import '../community/groups.dart';
+import '../community/market.dart';
+import '../community/pages.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
 import '../feed/post_card.dart';
@@ -89,6 +93,7 @@ const List<(String, String, String, String?)> allServices = [
 /// the services the app opens itself; the others open on the site
 const nativeServices = {
   'classmates', 'albums', 'friends', 'calendar', 'map', 'namedays', 'tree', 'saved', 'storyarch', 'drafts', 'coins', 'verify', 'settings', //
+  'groups', 'group', 'pages', 'pagev', 'events', 'event', 'evnew', 'market',
 };
 
 /// the sections the admin can switch off (promo.js FEATS) that each page belongs to
@@ -136,6 +141,22 @@ Future<void> openService(BuildContext context, String k, {String? arg}) async {
       await openPage(context, const VerifyScreen(), full: true);
     case 'settings':
       await openSettings(context);
+    case 'groups':
+      await openPage(context, const GroupsScreen(), full: true);
+    case 'group':
+      await openPage(context, GroupScreen(id: int.tryParse(arg ?? '') ?? 0), full: true);
+    case 'pages':
+      await openPage(context, const PagesScreen(), full: true);
+    case 'pagev':
+      await openPage(context, PageScreen(id: int.tryParse(arg ?? '') ?? 0), full: true);
+    case 'events':
+      await openPage(context, const EventsScreen(), full: true);
+    case 'event':
+      await openPage(context, EventScreen(id: int.tryParse(arg ?? '') ?? 0), full: true);
+    case 'evnew':
+      await openPage(context, EventFormScreen(groupId: int.tryParse(arg ?? '')), full: true);
+    case 'market':
+      await openPage(context, const MarketScreen(), full: true);
     default:
       await openSite('#$k${arg != null ? '-$arg' : ''}');
   }

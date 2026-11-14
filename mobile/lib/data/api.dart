@@ -31,7 +31,8 @@ abstract class PeeraApi {
   Future<Comment> addComment(int postId, String body, {int? parentId, Map<String, dynamic>? media});
   Future<Media> uploadPhoto(PreparedPhoto p);
   /// a post: now, as a draft, or waiting for [publishAt]; with a place, or quoting another post ([repostOf])
-  Future<Post> createPost(String body, List<Media> media, {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf});
+  Future<Post> createPost(String body, List<Media> media,
+      {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf, int? groupId, int? pageId});
 
   Future<Profile?> person(String uid);
   Future<Counts> counts(String uid);
@@ -458,6 +459,106 @@ abstract class PeeraApi {
 
   /// deletes my account for good (the account function)
   Future<void> deleteAccount();
+
+  // ---------- groups, channels and business pages (community.js) ----------
+
+  static const groupSel = 'id,name,hue,is_private,description,owner,created_at,rules,join_mode,post_approval,avatar_url,kind';
+  static const pageSel = 'id,name,kind,hue,verified,category,owner,description,avatar_url';
+
+  /// the groups I am in (ids) and the newest groups
+  Future<(Set<int>, List<Map<String, dynamic>>)> groups();
+
+  /// one group with its members' count, my role ('owner', 'admin', 'member' or null) and my request ('pending' or null)
+  Future<({Map<String, dynamic> g, int count, String? role, String? request})?> group(int id);
+  Future<List<Post>> groupPosts(int id);
+  Future<int> createGroup({required String name, String description = '', bool private = false, String? avatarUrl});
+  Future<void> updateGroup(int id, Map<String, dynamic> changes);
+  Future<void> deleteGroup(int id);
+  Future<void> joinGroup(int id);
+  Future<void> leaveGroup(int id);
+  Future<void> requestGroup(int id, String? note);
+  Future<void> cancelGroupRequest(int id);
+
+  /// for the group's admins: requests to join, posts waiting, members and their roles
+  Future<List<Map<String, dynamic>>> groupRequests(int id);
+  Future<void> groupRespond(int id, String uid, bool accept);
+  Future<List<Post>> groupPending(int id);
+  Future<void> reviewGroupPost(int postId, bool ok);
+  Future<List<Map<String, dynamic>>> groupMembers(int id);
+  Future<void> setGroupRole(int id, String uid, String role);
+  Future<void> kickFromGroup(int id, String uid);
+
+  /// requests and posts waiting, together (the manage button's badge)
+  Future<int> groupWaiting(int id);
+
+  /// a class's or course's starosta (two at most): who they are, becoming one, stepping down
+  Future<List<String>> groupStarostas(int id, String owner);
+  Future<void> claimStarosta(int id);
+  Future<void> leaveStarosta(int id);
+
+  /// the pages I follow (ids) and the newest pages
+  Future<(Set<int>, List<Map<String, dynamic>>)> pages();
+
+  /// one page with its followers' count and whether I follow it
+  Future<({Map<String, dynamic> p, int count, bool following})?> page(int id);
+  Future<List<Post>> pagePosts(int id);
+  Future<int> createPage({required String kind, required String name, String category = '', String description = '', String? avatarUrl});
+  Future<void> updatePage(int id, Map<String, dynamic> changes);
+  Future<void> deletePage(int id);
+  Future<void> followPage(int id, bool on);
+
+  /// staff: the blue mark on a page
+  Future<void> verifyPage(int id, bool on);
+
+  /// a page owner's ads: post, budget, spent, status
+  Future<List<Map<String, dynamic>>> pageAds(int id);
+
+  // ---------- events and the evening's planning (community.js) ----------
+
+  /// events from yesterday on, and who answered what
+  Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)> events();
+
+  /// one event: itself, the answers, and the list of who brings what
+  Future<(Map<String, dynamic>, List<Map<String, dynamic>>, List<Map<String, dynamic>>)?> event(int id);
+  Future<void> rsvp(int id, String status);
+  Future<void> addEventItem(int id, String name);
+  Future<void> claimEventItem(int itemId, bool on);
+  Future<void> deleteEventItem(int itemId);
+  Future<void> deleteEvent(int id);
+  Future<int> createEvent({required String title, required DateTime startsAt, required String place, String description = '', String? tamada, int? groupId, List<String> items = const []});
+  Future<void> setTamada(int id, String? uid);
+
+  /// the agenda (event_toasts): rows with pos, title, done, toast_id
+  Future<List<Map<String, dynamic>>> eventAgenda(int id);
+  Future<void> addAgenda(int id, List<(String, int?)> rows, int afterPos);
+  Future<void> agendaDone(int rowId, bool done);
+  Future<void> agendaPos(int rowId, int pos);
+  Future<void> agendaDelete(int rowId);
+
+  /// the toast book's titles, and one toast's text
+  Future<List<Map<String, dynamic>>> toastBook();
+  Future<Map<String, dynamic>?> toastText(int id);
+
+  /// shared costs and the payments between people
+  Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)> eventCosts(int id);
+  Future<void> addEventCost(int id, String paidBy, double amount, String what);
+  Future<void> deleteEventCost(int costId);
+  Future<void> addEventPayment(int id, String from, String to, double amount);
+  Future<void> deleteEventPayment(int payId);
+
+  /// friends invited (how many were new), the event's album (made when missing)
+  Future<int> inviteToEvent(int id, List<String> users);
+  Future<int?> eventAlbum(int id);
+  Future<int> makeEventAlbum(int id, String title);
+
+  // ---------- the market (community.js) ----------
+
+  Future<List<Map<String, dynamic>>> listings({String cat = 'all', String q = ''});
+  Future<(Map<String, dynamic>, bool)?> listing(int id);
+  Future<void> saveListing(int id, bool on);
+  Future<void> setListingStatus(int id, String status);
+  Future<void> deleteListing(int id);
+  Future<void> createListing({required String title, required double price, required String category, required String city, String description = '', List<Media> media = const []});
 }
 
 class SupaApi implements PeeraApi {
@@ -588,7 +689,8 @@ class SupaApi implements PeeraApi {
   }
 
   @override
-  Future<Post> createPost(String body, List<Media> media, {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf}) async {
+  Future<Post> createPost(String body, List<Media> media,
+      {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf, int? groupId, int? pageId}) async {
     final r = await sb
         .from('posts')
         .insert({
@@ -598,6 +700,8 @@ class SupaApi implements PeeraApi {
           if (poll != null) 'poll': {'q': poll.q, 'opts': poll.opts},
           if (placeId != null) 'place_id': placeId,
           if (repostOf != null) 'repost_of': repostOf,
+          if (groupId != null) 'group_id': groupId,
+          if (pageId != null) 'page_id': pageId,
           if (draft) 'draft': true,
           if (publishAt != null) 'publish_at': publishAt.toUtc().toIso8601String(),
           if (media.length == 1 && media.first.isVideo && RegExp(r'#კლიპი|#clip', caseSensitive: false).hasMatch(body)) 'is_clip': true,
@@ -1879,4 +1983,315 @@ class SupaApi implements PeeraApi {
     final d = r.data;
     if (d is! Map || d['ok'] != true) throw Exception(d is Map && d['error'] != null ? '${d['error']}' : 'ანგარიში ვერ წაიშალა');
   }
+  @override
+  Future<(Set<int>, List<Map<String, dynamic>>)> groups() async {
+    final mine = sb.from('group_members').select('group_id').eq('user_id', myId);
+    final all = sb.from('groups').select(PeeraApi.groupSel).order('created_at', ascending: false).limit(60);
+    return ({for (final r in await mine) asInt(r['group_id'])}, await all);
+  }
+
+  @override
+  Future<({Map<String, dynamic> g, int count, String? role, String? request})?> group(int id) async {
+    final g = await sb.from('groups').select(PeeraApi.groupSel).eq('id', id).maybeSingle();
+    if (g == null) return null;
+    final n = await sb.from('group_members').count(CountOption.exact).eq('group_id', id);
+    final me = await sb.from('group_members').select('role').eq('group_id', id).eq('user_id', myId).maybeSingle();
+    Map<String, dynamic>? req;
+    try {
+      req = await sb.from('group_requests').select('status').eq('group_id', id).eq('user_id', myId).maybeSingle();
+    } catch (_) {}
+    final role = g['owner'] == myId ? 'owner' : (me == null ? null : (me['role'] == 'admin' ? 'admin' : 'member'));
+    return (g: g, count: n, role: role, request: req?['status'] == 'pending' ? 'pending' : null);
+  }
+
+  @override
+  Future<List<Post>> groupPosts(int id) async =>
+      _hydrate(await _posts().eq('group_id', id).or('pending.eq.false,author.eq.$myId').order('created_at', ascending: false).limit(40));
+
+  @override
+  Future<int> createGroup({required String name, String description = '', bool private = false, String? avatarUrl}) async {
+    final g = await sb
+        .from('groups')
+        .insert({'owner': myId, 'name': name, 'description': description, 'is_private': private, 'hue': DateTime.now().microsecond % 360, 'avatar_url': avatarUrl})
+        .select('id')
+        .single();
+    final id = asInt(g['id']);
+    await sb.from('group_members').insert({'group_id': id, 'user_id': myId});
+    return id;
+  }
+
+  @override
+  Future<void> updateGroup(int id, Map<String, dynamic> changes) => sb.from('groups').update(changes).eq('id', id);
+
+  @override
+  Future<void> deleteGroup(int id) => sb.from('groups').delete().eq('id', id);
+
+  @override
+  Future<void> joinGroup(int id) => sb.from('group_members').insert({'group_id': id, 'user_id': myId});
+
+  @override
+  Future<void> leaveGroup(int id) => sb.from('group_members').delete().eq('group_id', id).eq('user_id', myId);
+
+  @override
+  Future<void> requestGroup(int id, String? note) => sb
+      .from('group_requests')
+      .upsert({'group_id': id, 'user_id': myId, 'note': note, 'status': 'pending', 'created_at': DateTime.now().toUtc().toIso8601String()}, onConflict: 'group_id,user_id');
+
+  @override
+  Future<void> cancelGroupRequest(int id) => sb.from('group_requests').delete().eq('group_id', id).eq('user_id', myId);
+
+  @override
+  Future<List<Map<String, dynamic>>> groupRequests(int id) async =>
+      await sb.from('group_requests').select('user_id,note,created_at').eq('group_id', id).eq('status', 'pending').order('created_at');
+
+  @override
+  Future<void> groupRespond(int id, String uid, bool accept) => sb.rpc('group_respond', params: {'p_group': id, 'p_user': uid, 'p_accept': accept});
+
+  @override
+  Future<List<Post>> groupPending(int id) async => _hydrate(await _posts().eq('group_id', id).eq('pending', true).order('created_at').limit(40));
+
+  @override
+  Future<void> reviewGroupPost(int postId, bool ok) async {
+    await sb.rpc('group_review_post', params: {'p_post': postId, 'p_ok': ok});
+    if (!ok) await sb.from('posts').delete().eq('id', postId);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> groupMembers(int id) async =>
+      await sb.from('group_members').select('user_id,role,created_at').eq('group_id', id).order('created_at').limit(500);
+
+  @override
+  Future<void> setGroupRole(int id, String uid, String role) => sb.rpc('group_set_role', params: {'p_group': id, 'p_user': uid, 'p_role': role});
+
+  @override
+  Future<void> kickFromGroup(int id, String uid) => sb.from('group_members').delete().eq('group_id', id).eq('user_id', uid);
+
+  @override
+  Future<int> groupWaiting(int id) async {
+    final a = await sb.from('group_requests').count(CountOption.exact).eq('group_id', id).eq('status', 'pending');
+    final b = await sb.from('posts').count(CountOption.exact).eq('group_id', id).eq('pending', true);
+    return a + b;
+  }
+
+  @override
+  Future<List<String>> groupStarostas(int id, String owner) async => [
+        for (final r in await sb.from('group_members').select('user_id').eq('group_id', id).eq('role', 'admin').limit(5))
+          if ('${r['user_id']}' != owner) '${r['user_id']}',
+      ];
+
+  @override
+  Future<void> claimStarosta(int id) => sb.rpc('claim_starosta', params: {'p_group': id});
+
+  @override
+  Future<void> leaveStarosta(int id) => sb.rpc('leave_starosta', params: {'p_group': id});
+
+  @override
+  Future<(Set<int>, List<Map<String, dynamic>>)> pages() async {
+    final f = sb.from('page_follows').select('page_id').eq('user_id', myId);
+    final all = sb.from('pages').select(PeeraApi.pageSel).order('created_at', ascending: false).limit(80);
+    return ({for (final r in await f) asInt(r['page_id'])}, await all);
+  }
+
+  @override
+  Future<({Map<String, dynamic> p, int count, bool following})?> page(int id) async {
+    final p = await sb.from('pages').select(PeeraApi.pageSel).eq('id', id).maybeSingle();
+    if (p == null) return null;
+    final n = await sb.from('page_follows').count(CountOption.exact).eq('page_id', id);
+    final f = await sb.from('page_follows').select('page_id').eq('page_id', id).eq('user_id', myId).maybeSingle();
+    return (p: p, count: n, following: f != null);
+  }
+
+  @override
+  Future<List<Post>> pagePosts(int id) async => _hydrate(await _posts().eq('page_id', id).order('created_at', ascending: false).limit(40));
+
+  @override
+  Future<int> createPage({required String kind, required String name, String category = '', String description = '', String? avatarUrl}) async {
+    final p = await sb
+        .from('pages')
+        .insert({'owner': myId, 'kind': kind, 'name': name, 'category': category, 'description': description, 'hue': DateTime.now().microsecond % 360, 'avatar_url': avatarUrl})
+        .select('id')
+        .single();
+    final id = asInt(p['id']);
+    try {
+      await sb.from('page_follows').insert({'page_id': id, 'user_id': myId});
+    } catch (_) {}
+    return id;
+  }
+
+  @override
+  Future<void> updatePage(int id, Map<String, dynamic> changes) => sb.from('pages').update(changes).eq('id', id);
+
+  @override
+  Future<void> deletePage(int id) => sb.from('pages').delete().eq('id', id);
+
+  @override
+  Future<void> followPage(int id, bool on) =>
+      on ? sb.from('page_follows').insert({'page_id': id, 'user_id': myId}) : sb.from('page_follows').delete().eq('page_id', id).eq('user_id', myId);
+
+  @override
+  Future<void> verifyPage(int id, bool on) => sb.rpc('admin_verify_page', params: {'p_page': id, 'p_verified': on});
+
+  @override
+  Future<List<Map<String, dynamic>>> pageAds(int id) async =>
+      await sb.from('ads').select('id,post_id,budget,spent,status,created_at').eq('page_id', id).order('created_at', ascending: false);
+  @override
+  Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)> events() async {
+    final ev = await sb
+        .from('events')
+        .select('id,title,starts_at,place,host,hue')
+        .gte('starts_at', DateTime.now().subtract(const Duration(days: 1)).toUtc().toIso8601String())
+        .order('starts_at')
+        .limit(60);
+    final ids = [for (final e in ev) asInt(e['id'])];
+    final rs = ids.isEmpty ? <Map<String, dynamic>>[] : await sb.from('event_rsvps').select('event_id,user_id,status').inFilter('event_id', ids);
+    return (ev, rs);
+  }
+
+  @override
+  Future<(Map<String, dynamic>, List<Map<String, dynamic>>, List<Map<String, dynamic>>)?> event(int id) async {
+    final e = await sb.from('events').select().eq('id', id).maybeSingle();
+    if (e == null) return null;
+    final rs = await sb.from('event_rsvps').select('user_id,status').eq('event_id', id);
+    final items = await sb.from('event_items').select('id,name,added_by,claimed_by').eq('event_id', id).order('id');
+    return (e, rs, items);
+  }
+
+  @override
+  Future<void> rsvp(int id, String status) => sb.from('event_rsvps').upsert({'event_id': id, 'user_id': myId, 'status': status}, onConflict: 'event_id,user_id');
+
+  @override
+  Future<void> addEventItem(int id, String name) => sb.from('event_items').insert({'event_id': id, 'name': name, 'added_by': myId, 'claimed_by': myId});
+
+  @override
+  Future<void> claimEventItem(int itemId, bool on) => sb.from('event_items').update({'claimed_by': on ? myId : null}).eq('id', itemId);
+
+  @override
+  Future<void> deleteEventItem(int itemId) => sb.from('event_items').delete().eq('id', itemId);
+
+  @override
+  Future<void> deleteEvent(int id) => sb.from('events').delete().eq('id', id);
+
+  @override
+  Future<int> createEvent({required String title, required DateTime startsAt, required String place, String description = '', String? tamada, int? groupId, List<String> items = const []}) async {
+    final ev = await sb
+        .from('events')
+        .insert({
+          'host': myId,
+          'title': title,
+          'starts_at': startsAt.toUtc().toIso8601String(),
+          'place': place,
+          'description': description,
+          'tamada': tamada,
+          'group_id': groupId,
+          'hue': DateTime.now().microsecond % 360,
+        })
+        .select('id')
+        .single();
+    final id = asInt(ev['id']);
+    if (items.isNotEmpty) {
+      await sb.from('event_items').insert([for (final n in items.take(30)) {'event_id': id, 'name': n.length > 60 ? n.substring(0, 60) : n, 'added_by': myId}]);
+    }
+    await sb.from('event_rsvps').insert({'event_id': id, 'user_id': myId, 'status': 'yes'});
+    return id;
+  }
+
+  @override
+  Future<void> setTamada(int id, String? uid) => sb.from('events').update({'tamada': uid}).eq('id', id);
+
+  @override
+  Future<List<Map<String, dynamic>>> eventAgenda(int id) async => await sb.from('event_toasts').select('id,pos,title,done,toast_id').eq('event_id', id).order('pos').order('id');
+
+  @override
+  Future<void> addAgenda(int id, List<(String, int?)> rows, int afterPos) => sb.from('event_toasts').insert([
+        for (var i = 0; i < rows.length; i++)
+          {'event_id': id, 'pos': afterPos + i + 1, 'title': rows[i].$1.length > 120 ? rows[i].$1.substring(0, 120) : rows[i].$1, 'toast_id': rows[i].$2},
+      ]);
+
+  @override
+  Future<void> agendaDone(int rowId, bool done) => sb.from('event_toasts').update({'done': done}).eq('id', rowId);
+
+  @override
+  Future<void> agendaPos(int rowId, int pos) => sb.from('event_toasts').update({'pos': pos}).eq('id', rowId);
+
+  @override
+  Future<void> agendaDelete(int rowId) => sb.from('event_toasts').delete().eq('id', rowId);
+
+  @override
+  Future<List<Map<String, dynamic>>> toastBook() async => await sb.from('toasts').select('id,title,occasion').eq('hidden', false).order('likes', ascending: false).limit(80);
+
+  @override
+  Future<Map<String, dynamic>?> toastText(int id) async => await sb.from('toasts').select('title,body').eq('id', id).maybeSingle();
+
+  @override
+  Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)> eventCosts(int id) async {
+    final c = sb.from('event_costs').select('id,paid_by,amount,what,added_by').eq('event_id', id).order('id');
+    final p = sb.from('event_payments').select('id,from_user,to_user,amount,added_by').eq('event_id', id).order('id');
+    return (await c, await p);
+  }
+
+  @override
+  Future<void> addEventCost(int id, String paidBy, double amount, String what) =>
+      sb.from('event_costs').insert({'event_id': id, 'paid_by': paidBy, 'amount': (amount * 100).round() / 100, 'what': what, 'added_by': myId});
+
+  @override
+  Future<void> deleteEventCost(int costId) => sb.from('event_costs').delete().eq('id', costId);
+
+  @override
+  Future<void> addEventPayment(int id, String from, String to, double amount) =>
+      sb.from('event_payments').insert({'event_id': id, 'from_user': from, 'to_user': to, 'amount': (amount * 100).round() / 100, 'added_by': myId});
+
+  @override
+  Future<void> deleteEventPayment(int payId) => sb.from('event_payments').delete().eq('id', payId);
+
+  @override
+  Future<int> inviteToEvent(int id, List<String> users) async => asInt(await sb.rpc('invite_to_event', params: {'p_event': id, 'p_users': users}));
+
+  @override
+  Future<int?> eventAlbum(int id) async {
+    final a = await sb.from('albums').select('id').eq('event_id', id).order('id').limit(1).maybeSingle();
+    return a == null ? null : asInt(a['id']);
+  }
+
+  @override
+  Future<int> makeEventAlbum(int id, String title) async =>
+      asInt((await sb.from('albums').insert({'owner': myId, 'title': title.length > 80 ? title.substring(0, 80) : title, 'event_id': id, 'audience': 'members'}).select('id').single())['id']);
+
+  @override
+  Future<List<Map<String, dynamic>>> listings({String cat = 'all', String q = ''}) async {
+    var b = sb.from('listings').select('id,title,price,city,media,status,seller,category,created_at').eq('hidden', false);
+    if (cat != 'all') b = b.eq('category', cat);
+    final s = _like(q);
+    if (s.isNotEmpty) b = b.ilike('title', '%$s%');
+    return await b.order('created_at', ascending: false).limit(60);
+  }
+
+  @override
+  Future<(Map<String, dynamic>, bool)?> listing(int id) async {
+    final i = await sb.from('listings').select().eq('id', id).maybeSingle();
+    if (i == null) return null;
+    final sv = await sb.from('listing_saves').select('listing_id').eq('listing_id', id).eq('user_id', myId).maybeSingle();
+    return (i, sv != null);
+  }
+
+  @override
+  Future<void> saveListing(int id, bool on) =>
+      on ? sb.from('listing_saves').insert({'listing_id': id, 'user_id': myId}) : sb.from('listing_saves').delete().eq('listing_id', id).eq('user_id', myId);
+
+  @override
+  Future<void> setListingStatus(int id, String status) => sb.from('listings').update({'status': status}).eq('id', id);
+
+  @override
+  Future<void> deleteListing(int id) => sb.from('listings').delete().eq('id', id);
+
+  @override
+  Future<void> createListing({required String title, required double price, required String category, required String city, String description = '', List<Media> media = const []}) =>
+      sb.from('listings').insert({
+        'seller': myId,
+        'title': title,
+        'price': price < 0 ? 0 : price,
+        'category': category,
+        'city': city,
+        'description': description,
+        'media': media.map((m) => m.toJson()).toList(),
+      });
 }

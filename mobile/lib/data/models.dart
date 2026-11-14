@@ -84,6 +84,8 @@ class Post {
     this.groupName,
     this.placeName,
     this.placeId,
+    this.groupId,
+    this.pageId,
     this.hidden = false,
     this.pending = false,
     this.tags = const [],
@@ -106,6 +108,9 @@ class Post {
   final Profile? ap;
   final String? pageName, groupName, placeName;
   final int? placeId;
+
+  /// the group it was posted in, the page it was posted as
+  final int? groupId, pageId;
 
   /// the shared post, for reposts
   Post? original;
@@ -142,6 +147,8 @@ class Post {
       groupName: _map(j['grp'])?['name'] as String?,
       placeName: _map(j['pl'])?['name'] as String?,
       placeId: _map(j['pl'])?['id'] == null ? null : asInt(_map(j['pl'])!['id']),
+      groupId: j['group_id'] == null ? null : asInt(j['group_id']),
+      pageId: j['page_id'] == null ? null : asInt(j['page_id']),
       hidden: j['hidden'] == true,
       pending: j['pending'] == true,
       tags: j['tags'] is List ? (j['tags'] as List).map((x) => '$x').toList() : const [],
