@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:peera/admin/admin.dart';
 import 'package:peera/calls/rooms.dart';
 import 'package:peera/community/events.dart';
 import 'package:peera/community/groups.dart';
@@ -760,6 +761,9 @@ void main() {
     testWidgets('the toast book ($k)', (t) async => page(t, const ToastsScreen(), '116-toasts'));
     testWidgets('rooms ($k)', (t) async => page(t, const RoomsScreen(), '117-rooms'));
     testWidgets('discussions ($k)', (t) async => page(t, const RoomsScreen(kind: 'birja'), '118-discussions'));
+    testWidgets('the team panel ($k)', (t) async => page(t, const AdminScreen(), '119-admin'));
+    testWidgets('the team panel: reports ($k)', (t) async => page(t, const AdminScreen(tab: 'reports'), '120-admin-reports'));
+    testWidgets("the team panel: Peera's own ad ($k)", (t) async => page(t, const PromoEditor(), '121-admin-promo'));
 
     testWidgets('a school added ($k)', (t) async {
       openPage(await onMe(t), const EduScreen(), full: true);

@@ -702,6 +702,59 @@ abstract class PeeraApi {
 
   /// a room's channel: who is in it and what they send
   RoomLink roomLink(int id);
+  // ---------- the team's panel (admin.js; without the games, the shop, payouts and the coin promotion) ----------
+
+  /// the numbers: people, the last day, what is on the site, what waits (open_reports, pending_verifications, pending_ads)
+  Future<Map<String, dynamic>> adminStats();
+
+  /// reports by status ('open', 'resolved', 'dismissed')
+  Future<List<Map<String, dynamic>>> reports(String status);
+
+  /// the reported things themselves, by 'type:id'
+  Future<Map<String, Map<String, dynamic>>> reportTargets(Map<String, List<String>> ids);
+  Future<void> resolveReport(int id, String status);
+  Future<void> adminDelete(String table, int id);
+  Future<void> adminBan(String uid, bool banned);
+
+  /// verification requests waiting, each with a selfie link good for ten minutes
+  Future<List<Map<String, dynamic>>> verifyRequests();
+  Future<void> adminVerify(int request, bool approve);
+
+  /// pages' ads waiting or running, with their posts
+  Future<List<({Map<String, dynamic> ad, Post? post})>> adsToReview();
+  Future<void> reviewAd(int id, bool approve);
+
+  /// people: by name or @username, new, limited, the team, verified (with when they came)
+  Future<List<(Profile, DateTime)>> adminUsers({String q = '', String filter = 'new'});
+  Future<Map<String, dynamic>> adminUserInfo(String uid);
+  Future<void> adminNotifyUser(String uid, String text);
+  Future<void> adminUnverify(String uid);
+  Future<void> adminSetRole(String uid, String role);
+
+  Future<List<Map<String, dynamic>>> adminPages(String q);
+
+  Future<List<String>> badWords();
+  Future<void> addBadWord(String w);
+  Future<void> deleteBadWord(String w);
+
+  /// everything of a kind, the newest first, by words, the hidden only
+  Future<List<Map<String, dynamic>>> adminContent(String table, String cols, {String? textCol, String q = '', bool hiddenOnly = false, int from = 0});
+
+  /// Peera's own ads (in the feed and among the stories)
+  Future<List<Map<String, dynamic>>> adminPromos();
+  Future<void> savePromo(Map<String, dynamic> row, {int? id});
+  Future<void> setPromoActive(int id, bool on);
+  Future<void> deletePromo(int id);
+
+  /// a notification to many ([dry]: only how many would get it)
+  Future<int> broadcast({required String text, String? link, required String aud, String? region, bool dry = false});
+  Future<List<Map<String, dynamic>>> broadcasts();
+  Future<void> setAppSetting(String key, Map<String, dynamic> value);
+
+  /// the errors from people's phones (the last two weeks)
+  Future<List<Map<String, dynamic>>> clientErrors();
+  Future<void> deleteClientErrors(String msg, String? src);
+  Future<List<Map<String, dynamic>>> adminLog();
 }
 
 /// A room's realtime channel ('room-<id>'): presence (who is in, with their name, microphone and camera) and the
@@ -2940,6 +2993,188 @@ class SupaApi implements PeeraApi {
 
   @override
   RoomLink roomLink(int id) => _SupaRoomLink(sb, id, myId);
+  // ---------- the team's panel ----------
+  @override
+  Future<Map<String, dynamic>> adminStats() async {
+    final r = await sb.rpc('admin_stats');
+    return r is Map ? Map<String, dynamic>.from(r) : <String, dynamic>{};
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> reports(String status) async => await sb
+      .from('reports')
+      .select('id,reporter,target_type,target_id,reason,details,status,created_at')
+      .eq('status', status)
+      .order('created_at', ascending: status == 'open')
+      .limit(80);
+
+  static const _targetSel = {
+    'post': ('posts', 'id,author,body,media,hidden,created_at'),
+    'comment': ('comments', 'id,author,body,post_id,hidden'),
+    'listing': ('listings', 'id,seller,title,media,hidden'),
+    'page': ('pages', 'id,name,owner,verified'),
+    'story': ('stories', 'id,author,media_url,media_type'),
+    'event': ('events', 'id,title,host'),
+    'place': ('places', 'id,name,about,photo,created_by,hidden'),
+    'review': ('place_reviews', 'id,author,body,photos,place_id,hidden'),
+    'toast': ('toasts', 'id,author,title,body,hidden'),
+    'help': ('help_requests', 'id,author,title,body,media,hidden'),
+  };
+
+  @override
+  Future<Map<String, Map<String, dynamic>>> reportTargets(Map<String, List<String>> ids) async {
+    final out = <String, Map<String, dynamic>>{};
+    await Future.wait([
+      for (final e in ids.entries)
+        if (_targetSel[e.key] case final t?)
+          () async {
+            final n = [for (final x in e.value) if (int.tryParse(x) != null) int.parse(x)];
+            if (n.isEmpty) return;
+            try {
+              for (final r in await sb.from(t.$1).select(t.$2).inFilter('id', n)) {
+                out['${e.key}:${r['id']}'] = r;
+              }
+            } catch (_) {}
+          }(),
+    ]);
+    return out;
+  }
+
+  @override
+  Future<void> resolveReport(int id, String status) => sb.rpc('admin_resolve_report', params: {'p_id': id, 'p_status': status});
+
+  @override
+  Future<void> adminDelete(String table, int id) => sb.from(table).delete().eq('id', id);
+
+  @override
+  Future<void> adminBan(String uid, bool banned) => sb.rpc('admin_ban', params: {'p_user': uid, 'p_banned': banned});
+
+  @override
+  Future<List<Map<String, dynamic>>> verifyRequests() async {
+    final rows = await sb.from('verification_requests').select('id,user_id,selfie_url,created_at').eq('status', 'pending').order('created_at').limit(30);
+    if (rows.isEmpty) return rows;
+    final urls = <String, String>{};
+    try {
+      for (final s in await sb.storage.from('verify').createSignedUrls([for (final r in rows) '${r['selfie_url']}'], 600)) {
+        if (s.signedUrl.isNotEmpty) urls[s.path] = s.signedUrl;
+      }
+    } catch (_) {}
+    return [for (final r in rows) {...r, 'signed': urls['${r['selfie_url']}']}];
+  }
+
+  @override
+  Future<void> adminVerify(int request, bool approve) => sb.rpc('admin_verify', params: {'p_req': request, 'p_approve': approve});
+
+  @override
+  Future<List<({Map<String, dynamic> ad, Post? post})>> adsToReview() async {
+    final rows = await sb
+        .from('ads')
+        .select('id,page_id,post_id,budget,spent,status,created_at,page:pages!ads_page_id_fkey(id,name,hue,verified)')
+        .inFilter('status', ['pending', 'active'])
+        .order('created_at', ascending: false)
+        .limit(40);
+    final ids = [for (final r in rows) r['post_id']];
+    final posts = ids.isEmpty ? <Post>[] : await _hydrate(await _posts().inFilter('id', ids));
+    return [for (final r in rows) (ad: r, post: posts.where((p) => p.id == asInt(r['post_id'])).firstOrNull)];
+  }
+
+  @override
+  Future<void> reviewAd(int id, bool approve) => sb.rpc('admin_review_ad', params: {'p_ad': id, 'p_approve': approve});
+
+  @override
+  Future<List<(Profile, DateTime)>> adminUsers({String q = '', String filter = 'new'}) async {
+    var b = sb.from('profiles').select('$personSel,created_at');
+    final t = _like(q.replaceFirst(RegExp('^@'), ''));
+    if (t.isNotEmpty) b = b.or('name.ilike.%$t%,username.ilike.%$t%');
+    if (filter == 'banned') {
+      b = b.eq('banned', true);
+    } else if (filter == 'staff') {
+      b = b.inFilter('role', ['admin', 'moderator']);
+    } else if (filter == 'verified') {
+      b = b.eq('verified', true);
+    }
+    final rows = await b.order('created_at', ascending: false).limit(40);
+    return [for (final r in rows) (Profile.fromJson(r), asTime(r['created_at']))];
+  }
+
+  @override
+  Future<Map<String, dynamic>> adminUserInfo(String uid) async {
+    final r = await sb.rpc('admin_user_info', params: {'p_user': uid});
+    return r is Map ? Map<String, dynamic>.from(r) : <String, dynamic>{};
+  }
+
+  @override
+  Future<void> adminNotifyUser(String uid, String text) => sb.rpc('admin_notify_user', params: {'p_user': uid, 'p_text': text});
+
+  @override
+  Future<void> adminUnverify(String uid) => sb.rpc('admin_unverify', params: {'p_user': uid});
+
+  @override
+  Future<void> adminSetRole(String uid, String role) => sb.rpc('admin_set_role', params: {'p_user': uid, 'p_role': role});
+
+  @override
+  Future<List<Map<String, dynamic>>> adminPages(String q) async {
+    var b = sb.from('pages').select('id,name,kind,hue,verified,category,owner,created_at,avatar_url');
+    final t = _like(q);
+    if (t.isNotEmpty) b = b.ilike('name', '%$t%');
+    return await b.order('created_at', ascending: false).limit(40);
+  }
+
+  @override
+  Future<List<String>> badWords() async => [for (final r in await sb.from('bad_words').select('word').order('word')) '${r['word']}'];
+
+  @override
+  Future<void> addBadWord(String w) => sb.from('bad_words').insert({'word': w});
+
+  @override
+  Future<void> deleteBadWord(String w) => sb.from('bad_words').delete().eq('word', w);
+
+  @override
+  Future<List<Map<String, dynamic>>> adminContent(String table, String cols, {String? textCol, String q = '', bool hiddenOnly = false, int from = 0}) async {
+    var b = sb.from(table).select(cols);
+    final t = q.replaceAll(RegExp(r'[%_,()]'), ' ').trim();
+    if (t.isNotEmpty && textCol != null) b = b.ilike(textCol, '%$t%');
+    if (hiddenOnly) b = b.eq('hidden', true);
+    return await b.order('created_at', ascending: false).range(from, from + 39);
+  }
+
+  static const _promoSel = 'id,kind,brand,brand_url,title,body,media_url,media_type,w,h,link,cta,every,starts_at,ends_at,active,reach,clicks,created_at';
+
+  @override
+  Future<List<Map<String, dynamic>>> adminPromos() async => await sb.from('promos').select(_promoSel).order('created_at', ascending: false).limit(60);
+
+  @override
+  Future<void> savePromo(Map<String, dynamic> row, {int? id}) => id == null ? sb.from('promos').insert(row) : sb.from('promos').update(row).eq('id', id);
+
+  @override
+  Future<void> setPromoActive(int id, bool on) => sb.from('promos').update({'active': on}).eq('id', id);
+
+  @override
+  Future<void> deletePromo(int id) => sb.from('promos').delete().eq('id', id);
+
+  @override
+  Future<int> broadcast({required String text, String? link, required String aud, String? region, bool dry = false}) async =>
+      asInt(await sb.rpc('admin_broadcast', params: {'p_text': text, 'p_link': link, 'p_aud': aud, 'p_region': region, 'p_dry': dry}));
+
+  @override
+  Future<List<Map<String, dynamic>>> broadcasts() async => await sb.from('broadcasts').select('id,sent_by,text,link,audience,sent,created_at').order('created_at', ascending: false).limit(30);
+
+  @override
+  Future<void> setAppSetting(String key, Map<String, dynamic> value) => sb.from('app_settings').upsert({'key': key, 'value': value}, onConflict: 'key');
+
+  @override
+  Future<List<Map<String, dynamic>>> clientErrors() async =>
+      await sb.from('client_errors').select('id,user_id,created_at,msg,src,line,col,stack,page,ua,ver').order('created_at', ascending: false).limit(400);
+
+  @override
+  Future<void> deleteClientErrors(String msg, String? src) {
+    var b = sb.from('client_errors').delete().eq('msg', msg);
+    b = src == null ? b.isFilter('src', null) : b.eq('src', src);
+    return b;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> adminLog() async => await sb.from('admin_log').select('id,actor,action,target,detail,created_at').order('created_at', ascending: false).limit(100);
 }
 
 class _SupaRoomLink implements RoomLink {

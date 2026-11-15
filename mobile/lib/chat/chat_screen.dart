@@ -842,7 +842,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         Row(children: [
                           if (ttl != null) ...[
                             PIcon('timer', size: 13, color: c.muted),
-                            Text(' ${ttlNames[ttl] ?? ''}${sub.isEmpty ? '' : ' · '}', style: TextStyle(fontSize: 12.5, color: c.muted)),
+                            Flexible(child: Text(' ${ttlNames[ttl] ?? ''}${sub.isEmpty ? '' : ' · '}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: c.muted))),
                           ],
                           Flexible(
                             child: Text(sub,

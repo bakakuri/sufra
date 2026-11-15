@@ -2306,6 +2306,169 @@ class FakeApi implements PeeraApi {
 
   @override
   RoomLink roomLink(int id) => links[id] = FakeRoomLink(id);
+
+  // ---------- the team's panel ----------
+  final reportRows = <Map<String, dynamic>>[
+    {'id': 1, 'reporter': 'u3', 'target_type': 'post', 'target_id': '105', 'reason': 'სპამი', 'details': 'იგივე რეკლამა ყველგან', 'status': 'open', 'created_at': DateTime.now().subtract(const Duration(hours: 3)).toIso8601String()},
+    {'id': 2, 'reporter': 'u4', 'target_type': 'post', 'target_id': '105', 'reason': 'შეურაცხყოფა', 'details': null, 'status': 'open', 'created_at': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String()},
+    {'id': 3, 'reporter': 'u2', 'target_type': 'user', 'target_id': 'u6', 'reason': 'ყალბი პროფილი', 'details': null, 'status': 'open', 'created_at': DateTime.now().subtract(const Duration(hours: 1)).toIso8601String()},
+  ];
+  final words = <String>['ცუდი'];
+  final adminPromoRows = <Map<String, dynamic>>[
+    {
+      'id': 1, 'kind': 'post', 'brand': 'Peera', 'brand_url': null, 'title': 'ახალი სასწავლო ოთახები', 'body': 'ისწავლე კურსელებთან ერთად', 'media_url': null, 'media_type': 'image', //
+      'w': null, 'h': null, 'link': '#rooms', 'cta': 'ნახვა', 'every': 8, 'starts_at': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(), 'ends_at': null,
+      'active': true, 'reach': 1200, 'clicks': 84, 'created_at': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
+    },
+  ];
+  final sentBroadcasts = <Map<String, dynamic>>[];
+
+  @override
+  Future<Map<String, dynamic>> adminStats() async => {
+        'users': 1520, 'users_today': 12, 'active_today': 340, 'active_week': 910, 'posts_today': 88, 'comments_today': 240, 'messages_today': 1300, 'stories_live': 41, //
+        'groups': 36, 'pages': 18, 'events_soon': 7, 'rooms_live': 3, 'listings': 64, 'recipes': 22, 'promos_live': 1, 'banned': 4, 'coins_total': 120400,
+        'open_reports': reportRows.where((r) => r['status'] == 'open').length, 'pending_verifications': 1, 'pending_ads': 1,
+        'days': [for (var i = 13; i >= 0; i--) {'d': DateTime.now().subtract(Duration(days: i)).toIso8601String().substring(0, 10), 'users': 5 + i % 4, 'posts': 40 + i * 3}],
+      };
+
+  @override
+  Future<List<Map<String, dynamic>>> reports(String status) async => [for (final r in reportRows) if (r['status'] == status) {...r}];
+
+  @override
+  Future<Map<String, Map<String, dynamic>>> reportTargets(Map<String, List<String>> ids) async => {
+        for (final id in ids['post'] ?? const <String>[])
+          if ([..._posts, ..._orig.values].where((p) => '${p.id}' == id).firstOrNull case final p?) 'post:$id': {'id': p.id, 'author': p.author, 'body': p.body, 'media': [], 'hidden': false},
+      };
+
+  @override
+  Future<void> resolveReport(int id, String status) async {
+    calls.add('resolve report $id $status');
+    reportRows.firstWhere((r) => r['id'] == id)['status'] = status;
+  }
+
+  @override
+  Future<void> adminDelete(String table, int id) async => calls.add('delete $table $id');
+  @override
+  Future<void> adminBan(String uid, bool banned) async => calls.add('ban $uid $banned');
+
+  @override
+  Future<List<Map<String, dynamic>>> verifyRequests() async => [
+        {'id': 5, 'user_id': 'u5', 'selfie_url': 'u5/selfie.jpg', 'signed': null, 'created_at': DateTime.now().subtract(const Duration(hours: 5)).toIso8601String()},
+      ];
+  @override
+  Future<void> adminVerify(int request, bool approve) async => calls.add('verify $request $approve');
+
+  @override
+  Future<List<({Map<String, dynamic> ad, Post? post})>> adsToReview() async => [
+        (
+          ad: {'id': 9, 'page_id': 2, 'post_id': 101, 'budget': 500, 'spent': 0, 'status': 'pending', 'page': {'id': 2, 'name': 'მთის ტურები', 'hue': 140, 'verified': false}},
+          post: _posts.firstWhere((p) => p.id == 101),
+        ),
+      ];
+  @override
+  Future<void> reviewAd(int id, bool approve) async => calls.add('ad $id $approve');
+
+  @override
+  Future<List<(Profile, DateTime)>> adminUsers({String q = '', String filter = 'new'}) async {
+    calls.add('users $filter $q'.trim());
+    final all = [nino, giorgi, mariam, luka, ana, dato];
+    return [
+      for (final p in all)
+        if ((q.isEmpty || p.name.contains(q) || (p.username ?? '').contains(q)) && (filter != 'staff' || p.role != null)) (p, DateTime.now().subtract(Duration(days: all.indexOf(p) + 1))),
+    ];
+  }
+
+  @override
+  Future<Map<String, dynamic>> adminUserInfo(String uid) async => {'posts': 12, 'comments': 40, 'friends': 9, 'coins': 300, 'reports': 1, 'reported_content': 0, 'last_seen': DateTime.now().toIso8601String(), 'email': 'user@example.com'};
+  @override
+  Future<void> adminNotifyUser(String uid, String text) async => calls.add('notify $uid $text');
+  @override
+  Future<void> adminUnverify(String uid) async => calls.add('unverify $uid');
+  @override
+  Future<void> adminSetRole(String uid, String role) async => calls.add('role $uid $role');
+
+  @override
+  Future<List<Map<String, dynamic>>> adminPages(String q) async => [
+        for (final p in pageRows)
+          if (q.isEmpty || '${p['name']}'.contains(q)) {'id': p['id'], 'name': p['name'], 'kind': p['kind'], 'hue': p['hue'] ?? 200, 'verified': p['verified'] == true, 'owner': p['owner'], 'avatar_url': null},
+      ];
+
+  @override
+  Future<List<String>> badWords() async => [...words];
+  @override
+  Future<void> addBadWord(String w) async {
+    calls.add('word $w');
+    words.add(w);
+  }
+
+  @override
+  Future<void> deleteBadWord(String w) async {
+    calls.add('unword $w');
+    words.remove(w);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> adminContent(String table, String cols, {String? textCol, String q = '', bool hiddenOnly = false, int from = 0}) async {
+    calls.add('content $table $q $hiddenOnly'.trim());
+    if (table == 'posts') {
+      return [
+        for (final p in _posts)
+          if (q.isEmpty || p.body.contains(q)) {'id': p.id, 'author': p.author, 'body': p.body, 'media': [], 'hidden': false, 'created_at': p.createdAt.toIso8601String()},
+      ];
+    }
+    if (table == 'rooms') return [for (final r in roomRows) {...r}];
+    return [];
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> adminPromos() async => [for (final p in adminPromoRows) {...p}];
+  @override
+  Future<void> savePromo(Map<String, dynamic> row, {int? id}) async {
+    calls.add('promo ${id ?? 'new'} ${row['kind']} ${row['title']}');
+    if (id == null) adminPromoRows.insert(0, {...row, 'id': 2, 'active': true, 'reach': 0, 'clicks': 0, 'created_at': DateTime.now().toIso8601String()});
+  }
+
+  @override
+  Future<void> setPromoActive(int id, bool on) async {
+    calls.add('promo $id active $on');
+    adminPromoRows.firstWhere((p) => p['id'] == id)['active'] = on;
+  }
+
+  @override
+  Future<void> deletePromo(int id) async {
+    calls.add('promodel $id');
+    adminPromoRows.removeWhere((p) => p['id'] == id);
+  }
+
+  @override
+  Future<int> broadcast({required String text, String? link, required String aud, String? region, bool dry = false}) async {
+    if (dry) return aud == 'me' ? 1 : (aud == 'region' ? 120 : 1500);
+    calls.add('broadcast $aud ${region ?? ''} $text'.replaceAll('  ', ' '));
+    sentBroadcasts.insert(0, {'id': sentBroadcasts.length + 1, 'sent_by': nino.id, 'text': text, 'link': link, 'audience': {'aud': aud, 'region': region}, 'sent': 1500, 'created_at': DateTime.now().toIso8601String()});
+    return aud == 'me' ? 1 : 1500;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> broadcasts() async => [...sentBroadcasts];
+  @override
+  Future<void> setAppSetting(String key, Map<String, dynamic> value) async {
+    calls.add('setting $key ${value['on'] ?? value['off']}');
+    settings[key] = value;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> clientErrors() async => [
+        for (var i = 0; i < 3; i++)
+          {'id': i, 'user_id': 'u${i + 2}', 'created_at': DateTime.now().subtract(Duration(minutes: i * 10)).toIso8601String(), 'msg': 'TypeError: x is null', 'src': 'app.js', 'line': 12, 'col': 4, 'stack': 'at f (app.js:12:4)', 'page': 'feed', 'ua': 'Android', 'ver': '45'},
+      ];
+  @override
+  Future<void> deleteClientErrors(String msg, String? src) async => calls.add('errdel $msg');
+
+  @override
+  Future<List<Map<String, dynamic>>> adminLog() async => [
+        {'id': 1, 'actor': 'u1', 'action': 'ban', 'target': 'u6', 'detail': {'name': 'დათო'}, 'created_at': DateTime.now().subtract(const Duration(hours: 1)).toIso8601String()},
+        {'id': 2, 'actor': null, 'action': 'hide', 'target': 'post:105', 'detail': {}, 'created_at': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String()},
+      ];
 }
 
 /// A room's channel in memory: what this phone sent, and the test playing the others.

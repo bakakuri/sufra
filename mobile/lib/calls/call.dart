@@ -411,16 +411,13 @@ Future<void> callPerson(BuildContext context, String uid, {required bool video})
   await showCallScreen(context);
 }
 
-bool _callOnScreen = false;
+Route<void>? _callRoute;
 
-/// the call's screen, once
+/// the call's screen, once (a route gone with its navigator does not count)
 Future<void> showCallScreen(BuildContext context) async {
-  if (_callOnScreen) return;
-  _callOnScreen = true;
-  try {
-    final app = context.app, me = context.me;
-    await Navigator.of(context, rootNavigator: true).push(MaterialPageRoute<void>(builder: (_) => AppScope(app: app, me: me, child: const CallScreen())));
-  } finally {
-    _callOnScreen = false;
-  }
+  if (_callRoute?.isActive == true) return;
+  final app = context.app, me = context.me;
+  final r = _callRoute = MaterialPageRoute<void>(builder: (_) => AppScope(app: app, me: me, child: const CallScreen()));
+  await Navigator.of(context, rootNavigator: true).push(r);
+  if (identical(_callRoute, r)) _callRoute = null;
 }

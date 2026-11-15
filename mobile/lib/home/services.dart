@@ -6,6 +6,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../admin/admin.dart';
 import '../calls/rooms.dart';
 import '../clips/clip_composer.dart';
 import '../community/events.dart';
@@ -108,7 +109,7 @@ const nativeServices = {
   'groups', 'group', 'pages', 'pagev', 'events', 'event', 'evnew', 'market', //
   'study', 'schedule', 'exams', 'notes', 'tips', //
   'places', 'place', 'placenew', 'help', 'helpnew', 'helpreq', 'rides', 'ride', 'ridenew', 'sport', 'fixture', //
-  'jobs', 'job', 'jobnew', 'myjobs', 'cv', 'recipes', 'recipe', 'toasts', 'rooms', 'room',
+  'jobs', 'job', 'jobnew', 'myjobs', 'cv', 'recipes', 'recipe', 'toasts', 'rooms', 'room', 'admin',
 };
 
 /// the sections the admin can switch off (promo.js FEATS) that each page belongs to
@@ -237,6 +238,8 @@ Future<void> openService(BuildContext context, String k, {String? arg}) async {
       await openPage(context, RoomsScreen(kind: arg ?? 'supra'), full: true);
     case 'room':
       await openRoom(context, int.tryParse(arg ?? '') ?? 0);
+    case 'admin' when me.role == 'admin' || me.role == 'moderator':
+      await openPage(context, AdminScreen(tab: arg ?? 'overview'), full: true);
     default:
       await openSite('#$k${arg != null ? '-$arg' : ''}');
   }

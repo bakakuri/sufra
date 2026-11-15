@@ -268,15 +268,13 @@ class _NewRoomState extends State<_NewRoom> {
 }
 
 /// a room opened (one, however many times asked)
-bool _roomOnScreen = false;
+Route<void>? _roomRoute;
 Future<void> openRoom(BuildContext context, int id) async {
-  if (_roomOnScreen) return;
-  _roomOnScreen = true;
-  try {
-    await openPage(context, RoomScreen(id: id), full: true);
-  } finally {
-    _roomOnScreen = false;
-  }
+  if (_roomRoute?.isActive == true) return;
+  final s = AppScope.of(context);
+  final r = _roomRoute = MaterialPageRoute<void>(builder: (_) => AppScope(app: s.app, me: s.me, child: RoomScreen(id: id)));
+  await Navigator.of(context, rootNavigator: true).push(r);
+  if (identical(_roomRoute, r)) _roomRoute = null;
 }
 
 class _P {

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:peera/calls/call.dart';
 import 'package:peera/calls/rooms.dart';
+import 'package:peera/calls/rtc.dart';
 import 'package:peera/chat/chat_screen.dart';
 import 'package:peera/home/services.dart';
 import 'package:peera/people/person_screen.dart';
@@ -53,6 +54,8 @@ Future<void> _in(WidgetTester t, FakeApi api, Map<String, dynamic> sig) async {
 
 void main() {
   setUpAll(useTestImages);
+  // each test its own pretend WebRTC: the connections and the media made so far are its own
+  setUp(() => rtcKit = fakeRtc = FakeRtc());
 
   testWidgets('a voice call from a conversation: the offer, the answer, connected, the microphone off, ended with back', (t) async {
     phone(t);
