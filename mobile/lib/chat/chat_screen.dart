@@ -7,6 +7,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../calls/call.dart';
+import '../calls/rooms.dart';
 import '../config.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
@@ -703,6 +705,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // ---------- the conversation's menu ----------
 
+  /// the group's video call: a study room for its members, announced in the conversation
+  Future<void> _groupCall() async {
+    try {
+      final id = await app.api.startGroupCall(widget.convId);
+      if (mounted) await openRoom(context, id);
+    } catch (e) {
+      if (mounted) toast(context, errText(e));
+    }
+  }
+
   Future<void> _chatMore() async {
     final ch = chat;
     if (ch == null) return;
@@ -844,7 +856,14 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ]),
               ),
-              actions: [IconBtn('more', key: const ValueKey('chat-more'), label: 'მეტი', onTap: _chatMore)],
+              actions: [
+                if (ch?.other != null) ...[
+                  IconBtn('phone', key: const ValueKey('chat-call'), label: 'ხმოვანი ზარი', onTap: () => callPerson(context, ch!.other!, video: false)),
+                  IconBtn('video', key: const ValueKey('chat-video'), label: 'ვიდეოზარი', onTap: () => callPerson(context, ch!.other!, video: true)),
+                ] else if (ch?.isGroup == true)
+                  IconBtn('video', key: const ValueKey('chat-gcall'), label: 'ჯგუფური ვიდეოზარი', onTap: _groupCall),
+                IconBtn('more', key: const ValueKey('chat-more'), label: 'მეტი', onTap: _chatMore),
+              ],
             ),
             body: Column(children: [
               if (pm != null)
@@ -1098,6 +1117,28 @@ class _Bubble extends StatelessWidget {
       inner = small2(StickerView('${md['sticker']}', size: 130));
     } else if (md['card'] is Map) {
       inner = small2(GreetingCard(card: md['card'] as Map, width: 220));
+    } else if (md['call'] != null && asInt(md['call']) > 0) {
+      final rid = asInt(md['call']);
+      inner = small2(Material(
+        color: c.accentSoft,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          key: ValueKey('joincall-$rid'),
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => openRoom(context, rid),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 16, 12),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: c.accent, shape: BoxShape.circle), child: PIcon('video', size: 18, color: c.onAccent)),
+              const SizedBox(width: 10),
+              Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                const Text('ჯგუფური ვიდეოზარი', style: TextStyle(fontWeight: FontWeight.w800)),
+                Text('შეეხე და შემოუერთდი', style: TextStyle(color: c.muted, fontSize: 12.5)),
+              ]),
+            ]),
+          ),
+        ),
+      ));
     } else if (loc is Map && asNum(loc['lat']) != null && asNum(loc['lng']) != null) {
       inner = small2(LocCard(lat: asNum(loc['lat'])!, lng: asNum(loc['lng'])!, acc: asNum(loc['acc'])));
     } else if (story != null && '${md['url'] ?? ''}'.startsWith('http')) {

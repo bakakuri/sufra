@@ -22,6 +22,8 @@ dependencies:
   video_player: ^2.14.1
   shared_preferences: ^2.3.2
   flutter_map: ^8.1.1
+  # calls and rooms: WebRTC, the same as the site's (STUN, offers and answers over realtime)
+  flutter_webrtc: ^1.2.0
   qr_flutter: ^4.1.0
   latlong2: ^0.9.1
 

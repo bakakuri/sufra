@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../calls/call.dart';
 import '../chat/chat_screen.dart';
 import '../clips/clips_tab.dart';
 import '../chat/chats_tab.dart';
@@ -73,6 +74,7 @@ class HomeShellState extends State<HomeShell> {
       }
       ..start();
     app.banner.addListener(_showBanner);
+    app.calls.addListener(_callChanged);
     _push?.start(app.api, onOpen: _openFromPush, onForeground: _pushWhileOpen);
     // the live location's notification opens the map (the app may have been started by it, or brought back)
     _life = AppLifecycleListener(onResume: _takeOpen);
@@ -80,6 +82,13 @@ class HomeShellState extends State<HomeShell> {
   }
 
   AppLifecycleListener? _life;
+
+  /// a call coming in: its screen over everything
+  void _callChanged() {
+    if (app.calls.state != 'incoming') return;
+    final ctx = _scaffold.currentContext;
+    if (ctx != null && mounted) showCallScreen(ctx);
+  }
 
   Future<void> _takeOpen() async {
     final o = await locDevice.takeOpen();
@@ -141,6 +150,7 @@ class HomeShellState extends State<HomeShell> {
     _hideBanner();
     _push?.dispose();
     app.banner.removeListener(_showBanner);
+    app.calls.removeListener(_callChanged);
     app.dispose();
     super.dispose();
   }

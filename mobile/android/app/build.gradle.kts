@@ -54,6 +54,8 @@ android {
         release {
             // without the key the build is signed with a throwaway one; it is then signed again with the Peera key
             signingConfig = if (peeraKs != null) signingConfigs.getByName("peera") else signingConfigs.getByName("debug")
+            // WebRTC's classes are reached from native code: kept whole when the build is shrunk
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }

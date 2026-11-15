@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:peera/calls/rooms.dart';
 import 'package:peera/community/events.dart';
 import 'package:peera/community/groups.dart';
 import 'package:peera/community/help.dart';
@@ -757,6 +758,8 @@ void main() {
     testWidgets('recipes ($k)', (t) async => page(t, const RecipesScreen(), '114-recipes'));
     testWidgets('a recipe ($k)', (t) async => page(t, const RecipeScreen(id: 1), '115-recipe'));
     testWidgets('the toast book ($k)', (t) async => page(t, const ToastsScreen(), '116-toasts'));
+    testWidgets('rooms ($k)', (t) async => page(t, const RoomsScreen(), '117-rooms'));
+    testWidgets('discussions ($k)', (t) async => page(t, const RoomsScreen(kind: 'birja'), '118-discussions'));
 
     testWidgets('a school added ($k)', (t) async {
       openPage(await onMe(t), const EduScreen(), full: true);

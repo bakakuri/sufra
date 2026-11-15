@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../profile/profile.dart';
 import '../push/push.dart';
+import '../calls/call.dart';
 import 'api.dart';
 import 'models.dart';
 
@@ -319,6 +320,9 @@ class AppState {
   /// what the home page needs from everyone's settings: the banner, sections off, the services' numbers
   late final home = HomeState(api);
 
+  /// the call on now, if any (one at a time), and the calls coming in
+  late final calls = CallCenter(api);
+
   /// the tab on screen (a playing clip stops when another tab opens)
   final tab = ValueNotifier<int>(0);
 
@@ -347,6 +351,7 @@ class AppState {
   bool _closed = false;
 
   void start() {
+    calls.listen();
     chats.load();
     friends.load().catchError((_) {});
     _notes = api.liveNotes().listen((n) {
@@ -383,6 +388,7 @@ class AppState {
 
   void dispose() {
     _closed = true;
+    calls.close();
     _notes?.cancel();
     _seen?.cancel();
     _life?.dispose();

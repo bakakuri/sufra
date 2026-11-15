@@ -1,13 +1,12 @@
 // The notifications (the bell): the latest sixty, the new ones marked, each opening what it is about — in the app
 // where the app has it, otherwise on the site. Seen as soon as the list is opened, as on the site.
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../chat/chat_screen.dart';
-import '../config.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
 import '../feed/post_screen.dart';
+import '../home/services.dart';
 import '../joker/online_screen.dart';
 import '../people/albums.dart';
 import '../people/coins.dart';
@@ -131,7 +130,8 @@ class _NotesScreenState extends State<NotesScreen> {
     }
     final path = noteSitePath(k, r);
     if (path != null) {
-      await launchUrl(Uri.parse('$siteUrl/$path'), mode: LaunchMode.externalApplication);
+      // here when the app has it (an event, a group, a room, a ride…), otherwise on the site
+      await openPath(context, path);
       return;
     }
     if (n.actor != null && mounted) await openPage(context, PersonScreen(uid: n.actor!), full: true);

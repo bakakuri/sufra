@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:peera/auth/auth_api.dart';
 import 'package:peera/data/photos.dart';
 import 'package:peera/feed/compose_screen.dart';
+import 'package:peera/calls/rtc.dart';
 import 'package:peera/ui/bits.dart';
 import 'package:peera/feed/feed_tab.dart';
 import 'package:peera/feed/post_actions.dart';
@@ -77,6 +78,7 @@ void useTestImages() {
   storyCard = (context, p) async => Uint8List(8);
   textStoryImage = (context, text, colour, poll) async => pic('sunset');
   openedLinks.clear();
+  rtcKit = fakeRtc = FakeRtc();
   openExternal = (u) async {
     openedLinks.add('$u');
     return true;
@@ -357,5 +359,112 @@ Future<void> reveal(WidgetTester t, Finder f) async {
     pos.jumpTo(y.clamp(pos.minScrollExtent, pos.maxScrollExtent));
     await t.pump();
     if (f.evaluate().isNotEmpty || y >= pos.maxScrollExtent) break;
+  }
+}
+
+/// WebRTC in memory: the media and the connections made, offers and answers in words, a box for a picture.
+late FakeRtc fakeRtc;
+
+class FakeRtc implements Rtc {
+  final peers = <FakePeer>[];
+  final made = <FakeMedia>[];
+  bool deny = false;
+  bool? speakerOn;
+
+  @override
+  Future<RtcMedia> media({bool audio = true, bool video = false, String facing = 'user', int width = 720, int? height}) async {
+    if (deny) throw Exception('NotAllowedError');
+    final m = FakeMedia(audio: audio, video: video);
+    made.add(m);
+    return m;
+  }
+
+  @override
+  Future<RtcPeer> peer() async {
+    final p = FakePeer();
+    peers.add(p);
+    return p;
+  }
+
+  @override
+  Widget view(Object? stream, {bool mirror = false, Key? key}) => ColoredBox(key: key, color: const Color(0xFF334455));
+
+  @override
+  Future<void> speaker(bool on) async => speakerOn = on;
+}
+
+class FakeMedia implements RtcMedia {
+  FakeMedia({required bool audio, required bool video})
+      : hasAudio = audio,
+        hasVideo = video;
+  @override
+  bool hasAudio;
+  @override
+  final bool hasVideo;
+  bool audioOn = true, videoOn = true, stopped = false;
+  int flips = 0;
+  @override
+  Object get stream => this;
+  @override
+  void setAudio(bool on) => audioOn = on;
+  @override
+  void setVideo(bool on) => videoOn = on;
+  @override
+  Future<void> addAudio() async => hasAudio = true;
+  @override
+  Future<bool> flip() async {
+    flips++;
+    return hasVideo;
+  }
+
+  @override
+  Future<void> stop() async => stopped = true;
+}
+
+class FakePeer implements RtcPeer {
+  final log = <String>[];
+  final ice = <Map<String, dynamic>>[];
+  bool _remote = false, closed = false;
+  @override
+  void Function(Map<String, dynamic> ice)? onIce;
+  @override
+  void Function(String state)? onState;
+  @override
+  void Function(Object stream)? onStream;
+  @override
+  Future<void> addTracks(RtcMedia m) async => log.add('tracks');
+  @override
+  Future<void> sendRecv(RtcMedia? m, {required bool sendAudio, required bool video}) async => log.add('sendrecv $sendAudio $video');
+  @override
+  Future<void> answerWith(RtcMedia? m, {required bool sendAudio}) async => log.add('answerwith $sendAudio');
+  @override
+  Future<void> sendOnly(RtcMedia m) async => log.add('sendonly');
+  @override
+  Future<void> recvOnly() async => log.add('recvonly');
+  @override
+  Future<void> setAudioOut(RtcMedia? m, bool on) async => log.add('audio $on');
+  @override
+  Future<Map<String, dynamic>> offer() async => {'type': 'offer', 'sdp': 'fake-offer'};
+  @override
+  Future<Map<String, dynamic>> answer() async => {'type': 'answer', 'sdp': 'fake-answer'};
+  @override
+  Future<void> setRemote(Map<String, dynamic> desc) async {
+    log.add('remote ${desc['type']}');
+    _remote = true;
+  }
+
+  @override
+  Future<void> addIce(Map<String, dynamic> c) async => ice.add(c);
+  @override
+  bool get hasRemote => _remote;
+  @override
+  bool get stable => true;
+  @override
+  Future<void> close() async => closed = true;
+
+  /// the other side came through
+  void connect() {
+    onStream?.call(this);
+    onState?.call('connected');
   }
 }
