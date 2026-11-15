@@ -3138,10 +3138,10 @@ class SupaApi implements PeeraApi {
     return await b.order('created_at', ascending: false).range(from, from + 39);
   }
 
-  static const _promoSel = 'id,kind,brand,brand_url,title,body,media_url,media_type,w,h,link,cta,every,starts_at,ends_at,active,reach,clicks,created_at';
+  static const _adminPromoSel = 'id,kind,brand,brand_url,title,body,media_url,media_type,w,h,link,cta,every,starts_at,ends_at,active,reach,clicks,created_at';
 
   @override
-  Future<List<Map<String, dynamic>>> adminPromos() async => await sb.from('promos').select(_promoSel).order('created_at', ascending: false).limit(60);
+  Future<List<Map<String, dynamic>>> adminPromos() async => await sb.from('promos').select(_adminPromoSel).order('created_at', ascending: false).limit(60);
 
   @override
   Future<void> savePromo(Map<String, dynamic> row, {int? id}) => id == null ? sb.from('promos').insert(row) : sb.from('promos').update(row).eq('id', id);
