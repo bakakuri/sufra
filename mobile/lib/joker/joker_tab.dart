@@ -252,11 +252,11 @@ class _JokerTabState extends State<JokerTab> {
   /// the game in progress (or just finished): who is at the table, which hand, my points
   Widget _current(PeeraColors c) {
     final g = s.g!, over = g.phase == 'over';
-    Widget face(String id) => Container(
+    Widget face(int seat) => Container(
           margin: const EdgeInsets.only(right: 4),
           padding: const EdgeInsets.all(1.5),
           decoration: BoxDecoration(shape: BoxShape.circle, color: c.line),
-          child: ClipOval(child: Image.asset(castOf(id).asset, width: 30, height: 30, fit: BoxFit.cover)),
+          child: ClipOval(child: Image.asset(tableFace(seat), width: 30, height: 30, fit: BoxFit.cover)),
         );
     return Container(
       key: const ValueKey('joker-current'),
@@ -268,7 +268,7 @@ class _JokerTabState extends State<JokerTab> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          for (final id in s.seats) face(id),
+          for (var i = 1; i <= s.seats.length; i++) face(i),
           const SizedBox(width: 6),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

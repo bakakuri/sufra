@@ -15,6 +15,7 @@ import 'package:peera/feed/feed_tab.dart';
 import 'package:peera/feed/post_actions.dart';
 import 'package:peera/home/home_cards.dart';
 import 'package:peera/home/services.dart';
+import 'package:peera/joker/scene.dart';
 import 'package:peera/joker/session.dart';
 import 'package:peera/map/live_map.dart';
 import 'package:peera/map/loc_device.dart';
@@ -79,6 +80,8 @@ void useTestImages() {
   textStoryImage = (context, text, colour, poll) async => pic('sunset');
   openedLinks.clear();
   rtcKit = fakeRtc = FakeRtc();
+  // the Joker room's lamp and breathing never stop; the tests need screens that settle
+  jokerAmbient = false;
   openExternal = (u) async {
     openedLinks.add('$u');
     return true;

@@ -31,6 +31,19 @@ const cast = [
 
 /// the six who sit at the computer games (as on the site)
 const castFree = ['m1', 'm3', 'm5', 'f1', 'f2', 'f3'];
+
+/// who sits where at the drawn table: a woman on the left, a young man across, a girl on the right
+const tableBodies = ['woman', 'man', 'girl'];
+
+/// the face of the person drawn in a seat (1–3)
+String tableFace(int seat) => 'assets/joker/scene/face_${tableBodies[seat - 1]}.jpg';
+
+/// the names that fit the person drawn in each seat
+const _namesFor = [
+  ['f1', 'f4', 'f5', 'f2'],
+  ['m3', 'm5', 'm1', 'm4'],
+  ['f3', 'f2', 'f4', 'f1'],
+];
 CastMember castOf(String id) => cast.firstWhere((c) => c.id == id, orElse: () => cast.first);
 
 /// a bot of a server table, by the name the server gave it
@@ -85,7 +98,7 @@ class JokerSession extends JokerTable {
   @override
   String nameOf(int p) => castOf(seats[p - 1]).name;
   @override
-  SeatFace faceOf(int p) => SeatFace(asset: castOf(seats[p - 1]).asset);
+  SeatFace faceOf(int p) => SeatFace(asset: tableFace(p));
   @override
   String tookText(int p) => '${castOf(seats[p - 1]).erg} წაიღო ხელი';
   @override
@@ -152,13 +165,21 @@ class JokerSession extends JokerTable {
     _changed();
   }
 
-  /// a new game of [len]; three people at random take the seats
+  /// a new game of [len]: the three drawn people take their seats, each with a name that fits and is not mine
   void start(String len) {
     _t?.cancel();
     final rng = jokerRandom();
     final mine = myName.trim().split(' ').first;
-    final free = [for (final c in cast) if (castFree.contains(c.id) && c.name != mine) c.id]..shuffle(rng);
-    seats = free.take(3).toList();
+    final taken = <String>{};
+    seats = [
+      for (final names in _namesFor)
+        () {
+          final ok = [for (final id in names) if (castOf(id).name != mine && !taken.contains(id)) id];
+          final id = ok.isEmpty ? names.first : ok[rng.nextInt(math.min(2, ok.length))];
+          taken.add(id);
+          return id;
+        }(),
+    ];
     g = JokerGame.start(len, rng: rng);
     reported = false;
     reward = null;

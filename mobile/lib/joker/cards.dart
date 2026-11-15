@@ -180,15 +180,46 @@ class CardBack extends StatelessWidget {
     return Container(
       width: w,
       height: w * cardRatio,
+      padding: EdgeInsets.all(3 * k),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8 * k),
-        color: const Color(0xFF7A1630),
-        border: Border.all(color: const Color(0xFFFFFDF8), width: 3 * k),
+        color: _paper,
         boxShadow: const [BoxShadow(color: Color(0x59000000), blurRadius: 6, offset: Offset(0, 2))],
       ),
-      child: Center(child: Star(size: 18 * k, color: const Color(0x99F5D08A))),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(5.5 * k),
+        child: CustomPaint(painter: _BackPainter(), child: Center(child: Star(size: 15 * k, color: const Color(0xCCF7E7B5)))),
+      ),
     );
   }
+}
+
+/// The back of a card: deep blue, a fine lattice, a frame line, an oval in the middle (the cards held at the table).
+class _BackPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = Offset.zero & size;
+    canvas.drawRect(r, Paint()..shader = const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF2A4CB0), Color(0xFF16307E)]).createShader(r));
+    final line = Paint()
+      ..color = const Color(0x55BFD0FF)
+      ..strokeWidth = math.max(.6, size.width / 90);
+    final step = size.width / 7;
+    for (var x = -size.height; x < size.width + size.height; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x + size.height, size.height), line);
+      canvas.drawLine(Offset(x, size.height), Offset(x + size.height, 0), line);
+    }
+    final frame = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = const Color(0xCCDCE6FF)
+      ..strokeWidth = math.max(.8, size.width / 60);
+    canvas.drawRRect(RRect.fromRectAndRadius(r.deflate(size.width * .07), Radius.circular(size.width * .06)), frame);
+    final oval = Rect.fromCenter(center: r.center, width: size.width * .56, height: size.height * .42);
+    canvas.drawOval(oval, Paint()..color = const Color(0xFF1B3A93));
+    canvas.drawOval(oval, frame);
+  }
+
+  @override
+  bool shouldRepaint(_BackPainter o) => false;
 }
 
 /// The court figures: drawn in a frame 100 units wide, the same half twice (the lower one turned around).
