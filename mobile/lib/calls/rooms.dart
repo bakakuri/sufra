@@ -744,14 +744,16 @@ class _RoomScreenState extends State<RoomScreen> {
     final u = await showModalBottomSheet<String>(
       context: context,
       useRootNavigator: true,
+      isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: c.surface,
       builder: (s) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
+        child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
           ListTile(key: const ValueKey('tpf-me'), leading: const Text('🎓', style: TextStyle(fontSize: 22)), title: const Text('სიტყვა ისევ წამყვანს'), onTap: () => Navigator.of(s).pop('')),
           for (final k in others)
             if (app.people[k] case final p?) ListTile(key: ValueKey('tpf-$k'), leading: Avatar(p: p, size: 34), title: Text(p.name), onTap: () => Navigator.of(s).pop(k)),
-        ]),
+        ])),
       ),
     );
     if (u != null) _setSt({'floor': u.isEmpty ? null : u});
@@ -1139,10 +1141,11 @@ class _RoomScreenState extends State<RoomScreen> {
     final e = await showModalBottomSheet<String>(
       context: context,
       useRootNavigator: true,
+      isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: c.surface,
       builder: (s) => SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Padding(padding: const EdgeInsets.fromLTRB(8, 0, 8, 8), child: Text('საჩუქარი ${_who(host).name.split(' ').first}-ს · შენ გაქვს ${context.me.coins} მონეტა', style: const TextStyle(fontWeight: FontWeight.w800))),

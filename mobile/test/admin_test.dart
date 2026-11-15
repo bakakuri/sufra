@@ -68,6 +68,7 @@ void main() {
     expect(find.text('საჩივრები · 3'), findsOneWidget);
     expect(find.text('ვერიფიკაცია · 1'), findsOneWidget);
     expect(find.text('რეკლამა · 1'), findsOneWidget);
+    await reveal(t, find.byKey(const ValueKey('ao-notify'), skipOffstage: false));
     expect(_k('ao-notify'), findsOneWidget);
 
     await _tap(t, 'at-reports');
@@ -217,6 +218,7 @@ void main() {
     expect(find.text('შეტყობინების გაგზავნა'), findsOneWidget);
     await _yes(t, 'გაგზავნა');
     expect(api.calls, contains('broadcast all Peera-ზე ახალი რეცეპტებია 🍲'));
+    await reveal(t, find.byKey(const ValueKey('bc-2'), skipOffstage: false));
     expect(_k('bc-2'), findsOneWidget);
 
     await _tap(t, 'at-site');
@@ -271,7 +273,8 @@ void main() {
     expect(_k('at-reports'), findsOneWidget);
     expect(_k('at-notify'), findsNothing);
     expect(_k('at-site'), findsNothing);
-    expect(_k('ao-notify'), findsNothing);
+    await reveal(t, find.byKey(const ValueKey('ao-notify'), skipOffstage: false));
+    expect(find.byKey(const ValueKey('ao-notify'), skipOffstage: false), findsNothing);
     await _tap(t, 'at-users');
     await _tap(t, 'au-u2');
     expect(_k('aus-msg'), findsOneWidget);

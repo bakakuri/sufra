@@ -152,6 +152,26 @@ Future<void> openThing(BuildContext context, String kind, Map<String, dynamic> r
   if (page != null && context.mounted) await openPage(context, page, full: true);
 }
 
+/// A card of the panel: ink shows on it (its list rows and buttons)
+class _Card extends StatelessWidget {
+  const _Card({super.key, required this.child, this.padding = const EdgeInsets.all(12)});
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.pc;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+      child: Material(
+        color: c.surface,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: c.line)),
+        child: Padding(padding: padding, child: child),
+      ),
+    );
+  }
+}
+
 /// The panel.
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key, this.tab = 'overview'});
@@ -437,11 +457,9 @@ class _ReportsState extends State<_Reports> {
                           final op = owner == null || owner.isEmpty ? null : app.people[owner];
                           Widget sm(String key, String icon, String label, VoidCallback onTap) =>
                               OutlinedButton.icon(key: ValueKey(key), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 36)), onPressed: onTap, icon: PIcon(icon, size: 15), label: Text(label));
-                          return Container(
+                          return _Card(
                             key: ValueKey('rep-$k-${x.id}'),
-                            margin: const EdgeInsets.fromLTRB(12, 6, 12, 6),
                             padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.line)),
                             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                               Row(children: [
                                 PTag(targetNames[k] ?? k),
@@ -1020,11 +1038,9 @@ class _VerifyState extends State<_Verify> {
         for (final x in r)
           Builder(builder: (context) {
             final uid = '${x['user_id']}', p = app.people[uid] ?? Profile(id: uid, name: '…'), id = asInt(x['id']), b = busy.contains(id);
-            return Container(
+            return _Card(
               key: ValueKey('vr-$id'),
-              margin: const EdgeInsets.fromLTRB(12, 6, 12, 6),
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.line)),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -1129,11 +1145,9 @@ class _PromoState extends State<_Promo> {
                   final (st, cls) = _state(p);
                   final reach = asInt(p['reach']), clicks = asInt(p['clicks']), id = asInt(p['id']);
                   final ctr = reach == 0 ? 0 : (clicks / reach * 1000).round() / 10;
-                  return Container(
+                  return _Card(
                     key: ValueKey('pr-$id'),
-                    margin: const EdgeInsets.fromLTRB(12, 6, 12, 6),
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.line)),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
                         PTag(p['kind'] == 'story' ? 'ისტორია' : 'ფიდში'),
@@ -1196,11 +1210,9 @@ class _PromoState extends State<_Promo> {
       final act = [for (final x in a ?? const <({Map<String, dynamic> ad, Post? post})>[]) if (x.ad['status'] == 'active') x];
       Widget card(({Map<String, dynamic> ad, Post? post}) x) {
         final ad = x.ad, id = asInt(ad['id']), pg = ad['page'] is Map ? ad['page'] as Map : const {}, pending = ad['status'] == 'pending';
-        return Container(
+        return _Card(
           key: ValueKey('pad-$id'),
-          margin: const EdgeInsets.fromLTRB(12, 6, 12, 6),
           padding: const EdgeInsets.only(top: 10, bottom: 10),
-          decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.line)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1658,9 +1670,13 @@ class _NotifyState extends State<_Notify> {
         ]),
       ),
       Row(children: [
-        OutlinedButton.icon(key: const ValueKey('an-test'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)), onPressed: () => _send('me'), icon: const PIcon('bell', size: 16), label: const Text('ტესტი ჩემთვის')),
-        const Spacer(),
-        FilledButton.icon(key: const ValueKey('an-go'), style: FilledButton.styleFrom(minimumSize: const Size(0, 44)), onPressed: () => _send(aud), icon: PIcon('send', size: 16, color: c.onAccent), label: const Text('გაგზავნა')),
+        Expanded(
+          child: OutlinedButton.icon(key: const ValueKey('an-test'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)), onPressed: () => _send('me'), icon: const PIcon('bell', size: 16), label: const Text('ტესტი ჩემთვის', maxLines: 1, overflow: TextOverflow.ellipsis)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: FilledButton.icon(key: const ValueKey('an-go'), style: FilledButton.styleFrom(minimumSize: const Size(0, 44)), onPressed: () => _send(aud), icon: PIcon('send', size: 16, color: c.onAccent), label: const Text('გაგზავნა', maxLines: 1, overflow: TextOverflow.ellipsis)),
+        ),
       ]),
       const SecHead('გაგზავნილი'),
       if (h == null)
