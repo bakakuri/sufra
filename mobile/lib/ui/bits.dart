@@ -84,7 +84,11 @@ class ChipsBar extends StatelessWidget {
     final c = context.pc;
     return SizedBox(
       height: 48,
-      child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.fromLTRB(12, 6, 12, 4), children: [
+      // all the chips are built (there are few), so any of them can be reached
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+        child: Row(children: [
         for (final (k, label) in items)
           Padding(
             padding: const EdgeInsets.only(right: 6),
@@ -98,7 +102,8 @@ class ChipsBar extends StatelessWidget {
               onSelected: (_) => onPick(k),
             ),
           ),
-      ]),
+        ]),
+      ),
     );
   }
 }

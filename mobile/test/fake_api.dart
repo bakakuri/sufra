@@ -2244,4 +2244,90 @@ class FakeApi implements PeeraApi {
     calls.add('toastdel $id');
     toastRows.removeWhere((t) => t['id'] == id);
   }
+
+  // ---------- calls and rooms ----------
+  final callIn = StreamController<Map<String, dynamic>>.broadcast();
+  final signals = <(String, Map<String, dynamic>)>[];
+  final roomRows = <Map<String, dynamic>>[
+    {'id': 30, 'host': 'u2', 'kind': 'supra', 'title': 'მათემატიკა: მზადება შუალედურისთვის', 'topic': 'other', 'is_private': false, 'live': true, 'created_at': DateTime.now().subtract(const Duration(minutes: 20)).toIso8601String()},
+    {'id': 31, 'host': 'u3', 'kind': 'birja', 'title': 'რომელი ფაკულტეტი ავირჩიოთ?', 'topic': 'career', 'is_private': false, 'live': true, 'created_at': DateTime.now().subtract(const Duration(minutes: 5)).toIso8601String()},
+    {'id': 32, 'host': 'u4', 'kind': 'live', 'title': 'ლექცია ხელოვნურ ინტელექტზე', 'topic': 'other', 'is_private': false, 'live': true, 'created_at': DateTime.now().subtract(const Duration(minutes: 2)).toIso8601String()},
+  ];
+  final links = <int, FakeRoomLink>{};
+
+  @override
+  Stream<Map<String, dynamic>> callSignals() => callIn.stream;
+  @override
+  Future<void> callSignal(String to, Map<String, dynamic> payload) async => signals.add((to, {...payload, 'from': nino.id}));
+
+  @override
+  Future<List<Map<String, dynamic>>> rooms(String kind) async {
+    calls.add('rooms $kind');
+    return [for (final r in roomRows) if (r['kind'] == kind && r['live'] == true) {...r}];
+  }
+
+  @override
+  Future<Map<String, dynamic>?> room(int id) async {
+    final r = roomRows.where((x) => x['id'] == id).firstOrNull;
+    return r == null ? null : {...r};
+  }
+
+  @override
+  Future<int> createRoom({required String kind, required String title, String topic = 'other', bool private = false}) async {
+    calls.add('room $kind $title $topic $private');
+    roomRows.add({'id': 33, 'host': nino.id, 'kind': kind, 'title': title, 'topic': topic, 'is_private': private, 'live': true, 'created_at': DateTime.now().toIso8601String()});
+    return 33;
+  }
+
+  @override
+  Future<void> endRoom(int id) async {
+    calls.add('roomend $id');
+    roomRows.firstWhere((x) => x['id'] == id)['live'] = false;
+  }
+
+  @override
+  Future<int> inviteToRoom(int id, List<String> users) async {
+    calls.add('roominvite $id ${users.join(',')}');
+    return users.length;
+  }
+
+  @override
+  Future<int> startGroupCall(int convId) async {
+    calls.add('groupcall $convId');
+    roomRows.add({'id': 34, 'host': nino.id, 'kind': 'supra', 'title': 'ზარი · კლასელები', 'topic': 'other', 'is_private': true, 'live': true, 'created_at': DateTime.now().toIso8601String()});
+    return 34;
+  }
+
+  @override
+  Future<int> liveGift(int room, String emoji) async {
+    calls.add('livegift $room $emoji');
+    return 12400;
+  }
+
+  @override
+  RoomLink roomLink(int id) => links[id] = FakeRoomLink(id);
+}
+
+/// A room's channel in memory: what this phone sent, and the test playing the others.
+class FakeRoomLink implements RoomLink {
+  FakeRoomLink(this.id);
+  final int id;
+  final sent = <(String, Map<String, dynamic>)>[];
+  final tracked = <Map<String, dynamic>>[];
+  final presenceIn = StreamController<Map<String, Map<String, dynamic>>>.broadcast();
+  final eventsIn = StreamController<(String, Map<String, dynamic>)>.broadcast();
+  bool left = false;
+
+  @override
+  Stream<Map<String, Map<String, dynamic>>> get presence => presenceIn.stream;
+  @override
+  Stream<(String, Map<String, dynamic>)> get events => eventsIn.stream;
+  @override
+  Future<void> join(Map<String, dynamic> me) async => tracked.add(me);
+  @override
+  Future<void> track(Map<String, dynamic> me) async => tracked.add(me);
+  @override
+  void send(String event, Map<String, dynamic> payload) => sent.add((event, {...payload, 'from': 'u1'}));
+  @override
+  Future<void> leave() async => left = true;
 }

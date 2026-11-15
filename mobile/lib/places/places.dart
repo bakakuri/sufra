@@ -206,7 +206,8 @@ class _PlacesScreenState extends State<PlacesScreen> {
     return GestureDetector(
       key: ValueKey('mpin-${p['id']}'),
       onTap: () => setState(() => peek = p),
-      child: Center(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
           decoration: BoxDecoration(
@@ -348,7 +349,7 @@ class _PlacesScreenState extends State<PlacesScreen> {
                           child: Container(decoration: BoxDecoration(color: const Color(0xFF3E8EF7), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3))),
                         ),
                       ]),
-                    MarkerLayer(markers: [for (final p in r ?? const <Map<String, dynamic>>[]) Marker(point: LatLng(asNum(p['lat'])!.toDouble(), asNum(p['lng'])!.toDouble()), width: 64, height: 30, child: _pin(p))]),
+                    MarkerLayer(markers: [for (final p in r ?? const <Map<String, dynamic>>[]) Marker(point: LatLng(asNum(p['lat'])!.toDouble(), asNum(p['lng'])!.toDouble()), width: 84, height: 34, child: _pin(p))]),
                     Align(
                       alignment: Alignment.bottomRight,
                       child: Container(

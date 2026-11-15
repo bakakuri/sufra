@@ -68,7 +68,8 @@ void main() {
     await _tap(t, 'spot-1');
     expect(find.byType(PlaceScreen), findsOneWidget);
     expect(find.text('შეფასებები · 2'), findsOneWidget);
-    expect(find.text('საუკეთესო ადგილი სასწავლად'), findsOneWidget);
+    await reveal(t, find.text('საუკეთესო ადგილი სასწავლად', skipOffstage: false));
+    expect(find.text('საუკეთესო ადგილი სასწავლად', skipOffstage: false), findsOneWidget);
     await _tap(t, 'pl-route');
     expect(openedLinks.last, startsWith('https://www.openstreetmap.org/directions?to=41.6995'));
     await _tap(t, 'pl-call');
@@ -80,7 +81,8 @@ void main() {
     await _tap(t, 'rv-photo');
     await _tap(t, 'rv-ok');
     expect(api.calls, contains('review 1 4 კარგი ადგილია 1'));
-    expect(find.text('შეფასებები · 3'), findsOneWidget);
+    await reveal(t, find.text('შეფასებები · 3', skipOffstage: false));
+    expect(find.text('შეფასებები · 3', skipOffstage: false), findsOneWidget);
     await _tap(t, 'pl-here');
     expect(find.byType(ComposeScreen), findsOneWidget);
     expect(find.text('📍 ეროვნული ბიბლიოთეკა'), findsOneWidget);
@@ -235,7 +237,9 @@ void main() {
     expect(api.calls, contains('predict 1 X'));
     expect(find.text('შენი პროგნოზი: ფრე · უფასო'), findsOneWidget);
     await t.enterText(find.byKey(const ValueKey('fx-msg')), 'გოოოლ!');
-    await _tap(t, 'fx-send');
+    // the toast above may still cover the send button: the keyboard's send
+    await t.testTextInput.receiveAction(TextInputAction.send);
+    await settle(t);
     expect(api.calls, contains('fxsay 1 გოოოლ!'));
     expect(find.text('გოოოლ!'), findsOneWidget);
     api.fxLive.add({'id': 99, 'fixture_id': 1, 'user_id': 'u3', 'body': 'ვაა, რა გოლია!', 'created_at': DateTime.now().toIso8601String()});

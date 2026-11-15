@@ -678,6 +678,42 @@ abstract class PeeraApi {
   Future<void> likeToast(int id, bool on);
   Future<void> saveToast({int? id, required String occasion, required String title, required String body});
   Future<void> deleteToast(int id);
+
+  // ---------- calls and rooms (chat.js calls, rooms.js): signals over realtime, the same as the site's ----------
+
+  /// the call signals sent to me (the channel 'call-<me>')
+  Stream<Map<String, dynamic>> callSignals();
+
+  /// a signal into someone's call channel ({t: offer|answer|ice|busy|decline|end, ...})
+  Future<void> callSignal(String to, Map<String, dynamic> payload);
+
+  /// the rooms open now, of a kind ('supra' study room, 'birja' discussion, 'live')
+  Future<List<Map<String, dynamic>>> rooms(String kind);
+  Future<Map<String, dynamic>?> room(int id);
+  Future<int> createRoom({required String kind, required String title, String topic = 'other', bool private = false});
+  Future<void> endRoom(int id);
+  Future<int> inviteToRoom(int id, List<String> users);
+
+  /// a group conversation's video call (a study room for its members): its room
+  Future<int> startGroupCall(int convId);
+
+  /// a gift to a live broadcast's host: my coins after it
+  Future<int> liveGift(int room, String emoji);
+
+  /// a room's channel: who is in it and what they send
+  RoomLink roomLink(int id);
+}
+
+/// A room's realtime channel ('room-<id>'): presence (who is in, with their name, microphone and camera) and the
+/// broadcasts (sig, state, hello, clink, cmt, heart, gift, hand, end), as the site sends them.
+abstract class RoomLink {
+  Stream<Map<String, Map<String, dynamic>>> get presence;
+  Stream<(String, Map<String, dynamic>)> get events;
+  Future<void> join(Map<String, dynamic> me);
+  Future<void> track(Map<String, dynamic> me);
+  void send(String event, Map<String, dynamic> payload);
+  Future<void> leave();
+
 }
 
 class SupaApi implements PeeraApi {
@@ -2814,4 +2850,168 @@ class SupaApi implements PeeraApi {
 
   @override
   Future<void> deleteToast(int id) => sb.from('toasts').delete().eq('id', id);
+
+  // ---------- calls and rooms ----------
+  RealtimeChannel? _callMine;
+  final _callOut = <String, ({RealtimeChannel ch, Completer<void> ready, Timer? t})>{};
+
+  /// a broadcast's own payload: the site sends {type, event, payload}
+  static Map<String, dynamic> _inner(Map<String, dynamic> p) => p['payload'] is Map ? Map<String, dynamic>.from(p['payload'] as Map) : p;
+
+  @override
+  Stream<Map<String, dynamic>> callSignals() {
+    late final StreamController<Map<String, dynamic>> out;
+    out = StreamController<Map<String, dynamic>>(
+      onListen: () {
+        _callMine = sb
+            .channel('call-$myId', opts: const RealtimeChannelConfig(self: false))
+            .onBroadcast(
+              event: 'sig',
+              callback: (p) {
+                if (!out.isClosed) out.add(_inner(p));
+              },
+            )
+          ..subscribe();
+      },
+      onCancel: () async {
+        final c = _callMine;
+        _callMine = null;
+        if (c != null) await sb.removeChannel(c);
+      },
+    );
+    return out.stream;
+  }
+
+  @override
+  Future<void> callSignal(String to, Map<String, dynamic> payload) async {
+    var o = _callOut[to];
+    if (o == null) {
+      final ready = Completer<void>();
+      final ch = sb.channel('call-$to', opts: const RealtimeChannelConfig(self: false))
+        ..subscribe((s, _) {
+          if (s == RealtimeSubscribeStatus.subscribed && !ready.isCompleted) ready.complete();
+        });
+      o = (ch: ch, ready: ready, t: null);
+    }
+    o.t?.cancel();
+    final ch = o.ch;
+    // the channel is let go a minute after the last signal (chat.js callSend)
+    _callOut[to] = (
+      ch: ch,
+      ready: o.ready,
+      t: Timer(const Duration(minutes: 1), () {
+        _callOut.remove(to);
+        sb.removeChannel(ch);
+      }),
+    );
+    await o.ready.future.timeout(const Duration(seconds: 10), onTimeout: () {});
+    await ch.sendBroadcastMessage(event: 'sig', payload: {
+      'payload': {...payload, 'from': myId},
+    });
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> rooms(String kind) async {
+    final since = DateTime.now().subtract(const Duration(hours: 12)).toUtc().toIso8601String();
+    return await sb.from('rooms').select('id,host,kind,title,topic,is_private,created_at').eq('live', true).eq('kind', kind).gt('created_at', since).order('created_at', ascending: false).limit(40);
+  }
+
+  @override
+  Future<Map<String, dynamic>?> room(int id) => sb.from('rooms').select().eq('id', id).maybeSingle();
+
+  @override
+  Future<int> createRoom({required String kind, required String title, String topic = 'other', bool private = false}) async => asInt((await sb
+      .from('rooms')
+      .insert({'host': myId, 'kind': kind, 'title': title, 'topic': kind == 'birja' ? topic : 'other', 'is_private': kind == 'supra' && private})
+      .select('id')
+      .single())['id']);
+
+  @override
+  Future<void> endRoom(int id) => sb.from('rooms').update({'live': false, 'ended_at': DateTime.now().toUtc().toIso8601String()}).eq('id', id);
+
+  @override
+  Future<int> inviteToRoom(int id, List<String> users) async => asInt(await sb.rpc('invite_to_room', params: {'p_room': id, 'p_users': users}));
+
+  @override
+  Future<int> startGroupCall(int convId) async => asInt(await sb.rpc('start_group_call', params: {'p_conv': convId}));
+
+  @override
+  Future<int> liveGift(int room, String emoji) async => asInt(await sb.rpc('live_gift', params: {'p_room': room, 'p_emoji': emoji}));
+
+  @override
+  RoomLink roomLink(int id) => _SupaRoomLink(sb, id, myId);
+}
+
+class _SupaRoomLink implements RoomLink {
+  _SupaRoomLink(this.sb, this.id, this.me);
+  final SupabaseClient sb;
+  final int id;
+  final String me;
+  RealtimeChannel? _ch;
+  final _presence = StreamController<Map<String, Map<String, dynamic>>>.broadcast();
+  final _events = StreamController<(String, Map<String, dynamic>)>.broadcast();
+  static const _names = ['sig', 'state', 'hello', 'clink', 'cmt', 'heart', 'gift', 'hand', 'end'];
+
+  @override
+  Stream<Map<String, Map<String, dynamic>>> get presence => _presence.stream;
+  @override
+  Stream<(String, Map<String, dynamic>)> get events => _events.stream;
+
+  @override
+  Future<void> join(Map<String, dynamic> meta) async {
+    final c = sb.channel('room-$id', opts: RealtimeChannelConfig(key: me, self: false));
+    _ch = c;
+    for (final e in _names) {
+      c.onBroadcast(
+        event: e,
+        callback: (p) {
+          if (!_events.isClosed) _events.add((e, SupaApi._inner(p)));
+        },
+      );
+    }
+    c.onPresenceSync((_) {
+      final now = <String, Map<String, dynamic>>{};
+      for (final s in c.presenceState()) {
+        if (s.presences.isNotEmpty) now[s.key] = Map<String, dynamic>.from(s.presences.last.payload);
+      }
+      if (!_presence.isClosed) _presence.add(now);
+    });
+    final ready = Completer<void>();
+    c.subscribe((s, _) {
+      if (s == RealtimeSubscribeStatus.subscribed && !ready.isCompleted) ready.complete();
+    });
+    await ready.future.timeout(const Duration(seconds: 12), onTimeout: () {});
+    await track(meta);
+  }
+
+  @override
+  Future<void> track(Map<String, dynamic> meta) async {
+    try {
+      await _ch?.track(meta);
+    } catch (_) {}
+  }
+
+  @override
+  void send(String event, Map<String, dynamic> payload) {
+    try {
+      _ch?.sendBroadcastMessage(event: event, payload: {
+        'payload': {...payload, 'from': me},
+      });
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> leave() async {
+    final c = _ch;
+    _ch = null;
+    if (c != null) {
+      try {
+        await c.untrack();
+      } catch (_) {}
+      await sb.removeChannel(c);
+    }
+    await _presence.close();
+    await _events.close();
+  }
+
 }
