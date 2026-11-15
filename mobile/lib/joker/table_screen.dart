@@ -163,8 +163,9 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
     return Stack(key: _layerKey, clipBehavior: Clip.none, children: [
       if (!over) ...[
         // what lies on the table
-        _at(m.at(spec.trump), TrumpOnTable(g: g, w: m.cardW * .8, turn: spec.trumpTurn, c4: s.c4)),
-        for (var p = 0; p < 4; p++) _at(m.pile(p), PileView(key: ValueKey('pile-$p'), count: g.taken[p], w: m.cardW * .4)),
+        _at(m.at(spec.trump), TrumpOnTable(g: g, w: m.cardW * .72, turn: spec.trumpTurn, c4: s.c4)),
+        for (var p = 0; p < 4; p++)
+          if (g.taken[p] > 0) _at(m.pile(p), PileView(key: ValueKey('pile-$p'), count: g.taken[p], w: m.cardW * .4)),
         Positioned.fill(child: _TrickLayer(g: g, m: m, from: _myFrom, c4: s.c4)),
         if (_dealt == g.h && g.phase != 'play')
           Positioned.fill(

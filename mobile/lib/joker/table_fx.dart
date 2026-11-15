@@ -88,7 +88,7 @@ class CardFlight extends StatelessWidget {
             left: p.dx - w / 2,
             top: p.dy - h / 2,
             child: Opacity(
-              opacity: fadeOut ? (1 - Curves.easeIn.transform(math.max(0, t - .7) / .3)).clamp(0.0, 1.0) : 1,
+              opacity: fadeOut ? (1 - Curves.easeIn.transform((math.max(0.0, t - .7) / .3).clamp(0.0, 1.0))).clamp(0.0, 1.0) : 1,
               child: Transform(
                 alignment: Alignment.center,
                 transform: Matrix4.rotationZ(turn)..multiply(Matrix4.diagonal3Values(sc * sx, sc, 1)),
@@ -381,14 +381,18 @@ class NotebookOpen extends StatelessWidget {
           duration: const Duration(milliseconds: 360),
           curve: Curves.easeOutCubic,
           builder: (_, v, child) {
+            // laid out at its full size all along and only drawn smaller, so nothing inside is ever squeezed
             final r = Rect.lerp(from, to, v)!;
+            final mtx = Matrix4.translationValues(r.left - to.left, r.top - to.top, 0)
+              ..multiply(Matrix4.diagonal3Values(r.width / to.width, r.height / to.height, 1))
+              ..multiply(Matrix4.rotationZ(.045 * (1 - v)));
             return Stack(children: [
               Positioned.fill(
                 child: GestureDetector(onTap: onClose, child: ColoredBox(color: Color.fromRGBO(3, 6, 12, .62 * v))),
               ),
               Positioned.fromRect(
-                rect: r,
-                child: Transform.rotate(angle: .045 * (1 - v), child: Opacity(opacity: (.3 + v).clamp(0.0, 1.0), child: child)),
+                rect: to,
+                child: Transform(transform: mtx, child: Opacity(opacity: (.3 + v).clamp(0.0, 1.0), child: child)),
               ),
             ]);
           },
