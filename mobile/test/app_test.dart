@@ -236,7 +236,8 @@ void main() {
     final send = find.byKey(const ValueKey('icm-send-101'));
     await t.ensureVisible(send);
     await settle(t);
-    await t.drag(send, const Offset(0, -200));
+    final fp = t.state<ScrollableState>(_feed).position;
+    fp.jumpTo((fp.pixels + 160).clamp(0.0, fp.maxScrollExtent));
     await settle(t);
     await t.enterText(find.byKey(const ValueKey('icm-field-101')), 'რა ლამაზია');
     await t.pump();
