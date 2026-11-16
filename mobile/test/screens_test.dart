@@ -612,6 +612,32 @@ void main() {
       await _shot(t, '72-comments-$k');
     });
 
+    testWidgets('comment threads, three steps ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.ensureVisible(find.byKey(const ValueKey('comments-101')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('comments-101')));
+      await settle(t);
+      await t.ensureVisible(find.byKey(const ValueKey('all-cm-101')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('all-cm-101')));
+      await settle(t);
+      final panel = find.byType(CommentsPanel);
+      final list = find.descendant(of: panel, matching: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)).first;
+      await t.scrollUntilVisible(find.descendant(of: panel, matching: find.byKey(const ValueKey('cthread-1'))), 100, scrollable: list);
+      await settle(t);
+      await t.tap(find.descendant(of: panel, matching: find.byKey(const ValueKey('cthread-1'))));
+      await settle(t);
+      await t.scrollUntilVisible(find.descendant(of: panel, matching: find.byKey(const ValueKey('cthread-2'))), 100, scrollable: list);
+      await settle(t);
+      await t.tap(find.descendant(of: panel, matching: find.byKey(const ValueKey('cthread-2'))));
+      await settle(t);
+      await t.scrollUntilVisible(find.descendant(of: panel, matching: find.byKey(const ValueKey('cthread-1'))), 100, scrollable: list);
+      await settle(t);
+      await _shot(t, '72-comments-threads-$k');
+    });
+
     testWidgets('search ($k)', (t) async {
       phone(t);
       await shell(t, mode: m);
