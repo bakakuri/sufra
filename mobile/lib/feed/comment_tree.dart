@@ -124,8 +124,10 @@ class ThreadToggle extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               if (!open && first.ap != null) ...[Avatar(p: first.ap!, size: 20), const SizedBox(width: 6)],
-              Text(open ? 'პასუხების დამალვა' : (count == 1 ? '1 პასუხის ნახვა' : 'ყველა $count პასუხის ნახვა'),
-                  style: TextStyle(color: c.muted, fontWeight: FontWeight.w800, fontSize: 13)),
+              Flexible(
+                child: Text(open ? 'პასუხების დამალვა' : (count == 1 ? '1 პასუხის ნახვა' : 'ყველა $count პასუხის ნახვა'),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontWeight: FontWeight.w800, fontSize: 13)),
+              ),
             ]),
           ),
         ),

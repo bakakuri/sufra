@@ -1,7 +1,6 @@
 // Places, help, rides, the match room and jobs.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:peera/community/events.dart';
 import 'package:peera/community/help.dart';
 import 'package:peera/community/jobs.dart';
 import 'package:peera/community/rides.dart';
@@ -12,7 +11,6 @@ import 'package:peera/people/person_screen.dart';
 import 'package:peera/places/places.dart';
 import 'package:peera/profile/profile.dart';
 
-import 'fake_api.dart';
 import 'helpers.dart';
 
 Future<void> _open(WidgetTester t, String service) async {

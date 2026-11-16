@@ -181,7 +181,7 @@ void main() {
     await settle(t);
     expect(inP(find.text('Looks amazing! Which app is this?')), findsOneWidget);
 
-    await t.tap(find.byKey(const ValueKey('clike-20')));
+    await t.tap(inP(find.byKey(const ValueKey('clike-20'))));
     await settle(t);
     expect(api.calls, contains('clike 20 true'));
     expect(inP(find.text('მოგწონს')), findsOneWidget);

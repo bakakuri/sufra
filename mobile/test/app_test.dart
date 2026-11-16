@@ -232,10 +232,15 @@ void main() {
     expect(api.calls, contains('comment 101 მეც მინდა ↩2'));
     expect(find.descendant(of: inl, matching: find.text('მეც მინდა')), findsOneWidget);
     expect(find.byKey(const ValueKey('icm-to-101')), findsNothing);
-    // one written straight from the feed
+    // one written straight from the feed (the field lifted above the tab bar first)
+    final send = find.byKey(const ValueKey('icm-send-101'));
+    await t.ensureVisible(send);
+    await settle(t);
+    await t.drag(send, const Offset(0, -200));
+    await settle(t);
     await t.enterText(find.byKey(const ValueKey('icm-field-101')), 'რა ლამაზია');
     await t.pump();
-    await t.tap(find.byTooltip('კომენტარის გაგზავნა'));
+    await t.tap(send);
     await settle(t);
     expect(api.calls, contains('comment 101 რა ლამაზია'));
     expect(find.descendant(of: find.byKey(const ValueKey('inline-cm-101')), matching: find.text('რა ლამაზია')), findsOneWidget);
@@ -397,10 +402,12 @@ void main() {
     await settle(t);
     expect(api.calls, contains('react 301 ❤️'));
     expect(find.text('133'), findsOneWidget);
+    // a clip's comments come up over it, the same as a post's (no page of its own)
     await t.tap(find.byKey(const ValueKey('clip-comments-301')));
     await settle(t);
-    expect(find.text('პოსტი'), findsOneWidget);
+    expect(find.byType(CommentsPanel), findsOneWidget);
     await _back(t);
+    expect(find.byType(CommentsPanel), findsNothing);
     expect(find.textContaining('გუდაურში'), findsOneWidget);
     // swipe up: the next clip
     await t.fling(find.byType(ClipFeed), const Offset(0, -500), 1500);
