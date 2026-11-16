@@ -192,7 +192,7 @@ class SlideTabs extends StatelessWidget {
       height: 44,
       decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(14)),
       child: LayoutBuilder(builder: (context, box) {
-        final w = box.maxWidth / tabs.length;
+        final w = box.maxWidth / tabs.length, icons = w >= 132;
         return Stack(children: [
           AnimatedPositioned(
             duration: const Duration(milliseconds: 320),
@@ -201,7 +201,7 @@ class SlideTabs extends StatelessWidget {
             top: 3,
             width: w - 6,
             height: 38,
-            child: Container(decoration: cardLook(context, radius: 11, raised: true)),
+            child: Container(decoration: cardLook(context, radius: 11)),
           ),
           Row(children: [
             for (final (id, icon, label) in tabs)
@@ -212,8 +212,7 @@ class SlideTabs extends StatelessWidget {
                   onTap: () => onChanged(id),
                   child: Center(
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      PIcon(icon, size: 16, color: id == value ? c.accent : c.muted),
-                      const SizedBox(width: 5),
+                      if (icons) ...[PIcon(icon, size: 16, color: id == value ? c.accent : c.muted), const SizedBox(width: 5)],
                       Flexible(
                         child: Text(label,
                             maxLines: 1,
