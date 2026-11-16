@@ -51,7 +51,7 @@ abstract class PeeraApi {
   Future<Media> uploadPhoto(PreparedPhoto p);
   /// a post: now, as a draft, or waiting for [publishAt]; with a place, or quoting another post ([repostOf])
   Future<Post> createPost(String body, List<Media> media,
-      {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf, int? groupId, int? pageId});
+      {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf, int? groupId, int? pageId, String? topic});
 
   Future<Profile?> person(String uid);
   Future<Counts> counts(String uid);
@@ -482,21 +482,41 @@ abstract class PeeraApi {
   // ---------- groups, channels and business pages (community.js) ----------
 
   static const groupSel = 'id,name,hue,is_private,description,owner,created_at,rules,join_mode,post_approval,avatar_url,kind';
-  static const pageSel = 'id,name,kind,hue,verified,category,owner,description,avatar_url';
+  static const pageSel = 'id,name,kind,hue,verified,category,owner,description,avatar_url,rating,reviews';
+
+  /// a group's or a page's own screen: also its cover, the pinned post and (groups) topics, questions, filter words,
+  /// chat; (pages) the business's contacts, hours and main button
+  static const groupFull = '$groupSel,cover_url,pinned_post,questions,topics,blocked_words,conv_id';
+  static const pageFull = '$pageSel,cover_url,address,phone,website,hours,action,pinned_post';
 
   /// the groups I am in (ids) and the newest groups
   Future<(Set<int>, List<Map<String, dynamic>>)> groups();
 
   /// one group with its members' count, my role ('owner', 'admin', 'member' or null) and my request ('pending' or null)
   Future<({Map<String, dynamic> g, int count, String? role, String? request})?> group(int id);
-  Future<List<Post>> groupPosts(int id);
+  Future<List<Post>> groupPosts(int id, {String? topic});
   Future<int> createGroup({required String name, String description = '', bool private = false, String? avatarUrl});
   Future<void> updateGroup(int id, Map<String, dynamic> changes);
   Future<void> deleteGroup(int id);
   Future<void> joinGroup(int id);
   Future<void> leaveGroup(int id);
-  Future<void> requestGroup(int id, String? note);
+  /// asking to join, with the answers to the group's questions
+  Future<void> requestGroup(int id, String? note, {List<String> answers = const []});
   Future<void> cancelGroupRequest(int id);
+
+  /// the group's own chat, made the first time someone opens it: its conversation
+  Future<int> groupChat(int id);
+
+  /// an admin keeps a member from writing for [minutes] (0 lifts it); who is muted, till when
+  Future<void> muteInGroup(int id, String uid, int minutes);
+  Future<Map<String, DateTime>> groupMutes(int id);
+
+  /// for the admins: what was done (newest first), the group's numbers
+  Future<List<Map<String, dynamic>>> groupLog(int id);
+  Future<Map<String, dynamic>> groupStats(int id);
+
+  /// the month's most active members (five at most)
+  Future<List<({String uid, int posts, int comments})>> groupStars(int id);
 
   /// for the group's admins: requests to join, posts waiting, members and their roles
   Future<List<Map<String, dynamic>>> groupRequests(int id);
@@ -518,8 +538,24 @@ abstract class PeeraApi {
   /// the pages I follow (ids) and the newest pages
   Future<(Set<int>, List<Map<String, dynamic>>)> pages();
 
-  /// one page with its followers' count and whether I follow it
-  Future<({Map<String, dynamic> p, int count, bool following})?> page(int id);
+  /// one page with its followers' count, whether I follow it and how much I am told ('all', 'highlights', 'off'), and
+  /// what I am on it ('owner', 'admin', 'editor' or null)
+  Future<({Map<String, dynamic> p, int count, bool following, String notify, String? role})?> page(int id);
+  Future<void> pageNotify(int id, String level);
+
+  /// the page's co-admins (the owner adds and removes them; an admin edits the page, an editor writes as it)
+  Future<List<Map<String, dynamic>>> pageAdmins(int id);
+  Future<void> addPageAdmin(int id, String uid, String role);
+  Future<void> setPageAdmin(int id, String uid, String role);
+  Future<void> removePageAdmin(int id, String uid);
+
+  /// the page's numbers, for its owner and admins
+  Future<Map<String, dynamic>> pageStats(int id);
+
+  /// a business's reviews with stars (newest first); mine written or changed, or taken back
+  Future<List<Map<String, dynamic>>> pageReviews(int id);
+  Future<void> reviewPage(int id, int rating, String body);
+  Future<void> deletePageReview(int id);
   Future<List<Post>> pagePosts(int id);
   Future<int> createPage({required String kind, required String name, String category = '', String description = '', String? avatarUrl});
   Future<void> updatePage(int id, Map<String, dynamic> changes);
@@ -534,8 +570,8 @@ abstract class PeeraApi {
 
   // ---------- events and the evening's planning (community.js) ----------
 
-  /// events from yesterday on, and who answered what
-  Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)> events();
+  /// events from yesterday on (of one group, when given), and who answered what
+  Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)> events({int? groupId});
 
   /// one event: itself, the answers, and the list of who brings what
   Future<(Map<String, dynamic>, List<Map<String, dynamic>>, List<Map<String, dynamic>>)?> event(int id);
@@ -797,7 +833,7 @@ class SupaApi implements PeeraApi {
   String get myId => sb.auth.currentUser?.id ?? '';
 
   static const _who = 'id,name,surname,username,avatar_url,hue,verified';
-  static const postSel = 'id,author,body,media,poll,tags,group_id,page_id,is_clip,hidden,created_at,link,edited_at,repost_of,pending,'
+  static const postSel = 'id,author,body,media,poll,tags,group_id,page_id,is_clip,hidden,created_at,link,edited_at,repost_of,pending,topic,'
       'ap:profiles!posts_author_fkey($_who),page:pages!posts_page_id_fkey(id,name,hue,avatar_url,verified,kind),'
       'grp:groups!posts_group_id_fkey(id,name),pl:places!posts_place_id_fkey(id,name,kind,city)';
   static const commentSel = 'id,post_id,body,media,created_at,author,parent_id,likes,profiles!comments_author_fkey($_who)';
@@ -973,7 +1009,7 @@ class SupaApi implements PeeraApi {
 
   @override
   Future<Post> createPost(String body, List<Media> media,
-      {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf, int? groupId, int? pageId}) async {
+      {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf, int? groupId, int? pageId, String? topic}) async {
     final r = await sb
         .from('posts')
         .insert({
@@ -985,6 +1021,7 @@ class SupaApi implements PeeraApi {
           if (repostOf != null) 'repost_of': repostOf,
           if (groupId != null) 'group_id': groupId,
           if (pageId != null) 'page_id': pageId,
+          if (topic != null && groupId != null) 'topic': topic,
           if (draft) 'draft': true,
           if (publishAt != null) 'publish_at': publishAt.toUtc().toIso8601String(),
           if (media.length == 1 && media.first.isVideo && RegExp(r'#კლიპი|#clip', caseSensitive: false).hasMatch(body)) 'is_clip': true,
@@ -2278,7 +2315,7 @@ class SupaApi implements PeeraApi {
 
   @override
   Future<({Map<String, dynamic> g, int count, String? role, String? request})?> group(int id) async {
-    final g = await sb.from('groups').select(PeeraApi.groupSel).eq('id', id).maybeSingle();
+    final g = await sb.from('groups').select(PeeraApi.groupFull).eq('id', id).maybeSingle();
     if (g == null) return null;
     final n = await sb.from('group_members').count(CountOption.exact).eq('group_id', id);
     final me = await sb.from('group_members').select('role').eq('group_id', id).eq('user_id', myId).maybeSingle();
@@ -2291,8 +2328,11 @@ class SupaApi implements PeeraApi {
   }
 
   @override
-  Future<List<Post>> groupPosts(int id) async =>
-      _hydrate(await _posts().eq('group_id', id).or('pending.eq.false,author.eq.$myId').order('created_at', ascending: false).limit(40));
+  Future<List<Post>> groupPosts(int id, {String? topic}) async {
+    var q = _posts().eq('group_id', id).or('pending.eq.false,author.eq.$myId');
+    if (topic != null) q = q.eq('topic', topic);
+    return _hydrate(await q.order('created_at', ascending: false).limit(40));
+  }
 
   @override
   Future<int> createGroup({required String name, String description = '', bool private = false, String? avatarUrl}) async {
@@ -2319,16 +2359,46 @@ class SupaApi implements PeeraApi {
   Future<void> leaveGroup(int id) => sb.from('group_members').delete().eq('group_id', id).eq('user_id', myId);
 
   @override
-  Future<void> requestGroup(int id, String? note) => sb
-      .from('group_requests')
-      .upsert({'group_id': id, 'user_id': myId, 'note': note, 'status': 'pending', 'created_at': DateTime.now().toUtc().toIso8601String()}, onConflict: 'group_id,user_id');
+  Future<void> requestGroup(int id, String? note, {List<String> answers = const []}) => sb.from('group_requests').upsert({
+        'group_id': id,
+        'user_id': myId,
+        'note': note,
+        'status': 'pending',
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+        if (answers.isNotEmpty) 'answers': answers,
+      }, onConflict: 'group_id,user_id');
+
+  @override
+  Future<int> groupChat(int id) async => asInt(await sb.rpc('group_chat', params: {'p_group': id}));
+
+  @override
+  Future<void> muteInGroup(int id, String uid, int minutes) => sb.rpc('group_mute', params: {'p_group': id, 'p_user': uid, 'p_minutes': minutes});
+
+  @override
+  Future<Map<String, DateTime>> groupMutes(int id) async => {
+        for (final r in await sb.from('group_mutes').select('user_id,until').eq('group_id', id).gt('until', DateTime.now().toUtc().toIso8601String()))
+          '${r['user_id']}': asTime(r['until']),
+      };
+
+  @override
+  Future<List<Map<String, dynamic>>> groupLog(int id) async =>
+      await sb.from('group_log').select('id,actor,action,target,post_id,note,created_at').eq('group_id', id).order('created_at', ascending: false).limit(100);
+
+  @override
+  Future<Map<String, dynamic>> groupStats(int id) async => Map<String, dynamic>.from(await sb.rpc('group_stats', params: {'p_group': id}) as Map);
+
+  @override
+  Future<List<({String uid, int posts, int comments})>> groupStars(int id) async => [
+        for (final r in (await sb.rpc('group_stars', params: {'p_group': id}) as List).cast<Map>())
+          (uid: '${r['user_id']}', posts: asInt(r['posts']), comments: asInt(r['comments'])),
+      ];
 
   @override
   Future<void> cancelGroupRequest(int id) => sb.from('group_requests').delete().eq('group_id', id).eq('user_id', myId);
 
   @override
   Future<List<Map<String, dynamic>>> groupRequests(int id) async =>
-      await sb.from('group_requests').select('user_id,note,created_at').eq('group_id', id).eq('status', 'pending').order('created_at');
+      await sb.from('group_requests').select('user_id,note,answers,created_at').eq('group_id', id).eq('status', 'pending').order('created_at');
 
   @override
   Future<void> groupRespond(int id, String uid, bool accept) => sb.rpc('group_respond', params: {'p_group': id, 'p_user': uid, 'p_accept': accept});
@@ -2379,13 +2449,56 @@ class SupaApi implements PeeraApi {
   }
 
   @override
-  Future<({Map<String, dynamic> p, int count, bool following})?> page(int id) async {
-    final p = await sb.from('pages').select(PeeraApi.pageSel).eq('id', id).maybeSingle();
+  Future<({Map<String, dynamic> p, int count, bool following, String notify, String? role})?> page(int id) async {
+    final p = await sb.from('pages').select(PeeraApi.pageFull).eq('id', id).maybeSingle();
     if (p == null) return null;
-    final n = await sb.from('page_follows').count(CountOption.exact).eq('page_id', id);
-    final f = await sb.from('page_follows').select('page_id').eq('page_id', id).eq('user_id', myId).maybeSingle();
-    return (p: p, count: n, following: f != null);
+    final n = sb.from('page_follows').count(CountOption.exact).eq('page_id', id);
+    final f = sb.from('page_follows').select('notify').eq('page_id', id).eq('user_id', myId).maybeSingle();
+    final a = p['owner'] == myId ? null : sb.from('page_admins').select('role').eq('page_id', id).eq('user_id', myId).maybeSingle();
+    final fr = await f, ar = a == null ? null : await a;
+    return (
+      p: p,
+      count: await n,
+      following: fr != null,
+      notify: '${fr?['notify'] ?? 'all'}',
+      role: p['owner'] == myId ? 'owner' : (ar == null ? null : '${ar['role']}'),
+    );
   }
+
+  @override
+  Future<void> pageNotify(int id, String level) => sb.from('page_follows').update({'notify': level}).eq('page_id', id).eq('user_id', myId);
+
+  @override
+  Future<List<Map<String, dynamic>>> pageAdmins(int id) async => await sb.from('page_admins').select('user_id,role,created_at').eq('page_id', id).order('created_at');
+
+  @override
+  Future<void> addPageAdmin(int id, String uid, String role) => sb.from('page_admins').insert({'page_id': id, 'user_id': uid, 'role': role});
+
+  @override
+  Future<void> setPageAdmin(int id, String uid, String role) => sb.from('page_admins').update({'role': role}).eq('page_id', id).eq('user_id', uid);
+
+  @override
+  Future<void> removePageAdmin(int id, String uid) => sb.from('page_admins').delete().eq('page_id', id).eq('user_id', uid);
+
+  @override
+  Future<Map<String, dynamic>> pageStats(int id) async => Map<String, dynamic>.from(await sb.rpc('page_stats', params: {'p': id}) as Map);
+
+  @override
+  Future<List<Map<String, dynamic>>> pageReviews(int id) async =>
+      await sb.from('page_reviews').select('id,author,rating,body,created_at,updated_at').eq('page_id', id).order('created_at', ascending: false).limit(100);
+
+  @override
+  Future<void> reviewPage(int id, int rating, String body) async {
+    final had = await sb.from('page_reviews').select('id').eq('page_id', id).eq('author', myId).maybeSingle();
+    if (had != null) {
+      await sb.from('page_reviews').update({'rating': rating, 'body': body}).eq('id', asInt(had['id']));
+    } else {
+      await sb.from('page_reviews').insert({'page_id': id, 'rating': rating, 'body': body});
+    }
+  }
+
+  @override
+  Future<void> deletePageReview(int id) => sb.from('page_reviews').delete().eq('page_id', id).eq('author', myId);
 
   @override
   Future<List<Post>> pagePosts(int id) async => _hydrate(await _posts().eq('page_id', id).order('created_at', ascending: false).limit(40));
@@ -2421,13 +2534,10 @@ class SupaApi implements PeeraApi {
   Future<List<Map<String, dynamic>>> pageAds(int id) async =>
       await sb.from('ads').select('id,post_id,budget,spent,status,created_at').eq('page_id', id).order('created_at', ascending: false);
   @override
-  Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)> events() async {
-    final ev = await sb
-        .from('events')
-        .select('id,title,starts_at,place,host,hue')
-        .gte('starts_at', DateTime.now().subtract(const Duration(days: 1)).toUtc().toIso8601String())
-        .order('starts_at')
-        .limit(60);
+  Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)> events({int? groupId}) async {
+    var q = sb.from('events').select('id,title,starts_at,place,host,hue').gte('starts_at', DateTime.now().subtract(const Duration(days: 1)).toUtc().toIso8601String());
+    if (groupId != null) q = q.eq('group_id', groupId);
+    final ev = await q.order('starts_at').limit(60);
     final ids = [for (final e in ev) asInt(e['id'])];
     final rs = ids.isEmpty ? <Map<String, dynamic>>[] : await sb.from('event_rsvps').select('event_id,user_id,status').inFilter('event_id', ids);
     return (ev, rs);

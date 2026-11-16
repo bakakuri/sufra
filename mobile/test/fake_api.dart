@@ -278,10 +278,10 @@ class FakeApi implements PeeraApi {
 
   @override
   Future<Post> createPost(String body, List<Media> media,
-      {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf, int? groupId, int? pageId}) async {
+      {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf, int? groupId, int? pageId, String? topic}) async {
     calls.add('post $body ${media.length}${poll != null ? ' poll ${poll.q} ${poll.opts.join('/')}' : ''}'
         '${placeId != null ? ' place $placeId' : ''}${draft ? ' draft' : ''}${publishAt != null ? ' at' : ''}${repostOf != null ? ' quote $repostOf' : ''}'
-        '${groupId != null ? ' group $groupId' : ''}${pageId != null ? ' page $pageId' : ''}');
+        '${groupId != null ? ' group $groupId' : ''}${pageId != null ? ' page $pageId' : ''}${topic != null ? ' topic $topic' : ''}');
     final p = _p(_id++, nino, DateTime.now(), body, media, poll: poll, repostOf: repostOf);
     if (!draft && publishAt == null) _posts.insert(0, p);
     return p;
@@ -1446,17 +1446,49 @@ class FakeApi implements PeeraApi {
   // ---------- groups and pages ----------
   String _at(int minutes) => DateTime.now().subtract(Duration(minutes: minutes)).toIso8601String();
   final groupRows = <Map<String, dynamic>>[
-    {'id': 5, 'name': 'მთის მოყვარულები', 'hue': 150, 'is_private': false, 'description': 'ლაშქრობები ყოველ შაბათს', 'owner': 'u2', 'rules': '1. პატივი ეცით ერთმანეთს.', 'join_mode': 'open', 'kind': null},
-    {'id': 6, 'name': 'თსუ სტუდენტები', 'hue': 30, 'is_private': true, 'description': 'თბილისის უნივერსიტეტი', 'owner': 'u3', 'join_mode': 'request', 'kind': 'uni'},
-    {'id': 7, 'name': 'მე-11 ბ', 'hue': 260, 'is_private': true, 'description': 'ქუთაისის მე-2 სკოლა', 'owner': 'u1', 'join_mode': 'request', 'post_approval': true, 'kind': 'class'},
+    {
+      'id': 5, 'name': 'მთის მოყვარულები', 'hue': 150, 'is_private': false, 'description': 'ლაშქრობები ყოველ შაბათს', 'owner': 'u2', //
+      'rules': '1. პატივი ეცით ერთმანეთს.', 'join_mode': 'open', 'kind': null, 'topics': ['ლაშქრობა', 'ფოტოები'], 'questions': [], 'pinned_post': 107,
+      'created_at': DateTime.now().subtract(const Duration(days: 400)).toUtc().toIso8601String(),
+    },
+    {
+      'id': 6, 'name': 'თსუ სტუდენტები', 'hue': 30, 'is_private': true, 'description': 'თბილისის უნივერსიტეტი', 'owner': 'u3', 'join_mode': 'request', 'kind': 'uni', //
+      'questions': ['რომელ ფაკულტეტზე სწავლობ?', 'რომელ კურსზე ხარ?'], 'topics': [],
+    },
+    {'id': 7, 'name': 'მე-11 ბ', 'hue': 260, 'is_private': true, 'description': 'ქუთაისის მე-2 სკოლა', 'owner': 'u1', 'join_mode': 'request', 'post_approval': true, 'kind': 'class', 'topics': [], 'questions': [], 'blocked_words': []},
   ];
   final groupIn = <int>{7};
   final groupAdmins = <int, Set<String>>{7: {}};
   final pageRows = <Map<String, dynamic>>[
     {'id': 1, 'name': 'Peera სიახლეები', 'kind': 'channel', 'hue': 200, 'verified': true, 'category': 'სიახლეები', 'owner': 'u2', 'description': 'რა არის ახალი Peera-ზე'},
-    {'id': 2, 'name': 'მთის ამბები', 'kind': 'business', 'hue': 120, 'category': 'ტურიზმი', 'owner': 'u1', 'description': 'ტურები სვანეთში'},
+    {
+      'id': 2, 'name': 'მთის ამბები', 'kind': 'business', 'hue': 120, 'category': 'ტურიზმი', 'owner': 'u1', 'description': 'ტურები სვანეთში', //
+      'address': 'მესტია, სეტის მოედანი 3', 'phone': '+995 555 12 34 56', 'website': 'https://mta.ge', 'action': 'call', 'rating': 4.5, 'reviews': 2,
+      'hours': {for (var d = 1; d <= 7; d++) '$d': d == 7 ? null : ['09:00', '19:00']},
+    },
+    {
+      'id': 3, 'name': 'ხინკლის სახლი', 'kind': 'business', 'hue': 20, 'category': 'რესტორანი', 'owner': 'u2', 'description': 'ხელით გაკეთებული ხინკალი', //
+      'address': 'თბილისი, აღმაშენებლის 12', 'phone': '+995 32 2 00 00 00', 'action': 'msg', 'rating': 4.0, 'reviews': 1,
+      'hours': {for (var d = 1; d <= 7; d++) '$d': ['11:00', '01:00']},
+    },
   ];
   final pageFollows = <int>{1};
+  final pageNotifyOf = <int, String>{1: 'all'};
+  final pageAdminRows = <int, List<Map<String, dynamic>>>{
+    2: [
+      {'user_id': 'u3', 'role': 'editor', 'created_at': DateTime.now().subtract(const Duration(days: 20)).toUtc().toIso8601String()},
+    ],
+  };
+  final pageReviewRows = <int, List<Map<String, dynamic>>>{
+    2: [
+      {'id': 1, 'author': 'u2', 'rating': 5, 'body': 'საუკეთესო ტური! გიდი ყველაფერს გვიყვებოდა.', 'created_at': DateTime.now().subtract(const Duration(days: 3)).toUtc().toIso8601String()},
+      {'id': 2, 'author': 'u3', 'rating': 4, 'body': 'კარგი იყო, ოღონდ ცოტა დავაგვიანეთ.', 'created_at': DateTime.now().subtract(const Duration(days: 9)).toUtc().toIso8601String()},
+    ],
+    3: [
+      {'id': 3, 'author': 'u4', 'rating': 4, 'body': 'გემრიელია, ოღონდ რიგი იყო.', 'created_at': DateTime.now().subtract(const Duration(days: 2)).toUtc().toIso8601String()},
+    ],
+  };
+  final groupMuted = <int, Map<String, DateTime>>{};
   @override
   Future<(Set<int>, List<Map<String, dynamic>>)> groups() async => ({...groupIn}, [for (final g in groupRows) {...g}]);
   @override
@@ -1468,7 +1500,10 @@ class FakeApi implements PeeraApi {
   }
 
   @override
-  Future<List<Post>> groupPosts(int id) async => id == 5 ? [_posts.firstWhere((p) => p.id == 107)] : [];
+  Future<List<Post>> groupPosts(int id, {String? topic}) async {
+    if (topic != null) calls.add('gposts $id $topic');
+    return id == 5 && topic == null ? [_posts.firstWhere((p) => p.id == 107)] : [];
+  }
   @override
   Future<int> createGroup({required String name, String description = '', bool private = false, String? avatarUrl}) async {
     calls.add('newgroup $name $private');
@@ -1502,12 +1537,46 @@ class FakeApi implements PeeraApi {
   }
 
   @override
-  Future<void> requestGroup(int id, String? note) async => calls.add('greq $id');
+  Future<void> requestGroup(int id, String? note, {List<String> answers = const []}) async {
+    calls.add('greq $id');
+    if (answers.isNotEmpty) calls.add('greq-answers $id ${answers.join('|')}');
+  }
+
+  @override
+  Future<int> groupChat(int id) async {
+    calls.add('gchat $id');
+    final g = groupRows.firstWhere((x) => x['id'] == id);
+    if (!_chats.any((c) => c.convId == 31)) _chats.insert(0, Chat(convId: 31, isGroup: true, title: '${g['name']}', members: [nino.id, giorgi.id], lastAt: DateTime.now()));
+    return 31;
+  }
+
+  @override
+  Future<void> muteInGroup(int id, String uid, int minutes) async {
+    calls.add('gmute $id $uid $minutes');
+    final m = groupMuted[id] ??= {};
+    minutes > 0 ? m[uid] = DateTime.now().add(Duration(minutes: minutes)) : m.remove(uid);
+  }
+
+  @override
+  Future<Map<String, DateTime>> groupMutes(int id) async => {...?groupMuted[id]};
+  @override
+  Future<List<Map<String, dynamic>>> groupLog(int id) async => [
+        {'id': 3, 'actor': nino.id, 'action': 'mute', 'target': 'u3', 'note': '60', 'created_at': _at(30)},
+        {'id': 2, 'actor': nino.id, 'action': 'approve', 'target': 'u2', 'post_id': 102, 'note': 'ხვალ შეკრება სკოლასთან', 'created_at': _at(300)},
+        {'id': 1, 'actor': nino.id, 'action': 'accept', 'target': 'u4', 'created_at': _at(2000)},
+      ];
+  @override
+  Future<Map<String, dynamic>> groupStats(int id) async => {
+        'members': 13, 'new7': 2, 'new30': 5, 'posts30': 18, 'comments30': 64, 'active30': 9, //
+        'daily': [for (var i = 0; i < 30; i++) {'d': DateTime.now().subtract(Duration(days: 29 - i)).toIso8601String().substring(0, 10), 'n': (i * 7) % 4 == 0 ? 1 : 0}],
+      };
+  @override
+  Future<List<({String uid, int posts, int comments})>> groupStars(int id) async => id == 5 ? [(uid: giorgi.id, posts: 4, comments: 11), (uid: 'u3', posts: 1, comments: 6)] : [];
   @override
   Future<void> cancelGroupRequest(int id) async => calls.add('greqx $id');
   @override
   Future<List<Map<String, dynamic>>> groupRequests(int id) async => [
-        {'user_id': luka.id, 'note': 'მე-11 ბ-ში ვსწავლობდი', 'created_at': _at(60)},
+        {'user_id': luka.id, 'note': 'მე-11 ბ-ში ვსწავლობდი', 'answers': ['2014 წელს დავამთავრე'], 'created_at': _at(60)},
       ];
   @override
   Future<void> groupRespond(int id, String uid, bool accept) async => calls.add('grespond $id $uid $accept');
@@ -1544,9 +1613,69 @@ class FakeApi implements PeeraApi {
   @override
   Future<(Set<int>, List<Map<String, dynamic>>)> pages() async => ({...pageFollows}, [for (final p in pageRows) {...p}]);
   @override
-  Future<({Map<String, dynamic> p, int count, bool following})?> page(int id) async {
+  Future<({Map<String, dynamic> p, int count, bool following, String notify, String? role})?> page(int id) async {
     final p = pageRows.where((x) => x['id'] == id).firstOrNull;
-    return p == null ? null : (p: {...p}, count: 340 + (pageFollows.contains(id) ? 1 : 0), following: pageFollows.contains(id));
+    if (p == null) return null;
+    final adm = pageAdminRows[id]?.where((r) => r['user_id'] == nino.id).firstOrNull;
+    return (
+      p: {...p},
+      count: 340 + (pageFollows.contains(id) ? 1 : 0),
+      following: pageFollows.contains(id),
+      notify: pageNotifyOf[id] ?? 'all',
+      role: p['owner'] == nino.id ? 'owner' : adm?['role'] as String?,
+    );
+  }
+
+  @override
+  Future<void> pageNotify(int id, String level) async {
+    calls.add('pnotify $id $level');
+    pageNotifyOf[id] = level;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> pageAdmins(int id) async => [for (final r in pageAdminRows[id] ?? const <Map<String, dynamic>>[]) {...r}];
+  @override
+  Future<void> addPageAdmin(int id, String uid, String role) async {
+    calls.add('padmin+ $id $uid $role');
+    (pageAdminRows[id] ??= []).add({'user_id': uid, 'role': role, 'created_at': DateTime.now().toUtc().toIso8601String()});
+  }
+
+  @override
+  Future<void> setPageAdmin(int id, String uid, String role) async {
+    calls.add('padmin $id $uid $role');
+    for (final r in pageAdminRows[id] ?? const <Map<String, dynamic>>[]) {
+      if (r['user_id'] == uid) r['role'] = role;
+    }
+  }
+
+  @override
+  Future<void> removePageAdmin(int id, String uid) async {
+    calls.add('padmin- $id $uid');
+    pageAdminRows[id]?.removeWhere((r) => r['user_id'] == uid);
+  }
+
+  @override
+  Future<Map<String, dynamic>> pageStats(int id) async => {
+        'followers': 341, 'new7': 12, 'new30': 40, 'posts30': 9, 'reactions30': 420, 'comments30': 57, //
+        'daily': [for (var i = 0; i < 30; i++) {'d': DateTime.now().subtract(Duration(days: 29 - i)).toIso8601String().substring(0, 10), 'n': (i * 5) % 7}],
+        'top': [
+          {'id': 107, 'body': 'ყაზბეგი, დილის 6 საათი', 'reactions': 120, 'comments': 14},
+        ],
+      };
+  @override
+  Future<List<Map<String, dynamic>>> pageReviews(int id) async => [for (final r in pageReviewRows[id] ?? const <Map<String, dynamic>>[]) {...r}];
+  @override
+  Future<void> reviewPage(int id, int rating, String body) async {
+    calls.add('preview $id $rating $body');
+    final l = pageReviewRows[id] ??= [];
+    l.removeWhere((r) => r['author'] == nino.id);
+    l.insert(0, {'id': 9, 'author': nino.id, 'rating': rating, 'body': body, 'created_at': DateTime.now().toUtc().toIso8601String()});
+  }
+
+  @override
+  Future<void> deletePageReview(int id) async {
+    calls.add('preview- $id');
+    pageReviewRows[id]?.removeWhere((r) => r['author'] == nino.id);
   }
 
   @override
@@ -1593,6 +1722,15 @@ class FakeApi implements PeeraApi {
       'description': 'მოვემზადოთ გამოცდისთვის ერთად',
       'tamada': null,
     },
+    {
+      'id': 71,
+      'title': 'ლაშქრობა ყაზბეგზე',
+      'starts_at': DateTime.now().add(const Duration(days: 5)).toUtc().toIso8601String(),
+      'place': 'სტეფანწმინდა',
+      'host': 'u2',
+      'hue': 150,
+      'group_id': 5,
+    },
   ];
   final rsvps = <Map<String, dynamic>>[
     {'event_id': 70, 'user_id': 'u2', 'status': 'yes'},
@@ -1609,7 +1747,8 @@ class FakeApi implements PeeraApi {
   ];
   final pays = <Map<String, dynamic>>[];
   @override
-  Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)> events() async => ([for (final e in eventRows) {...e}], [for (final r in rsvps) {...r}]);
+  Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)> events({int? groupId}) async =>
+      ([for (final e in eventRows) if (e['group_id'] == groupId) {...e}], [for (final r in rsvps) {...r}]);
   @override
   Future<(Map<String, dynamic>, List<Map<String, dynamic>>, List<Map<String, dynamic>>)?> event(int id) async {
     final e = eventRows.where((x) => x['id'] == id).firstOrNull;

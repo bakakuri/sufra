@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../chat/chat_screen.dart';
 import '../config.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
@@ -22,7 +23,8 @@ import '../ui/net_image.dart';
 import '../ui/theme.dart';
 import '../ui/translate.dart';
 import '../ui/widgets.dart';
-import 'events.dart';
+import 'community_ui.dart';
+import 'group_pro.dart';
 
 /// A group's or a page's square picture: the photo, or its first letter on its colour.
 class BoxPic extends StatelessWidget {
@@ -201,9 +203,13 @@ class GroupScreen extends StatefulWidget {
 class _GroupScreenState extends State<GroupScreen> {
   ({Map<String, dynamic> g, int count, String? role, String? request})? d;
   List<Post>? posts;
+  Post? pinned;
   List<String> starostas = const [];
+  List<({String uid, int posts, int comments})> stars = const [];
   int waiting = 0;
   Object? error;
+  String tab = 'posts';
+  String? topic;
   bool gone = false, _started = false;
 
   @override
@@ -218,6 +224,7 @@ class _GroupScreenState extends State<GroupScreen> {
   bool get admin => d?.role == 'owner' || d?.role == 'admin';
   bool get owner => d?.role == 'owner';
   Map<String, dynamic> get g => d!.g;
+  List<String> get topics => [for (final t in (d?.g['topics'] as List? ?? const [])) '$t'];
 
   Future<void> _load() async {
     final app = context.app;
@@ -248,12 +255,43 @@ class _GroupScreenState extends State<GroupScreen> {
         setState(() => posts = const []);
         return;
       }
-      final p = await app.api.groupPosts(widget.id);
-      await app.posts.load(p);
-      if (mounted) setState(() => posts = p);
+      app.api.groupStars(widget.id).then((s) async {
+        await app.people.ensure(s.map((x) => x.uid));
+        if (mounted) setState(() => stars = s);
+      }).catchError((_) {});
+      await _posts();
     } catch (e) {
       if (mounted) setState(() => error = e);
     }
+  }
+
+  /// the posts (of the chosen topic) and the pinned one
+  Future<void> _posts() async {
+    final app = context.app, x = d;
+    if (x == null) return;
+    final pin = x.g['pinned_post'] == null ? null : asInt(x.g['pinned_post']);
+    final want = topic;
+    final p = await app.api.groupPosts(widget.id, topic: want);
+    Post? pp = pin == null ? null : p.where((y) => y.id == pin).firstOrNull;
+    if (pin != null && pp == null && pinned?.id == pin) pp = pinned;
+    if (pin != null && pp == null) pp = await app.api.post(pin).catchError((_) => null);
+    await app.posts.load([...p, if (pp != null) pp]);
+    if (!mounted || want != topic) return;
+    setState(() {
+      posts = [for (final y in p) if (y.id != pin) y];
+      pinned = pp;
+    });
+  }
+
+  void _topic(String? t) {
+    if (t == topic) return;
+    setState(() {
+      topic = t;
+      posts = null;
+    });
+    _posts().catchError((e) {
+      if (mounted) setState(() => error = e);
+    });
   }
 
   Future<void> _join() async {
@@ -270,7 +308,8 @@ class _GroupScreenState extends State<GroupScreen> {
 
   Future<void> _request() async {
     final rules = '${g['rules'] ?? ''}'.trim();
-    final ok = await openPage<bool>(context, _RequestScreen(groupId: widget.id, rules: rules), full: true);
+    final qs = [for (final q in (g['questions'] as List? ?? const [])) '$q'.trim()]..removeWhere((q) => q.isEmpty);
+    final ok = await openPage<bool>(context, _RequestScreen(groupId: widget.id, rules: rules, questions: qs), full: true);
     if (ok == true && mounted) {
       toast(context, 'მოთხოვნა გაიგზავნა. ადმინი მალე გიპასუხებს');
       _load();
@@ -288,7 +327,7 @@ class _GroupScreenState extends State<GroupScreen> {
   }
 
   Future<void> _delete() async {
-    if (!await confirm(context, title: 'ჯგუფის წაშლა', text: 'წაიშლება ჯგუფი და მისი ყველა პოსტი.', yes: 'წაშლა', danger: true) || !mounted) return;
+    if (!await confirm(context, title: 'ჯგუფის წაშლა', text: 'წაიშლება ჯგუფი, მისი ყველა პოსტი და ჩატი.', yes: 'წაშლა', danger: true) || !mounted) return;
     if (await attempt(context, () => context.app.api.deleteGroup(widget.id)) && mounted) {
       toast(context, 'ჯგუფი წაიშალა');
       Navigator.of(context).maybePop();
@@ -296,10 +335,20 @@ class _GroupScreenState extends State<GroupScreen> {
   }
 
   Future<void> _post() async {
-    final p = await openPage<Post>(context, ComposeScreen(groupId: widget.id, where: '${g['name']}'), full: true);
+    final p = await openPage<Post>(context, ComposeScreen(groupId: widget.id, where: '${g['name']}', topics: topics, topic: topic), full: true);
     if (p != null && mounted) {
       if (g['post_approval'] == true && !admin) toast(context, 'პოსტი გამოჩნდება ადმინის დამტკიცების შემდეგ');
       _load();
+    }
+  }
+
+  Future<void> _chat() async {
+    final app = context.app;
+    try {
+      final conv = await app.api.groupChat(widget.id);
+      if (mounted) await openChat(context, conv);
+    } catch (e) {
+      if (mounted) toast(context, errText(e));
     }
   }
 
@@ -314,6 +363,50 @@ class _GroupScreenState extends State<GroupScreen> {
     } catch (e) {
       if (mounted) toast(context, errText(e));
     }
+  }
+
+  Future<void> _cover() async {
+    try {
+      final url = await pickCover(context, 'ჯგუფის ქავერი');
+      if (url == null || !mounted) return;
+      await context.app.api.updateGroup(widget.id, {'cover_url': url});
+      if (!mounted) return;
+      toast(context, 'ქავერი შეიცვალა');
+      _load();
+    } catch (e) {
+      if (mounted) toast(context, errText(e));
+    }
+  }
+
+  Future<void> _pin(int? postId) async {
+    if (await attempt(context, () => context.app.api.updateGroup(widget.id, {'pinned_post': postId})) && mounted) {
+      toast(context, postId == null ? 'მოიხსნა' : 'მიმაგრდა 📌');
+      _load();
+    }
+  }
+
+  Widget _postCard(Post p, {bool isPinned = false}) {
+    final mine = p.author == context.me.id;
+    return PostCard(
+      key: ValueKey('gpost-${p.id}'),
+      post: p,
+      menu: [
+        if (admin && !p.pending)
+          isPinned ? SheetItem('pin', 'მიმაგრების მოხსნა', () => _pin(null)) : SheetItem('pin', 'განცხადებად მიმაგრება', () => _pin(p.id)),
+        if (admin && !mine)
+          SheetItem('trash', 'ჯგუფიდან წაშლა', () async {
+            if (!await confirm(context, title: 'პოსტის წაშლა', text: 'პოსტი წაიშლება ჯგუფიდან.', yes: 'წაშლა', danger: true) || !mounted) return;
+            if (await attempt(context, () => context.app.api.deletePost(p.id)) && mounted) {
+              toast(context, 'წაიშალა');
+              _load();
+            }
+          }, danger: true),
+      ],
+      onDeleted: () => setState(() {
+        posts = [for (final y in posts!) if (y.id != p.id) y];
+        if (pinned?.id == p.id) pinned = null;
+      }),
+    );
   }
 
   Future<void> _invite() {
@@ -393,7 +486,7 @@ class _GroupScreenState extends State<GroupScreen> {
       );
     }
     final name = '${g['name'] ?? ''}', kind = '${g['kind'] ?? ''}', rules = '${g['rules'] ?? ''}'.trim(), desc = '${g['description'] ?? ''}'.trim();
-    final byRequest = g['is_private'] == true || g['join_mode'] == 'request';
+    final byRequest = g['is_private'] == true || g['join_mode'] == 'request', locked = g['is_private'] == true && !member;
     final hue = asInt(g['hue'], 200), url = g['avatar_url'] as String?;
     Widget btn(String key, String icon, String label, VoidCallback onTap, {bool filled = false, int badge = 0}) {
       final child = Row(mainAxisSize: MainAxisSize.min, children: [
@@ -414,51 +507,69 @@ class _GroupScreenState extends State<GroupScreen> {
     }
 
     final canStar = (kind == 'class' || kind == 'course') && member && !owner && !starostas.contains(me) && starostas.length < 2;
+    final tabs = [('posts', 'edit', 'პოსტები'), ('events', 'cal', 'ღონისძიებები'), ('about', 'help', 'შესახებ')];
+    final List<Widget> body = switch (tab) {
+      'events' => [GroupEvents(key: const ValueKey('g-events'), groupId: widget.id, member: member)],
+      'about' => [GroupAbout(g: g, count: x.count)],
+      _ => [
+          if (topics.isNotEmpty && !locked)
+            SizedBox(
+              height: 46,
+              child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.fromLTRB(12, 4, 12, 6), children: [
+                for (final t in [null, ...topics])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      key: ValueKey('gtopic-${t ?? 'all'}'),
+                      label: Text(t == null ? 'ყველა' : '# $t'),
+                      selected: topic == t,
+                      showCheckmark: false,
+                      selectedColor: c.accentSoft,
+                      side: BorderSide(color: topic == t ? c.accent : c.line),
+                      onSelected: (_) => _topic(t),
+                    ),
+                  ),
+              ]),
+            ),
+          if (pinned != null && topic == null && !locked)
+            KeyedSubtree(key: const ValueKey('g-pinned'), child: PinnedBox(onUnpin: admin ? () => _pin(null) : null, child: _postCard(pinned!, isPinned: true))),
+          if (stars.isNotEmpty && topic == null && !locked) GroupStars(stars: stars),
+          if (posts == null)
+            const Padding(padding: EdgeInsets.all(28), child: Center(child: CircularProgressIndicator()))
+          else if (locked)
+            const Empty(icon: 'lock', title: 'დახურული ჯგუფი', text: 'პოსტებს მხოლოდ წევრები ხედავენ. გაგზავნე მოთხოვნა და ადმინი დაგიდასტურებს.')
+          else if (posts!.isEmpty && (pinned == null || topic != null))
+            Empty(
+              icon: 'note',
+              title: topic != null ? 'ამ რუბრიკაში ჯერ არაფერია' : 'ჯგუფში ჯერ არაფერია',
+              text: member ? 'დაწერე პირველი პოსტი.' : 'გაწევრიანდი და დაწერე პირველი პოსტი.',
+            )
+          else
+            for (final p in posts!) _postCard(p),
+        ],
+    };
     return Scaffold(
       appBar: peeraBar(context, title: name),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [
-                HSLColor.fromAHSL(1, (hue % 360).toDouble(), .45, .5).toColor().withValues(alpha: .25),
-                Colors.transparent,
-              ]),
+          CoverHead(
+            name: name,
+            hue: hue,
+            cover: g['cover_url'] as String?,
+            avatar: url,
+            coverKey: 'g-cover',
+            picKey: 'g-pic',
+            onCover: admin ? _cover : null,
+            onAvatar: owner ? _pic : (url != null ? () => openPhotos(context, [Media(url: url)]) : null),
+            title: Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+            sub: Text(
+              '${g['is_private'] == true ? '🔒 დახურული' : 'ღია'} ჯგუფი · ${x.count} წევრი${g['post_approval'] == true ? ' · პოსტები მოწმდება' : ''}',
+              style: TextStyle(color: c.muted, fontSize: 13.5),
             ),
-            child: Row(children: [
-              GestureDetector(
-                key: const ValueKey('g-pic'),
-                onTap: owner ? _pic : (url != null ? () => openPhotos(context, [Media(url: url)]) : null),
-                child: Stack(children: [
-                  BoxPic(name: name, hue: hue, url: url, size: 76),
-                  if (owner)
-                    Positioned(
-                      right: 2,
-                      bottom: 2,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                        child: const PIcon('camera', size: 14, color: Colors.white),
-                      ),
-                    ),
-                ]),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(name, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 3),
-                  Text(
-                    '${g['is_private'] == true ? '🔒 დახურული' : 'ღია'} ჯგუფი · ${x.count} წევრი${g['post_approval'] == true ? ' · პოსტები მოწმდება' : ''}',
-                    style: TextStyle(color: c.muted, fontSize: 13.5),
-                  ),
-                ]),
-              ),
-            ]),
           ),
-          if (desc.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 10), child: TranslatableBody(desc)),
+          if (desc.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: TranslatableBody(desc)),
+          const SizedBox(height: 10),
           if (rules.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -480,7 +591,7 @@ class _GroupScreenState extends State<GroupScreen> {
             child: Wrap(spacing: 8, runSpacing: 8, children: [
               if (member) ...[
                 btn('g-post', 'plus', 'პოსტი', _post, filled: true),
-                btn('g-event', 'cal', 'ღონისძიება', () => openPage(context, EventFormScreen(groupId: widget.id), full: true)),
+                btn('g-chat', 'msg', 'ჯგუფის ჩატი', _chat),
               ] else if (!byRequest)
                 btn('g-join', 'uadd', 'გაწევრიანება', _join, filled: true)
               else if (x.request == 'pending')
@@ -524,16 +635,13 @@ class _GroupScreenState extends State<GroupScreen> {
                   TextButton(key: const ValueKey('g-starleave'), onPressed: () => _starosta(false), child: const Text('დატოვება')),
               ]),
             ),
-          Container(height: 8, color: c.bg),
-          if (posts == null)
-            const Padding(padding: EdgeInsets.all(28), child: Center(child: CircularProgressIndicator()))
-          else if (g['is_private'] == true && !member)
-            const Empty(icon: 'lock', title: 'დახურული ჯგუფი', text: 'პოსტებს მხოლოდ წევრები ხედავენ. გაგზავნე მოთხოვნა და ადმინი დაგიდასტურებს.')
-          else if (posts!.isEmpty)
-            Empty(icon: 'note', title: 'ჯგუფში ჯერ არაფერია', text: member ? 'დაწერე პირველი პოსტი.' : 'გაწევრიანდი და დაწერე პირველი პოსტი.')
-          else
-            for (final p in posts!)
-              PostCard(key: ValueKey('gpost-${p.id}'), post: p, onDeleted: () => setState(() => posts = [for (final y in posts!) if (y.id != p.id) y])),
+          SlideTabs(tabs: tabs, value: tab, prefix: 'gtb', onChanged: (t) => setState(() => tab = t)),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            switchInCurve: Curves.easeOutCubic,
+            transitionBuilder: (ch, a) => FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: const Offset(0, .03), end: Offset.zero).animate(a), child: ch)),
+            child: Column(key: ValueKey('gtab-$tab'), crossAxisAlignment: CrossAxisAlignment.stretch, children: body),
+          ),
         ]),
       ),
     );
@@ -542,24 +650,35 @@ class _GroupScreenState extends State<GroupScreen> {
 
 /// Asking to join: a few words for the admin and, when the group has rules, agreeing to them.
 class _RequestScreen extends StatefulWidget {
-  const _RequestScreen({required this.groupId, required this.rules});
+  const _RequestScreen({required this.groupId, required this.rules, this.questions = const []});
   final int groupId;
   final String rules;
+
+  /// the group's questions to whoever wants to join (three at most)
+  final List<String> questions;
   @override
   State<_RequestScreen> createState() => _RequestScreenState();
 }
 
 class _RequestScreenState extends State<_RequestScreen> {
   final note = TextEditingController();
+  late final answers = [for (final _ in widget.questions) TextEditingController()];
   bool agree = false, busy = false;
 
   @override
   void dispose() {
     note.dispose();
+    for (final a in answers) {
+      a.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _send() async {
+    if (answers.any((a) => a.text.trim().isEmpty)) {
+      toast(context, 'უპასუხე ადმინის კითხვებს');
+      return;
+    }
     if (widget.rules.isNotEmpty && !agree) {
       toast(context, 'ჯერ დაეთანხმე წესებს');
       return;
@@ -567,7 +686,7 @@ class _RequestScreenState extends State<_RequestScreen> {
     setState(() => busy = true);
     try {
       final t = note.text.trim();
-      await context.app.api.requestGroup(widget.groupId, t.isEmpty ? null : t);
+      await context.app.api.requestGroup(widget.groupId, t.isEmpty ? null : t, answers: [for (final a in answers) a.text.trim()]);
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
@@ -582,6 +701,22 @@ class _RequestScreenState extends State<_RequestScreen> {
     return Scaffold(
       appBar: peeraBar(context, title: 'გაწევრიანების მოთხოვნა'),
       body: ListView(padding: const EdgeInsets.all(16), children: [
+        if (widget.questions.isNotEmpty) ...[
+          Text('ადმინი გეკითხება', style: TextStyle(color: c.muted, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          for (var i = 0; i < widget.questions.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: TextField(
+                key: ValueKey('greq-a-$i'),
+                controller: answers[i],
+                maxLength: 300,
+                minLines: 1,
+                maxLines: 3,
+                decoration: InputDecoration(labelText: '${i + 1}. ${widget.questions[i]}', counterText: ''),
+              ),
+            ),
+        ],
         TextField(
           key: const ValueKey('greq-note'),
           controller: note,
@@ -632,6 +767,12 @@ class _GroupFormScreenState extends State<GroupFormScreen> {
   late final rules = TextEditingController(text: '${widget.g?['rules'] ?? ''}');
   late String? pic = widget.g?['avatar_url'] as String?;
   late bool private = widget.g?['is_private'] == true, byRequest = widget.g?['join_mode'] == 'request', approval = widget.g?['post_approval'] == true;
+  late final topics = [for (final t in (widget.g?['topics'] as List? ?? const [])) '$t'];
+  late final newTopic = TextEditingController();
+  late final questions = [
+    for (var i = 0; i < 3; i++) TextEditingController(text: i < (widget.g?['questions'] as List? ?? const []).length ? '${(widget.g!['questions'] as List)[i]}' : ''),
+  ];
+  late final words = TextEditingController(text: [for (final w in (widget.g?['blocked_words'] as List? ?? const [])) '$w'].join(', '));
   bool busy = false;
 
   bool get edit => widget.g != null;
@@ -641,7 +782,29 @@ class _GroupFormScreenState extends State<GroupFormScreen> {
     name.dispose();
     desc.dispose();
     rules.dispose();
+    newTopic.dispose();
+    words.dispose();
+    for (final q in questions) {
+      q.dispose();
+    }
     super.dispose();
+  }
+
+  void _addTopic() {
+    final t = newTopic.text.trim().replaceFirst(RegExp(r'^#\s*'), '');
+    if (t.isEmpty) return;
+    if (t.length > 24) {
+      toast(context, 'რუბრიკა 24 ასომდე იყოს');
+      return;
+    }
+    if (topics.length >= 12) {
+      toast(context, 'რუბრიკა მაქსიმუმ 12');
+      return;
+    }
+    setState(() {
+      if (!topics.contains(t)) topics.add(t);
+      newTopic.clear();
+    });
   }
 
   Future<void> _pic() async {
@@ -671,6 +834,9 @@ class _GroupFormScreenState extends State<GroupFormScreen> {
           'is_private': private,
           'join_mode': byRequest ? 'request' : 'open',
           'post_approval': approval,
+          'topics': topics,
+          'questions': [for (final q in questions) if (q.text.trim().isNotEmpty) q.text.trim()],
+          'blocked_words': {for (final w in words.text.split(RegExp(r'[,\n]'))) if (w.trim().isNotEmpty) w.trim().toLowerCase()}.take(50).toList(),
         });
         if (!mounted) return;
         toast(context, 'შენახულია');
@@ -762,6 +928,41 @@ class _GroupFormScreenState extends State<GroupFormScreen> {
             title: const Text('პოსტების შემოწმება', style: TextStyle(fontWeight: FontWeight.w700)),
             subtitle: const Text('ახალი პოსტი ჯგუფში ადმინის დამტკიცების შემდეგ ჩანს'),
           ),
+          const SizedBox(height: 14),
+          const Text('რუბრიკები', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
+          Text('პოსტის ავტორი აირჩევს რუბრიკას, წევრები კი მიხედვით გაფილტრავენ.', style: TextStyle(color: c.muted, fontSize: 13)),
+          const SizedBox(height: 8),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final t in topics)
+              InputChip(key: ValueKey('gf-topic-$t'), label: Text('# $t'), onDeleted: () => setState(() => topics.remove(t))),
+          ]),
+          Row(children: [
+            Expanded(
+              child: TextField(
+                key: const ValueKey('gf-topic-new'),
+                controller: newTopic,
+                maxLength: 24,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _addTopic(),
+                decoration: const InputDecoration(hintText: 'მაგ. სიახლეები, კითხვები, ფოტოები', counterText: ''),
+              ),
+            ),
+            IconBtn('plus', key: const ValueKey('gf-topic-add'), label: 'რუბრიკის დამატება', onTap: _addTopic),
+          ]),
+          const SizedBox(height: 14),
+          const Text('კითხვები გაწევრებისას', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
+          Text('ვინც მოთხოვნას აგზავნის, ამ კითხვებს უპასუხებს. ცარიელი არ გამოჩნდება.', style: TextStyle(color: c.muted, fontSize: 13)),
+          const SizedBox(height: 8),
+          for (var i = 0; i < 3; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: TextField(key: ValueKey('gf-q-$i'), controller: questions[i], maxLength: 160, decoration: InputDecoration(labelText: '${i + 1}. კითხვა', counterText: '')),
+            ),
+          const SizedBox(height: 6),
+          const Text('აკრძალული სიტყვები', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
+          Text('პოსტი, რომელშიც ასეთი სიტყვაა, ჯერ ადმინთან მივა შესამოწმებლად. მძიმით გამოყავი.', style: TextStyle(color: c.muted, fontSize: 13)),
+          const SizedBox(height: 8),
+          TextField(key: const ValueKey('gf-words'), controller: words, minLines: 1, maxLines: 4, decoration: const InputDecoration(hintText: 'მაგ. რეკლამა, ფასდაკლება')),
         ],
       ]),
     );
@@ -781,6 +982,7 @@ class GroupManageScreen extends StatefulWidget {
 class _GroupManageScreenState extends State<GroupManageScreen> {
   String tab = 'requests';
   List<Map<String, dynamic>>? reqs, members;
+  Map<String, DateTime> muted = const {};
   List<Post>? pending;
   Object? error;
   bool _started = false;
@@ -809,6 +1011,8 @@ class _GroupManageScreenState extends State<GroupManageScreen> {
       } else if (tab == 'members') {
         final m = await app.api.groupMembers(id);
         await app.people.ensure(m.map((x) => '${x['user_id']}'));
+        final mu = await app.api.groupMutes(id).catchError((_) => <String, DateTime>{});
+        if (mounted) setState(() => muted = mu);
         final owner = '${widget.g['owner']}';
         int ord(Map<String, dynamic> r) => '${r['user_id']}' == owner ? 0 : (r['role'] == 'admin' ? 1 : 2);
         m.sort((a, b) => ord(a).compareTo(ord(b)));
@@ -833,9 +1037,20 @@ class _GroupManageScreenState extends State<GroupManageScreen> {
     _load();
   }
 
+  Future<void> _mute(String u, Profile p) async {
+    final app = context.app;
+    final m = await muteSheet(context, p.name, until: muted[u]);
+    if (m == null || !mounted) return;
+    if (await attempt(context, () => app.api.muteInGroup(id, u, m)) && mounted) {
+      toast(context, m == 0 ? 'დადუმება მოიხსნა' : 'დადუმდა');
+      _load();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.pc, app = context.app, me = context.me.id, owner = '${widget.g['owner']}';
+    final qs = [for (final q in (widget.g['questions'] as List? ?? const [])) '$q'];
     Widget body;
     if (error != null) {
       body = Empty(icon: 'users', title: 'ვერ ჩაიტვირთა', text: errText(error!));
@@ -862,6 +1077,18 @@ class _GroupManageScreenState extends State<GroupManageScreen> {
                               ]),
                             ),
                           ]),
+                          for (final (i, a) in [for (final a in (x['answers'] as List? ?? const [])) '$a'].indexed)
+                            Container(
+                              key: ValueKey('gm-ans-$u-$i'),
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(top: 6),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(10)),
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                if (i < qs.length) Text(qs[i], style: TextStyle(color: c.muted, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                                Text(a),
+                              ]),
+                            ),
                           if ('${x['note'] ?? ''}'.isNotEmpty)
                             Container(
                               margin: const EdgeInsets.only(top: 6),
@@ -942,6 +1169,10 @@ class _GroupManageScreenState extends State<GroupManageScreen> {
                     PostCard(post: x),
                   ],
                 ]);
+    } else if (tab == 'log') {
+      body = GroupLog(id: id);
+    } else if (tab == 'stats') {
+      body = GroupStatsView(id: id);
     } else {
       final m = members;
       body = m == null
@@ -956,7 +1187,13 @@ class _GroupManageScreenState extends State<GroupManageScreen> {
                     key: ValueKey('gmm-$u'),
                     leading: Avatar(p: p, size: 40),
                     title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                    subtitle: Text('${isOwner ? 'მფლობელი' : (isAdm ? 'ადმინი' : 'წევრი')} · ${ago(asTime(r['created_at']))}', style: TextStyle(color: c.muted)),
+                    subtitle: Text(
+                        [
+                          isOwner ? 'მფლობელი' : (isAdm ? 'ადმინი' : 'წევრი'),
+                          if (muted[u] != null) '🔇 დადუმებულია',
+                          ago(asTime(r['created_at'])),
+                        ].join(' · '),
+                        style: TextStyle(color: muted[u] != null ? c.gold : c.muted)),
                     onTap: () => openPage(context, PersonScreen(uid: u, initial: p), full: true),
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                       if (widget.owner && !isOwner)
@@ -971,6 +1208,9 @@ class _GroupManageScreenState extends State<GroupManageScreen> {
                           },
                           child: Text(isAdm ? 'ადმინის მოხსნა' : 'ადმინად'),
                         ),
+                      if (!isOwner && !isAdm && u != me)
+                        IconBtn(muted[u] != null ? 'vol' : 'mute',
+                            key: ValueKey('gm-mute-$u'), label: 'დადუმება', size: 18, color: muted[u] != null ? c.gold : c.muted, onTap: () => _mute(u, p)),
                       if (!isOwner && u != me && (widget.owner || !isAdm))
                         IconBtn('x', key: ValueKey('gm-kick-$u'), label: 'ჯგუფიდან მოშორება', size: 18, color: c.muted, onTap: () async {
                           if (!await confirm(context, title: 'წევრის მოშორება', text: '${p.name} აღარ იქნება ჯგუფის წევრი.', yes: 'მოშორება', danger: true) || !mounted) return;
@@ -991,7 +1231,7 @@ class _GroupManageScreenState extends State<GroupManageScreen> {
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           child: Row(children: [
-            for (final (k, l) in [('requests', 'მოთხოვნები'), ('pending', 'პოსტები'), ('members', 'წევრები'), if (widget.owner) ('settings', 'პარამეტრები')])
+            for (final (k, l) in [('requests', 'მოთხოვნები'), ('pending', 'პოსტები'), ('members', 'წევრები'), ('stats', 'სტატისტიკა'), ('log', 'ჟურნალი'), ('settings', 'პარამეტრები')])
               Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: ChoiceChip(

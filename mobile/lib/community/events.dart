@@ -119,7 +119,7 @@ class _EventsScreenState extends State<EventsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.pc, x = d, app = context.app, me = context.me.id;
+    final c = context.pc, x = d;
     return Scaffold(
       appBar: peeraBar(context, title: 'ღონისძიებები', actions: [
         Padding(
@@ -147,41 +147,54 @@ class _EventsScreenState extends State<EventsScreen> {
                     if (x.$1.isEmpty)
                       Empty(icon: 'cal', title: 'მომავალი ღონისძიებები ჯერ არ არის', text: 'შექმენი შეხვედრა და მოიწვიე კურსელები.', action: 'ღონისძიების შექმნა', onAction: _new)
                     else
-                      for (final e in x.$1)
-                        Builder(builder: (context) {
-                          final id = asInt(e['id']), at = asTime(e['starts_at']).toLocal();
-                          final going = [for (final r in x.$2) if (asInt(r['event_id']) == id && r['status'] == 'yes') '${r['user_id']}'];
-                          final mine = x.$2.any((r) => asInt(r['event_id']) == id && r['user_id'] == me && r['status'] == 'yes');
-                          return InkWell(
-                            key: ValueKey('ev-$id'),
-                            onTap: () async {
-                              await openPage(context, EventScreen(id: id), full: true);
-                              _load();
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                _DateBox(d: at, hue: asInt(e['hue'], 200)),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                    Text('${e['title'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
-                                    Text('${fullDate(at)} · ${e['place'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 13)),
-                                    const SizedBox(height: 5),
-                                    Row(children: [
-                                      for (final u in going.take(5))
-                                        Padding(padding: const EdgeInsets.only(right: 2), child: Avatar(p: app.people[u] ?? Profile(id: u, name: '…'), size: 24)),
-                                      const SizedBox(width: 4),
-                                      Text('${going.length} მოდის${mine ? ', შენც' : ''}', style: TextStyle(color: c.muted, fontSize: 12.5, fontWeight: FontWeight.w600)),
-                                    ]),
-                                  ]),
-                                ),
-                              ]),
-                            ),
-                          );
-                        }),
+                      for (final e in x.$1) EventTile(e: e, rsvps: x.$2, onBack: _load),
                   ]),
                 ),
+    );
+  }
+}
+
+/// One event in a list: its day, title, time and place, and who is coming.
+class EventTile extends StatelessWidget {
+  const EventTile({super.key, required this.e, required this.rsvps, this.onBack});
+  final Map<String, dynamic> e;
+  final List<Map<String, dynamic>> rsvps;
+
+  /// back from the event's page (to load again)
+  final VoidCallback? onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.pc, app = context.app, me = context.me.id;
+    final id = asInt(e['id']), at = asTime(e['starts_at']).toLocal();
+    final going = [for (final r in rsvps) if (asInt(r['event_id']) == id && r['status'] == 'yes') '${r['user_id']}'];
+    final mine = rsvps.any((r) => asInt(r['event_id']) == id && r['user_id'] == me && r['status'] == 'yes');
+    return InkWell(
+      key: ValueKey('ev-$id'),
+      onTap: () async {
+        await openPage(context, EventScreen(id: id), full: true);
+        onBack?.call();
+      },
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _DateBox(d: at, hue: asInt(e['hue'], 200)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${e['title'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
+              Text('${fullDate(at)} · ${e['place'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 13)),
+              const SizedBox(height: 5),
+              Row(children: [
+                for (final u in going.take(5))
+                  Padding(padding: const EdgeInsets.only(right: 2), child: Avatar(p: app.people[u] ?? Profile(id: u, name: '…'), size: 24)),
+                const SizedBox(width: 4),
+                Text('${going.length} მოდის${mine ? ', შენც' : ''}', style: TextStyle(color: c.muted, fontSize: 12.5, fontWeight: FontWeight.w600)),
+              ]),
+            ]),
+          ),
+        ]),
+      ),
     );
   }
 }

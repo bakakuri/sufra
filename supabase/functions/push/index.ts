@@ -114,6 +114,8 @@ function text(kind: string, name: string, ref: Record<string, string>): string {
     case "group_post_ok": return `შენი პოსტი დამტკიცდა: ${ref.name ?? ""}`;
     case "group_post_no": return `შენი პოსტი არ დამტკიცდა: ${ref.name ?? ""}`;
     case "group_admin": return `${name} ადმინი გაგხადა: ${ref.name ?? ""}`;
+    case "page_post": return `${ref.name ?? name} · ახალი პოსტი`;
+    case "page_pin": return `📌 ${ref.name ?? name} · მთავარი სიახლე`;
     case "friend_req": return `${name} · მეგობრობის მოთხოვნა`;
     case "friend_ok": return `${name} · მეგობრობა დადასტურდა`;
     case "message": return `${name}: ${ref.text ?? ""}`;
@@ -166,6 +168,7 @@ function route(kind: string, ref: Record<string, string>): string {
   if (kind.startsWith("album_") && ref.album) return `/#album-${ref.album}`;
   if (kind === "group_post_ok" && ref.post) return `/#post-${ref.post}`;
   if (kind.startsWith("group_") && ref.group) return `/#group-${ref.group}`;
+  if ((kind === "page_post" || kind === "page_pin") && ref.post) return `/#post-${ref.post}`;
   if (kind === "match" || kind === "super") return "/#date";
   if (kind === "room_invite" && ref.room) return `/#room-${ref.room}`;
   if (kind.startsWith("bet_") && ref.fixture) return `/#fixture-${ref.fixture}`;

@@ -94,7 +94,7 @@ class _NotesScreenState extends State<NotesScreen> {
     }
 
     if (k == 'repost' && id('post') > 0) return post(r['quote'] == true && id('by') > 0 ? id('by') : id('post'));
-    if (const {'react', 'comment', 'comment_reply', 'comment_like', 'mention', 'grade_plus', 'group_post_ok'}.contains(k) && id('post') > 0) return post(id('post'));
+    if (const {'react', 'comment', 'comment_reply', 'comment_like', 'mention', 'grade_plus', 'group_post_ok', 'page_post', 'page_pin'}.contains(k) && id('post') > 0) return post(id('post'));
     if (k == 'gift' && id('post') > 0) return post(id('post'));
     if (k == 'msg_react' && id('conv') > 0) return openChat(context, id('conv'));
     if (k == 'jk_invite' && id('table') > 0) return openJokerTable(context, id('table'));

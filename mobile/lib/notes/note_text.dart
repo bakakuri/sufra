@@ -57,6 +57,10 @@ String noteText(String kind, Map r) {
       return 'შენი პოსტი არ დამტკიცდა: ${_s(r, 'name')}';
     case 'group_admin':
       return 'ადმინი გაგხადა: ${_s(r, 'name')}';
+    case 'page_post':
+      return 'ახალი პოსტი გვერდზე „${_s(r, 'name')}“';
+    case 'page_pin':
+      return 'მთავარი სიახლე გვერდზე „${_s(r, 'name')}“ 📌';
     case 'react':
       return '${_s(r, 'emoji').isEmpty ? '👍' : _s(r, 'emoji')} შენს პოსტზე';
     case 'repost':
@@ -178,6 +182,7 @@ String? noteSitePath(String kind, Map r) {
   if (kind.startsWith('event_') && id('event').isNotEmpty) return '#event-${id('event')}';
   if (kind.startsWith('album_') && id('album').isNotEmpty) return '#album-${id('album')}';
   if (kind.startsWith('group_') && id('group').isNotEmpty) return '#group-${id('group')}';
+  if (kind.startsWith('page_') && id('page').isNotEmpty) return '#pagev-${id('page')}';
   if ((kind == 'room_invite' || kind == 'live_start') && id('room').isNotEmpty) return '#room-${id('room')}';
   if (kind.startsWith('bet_') && id('fixture').isNotEmpty) return '#fixture-${id('fixture')}';
   if (kind.startsWith('ride_') && id('ride').isNotEmpty) return '#ride-${id('ride')}';

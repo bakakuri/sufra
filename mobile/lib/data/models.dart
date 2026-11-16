@@ -90,7 +90,11 @@ class Post {
     this.pending = false,
     this.tags = const [],
     this.isClip = false,
+    this.topic,
   });
+
+  /// a group's topic (rubric) it was posted under
+  final String? topic;
 
   /// posted as a clip (a short video for the clips tab)
   final bool isClip;
@@ -153,6 +157,7 @@ class Post {
       pending: j['pending'] == true,
       tags: j['tags'] is List ? (j['tags'] as List).map((x) => '$x').toList() : const [],
       isClip: j['is_clip'] == true,
+      topic: '${j['topic'] ?? ''}'.isEmpty ? null : '${j['topic']}',
     );
   }
 }

@@ -26,9 +26,12 @@ import 'post_screen.dart';
 /// One post as the site draws it: who wrote it, the words, photos (swipe, double tap for ❤️), a poll,
 /// a shared post, then reactions, comments, the link and saving.
 class PostCard extends StatelessWidget {
-  const PostCard({super.key, required this.post, this.onDeleted, this.inPostScreen = false, this.sponsored = false});
+  const PostCard({super.key, required this.post, this.onDeleted, this.inPostScreen = false, this.sponsored = false, this.menu = const []});
   final Post post;
   final VoidCallback? onDeleted;
+
+  /// more choices in the post's menu, first (a group's or a page's admins pin it there)
+  final List<SheetItem> menu;
 
   /// a paid post (ads): "რეკლამა" beside the name
   final bool sponsored;
@@ -76,7 +79,7 @@ class PostCard extends StatelessWidget {
         _PostView(post: post.original!, onDeleted: onDeleted, inPostScreen: inPostScreen),
       ]);
     }
-    return _PostView(post: post, onDeleted: onDeleted, inPostScreen: inPostScreen, sponsored: sponsored);
+    return _PostView(post: post, onDeleted: onDeleted, inPostScreen: inPostScreen, sponsored: sponsored, menu: menu);
   }
 }
 
@@ -90,8 +93,9 @@ Future<void> openPerson(BuildContext context, Profile p) async {
 }
 
 class _PostView extends StatefulWidget {
-  const _PostView({required this.post, this.onDeleted, this.inPostScreen = false, this.sponsored = false});
+  const _PostView({required this.post, this.onDeleted, this.inPostScreen = false, this.sponsored = false, this.menu = const []});
   final Post post;
+  final List<SheetItem> menu;
   final VoidCallback? onDeleted;
   final bool sponsored;
   final bool inPostScreen;
@@ -171,7 +175,7 @@ class _PostViewState extends State<_PostView> with SingleTickerProviderStateMixi
             ? BoxDecoration(color: c.surface)
             : BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.line)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          _Head(post: post, onDeleted: widget.onDeleted, inPostScreen: inPostScreen, sponsored: widget.sponsored),
+          _Head(post: post, onDeleted: widget.onDeleted, inPostScreen: inPostScreen, sponsored: widget.sponsored, menu: widget.menu),
           if (post.body.trim().isNotEmpty && post.body.trim() != post.poll?.q.trim())
             GestureDetector(
               key: ValueKey('pbody-${post.id}'),
@@ -205,16 +209,18 @@ class _PostViewState extends State<_PostView> with SingleTickerProviderStateMixi
 }
 
 class _Head extends StatelessWidget {
-  const _Head({required this.post, this.onDeleted, this.inPostScreen = false, this.sponsored = false});
+  const _Head({required this.post, this.onDeleted, this.inPostScreen = false, this.sponsored = false, this.menu = const []});
   final Post post;
   final VoidCallback? onDeleted;
   final bool inPostScreen, sponsored;
+  final List<SheetItem> menu;
 
   Future<void> _more(BuildContext context) async {
     final app = context.app, mine = post.author == context.me.id, staff = isStaff(context);
     final link = postLink(post.id), who = post.ap ?? Profile(id: post.author, name: '');
     final hiddenNow = postOverrides.modHidden[post.id] ?? post.hidden;
     await showChoices(context, [
+      ...menu,
       SheetItem('copy', 'ბმულის კოპირება', () {
         Clipboard.setData(ClipboardData(text: link));
         toast(context, 'ბმული დაკოპირდა');
@@ -289,7 +295,8 @@ class _Head extends StatelessWidget {
                 for (final t in tags) Padding(padding: const EdgeInsets.only(left: 6), child: t),
               ]),
               const SizedBox(height: 2),
-              Text('${ago(post.createdAt)}${post.edited ? ' · რედაქტირებული' : ''}', style: TextStyle(color: c.muted, fontSize: 12.5)),
+              Text('${ago(post.createdAt)}${post.edited ? ' · რედაქტირებული' : ''}${post.topic != null ? ' · # ${post.topic}' : ''}',
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 12.5)),
             ]),
           ),
         ),

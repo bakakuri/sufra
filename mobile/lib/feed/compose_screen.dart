@@ -40,7 +40,8 @@ const maxPhotos = 10;
 /// a place. "გამოქვეყნება" uploads them (photos made upright and in the site's three sizes) and publishes, and the new
 /// post comes back to the feed; the clock button keeps it as a draft or plans it for later.
 class ComposeScreen extends StatefulWidget {
-  const ComposeScreen({super.key, this.startWithPhotos = false, this.startWithPoll = false, this.text = '', this.groupId, this.pageId, this.where, this.place});
+  const ComposeScreen(
+      {super.key, this.startWithPhotos = false, this.startWithPoll = false, this.text = '', this.groupId, this.pageId, this.where, this.place, this.topics = const [], this.topic});
   final bool startWithPhotos, startWithPoll;
 
   /// a post into a group or as a page, and its name for the title
@@ -53,6 +54,10 @@ class ComposeScreen extends StatefulWidget {
   /// "აქ ვარ" on a place's page: the post is from there
   final (int, String)? place;
 
+  /// a group's topics to post under, and the one chosen to begin with
+  final List<String> topics;
+  final String? topic;
+
   @override
   State<ComposeScreen> createState() => _ComposeScreenState();
 }
@@ -63,6 +68,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
   VideoReady? video;
   double? preparing;
   late (int, String)? place = widget.place;
+  late String? topic = widget.topics.contains(widget.topic) ? widget.topic : null;
   bool busy = false;
   String? stage;
 
@@ -227,7 +233,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
       }
       setState(() => stage = 'ქვეყნდება…');
       final post = await app.api.createPost(field.text.trim(), media,
-          poll: poll, placeId: place?.$1, draft: draft, publishAt: at, groupId: widget.groupId, pageId: widget.pageId);
+          poll: poll, placeId: place?.$1, draft: draft, publishAt: at, groupId: widget.groupId, pageId: widget.pageId, topic: widget.groupId == null ? null : topic);
       if (!mounted) return;
       if (draft || at != null) {
         toast(context, at == null ? 'დრაფტი შენახულია' : 'დაიგეგმა: ${at.day} ${monthNames[at.month - 1]}, ${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}');
@@ -294,6 +300,23 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   ]),
                 ),
               ]),
+              if (widget.topics.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                    Text('რუბრიკა:', style: TextStyle(color: c.muted, fontWeight: FontWeight.w600)),
+                    for (final t in widget.topics)
+                      ChoiceChip(
+                        key: ValueKey('c-topic-$t'),
+                        label: Text('# $t'),
+                        selected: topic == t,
+                        showCheckmark: false,
+                        selectedColor: c.accentSoft,
+                        side: BorderSide(color: topic == t ? c.accent : c.line),
+                        onSelected: busy ? null : (on) => setState(() => topic = on ? t : null),
+                      ),
+                  ]),
+                ),
               const SizedBox(height: 10),
               TextField(
                 controller: field,

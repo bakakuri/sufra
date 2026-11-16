@@ -190,6 +190,7 @@ String groupText(NoteGroup g) {
   if (kind == 'repost') return ('repost', 0xFF14B8A6, 0xFF0D9488);
   if (const {'birthday', 'nameday', 'birthday_me', 'nameday_me'}.contains(kind)) return ('gift', 0xFFEC4899, 0xFFF97316);
   if (kind.startsWith('group_')) return ('users', 0xFF6366F1, 0xFF4F46E5);
+  if (kind.startsWith('page_')) return (kind == 'page_pin' ? 'pin' : 'mega', 0xFF0EA5E9, 0xFF6366F1);
   if (kind.startsWith('event_') || kind == 'lesson_soon' || kind == 'deadline_soon' || kind == 'study_deadline') return ('cal', 0xFFF59E0B, 0xFFEAB308);
   if (kind.startsWith('album_')) return ('image', 0xFFA855F7, 0xFFEC4899);
   if (kind == 'verified' || kind == 'verify_rejected') return ('shield', 0xFF4F46E5, 0xFF3B82F6);
