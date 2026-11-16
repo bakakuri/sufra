@@ -153,9 +153,13 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
 
   // ---------- the layer over the stage ----------
 
-  /// a widget with its middle (or [anchor]) at a point of the layer
-  Widget _at(Offset p, Widget child, {Alignment anchor = Alignment.center}) =>
-      Positioned.fill(child: CustomSingleChildLayout(delegate: _AtPoint(p, anchor), child: child));
+  /// a widget with its middle (or [anchor]) at a point of the layer; [id] keeps it the same thing from one moment to
+  /// the next however many others come and go around it (a card in flight never starts its flight again)
+  Widget _at(String id, Offset p, Widget child, {Alignment anchor = Alignment.center}) =>
+      Positioned.fill(key: ValueKey('at-$id'), child: CustomSingleChildLayout(delegate: _AtPoint(p, anchor), child: child));
+
+  /// the tricks a player has in front of them: the one just taken counts once its cards have reached the pile
+  int _took(JokerGame g, int p) => g.taken[p] - (g.win == p && g.trick.length == 4 ? 1 : 0);
 
   Widget _layer(JokerGame g, StageMap m) {
     final over = g.phase == 'over', spec = m.spec;
@@ -163,12 +167,13 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
     return Stack(key: _layerKey, clipBehavior: Clip.none, children: [
       if (!over) ...[
         // what lies on the table
-        _at(m.at(spec.trump), TrumpOnTable(g: g, w: m.cardW * .72, turn: spec.trumpTurn, c4: s.c4)),
+        _at('trump', m.at(spec.trump), TrumpOnTable(g: g, w: m.cardW * .72, turn: spec.trumpTurn, c4: s.c4)),
         for (var p = 0; p < 4; p++)
-          if (g.taken[p] > 0) _at(m.pile(p), PileView(key: ValueKey('pile-$p'), count: g.taken[p], w: m.cardW * .4)),
-        Positioned.fill(child: _TrickLayer(g: g, m: m, from: _myFrom, c4: s.c4)),
+          if (_took(g, p) > 0) _at('pile-$p', m.pile(p), PileView(key: ValueKey('pile-$p'), count: _took(g, p), w: m.cardW * .4)),
+        Positioned.fill(key: const ValueKey('at-trick'), child: _TrickLayer(g: g, m: m, from: _myFrom, c4: s.c4)),
         if (_dealt == g.h && g.phase != 'play')
           Positioned.fill(
+            key: const ValueKey('at-deal'),
             child: DealFx(
               key: ValueKey('deal-${g.h}'),
               from: m.seatHand(g.dealer),
@@ -179,20 +184,22 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
             ),
           ),
         // who sits where: their plates, and what they have just said
-        for (var p = 1; p < 4; p++) _at(m.plate(p), _plate(g, p)),
+        for (var p = 1; p < 4; p++) _at('plate-$p', m.plate(p), _plate(g, p)),
         for (final e in _said.entries)
           _at(
+            'said-${e.key}-${e.value.$2}',
             m.plate(e.key) + (e.key == 2 ? Offset(m.len(250), 0) : Offset(0, -m.len(150))),
             SaidBubble(key: ValueKey('said-${e.key}-${e.value.$2}'), text: e.value.$1),
           ),
-        if (g.phase == 'handover') _at(m.at(spec.felt), _handFx(g)),
+        if (g.phase == 'handover') _at('fx', m.at(spec.felt), _handFx(g)),
       ] else
-        Positioned.fill(child: ColoredBox(color: const Color(0xB3060A12), child: _gameOver(g))),
+        Positioned.fill(key: const ValueKey('at-over'), child: ColoredBox(color: const Color(0xB3060A12), child: _gameOver(g))),
       // the bar at the top and everything at the bottom
-      Positioned(left: 0, right: 0, top: 0, child: SafeArea(bottom: false, child: _top(g, names))),
-      Positioned(left: 0, right: 0, bottom: 0, child: SafeArea(top: false, child: _bottom(g))),
+      Positioned(key: const ValueKey('at-top'), left: 0, right: 0, top: 0, child: SafeArea(bottom: false, child: _top(g, names))),
+      Positioned(key: const ValueKey('at-bottom'), left: 0, right: 0, bottom: 0, child: SafeArea(top: false, child: _bottom(g))),
       if (_note)
         Positioned.fill(
+          key: const ValueKey('at-note'),
           child: NotebookOpen(from: _noteRect(), g: g, names: [for (var p = 0; p < 4; p++) _name(p)], onClose: _closeNote),
         ),
     ]);
@@ -310,7 +317,7 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
 
   /// said and taken, side by side and named: green when made, red when more was taken; a pass says so
   Widget _pips(JokerGame g, int p) {
-    final b = g.bids[p], t = g.taken[p];
+    final b = g.bids[p], t = _took(g, p);
     final col = b == null ? lightMuted : (t > b ? badRed : (t == b ? okGreen : light));
     Widget num(String label, String v, Color c) => Column(mainAxisSize: MainAxisSize.min, children: [
           Text(label, style: const TextStyle(color: lightMuted, fontSize: 9, fontWeight: FontWeight.w600, height: 1.1)),
@@ -572,7 +579,7 @@ class _JokerTableScreenState extends State<JokerTableScreen> {
   }
 
   Widget _meRow(JokerGame g) {
-    final turn = _turnOf(g, 0), b = g.bids[0], need = b == null ? null : b - g.taken[0];
+    final turn = _turnOf(g, 0), b = g.bids[0], need = b == null ? null : b - _took(g, 0);
     return Container(
       margin: const EdgeInsets.fromLTRB(10, 2, 10, 0),
       padding: const EdgeInsets.fromLTRB(6, 5, 12, 5),
@@ -897,7 +904,7 @@ class _TrickLayerState extends State<_TrickLayer> {
     _t?.cancel();
     _sweep = false;
     if (g.win != null && g.trick.length == 4) {
-      _t = Timer(const Duration(milliseconds: 820), () {
+      _t = Timer(const Duration(milliseconds: 740), () {
         if (mounted) setState(() => _sweep = true);
       });
     }
@@ -938,8 +945,8 @@ class _TrickLayerState extends State<_TrickLayer> {
                 scale1: .4,
                 lift: .1,
                 toBack: true,
-                delay: Duration(milliseconds: i * 45),
-                duration: const Duration(milliseconds: 460),
+                delay: Duration(milliseconds: i * 35),
+                duration: const Duration(milliseconds: 440),
                 c4: widget.c4,
               );
             }
