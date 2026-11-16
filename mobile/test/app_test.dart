@@ -691,7 +691,8 @@ void main() {
     expect(find.byType(JokerTableScreen), findsOneWidget);
     final j = t.widget<JokerTableScreen>(find.byType(JokerTableScreen)).session as OnlineJoker;
     expect(find.text('რეზო'), findsNothing); // my own seat is at the bottom
-    expect(find.text('სალომე'), findsOneWidget);
+    expect(find.descendant(of: find.byType(JokerTableScreen), matching: find.byWidgetPredicate((w) => w is AnimatedContainer && '${w.key}'.contains('plate-'))), findsNWidgets(3));
+    expect(find.text('სალომე'), findsNWidgets(2)); // on her plate and in the little notebook
 
     // the server moves the bots each time the table is ticked; my moves go to it
     final h0 = j.g!.h;
