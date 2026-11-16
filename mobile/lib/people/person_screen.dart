@@ -662,7 +662,7 @@ class _PersonScreenState extends State<PersonScreen> {
     final parts = <Widget>[
       if ((who.username ?? '').isNotEmpty)
         Row(mainAxisSize: MainAxisSize.min, children: [
-          Text('@${who.username}', style: TextStyle(color: c.muted, fontSize: 13.5)),
+          Flexible(child: Text('@${who.username}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 13.5))),
           if (medal != null) ...[const SizedBox(width: 4), medal],
         ])
       else if (medal != null)
@@ -671,7 +671,7 @@ class _PersonScreenState extends State<PersonScreen> {
         Row(mainAxisSize: MainAxisSize.min, children: [
           PIcon('pin', size: 14, color: c.muted),
           const SizedBox(width: 2),
-          Text(who.city!, style: TextStyle(color: c.muted, fontSize: 13.5)),
+          Flexible(child: Text(who.city!, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 13.5))),
         ]),
       if (!isMe && who.online)
         Row(mainAxisSize: MainAxisSize.min, children: [

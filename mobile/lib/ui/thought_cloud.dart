@@ -49,24 +49,26 @@ class ThoughtCloud extends StatelessWidget {
   }
 }
 
-/// The cloud: a rounded body with bumps all round its edge, a soft shadow and a thin line.
+/// The cloud: a rounded body with bumps all round its edge, a soft shadow and a thin line. Drawn as plain shapes (the
+/// lines first, twice as thick, then the opaque fill over them, so only the outer half of the outer edge stays), never
+/// by joining paths.
 class _CloudPainter extends CustomPainter {
   _CloudPainter({required this.fill, required this.edge, required this.shadow});
   final Color fill, edge, shadow;
 
-  static final _cache = <Size, Path>{};
+  static const _r = 9.0;
 
-  static Path _shape(Size s) {
-    final hit = _cache[s];
-    if (hit != null) return hit;
-    const r = 9.0;
+  static (RRect, List<Offset>) _shape(Size s) {
+    const r = _r;
     final w = s.width, h = s.height;
-    var p = Path()..addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(r * .55, r * .55, w - r * 1.1, h - r * 1.1), const Radius.circular(r * 1.6)));
+    final body = RRect.fromRectAndRadius(Rect.fromLTWH(r * .55, r * .55, w - r * 1.1, h - r * 1.1), const Radius.circular(r * 1.6));
+    final at = <Offset>[];
     void bumps(Offset a, Offset b) {
-      final n = math.max(1, ((b - a).distance / (r * 1.55)).round());
+      final d = (b - a).distance;
+      if (!d.isFinite) return;
+      final n = math.min(60, math.max(1, (d / (r * 1.55)).round()));
       for (var i = 0; i < n; i++) {
-        final at = Offset.lerp(a, b, i / n)!;
-        p = Path.combine(PathOperation.union, p, Path()..addOval(Rect.fromCircle(center: at, radius: r)));
+        at.add(Offset.lerp(a, b, i / n)!);
       }
     }
 
@@ -75,23 +77,33 @@ class _CloudPainter extends CustomPainter {
     bumps(tr, br);
     bumps(br, bl);
     bumps(bl, tl);
-    if (_cache.length > 40) _cache.clear();
-    return _cache[s] = p;
+    return (body, at);
   }
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.width < 30 || size.height < 24) return;
-    final p = _shape(size);
-    canvas.drawShadow(p, shadow, 5, true);
-    canvas.drawPath(p, Paint()..color = fill);
-    canvas.drawPath(
-      p,
+    if (size.width < 30 || size.height < 24 || !size.isFinite) return;
+    final (body, at) = _shape(size);
+    // a soft shadow under the whole cloud
+    canvas.drawRRect(
+      body.shift(const Offset(0, 4)).inflate(4),
       Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2
-        ..color = edge,
+        ..color = shadow
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
     );
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.4
+      ..color = edge;
+    canvas.drawRRect(body, line);
+    for (final o in at) {
+      canvas.drawCircle(o, _r, line);
+    }
+    final f = Paint()..color = fill;
+    canvas.drawRRect(body, f);
+    for (final o in at) {
+      canvas.drawCircle(o, _r, f);
+    }
   }
 
   @override
