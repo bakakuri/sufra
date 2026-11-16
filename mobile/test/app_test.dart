@@ -1638,7 +1638,7 @@ void main() {
     // the history
     await to('coins-part-1', -200);
     expect(find.byKey(const ValueKey('coins-log-0')), findsOneWidget);
-    expect(find.text('-300'), findsOneWidget);
+    expect(find.text('−300'), findsOneWidget);
     expect(find.byKey(const ValueKey('crgrp-me')), findsNothing);
     await _back(t);
     expect(find.byType(CoinsScreen), findsNothing);
