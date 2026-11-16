@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../chat/chat_screen.dart';
 import '../data/models.dart';
+import '../dating/dating_tab.dart';
 import '../data/stores.dart';
 import '../feed/post_screen.dart';
 import '../home/services.dart';
@@ -11,6 +12,7 @@ import '../joker/online_screen.dart';
 import '../people/albums.dart';
 import '../people/coins.dart';
 import '../people/family.dart';
+import '../people/friends_tab.dart';
 import '../people/my_space.dart';
 import '../people/verify.dart';
 import '../people/person_screen.dart';
@@ -98,14 +100,14 @@ class _NotesScreenState extends State<NotesScreen> {
     if (k == 'gift' && id('post') > 0) return post(id('post'));
     if (k == 'msg_react' && id('conv') > 0) return openChat(context, id('conv'));
     if (k == 'jk_invite' && id('table') > 0) return openJokerTable(context, id('table'));
+    // the friends' and dating pages open over the notifications, so back comes to them again (one step)
     if (k == 'friend_req' || k == 'friend_ok') {
-      Navigator.of(context).pop();
-      app.goTab?.call('friends');
+      if (k == 'friend_req') app.friendsSeg.value = 1;
+      await openPage(context, const FriendsTab(), full: true);
       return;
     }
     if (k == 'super') {
-      Navigator.of(context).pop();
-      app.goTab?.call('date');
+      await openPage(context, const DatingTab(), full: true);
       return;
     }
     if (k == 'match' && n.actor != null) {

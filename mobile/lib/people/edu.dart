@@ -380,7 +380,8 @@ class _ClassmatesScreenState extends State<ClassmatesScreen> {
           title: 'ჯერ სკოლა არ მიგითითებია',
           text: 'დაამატე სკოლა ან უნივერსიტეტი და გიპოვით, ვინ სწავლობდა შენთან ერთად.',
           action: 'განათლების დამატება',
-          onAction: () => Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => AppScope(app: context.app, me: context.me, child: const EduScreen()))),
+          // opened over this one, so back comes here again
+          onAction: () => openPage(context, const EduScreen()),
         ),
       );
     } else if (o == null) {

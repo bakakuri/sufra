@@ -341,6 +341,9 @@ class AppState {
   /// pushes its screens (the top bar opens search there, under itself)
   Future<void> Function()? refreshMe;
   void Function(String tab)? goTab;
+
+  /// back to the feed from anywhere (the logo in the bar): pages over the app close, the main tab opens
+  void Function()? goHome;
   Future<void> Function()? signOut;
   BuildContext? Function()? tabContext;
 

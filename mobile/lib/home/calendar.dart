@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../data/stores.dart';
 import '../people/cards.dart';
+import '../people/friends_tab.dart';
 import '../people/my_space.dart';
 import '../people/namedays.dart';
 import '../people/profile_parts.dart';
@@ -233,10 +234,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 child: Text('მეგობრების დაბადების დღეები და ანგელოზის დღეები მომდევნო 4 თვეში.', style: TextStyle(color: c.muted, fontSize: 13.5)),
               ),
               if (rows.isEmpty)
-                Empty(icon: 'gift', title: 'ჯერ ცარიელია', text: 'დაამატე მეგობრები და მათი თარიღები აქ გამოჩნდება.', action: 'მეგობრების პოვნა', onAction: () {
-                  Navigator.of(context).maybePop();
-                  context.app.goTab?.call('friends');
-                })
+                Empty(
+                  icon: 'gift',
+                  title: 'ჯერ ცარიელია',
+                  text: 'დაამატე მეგობრები და მათი თარიღები აქ გამოჩნდება.',
+                  action: 'მეგობრების პოვნა',
+                  // over this page, so back comes here again
+                  onAction: () => openPage(context, const FriendsTab(), full: true),
+                )
               else
                 ...rows,
             ]),

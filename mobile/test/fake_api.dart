@@ -34,7 +34,7 @@ class FakeApi implements PeeraApi {
       if (p.repostOf != null) p.original = _orig[p.repostOf];
     }
     _stats.addAll({
-      101: PostStats(reactions: {'❤️': 14, '👍': 6, '😮': 2}, mine: '❤️', comments: 4),
+      101: PostStats(reactions: {'❤️': 14, '👍': 6, '😮': 2}, mine: '❤️', comments: 5),
       102: PostStats(reactions: {'👍': 3, '🍷': 5}, comments: 2),
       103: PostStats(votes: {0: 7, 1: 11, 2: 3}),
       105: PostStats(reactions: {'😂': 2, '❤️': 9}, comments: 1),
@@ -44,7 +44,8 @@ class FakeApi implements PeeraApi {
     });
     _comments[101] = [
       Comment(id: 1, postId: 101, author: mariam.id, ap: mariam, body: 'რა ლამაზია! სად არის ზუსტად?', createdAt: ago(10)),
-      Comment(id: 2, postId: 101, author: giorgi.id, ap: giorgi, body: 'ჯვრის მონასტერთან ახლოს 🙂', createdAt: ago(8), parentId: 1),
+      Comment(id: 2, postId: 101, author: giorgi.id, ap: giorgi, body: 'ჯვრის მონასტერთან ახლოს 🙂', createdAt: ago(8), parentId: 1, replyTo: 1),
+      Comment(id: 5, postId: 101, author: luka.id, ap: luka, body: 'ზუსტად, მცხეთის თავზე', createdAt: ago(7), parentId: 2, replyTo: 2),
       Comment(id: 3, postId: 101, author: luka.id, ap: luka, body: 'შემდეგ ჯერზე მეც წამიყვანეთ!', createdAt: ago(5), likes: 2),
       Comment(id: 4, postId: 101, author: ana.id, ap: ana, body: '👏👏👏', createdAt: ago(2)),
     ];
@@ -111,6 +112,9 @@ class FakeApi implements PeeraApi {
   final _orig = <int, Post>{};
   final _stats = <int, PostStats>{};
   final _comments = <int, List<Comment>>{};
+
+  /// the last comment written
+  Comment? lastComment;
   final _chats = <Chat>[];
   final _msgs = <int, List<Message>>{};
   final live = <int, StreamController<Message>>{};
@@ -249,13 +253,21 @@ class FakeApi implements PeeraApi {
   @override
   Future<List<Comment>> commentReplies(int postId, List<int> parents) async {
     calls.add('creplies $postId ${parents.join(',')}');
-    return [for (final c in [...?_comments[postId]]) if (c.parentId != null && parents.contains(c.parentId)) c]
+    final all = [...?_comments[postId]];
+    final one = [for (final c in all) if (c.parentId != null && parents.contains(c.parentId)) c];
+    final ids = {for (final c in one) c.id};
+    return [...one, for (final c in all) if (c.parentId != null && ids.contains(c.parentId)) c]
       ..sort((a, b) => a.createdAt != b.createdAt ? a.createdAt.compareTo(b.createdAt) : a.id.compareTo(b.id));
   }
 
   @override
   Future<Comment> addComment(int postId, String body, {int? parentId, Map<String, dynamic>? media}) async {
     calls.add('comment $postId $body${parentId == null ? '' : ' ↩$parentId'}${media == null ? '' : ' ${media['sticker'] ?? 'photo'}'}');
+    // as the server does: an answer hangs under what it answers, two steps in at most, and names it
+    final list = _comments[postId] ?? const <Comment>[];
+    Comment? by(int? id) => id == null ? null : list.where((x) => x.id == id).firstOrNull;
+    final par = by(parentId);
+    final hang = par == null ? null : (par.parentId == null || by(par.parentId)?.parentId == null ? par.id : par.parentId);
     final c = Comment(
         id: _id++,
         postId: postId,
@@ -263,10 +275,12 @@ class FakeApi implements PeeraApi {
         ap: nino,
         body: body,
         createdAt: DateTime.now(),
-        parentId: parentId,
+        parentId: hang,
+        replyTo: par?.id,
         media: media == null ? null : Media.fromJson(media),
         sticker: media?['sticker'] as String?);
     (_comments[postId] ??= []).add(c);
+    lastComment = c;
     return c;
   }
 
@@ -1307,7 +1321,11 @@ class FakeApi implements PeeraApi {
   Future<void> deleteComment(int id) async {
     calls.add('cdel $id');
     for (final l in _comments.values) {
-      l.removeWhere((c) => c.id == id || c.parentId == id);
+      final gone = {id};
+      for (var k = 0; k < 3; k++) {
+        gone.addAll([for (final c in l) if (c.parentId != null && gone.contains(c.parentId)) c.id]);
+      }
+      l.removeWhere((c) => gone.contains(c.id));
     }
   }
 

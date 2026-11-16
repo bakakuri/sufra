@@ -240,11 +240,14 @@ class PostStats {
 }
 
 class Comment {
-  Comment({required this.id, required this.postId, required this.author, required this.body, required this.createdAt, this.parentId, this.ap, this.likes = 0, this.media, this.sticker});
+  Comment(
+      {required this.id, required this.postId, required this.author, required this.body, required this.createdAt, this.parentId, this.replyTo, this.ap, this.likes = 0, this.media, this.sticker});
   final int id, postId;
   final String author, body;
   final DateTime createdAt;
-  final int? parentId;
+
+  /// what it hangs under (two steps in at most), and the comment it answers (an answer beside one it answers names it)
+  final int? parentId, replyTo;
   final Profile? ap;
   final int likes;
   final Media? media;
@@ -261,6 +264,7 @@ class Comment {
       body: '${j['body'] ?? ''}',
       createdAt: asTime(j['created_at']),
       parentId: j['parent_id'] == null ? null : asInt(j['parent_id']),
+      replyTo: j['reply_to'] == null ? null : asInt(j['reply_to']),
       ap: _map(j['profiles']) == null ? null : Profile.fromJson(_map(j['profiles'])!),
       likes: asInt(j['likes']),
       media: m is List ? Media.listOf(m).firstOrNull : Media.fromJson(m),

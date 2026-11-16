@@ -980,6 +980,7 @@ class GroupManageScreen extends StatefulWidget {
 }
 
 class _GroupManageScreenState extends State<GroupManageScreen> {
+  late Map<String, dynamic> g = widget.g;
   String tab = 'requests';
   List<Map<String, dynamic>>? reqs, members;
   Map<String, DateTime> muted = const {};
@@ -987,7 +988,7 @@ class _GroupManageScreenState extends State<GroupManageScreen> {
   Object? error;
   bool _started = false;
 
-  int get id => asInt(widget.g['id']);
+  int get id => asInt(g['id']);
 
   @override
   void didChangeDependencies() {
@@ -1013,7 +1014,7 @@ class _GroupManageScreenState extends State<GroupManageScreen> {
         await app.people.ensure(m.map((x) => '${x['user_id']}'));
         final mu = await app.api.groupMutes(id).catchError((_) => <String, DateTime>{});
         if (mounted) setState(() => muted = mu);
-        final owner = '${widget.g['owner']}';
+        final owner = '${g['owner']}';
         int ord(Map<String, dynamic> r) => '${r['user_id']}' == owner ? 0 : (r['role'] == 'admin' ? 1 : 2);
         m.sort((a, b) => ord(a).compareTo(ord(b)));
         if (mounted) setState(() => members = m);
@@ -1025,8 +1026,11 @@ class _GroupManageScreenState extends State<GroupManageScreen> {
 
   void _tab(String k) {
     if (k == 'settings') {
-      openPage<int>(context, GroupFormScreen(g: widget.g), full: true).then((v) {
-        if (v != null && mounted) Navigator.of(context).maybePop();
+      // saving the settings closes them and comes back here (one step), with the group read again
+      openPage<int>(context, GroupFormScreen(g: g), full: true).then((v) async {
+        if (v == null || !mounted) return;
+        final r = await context.app.api.group(id).catchError((_) => null);
+        if (r != null && mounted) setState(() => g = r.g);
       });
       return;
     }
@@ -1049,8 +1053,8 @@ class _GroupManageScreenState extends State<GroupManageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.pc, app = context.app, me = context.me.id, owner = '${widget.g['owner']}';
-    final qs = [for (final q in (widget.g['questions'] as List? ?? const [])) '$q'];
+    final c = context.pc, app = context.app, me = context.me.id, owner = '${g['owner']}';
+    final qs = [for (final q in (g['questions'] as List? ?? const [])) '$q'];
     Widget body;
     if (error != null) {
       body = Empty(icon: 'users', title: 'ვერ ჩაიტვირთა', text: errText(error!));
@@ -1134,7 +1138,7 @@ class _GroupManageScreenState extends State<GroupManageScreen> {
               ? Empty(
                   icon: 'note',
                   title: 'დასამტკიცებელი პოსტები არ არის',
-                  text: widget.g['post_approval'] == true ? null : 'ჩართე „პოსტების შემოწმება“ პარამეტრებში, თუ გინდა, რომ ახალ პოსტებს ჯერ ადმინი ნახავდეს.',
+                  text: g['post_approval'] == true ? null : 'ჩართე „პოსტების შემოწმება“ პარამეტრებში, თუ გინდა, რომ ახალ პოსტებს ჯერ ადმინი ნახავდეს.',
                 )
               : ListView(children: [
                   for (final x in p) ...[

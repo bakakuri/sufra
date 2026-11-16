@@ -1,6 +1,7 @@
 // All of a post's comments in a window that comes up from below, as Facebook shows them: the comments the newest first
-// (fifteen at the start and ten more each time the reader comes near the end), the answers to each folded under it
-// behind "N პასუხის ნახვა", "პასუხი" under every comment and every answer; liking and deleting as on the post's page.
+// (fifteen at the start and ten more each time the reader comes near the end); an answer one step in, an answer to an
+// answer one step further, and further answers on that step naming whom they answer; each folded under what it
+// answers behind "N პასუხის ნახვა"; "პასუხი" under every one; liking and deleting as on the post's page.
 import 'package:flutter/material.dart';
 
 import '../data/models.dart';
@@ -12,6 +13,7 @@ import '../ui/mentions.dart';
 import '../ui/stickers.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'comment_tree.dart';
 import 'compose_screen.dart';
 import 'post_actions.dart';
 import 'post_screen.dart';
@@ -53,10 +55,10 @@ class _CommentsPanelState extends State<CommentsPanel> {
   /// the comments (not the answers), newest first
   final tops = <Comment>[];
 
-  /// the answers under each comment, oldest first
-  final replies = <int, List<Comment>>{};
+  /// the answers (to the comments and to answers)
+  final replies = <Comment>[];
 
-  /// the comments whose answers are open
+  /// the comments and answers whose answers are open
   final open = <int>{};
   bool loading = false, done = false, sending = false, _started = false;
   Object? error;
@@ -72,7 +74,8 @@ class _CommentsPanelState extends State<CommentsPanel> {
   final _justKey = GlobalKey();
 
   int get _id => widget.post.id;
-  int get _loaded => tops.length + replies.values.fold<int>(0, (n, l) => n + l.length);
+  int get _loaded => tops.length + replies.length;
+  CommentForest get _forest => CommentForest(tops, replies);
 
   @override
   void didChangeDependencies() {
@@ -82,7 +85,8 @@ class _CommentsPanelState extends State<CommentsPanel> {
     if (widget.thread != null) open.add(widget.thread!);
     final r = widget.replyTo;
     if (r != null) {
-      open.add(r.parentId ?? r.id);
+      open.add(r.id);
+      if (r.parentId != null) open.add(r.parentId!);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _reply(r);
       });
@@ -111,10 +115,8 @@ class _CommentsPanelState extends State<CommentsPanel> {
       if (!mounted) return;
       setState(() {
         tops.addAll(fresh);
-        for (final x in rs) {
-          final l = replies[x.parentId!] ??= [];
-          if (!l.any((y) => y.id == x.id)) l.add(x);
-        }
+        final had = {for (final y in replies) y.id};
+        replies.addAll([for (final x in rs) if (!had.contains(x.id)) x]);
         for (final c in [...fresh, ...rs]) {
           likes[c.id] ??= c.likes;
         }
@@ -140,24 +142,28 @@ class _CommentsPanelState extends State<CommentsPanel> {
 
   Future<bool> _post(String body, {Map<String, dynamic>? media}) async {
     if (sending) return false;
-    final app = context.app, par = replyTo, parent = par == null ? null : (par.parentId ?? par.id);
+    final app = context.app, par = replyTo;
     setState(() => sending = true);
     try {
-      final c = await app.api.addComment(_id, body, parentId: parent, media: media);
+      // the comment answered goes as its parent; the server hangs it where it belongs (two steps in at most)
+      final c = await app.api.addComment(_id, body, parentId: par?.id, media: media);
       if (!mounted) return true;
       setState(() {
-        if (parent == null) {
+        if (c.parentId == null) {
           tops.insert(0, c);
         } else {
-          (replies[parent] ??= []).add(c);
-          open.add(parent);
+          replies.add(c);
+          final f = _forest;
+          for (Comment? x = f.byId[c.parentId]; x != null; x = f.byId[x.parentId]) {
+            open.add(x.id);
+          }
         }
         likes[c.id] = 0;
         replyTo = null;
         sending = false;
       });
       app.posts.commented(_id);
-      if (parent == null) {
+      if (c.parentId == null) {
         if (scroll.hasClients) scroll.animateTo(0, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
       } else {
         _show(c.id);
@@ -230,14 +236,17 @@ class _CommentsPanelState extends State<CommentsPanel> {
     }
   }
 
-  /// answering: a comment, or an answer (then it goes under the same comment, with the person named)
+  /// answering a comment or an answer; an answer to one already two steps in stays beside it and names its author
   void _reply(Comment c) {
+    final f = _forest;
     setState(() {
       replyTo = c;
-      open.add(c.parentId ?? c.id);
+      for (Comment? x = c; x != null; x = f.byId[x.parentId]) {
+        open.add(x.id);
+      }
     });
     final u = c.ap?.username ?? '';
-    if (c.parentId != null && u.isNotEmpty && c.author != context.me.id && !field.text.contains('@$u')) {
+    if (f.depth(c) >= 2 && u.isNotEmpty && c.author != context.me.id && !field.text.contains('@$u')) {
       field.text = '@$u ${field.text}';
       field.selection = TextSelection.collapsed(offset: field.text.length);
     }
@@ -267,59 +276,30 @@ class _CommentsPanelState extends State<CommentsPanel> {
     if (!yes || !mounted) return;
     final app = context.app;
     if (!await attempt(context, () => app.api.deleteComment(c.id)) || !mounted) return;
-    var gone = 1;
+    final ids = {c.id, for (final x in _forest.under(c.id)) x.id};
     setState(() {
-      if (c.parentId == null) {
-        tops.removeWhere((x) => x.id == c.id);
-        gone += replies.remove(c.id)?.length ?? 0;
-      } else {
-        replies[c.parentId!]?.removeWhere((x) => x.id == c.id);
-      }
+      tops.removeWhere((x) => ids.contains(x.id));
+      replies.removeWhere((x) => ids.contains(x.id));
     });
-    app.posts.commented(_id, -gone);
+    app.posts.commented(_id, -ids.length);
   }
 
-  Widget _tile(Comment cm, {required bool reply}) {
+  Widget _tile(Comment cm, int depth, Comment? to) {
     final me = context.me.id, staff = isStaff(context), author = widget.post.author;
     return _Arrive(
       key: ValueKey('cm-${cm.id}'),
       child: KeyedSubtree(
         key: cm.id == _just ? _justKey : null,
         child: CommentTile(
-        c: cm,
-        reply: reply,
-        liked: liked.contains(cm.id),
-        likes: likes[cm.id] ?? cm.likes,
-        canDelete: cm.author == me || author == me || staff,
-        onReply: () => _reply(cm),
-        onLike: () => _like(cm),
-        onDelete: () => _delete(cm),
-      ),
-      ),
-    );
-  }
-
-  /// "N პასუხის ნახვა" with the first answerer's face, or "პასუხების დამალვა"
-  Widget _threadToggle(Comment top, List<Comment> rs) {
-    final c = context.pc, isOpen = open.contains(top.id), first = rs.first.ap;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(58, 0, 14, 4),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: InkWell(
-          key: ValueKey('cthread-${top.id}'),
-          borderRadius: BorderRadius.circular(10),
-          onTap: () => setState(() => isOpen ? open.remove(top.id) : open.add(top.id)),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Container(width: 22, height: 1.5, color: c.line),
-              const SizedBox(width: 8),
-              if (!isOpen && first != null) ...[Avatar(p: first, size: 20), const SizedBox(width: 6)],
-              Text(isOpen ? 'პასუხების დამალვა' : (rs.length == 1 ? '1 პასუხის ნახვა' : 'ყველა ${rs.length} პასუხის ნახვა'),
-                  style: TextStyle(color: c.muted, fontWeight: FontWeight.w800, fontSize: 13)),
-            ]),
-          ),
+          c: cm,
+          depth: depth,
+          answered: to,
+          liked: liked.contains(cm.id),
+          likes: likes[cm.id] ?? cm.likes,
+          canDelete: cm.author == me || author == me || staff,
+          onReply: () => _reply(cm),
+          onLike: () => _like(cm),
+          onDelete: () => _delete(cm),
         ),
       ),
     );
@@ -328,24 +308,8 @@ class _CommentsPanelState extends State<CommentsPanel> {
   @override
   Widget build(BuildContext context) {
     final c = context.pc;
-    // a flat list: each comment, then its answers (or the line that opens them)
-    final rows = <Widget Function()>[];
-    final topAt = <int>[];
-    for (var i = 0; i < tops.length; i++) {
-      final t = tops[i], rs = replies[t.id] ?? const <Comment>[];
-      rows.add(() => _tile(t, reply: false));
-      topAt.add(i);
-      if (rs.isNotEmpty) {
-        if (open.contains(t.id)) {
-          for (final r in rs) {
-            rows.add(() => _tile(r, reply: true));
-            topAt.add(i);
-          }
-        }
-        rows.add(() => _threadToggle(t, rs));
-        topAt.add(i);
-      }
-    }
+    // a flat list: each comment, then what hangs under it (or the line that opens it)
+    final rows = commentRows(context, _forest, open: open, tile: _tile, toggle: (id) => setState(() => open.contains(id) ? open.remove(id) : open.add(id)));
     return ListenableBuilder(
       listenable: context.app.posts,
       builder: (context, _) {
@@ -375,11 +339,11 @@ class _CommentsPanelState extends State<CommentsPanel> {
                     itemCount: rows.length + (done ? 0 : 1),
                     itemBuilder: (context, i) {
                       // near the end of what is here (five comments before it), the next ten are asked for
-                      if (!done && (i >= rows.length || topAt[i] >= tops.length - 5)) WidgetsBinding.instance.addPostFrameCallback((_) => _more());
+                      if (!done && (i >= rows.length || rows[i].$1 >= tops.length - 5)) WidgetsBinding.instance.addPostFrameCallback((_) => _more());
                       if (i >= rows.length) {
                         return const Padding(padding: EdgeInsets.all(18), child: Center(child: SizedBox.square(dimension: 22, child: CircularProgressIndicator(strokeWidth: 2.2))));
                       }
-                      return rows[i]();
+                      return rows[i].$2();
                     },
                   ),
           ),
@@ -453,10 +417,9 @@ class _InlineCommentsState extends State<InlineComments> {
       final r = await api.commentsPage(widget.post.id, from: 0, count: 5);
       final rs = await api.commentReplies(widget.post.id, [for (final c in r) c.id]).catchError((_) => const <Comment>[]);
       if (!mounted) return;
-      final n = <int, int>{};
-      for (final x in rs) {
-        n[x.parentId!] = (n[x.parentId!] ?? 0) + 1;
-      }
+      // every answer under a comment, on both steps
+      final f = CommentForest(r, rs);
+      final n = {for (final t in r) t.id: f.under(t.id).length};
       setState(() {
         last = r.reversed.toList();
         answers = n;

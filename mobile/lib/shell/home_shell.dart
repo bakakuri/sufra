@@ -53,6 +53,9 @@ class HomeShellState extends State<HomeShell> {
   final _feed = GlobalKey<FeedTabState>();
   final _scaffold = GlobalKey<ScaffoldState>();
   DateTime? _armed;
+
+  /// the tabs come to before, so back returns to them one at a time
+  final _trail = <int>[];
   late final AppState app;
 
   /// the one made with this shell (the sign-in may rebuild the widget with a fresh one; that one is not used)
@@ -73,6 +76,7 @@ class HomeShellState extends State<HomeShell> {
         final i = tabs.indexWhere((t) => t.id == id);
         if (i >= 0 && i != index && mounted) select(i);
       }
+      ..goHome = _goHome
       // the top bar opens its pages inside the open tab, under itself
       ..tabContext = (() => _navs[index].currentState?.overlay?.context)
       ..start();
@@ -115,17 +119,11 @@ class HomeShellState extends State<HomeShell> {
         if (ctx.mounted) await openPage(ctx, PostScreen(post: p), full: true);
       } else if (to.jk != null) {
         final i = tabs.indexWhere((t) => t.id == 'joker');
-        if (i >= 0 && i != index) {
-          setState(() => index = i);
-          app.tab.value = i;
-        }
+        if (i >= 0 && i != index) select(i);
         await openJokerTable(ctx, to.jk!);
       } else if (to.tab != null) {
         final i = tabs.indexWhere((t) => t.id == to.tab);
-        if (i >= 0 && i != index) {
-          setState(() => index = i);
-          app.tab.value = i;
-        }
+        if (i >= 0 && i != index) select(i);
       }
     });
     WidgetsBinding.instance.scheduleFrame();
@@ -201,8 +199,29 @@ class HomeShellState extends State<HomeShell> {
       }
       return;
     }
+    // the tab left is remembered: back comes to it again
+    _trail.add(index);
+    if (_trail.length > 30) _trail.removeAt(0);
     setState(() => index = i);
     app.tab.value = i;
+  }
+
+  /// the logo: pages over the app close, and the feed opens (at its top when it is already open)
+  void _goHome() {
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst);
+    final home = tabs.indexWhere((t) => t.id == 'home');
+    if (home < 0) return;
+    if (index != home) {
+      select(home);
+    } else {
+      final nav = _navs[home].currentState;
+      if (nav != null && nav.canPop()) {
+        nav.popUntil((r) => r.isFirst);
+      } else {
+        _feed.currentState?.top();
+      }
+    }
   }
 
   /// one back step; true when the app should close
@@ -212,6 +231,13 @@ class HomeShellState extends State<HomeShell> {
     // with changes that asks first)
     if (nav != null && await nav.maybePop()) return false;
     if (!mounted) return false;
+    // then the tab before it, as it was left
+    if (_trail.isNotEmpty) {
+      final prev = _trail.removeLast();
+      setState(() => index = prev);
+      app.tab.value = prev;
+      return false;
+    }
     if (index != 0) {
       setState(() => index = 0);
       app.tab.value = 0;

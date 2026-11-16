@@ -45,8 +45,8 @@ class PeeraTopBar extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: GestureDetector(
                     key: const ValueKey('top-logo'),
-                    // on the tabs the logo leads to the feed
-                    onTap: inShell ? () => app.goTab?.call('home') : null,
+                    // the logo leads to the feed from every page
+                    onTap: () => app.goHome?.call(),
                     child: const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: PeeraLogo()),
                   ),
                 ),

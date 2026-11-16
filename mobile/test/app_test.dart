@@ -120,6 +120,29 @@ void main() {
     expect(s.index, 0);
     expect(exits, 0);
 
+    // tab after tab: back walks them back one at a time
+    await _tab(t, 'friends');
+    await _tab(t, 'chats');
+    await _back(t);
+    expect(s.index, 1);
+    await _back(t);
+    expect(s.index, 0);
+
+    // the logo leads home from any page: from the notifications over the app, opened on another tab
+    await _tab(t, 'friends');
+    await t.tap(find.byKey(const ValueKey('bell')).first);
+    await settle(t);
+    expect(find.byType(NotesScreen), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('top-logo')).last);
+    await settle(t);
+    expect(find.byType(NotesScreen), findsNothing);
+    expect(s.index, 0);
+    await _back(t);
+    expect(s.index, 1);
+    await _back(t);
+    expect(s.index, 0);
+    expect(exits, 0);
+
     // on the main tab the first back only asks; a second one within two seconds closes the app
     await _back(t);
     expect(find.text(HomeShellState.exitHint), findsOneWidget);
@@ -200,12 +223,26 @@ void main() {
     expect(api.calls, contains('cpage 101 0 15'));
     final panel = find.byType(CommentsPanel);
     Finder inP(Finder f) => find.descendant(of: panel, matching: f);
-    expect(inP(find.text('კომენტარები · 5')), findsOneWidget);
+    expect(inP(find.text('კომენტარები · 6')), findsOneWidget);
     // an answer is folded under its comment until asked for, as on Facebook
     expect(inP(find.text('ჯვრის მონასტერთან ახლოს 🙂')), findsNothing);
+    expect(inP(find.text('ყველა 2 პასუხის ნახვა')), findsOneWidget);
     await t.tap(inP(find.byKey(const ValueKey('cthread-1'))));
     await settle(t);
     expect(inP(find.text('ჯვრის მონასტერთან ახლოს 🙂')), findsOneWidget);
+    // one step in, saying whom it answers; the answer to it one step further, folded under it
+    expect(inP(find.byKey(const ValueKey('cto-2'))), findsOneWidget);
+    final x0 = t.getTopLeft(inP(find.byKey(const ValueKey('cm-1')))).dx;
+    expect(inP(find.text('ზუსტად, მცხეთის თავზე')), findsNothing);
+    await t.tap(inP(find.byKey(const ValueKey('cthread-2'))));
+    await settle(t);
+    expect(inP(find.text('ზუსტად, მცხეთის თავზე')), findsOneWidget);
+    Finder bubble(String s) => inP(find.ancestor(of: find.text(s), matching: find.byType(Container)).first);
+    final a1 = t.getTopLeft(bubble('რა ლამაზია! სად არის ზუსტად?')).dx,
+        a2 = t.getTopLeft(bubble('ჯვრის მონასტერთან ახლოს 🙂')).dx,
+        a3 = t.getTopLeft(bubble('ზუსტად, მცხეთის თავზე')).dx;
+    expect(a1 < a2 && a2 < a3, isTrue);
+    expect(x0, lessThanOrEqualTo(a1));
     // an answer can be answered too
     expect(inP(find.byKey(const ValueKey('creply-2'))), findsOneWidget);
     await t.tap(inP(find.byKey(const ValueKey('creply-1'))));
@@ -217,7 +254,23 @@ void main() {
     await settle(t);
     expect(api.calls, contains('comment 101 ზაფხულში ისევ წავალთ ↩1'));
     expect(inP(find.text('ზაფხულში ისევ წავალთ')), findsOneWidget);
-    expect(inP(find.text('კომენტარები · 6')), findsOneWidget);
+    expect(inP(find.text('კომენტარები · 7')), findsOneWidget);
+    // an answer to one already two steps in stays on that step, names its author and is tagged with them
+    await t.ensureVisible(inP(find.byKey(const ValueKey('creply-5'))));
+    await settle(t);
+    await t.tap(inP(find.byKey(const ValueKey('creply-5'))));
+    await settle(t);
+    final f = t.widget<TextField>(find.byKey(const ValueKey('cs-field')));
+    expect(f.controller!.text, startsWith('@luka.g '));
+    await t.enterText(find.byKey(const ValueKey('cs-field')), '${f.controller!.text}მეც იქ ვიყავი');
+    await t.pump();
+    await t.tap(inP(find.byTooltip('გაგზავნა')));
+    await settle(t);
+    expect(api.calls, contains('comment 101 @luka.g მეც იქ ვიყავი ↩5'));
+    final mine = api.lastComment!;
+    expect(mine.parentId, 2);
+    expect(inP(find.byKey(ValueKey('cto-${mine.id}'))), findsOneWidget);
+    expect(inP(find.descendant(of: find.byKey(ValueKey('cto-${mine.id}')), matching: find.textContaining('ლუკა'))), findsOneWidget);
   });
 
   testWidgets('writing a post with two photos puts it at the top of the feed', (t) async {
@@ -914,12 +967,15 @@ void main() {
     await _back(t);
     expect(find.byType(NotesScreen), findsOneWidget);
 
-    // a request goes to the friends tab
+    // a request opens the friends' requests over the notifications; back comes to them again (one step)
     await t.tap(find.textContaining('გიგზავნის მეგობრობის მოთხოვნას'));
     await settle(t);
+    expect(find.byType(FriendsTab), findsOneWidget);
+    await _back(t);
+    expect(find.byType(FriendsTab), findsNothing);
+    expect(find.byType(NotesScreen), findsOneWidget);
+    await _back(t);
     expect(find.byType(NotesScreen), findsNothing);
-    expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 1);
-    await _tab(t, 'home');
     expect(find.descendant(of: find.byKey(const ValueKey('bell')), matching: find.text('3')), findsNothing);
   });
 

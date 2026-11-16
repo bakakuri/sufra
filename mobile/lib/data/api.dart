@@ -33,7 +33,7 @@ abstract class PeeraApi {
   /// a post's comments (not the answers to them) a page at a time, the newest first
   Future<List<Comment>> commentsPage(int postId, {int from = 0, int count = 15});
 
-  /// the answers to these comments, the oldest first
+  /// the answers to these comments and the answers to those (two steps), the oldest first
   Future<List<Comment>> commentReplies(int postId, List<int> parents);
 
   /// a person's own photos: whether I may see them ('ok', or 'friends' / 'none' when not), their albums, the photos
@@ -836,7 +836,7 @@ class SupaApi implements PeeraApi {
   static const postSel = 'id,author,body,media,poll,tags,group_id,page_id,is_clip,hidden,created_at,link,edited_at,repost_of,pending,topic,'
       'ap:profiles!posts_author_fkey($_who),page:pages!posts_page_id_fkey(id,name,hue,avatar_url,verified,kind),'
       'grp:groups!posts_group_id_fkey(id,name),pl:places!posts_place_id_fkey(id,name,kind,city)';
-  static const commentSel = 'id,post_id,body,media,created_at,author,parent_id,likes,profiles!comments_author_fkey($_who)';
+  static const commentSel = 'id,post_id,body,media,created_at,author,parent_id,reply_to,likes,profiles!comments_author_fkey($_who)';
   static const personSel = 'id,username,name,surname,bio,city,hue,avatar_url,cover_url,verified,last_seen,role,banned,rating,nameday,nameday_label,home_place,home_region,edu,gender';
   static const msgSel = 'id,conv_id,sender,body,media,kind,created_at,reply_to,edited_at,deleted,expires_at';
 
@@ -966,11 +966,14 @@ class SupaApi implements PeeraApi {
   Future<void> deletePhotoAlbum(int id) => sb.from('photo_albums').delete().eq('id', id);
 
   @override
-  Future<List<Comment>> commentReplies(int postId, List<int> parents) async => parents.isEmpty
-      ? const []
-      : (await sb.from('comments').select(commentSel).eq('post_id', postId).inFilter('parent_id', parents).order('created_at').order('id').limit(500))
-          .map(Comment.fromJson)
-          .toList();
+  Future<List<Comment>> commentReplies(int postId, List<int> parents) async {
+    if (parents.isEmpty) return const [];
+    Future<List<Comment>> under(List<int> ids) async =>
+        (await sb.from('comments').select(commentSel).eq('post_id', postId).inFilter('parent_id', ids).order('created_at').order('id').limit(500)).map(Comment.fromJson).toList();
+    // the answers, then the answers to them (the second step)
+    final one = await under(parents);
+    return one.isEmpty ? one : [...one, ...await under([for (final c in one) c.id])];
+  }
 
   @override
   Future<List<Comment>> commentsPage(int postId, {int from = 0, int count = 15}) async => (await sb

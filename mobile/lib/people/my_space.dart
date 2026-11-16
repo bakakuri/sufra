@@ -16,6 +16,7 @@ import '../ui/net_image.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'cards.dart';
+import 'friends_tab.dart';
 import 'namedays.dart';
 
 /// A highlight's stories, one after another (an empty one just says so).
@@ -424,10 +425,7 @@ class _CloseFriendsScreenState extends State<CloseFriendsScreen> {
                     style: TextStyle(color: c.muted, fontSize: 13.5, height: 1.4)),
               ),
               if (friends.isEmpty)
-                Empty(icon: 'users', title: 'მეგობრები ჯერ არ გყავს', action: 'მეგობრების პოვნა', onAction: () {
-                  Navigator.of(context).pop();
-                  app.goTab?.call('friends');
-                })
+                Empty(icon: 'users', title: 'მეგობრები ჯერ არ გყავს', action: 'მეგობრების პოვნა', onAction: () => openPage(context, const FriendsTab(), full: true))
               else
                 for (final id in friends)
                   CheckboxListTile(

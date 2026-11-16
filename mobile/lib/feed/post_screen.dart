@@ -11,6 +11,7 @@ import '../ui/stickers.dart';
 import '../ui/theme.dart';
 import '../ui/translate.dart';
 import '../ui/widgets.dart';
+import 'comment_tree.dart';
 import 'compose_screen.dart';
 import 'photo_viewer.dart';
 import 'post_actions.dart';
@@ -37,7 +38,8 @@ class _PostScreenState extends State<PostScreen> {
   bool sending = false;
   Set<int> liked = {};
   final likes = <int, int>{};
-  final opened = <int>{};
+  /// the comments whose answers are open
+  final open = <int>{};
   final field = TextEditingController();
   final focus = FocusNode();
   final scroll = ScrollController();
@@ -88,18 +90,26 @@ class _PostScreenState extends State<PostScreen> {
     final app = context.app, par = replyTo;
     setState(() => sending = true);
     try {
-      final c = await app.api.addComment(widget.post.id, body, parentId: par == null ? null : (par.parentId ?? par.id), media: media);
+      // the comment answered goes as its parent; the server hangs it where it belongs
+      final c = await app.api.addComment(widget.post.id, body, parentId: par?.id, media: media);
       if (!mounted) return true;
       setState(() {
         list = [...?list, c];
         likes[c.id] = 0;
         replyTo = null;
         sending = false;
+        // what it hangs under opens, so it is seen
+        final f = CommentForest.of(list!);
+        for (Comment? x = f.byId[c.parentId]; x != null; x = f.byId[x.parentId]) {
+          open.add(x.id);
+        }
       });
       app.posts.commented(widget.post.id);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (scroll.hasClients) scroll.animateTo(scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
-      });
+      if (par == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (scroll.hasClients) scroll.animateTo(scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
+        });
+      }
       return true;
     } catch (e) {
       if (!mounted) return false;
@@ -147,10 +157,17 @@ class _PostScreenState extends State<PostScreen> {
     }
   }
 
+  /// answering a comment or an answer; an answer to one already two steps in names its author
   void _reply(Comment c) {
-    setState(() => replyTo = c);
+    final f = CommentForest.of(list ?? const []);
+    setState(() {
+      replyTo = c;
+      for (Comment? x = c; x != null; x = f.byId[x.parentId]) {
+        open.add(x.id);
+      }
+    });
     final u = c.ap?.username ?? '';
-    if (c.parentId != null && u.isNotEmpty && c.author != context.me.id && !field.text.contains('@$u')) {
+    if (f.depth(c) >= 2 && u.isNotEmpty && c.author != context.me.id && !field.text.contains('@$u')) {
       field.text = '@$u ${field.text}';
       field.selection = TextSelection.collapsed(offset: field.text.length);
     }
@@ -180,73 +197,34 @@ class _PostScreenState extends State<PostScreen> {
     if (!yes || !mounted) return;
     final app = context.app;
     if (!await attempt(context, () => app.api.deleteComment(c.id)) || !mounted) return;
-    final gone = {c.id, for (final x in list ?? const <Comment>[]) if (x.parentId == c.id) x.id};
+    final gone = {c.id, for (final x in CommentForest.of(list ?? const []).under(c.id)) x.id};
     setState(() => list = [for (final x in list!) if (!gone.contains(x.id)) x]);
     app.posts.commented(widget.post.id, -gone.length);
-  }
-
-  /// top-level comments in order, each followed by the replies to it (and to its replies)
-  List<(Comment, List<Comment>)> _threads(List<Comment> all) {
-    final byId = {for (final c in all) c.id: c};
-    int root(Comment c) {
-      var x = c;
-      for (var i = 0; i < 20 && x.parentId != null && byId.containsKey(x.parentId); i++) {
-        x = byId[x.parentId]!;
-      }
-      return x.id;
-    }
-
-    final kids = <int, List<Comment>>{};
-    final tops = <Comment>[];
-    for (final c in all) {
-      final r = root(c);
-      if (r == c.id) {
-        tops.add(c);
-      } else {
-        (kids[r] ??= []).add(c);
-      }
-    }
-    return [for (final t in tops) (t, kids[t.id] ?? const <Comment>[])];
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.pc, me = context.me.id;
-    final threads = list == null ? const <(Comment, List<Comment>)>[] : _threads(list!);
+    final forest = CommentForest.of(list ?? const []);
     final staff = isStaff(context), postAuthor = widget.post.author;
-    Widget tile(Comment cm, bool reply) => CommentTile(
-          key: ValueKey('cm-${cm.id}'),
-          c: cm,
-          reply: reply,
-          liked: liked.contains(cm.id),
-          likes: likes[cm.id] ?? cm.likes,
-          canDelete: cm.author == me || postAuthor == me || staff,
-          onReply: () => _reply(cm),
-          onLike: () => _like(cm),
-          onDelete: () => _delete(cm),
-        );
-    final rows = <Widget>[];
-    for (final (top, kids) in threads) {
-      rows.add(tile(top, false));
-      final hid = kids.length > 3 && !opened.contains(top.id) ? kids.length - 2 : 0;
-      if (hid > 0) {
-        rows.add(Padding(
-          padding: const EdgeInsets.only(left: 58),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              key: ValueKey('cmore-${top.id}'),
-              onPressed: () => setState(() => opened.add(top.id)),
-              icon: PIcon('reply', size: 16, color: c.accent),
-              label: Text('კიდევ $hid პასუხის ნახვა'),
-            ),
-          ),
-        ));
-      }
-      for (final k in kids.skip(hid)) {
-        rows.add(tile(k, true));
-      }
-    }
+    final rows = commentRows(
+      context,
+      forest,
+      open: open,
+      toggle: (id) => setState(() => open.contains(id) ? open.remove(id) : open.add(id)),
+      tile: (cm, depth, to) => CommentTile(
+        key: ValueKey('cm-${cm.id}'),
+        c: cm,
+        depth: depth,
+        answered: to,
+        liked: liked.contains(cm.id),
+        likes: likes[cm.id] ?? cm.likes,
+        canDelete: cm.author == me || postAuthor == me || staff,
+        onReply: () => _reply(cm),
+        onLike: () => _like(cm),
+        onDelete: () => _delete(cm),
+      ),
+    );
     return Scaffold(
       appBar: peeraBar(context, title: 'პოსტი'),
       body: Column(children: [
@@ -268,7 +246,7 @@ class _PostScreenState extends State<PostScreen> {
                 child: Text('ჯერ არავის დაუწერია. იყავი პირველი!', style: TextStyle(color: c.muted, fontSize: 14.5)),
               )
             else
-              ...rows,
+              for (final r in rows) r.$2(),
           ]),
         ),
         MentionSuggest(field: field),
@@ -292,7 +270,8 @@ class CommentTile extends StatelessWidget {
   const CommentTile({
     super.key,
     required this.c,
-    required this.reply,
+    this.depth = 0,
+    this.answered,
     required this.liked,
     required this.likes,
     required this.canDelete,
@@ -301,7 +280,13 @@ class CommentTile extends StatelessWidget {
     required this.onDelete,
   });
   final Comment c;
-  final bool reply, liked, canDelete;
+
+  /// its step: 0 a comment, 1 an answer, 2 an answer to an answer (and further)
+  final int depth;
+
+  /// the comment it answers (named over it)
+  final Comment? answered;
+  final bool liked, canDelete;
   final int likes;
   final VoidCallback onReply, onLike, onDelete;
 
@@ -328,13 +313,35 @@ class CommentTile extends StatelessWidget {
           ),
           child: Text(label),
         );
+    final to = answered?.ap;
     return Padding(
-      padding: EdgeInsets.fromLTRB(reply ? 58 : 14, 6, 14, 2),
+      padding: EdgeInsets.fromLTRB(commentIndent[depth], 6, 14, 2),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GestureDetector(onTap: () => openPerson(context, who), child: Avatar(p: who, size: reply ? 28 : 34)),
-        const SizedBox(width: 9),
+        GestureDetector(onTap: () => openPerson(context, who), child: Avatar(p: who, size: commentAvatar[depth])),
+        const SizedBox(width: 8),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // an answer says whom it answers
+            if (depth > 0 && to != null)
+              Padding(
+                key: ValueKey('cto-${c.id}'),
+                padding: const EdgeInsets.only(left: 6, bottom: 3),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  PIcon('reply', size: 12, color: pc.muted),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text.rich(
+                      TextSpan(children: [
+                        const TextSpan(text: 'პასუხი · '),
+                        TextSpan(text: to.name, style: TextStyle(color: pc.accent, fontWeight: FontWeight.w800)),
+                      ]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: pc.muted, fontSize: 11.5, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ]),
+              ),
             Container(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 9),
               decoration: BoxDecoration(color: c.sticker != null && text.isEmpty ? Colors.transparent : pc.sunk, borderRadius: BorderRadius.circular(16)),
