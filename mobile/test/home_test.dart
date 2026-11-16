@@ -330,6 +330,10 @@ void main() {
     await settle(t);
     expect(api.calls, contains('add ${tamar.id}'));
     expect(find.descendant(of: find.byKey(ValueKey('sug-${tamar.id}')), matching: find.text('გაგზავნილია')), findsOneWidget);
+    // "ყველას ნახვა" opens them all in the friends tab
+    await t.tap(find.byKey(const ValueKey('sug-all')));
+    await settle(t);
+    expect(find.byKey(ValueKey('sgg-${tamar.id}')), findsOneWidget);
   });
 
   testWidgets('the welcome gift is said once; inviting friends from it tells the coins and who came', (t) async {

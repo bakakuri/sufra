@@ -334,6 +334,9 @@ class AppState {
   /// people who looked at my profile since I last looked (the eye's number in the top bar)
   final newGuests = ValueNotifier<int>(0);
 
+  /// the friends tab's part to show when it opens next (0 friends, 1 requests, 2 people you may know)
+  final friendsSeg = ValueNotifier<int?>(null);
+
   /// set by the shell: my profile read again (after changing it), a tab opened, signing out; where the open tab
   /// pushes its screens (the top bar opens search there, under itself)
   Future<void> Function()? refreshMe;

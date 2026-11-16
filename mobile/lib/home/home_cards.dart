@@ -15,12 +15,14 @@ import '../feed/compose_screen.dart';
 import '../feed/post_card.dart';
 import '../people/edu.dart';
 import '../people/person_screen.dart';
+import '../people/people_cards.dart';
 import '../people/profile_parts.dart';
 import '../profile/profile.dart';
 import '../settings/frame_photo.dart';
 import '../settings/places.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
+import '../ui/motion.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 
@@ -688,7 +690,9 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
 
 // ---------- people you may know ----------
 
-/// Inside the feed after the second post: people you may know, sideways, each with "დამატება".
+/// Inside the feed after the second post: people you may know, sideways, as Facebook shows them — each a card with
+/// the picture large, the name, friends in common and "დამატება"; a cross takes one away; "ყველას ნახვა" opens all of
+/// them in the friends tab.
 class SuggestRow extends StatefulWidget {
   const SuggestRow({super.key});
   @override
@@ -697,7 +701,7 @@ class SuggestRow extends StatefulWidget {
 
 class _SuggestRowState extends State<SuggestRow> {
   List<Suggestion>? list;
-  final asked = <String>{};
+  Set<String> hidden = {};
   bool _started = false;
 
   @override
@@ -706,87 +710,95 @@ class _SuggestRowState extends State<SuggestRow> {
     if (_started) return;
     _started = true;
     final app = context.app;
+    HiddenSuggestions.load().then((h) {
+      if (mounted) setState(() => hidden = {...h});
+    });
     app.api.suggestions().then((s) {
       for (final x in s) {
         app.people.put(x.p);
       }
-      if (mounted) setState(() => list = s.take(10).toList());
+      if (mounted) setState(() => list = s.take(12).toList());
     }, onError: (_) {
       if (mounted) setState(() => list = const []);
     });
   }
 
+  Future<void> _add(Suggestion s) async {
+    try {
+      await context.app.friends.add(s.p.id);
+    } catch (e) {
+      if (mounted) toast(context, errText(e));
+    }
+  }
+
+  void _hide(Suggestion s) {
+    setState(() => hidden.add(s.p.id));
+    HiddenSuggestions.hide(s.p.id);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final c = context.pc, app = context.app, l = list;
-    if (l == null || l.isEmpty) return const SizedBox.shrink();
+    final c = context.pc, app = context.app;
+    final l = [for (final x in list ?? const <Suggestion>[]) if (!hidden.contains(x.p.id)) x];
+    if (l.isEmpty) return const SizedBox.shrink();
     return Container(
       key: const ValueKey('suggest'),
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.line)),
+      decoration: cardLook(context, radius: 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+          padding: const EdgeInsets.fromLTRB(14, 0, 6, 10),
           child: Row(children: [
+            Container(
+              width: 34,
+              height: 34,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF0EA5E9), Color(0xFF6366F1)]), borderRadius: BorderRadius.circular(11)),
+              child: const PIcon('uadd', size: 18, color: Colors.white),
+            ),
+            const SizedBox(width: 10),
             const Expanded(child: Text('შეიძლება იცნობდე', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
-            TextButton(onPressed: () => app.goTab?.call('friends'), child: const Text('ყველა', style: TextStyle(fontWeight: FontWeight.w700))),
+            TextButton(
+              key: const ValueKey('sug-all'),
+              onPressed: () {
+                // straight to "იქნებ იცნობ" in the friends tab
+                app.friendsSeg.value = 2;
+                app.goTab?.call('friends');
+              },
+              child: Text('ყველას ნახვა', style: TextStyle(fontWeight: FontWeight.w800, color: c.accent)),
+            ),
           ]),
         ),
         SizedBox(
-          height: 206,
-          child: ListView.separated(
-            key: const ValueKey('suggest-row'),
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: l.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (context, i) {
-              final s = l[i], sent = asked.contains(s.p.id) || app.friends.outgoing.contains(s.p.id);
-              return Container(
-                key: ValueKey('sug-${s.p.id}'),
-                width: 148,
-                padding: const EdgeInsets.fromLTRB(10, 14, 10, 10),
-                decoration: BoxDecoration(color: c.bg, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.line)),
-                child: Column(children: [
-                  GestureDetector(
-                    onTap: () => openPage(context, PersonScreen(uid: s.p.id)),
-                    child: Column(children: [
-                      Avatar(p: s.p, size: 64),
-                      const SizedBox(height: 8),
-                      Text(s.p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text(s.mutual > 0 ? '${s.mutual} საერთო მეგობარი' : ((s.p.city ?? '').isEmpty ? 'Peera-ზეა' : s.p.city!),
-                          maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 12.5)),
-                    ]),
+          height: 292,
+          child: ListenableBuilder(
+            listenable: app.friends,
+            builder: (context, _) => ListView.separated(
+              key: const ValueKey('suggest-row'),
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+              itemCount: l.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, i) {
+                final s = l[i];
+                return Rise(
+                  key: ValueKey('sugr-${s.p.id}'),
+                  order: i,
+                  dy: 0,
+                  child: SizedBox(
+                    width: 164,
+                    child: SuggestCard(
+                      s: s,
+                      state: app.friends.stateWith(s.p.id),
+                      onOpen: () => openPage(context, PersonScreen(uid: s.p.id, initial: s.p)),
+                      onAdd: () => _add(s),
+                      onHide: () => _hide(s),
+                    ),
                   ),
-                  const Spacer(),
-                  SizedBox(
-                    width: double.infinity,
-                    child: sent
-                        ? OutlinedButton(
-                            onPressed: null,
-                            style: OutlinedButton.styleFrom(minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: 8)),
-                            child: const FittedBox(fit: BoxFit.scaleDown, child: Text('გაგზავნილია')),
-                          )
-                        : FilledButton(
-                            key: ValueKey('sug-add-${s.p.id}'),
-                            style: FilledButton.styleFrom(minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: 8)),
-                            onPressed: () async {
-                              setState(() => asked.add(s.p.id));
-                              try {
-                                await app.friends.add(s.p.id);
-                              } catch (e) {
-                                if (!mounted) return;
-                                setState(() => asked.remove(s.p.id));
-                                toast(this.context, errText(e));
-                              }
-                            },
-                            child: const FittedBox(fit: BoxFit.scaleDown, child: Text('დამატება')),
-                          ),
-                  ),
-                ]),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ]),
