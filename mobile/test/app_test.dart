@@ -42,6 +42,7 @@ import 'package:peera/shell/home_shell.dart';
 import 'package:peera/shell/tab_bar.dart';
 import 'package:peera/ui/icons.dart';
 import 'package:peera/ui/look.dart';
+import 'package:peera/ui/widgets.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -63,9 +64,6 @@ Future<void> _formTo(WidgetTester t, Finder f, [double delta = 250]) async {
 final _feed = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
 
 Future<void> _tab(WidgetTester t, String id) async {
-  // the feed and my profile have no button on the bar: the logo, and my picture on the feed
-  if (id == 'me') return toProfile(t);
-  if (id == 'home') return toFeed(t);
   await t.tap(find.byKey(ValueKey('tab-$id')));
   await settle(t);
 }
@@ -154,16 +152,24 @@ void main() {
     expect(exits, 1);
   });
 
-  testWidgets('five tabs on the bar, messages raised in the middle, unread on the badges; the feed by the logo, my profile by my picture', (t) async {
+  testWidgets('the seven tabs as pictures: the Peera mark, my picture in a ring, messages raised in the middle, unread on the badges', (t) async {
     phone(t);
     await shell(t);
+    final s = t.state<HomeShellState>(find.byType(HomeShell));
     for (final tab in tabs) {
-      expect(find.descendant(of: find.byKey(ValueKey('tab-${tab.id}')), matching: find.text(tab.label)), barTabs.contains(tab.id) ? findsOneWidget : findsNothing);
+      // no words under them: a picture each, the word only as its tooltip
+      expect(find.byKey(ValueKey('tab-${tab.id}')), findsOneWidget);
+      expect(find.descendant(of: find.byKey(ValueKey('tab-${tab.id}')), matching: find.text(tab.label)), findsNothing);
+      expect(find.descendant(of: find.byKey(ValueKey('tab-${tab.id}')), matching: find.byTooltip(tab.label)), findsOneWidget);
     }
-    expect(find.byKey(const ValueKey('tab-home')), findsNothing);
-    expect(find.byKey(const ValueKey('tab-me')), findsNothing);
+    expect(find.descendant(of: find.byKey(const ValueKey('tab-home')), matching: find.byType(PeeraMark)), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('tab-me')), matching: find.byType(Avatar)), findsOneWidget);
+    expect(tabs.firstWhere((x) => x.id == 'joker').label, 'თამაშები');
+    // 2 from გიორგი + 5 in the group; one friend request
+    expect(find.descendant(of: find.byKey(const ValueKey('tab-chats')), matching: find.text('7')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('tab-friends')), matching: find.text('1')), findsOneWidget);
+    // making something: the round "+" over the feed, none in the header; it stays in its place as the feed scrolls
     expect(find.byTooltip('შექმნა'), findsNothing);
-    // the round "+" over the feed stays in its place as the feed scrolls, and opens everything that can be made
     final plus = find.byKey(const ValueKey('create'));
     final at = t.getTopLeft(plus);
     await t.drag(_feed, const Offset(0, -500));
@@ -177,14 +183,41 @@ void main() {
     await _tab(t, 'clips');
     expect(find.byKey(const ValueKey('create')), findsNothing);
     await _tab(t, 'home');
-    expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 0);
+    expect(s.index, 0);
     expect(find.byKey(const ValueKey('create')), findsOneWidget);
-    // 2 from გიორგი + 5 in the group; one friend request
-    expect(find.descendant(of: find.byKey(const ValueKey('tab-chats')), matching: find.text('7')), findsOneWidget);
-    expect(find.descendant(of: find.byKey(const ValueKey('tab-friends')), matching: find.text('1')), findsOneWidget);
+    // my picture on the feed leads to my profile too
+    await toFeed(t);
+    await t.tap(find.byKey(const ValueKey('compose-me')));
+    await settle(t);
+    expect(s.index, tabs.indexWhere((x) => x.id == 'me'));
+    await _back(t);
+    expect(s.index, 0);
     await _tab(t, 'me');
     expect(find.text('@nino.beridze'), findsOneWidget);
     expect(find.text('12 450'), findsOneWidget);
+  });
+
+  testWidgets('my picture on the tab bar: now and then stars and Peera marks scatter from it, then it is still again', (t) async {
+    phone(t);
+    barSparkles = true;
+    addTearDown(() => barSparkles = false);
+    await shell(t);
+    // within a few seconds, a burst (the screen moves again)
+    var moving = false;
+    for (var i = 0; i < 80 && !moving; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+      moving = t.binding.hasScheduledFrame;
+    }
+    expect(moving, isTrue);
+    // it ends, and the bar is still until the next one
+    await t.pump(const Duration(milliseconds: 2600));
+    expect(t.binding.hasScheduledFrame, isFalse);
+    // opening my profile sets one off at once
+    await t.tap(find.byKey(const ValueKey('tab-me')));
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 300));
+    expect(t.binding.hasScheduledFrame, isTrue);
+    await t.pump(const Duration(seconds: 3));
   });
 
   testWidgets('the feed: posts, a reaction picked and taken back, a vote', (t) async {

@@ -215,35 +215,133 @@ final _capTop = _svg('M47.5 3.6L61.5 10L47.5 16.4L33.5 10Z');
 
 class _MarkPainter extends CustomPainter {
   @override
+  void paint(Canvas canvas, Size size) => drawPeeraMark(canvas, size.width);
+
+  @override
+  bool shouldRepaint(_MarkPainter o) => false;
+}
+
+/// The mark drawn at the canvas's origin, [size] wide (also tiny, flying around my picture on the tab bar).
+void drawPeeraMark(Canvas canvas, double size, {double opacity = 1}) {
+  Color a(int c) => Color(c).withValues(alpha: opacity);
+  canvas.save();
+  canvas.scale(size / 64);
+  final g = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [a(0xFF7B6CFF), a(0xFF4F46E5), a(0xFF3A2EC4)],
+    stops: const [0, .55, 1],
+  ).createShader(const Rect.fromLTWH(0, 0, 64, 64));
+  canvas.drawPath(_bubble, Paint()..shader = g);
+  canvas.drawPath(_pLetter, Paint()..color = a(0xFFFFFFFF));
+  canvas.translate(47.5, 11.5);
+  canvas.rotate(-13 * math.pi / 180);
+  canvas.translate(-47.5, -11.5);
+  canvas.drawPath(_capBand, Paint()..color = a(0xFFF08C00));
+  canvas.drawPath(_capTop, Paint()..color = a(0xFFFFB020));
+  canvas.drawLine(
+      const Offset(59, 11),
+      const Offset(59, 17.2),
+      Paint()
+        ..color = a(0xFFFFB020)
+        ..strokeWidth = 1.9
+        ..strokeCap = StrokeCap.round);
+  canvas.drawCircle(const Offset(59, 18.6), 2, Paint()..color = a(0xFFFFB020));
+  canvas.restore();
+}
+
+/// The tab bar's own icons, fuller than the line icons. The open tab's is filled: its body in the accent (a second,
+/// softer body at half strength), its details white over it. The others are drawn as lines.
+const _bar = <String, ({String body, String soft, String detail, String line})>{
+  'friends': (
+    body: '<circle cx="9" cy="7.8" r="3.7"/><path d="M2.6 20.1c.4-3.9 3.1-6.2 6.4-6.2s6 2.3 6.4 6.2a.9.9 0 0 1-.9 1H3.5a.9.9 0 0 1-.9-1z"/>',
+    soft: '<circle cx="16.9" cy="8.6" r="3"/><path d="M16.3 14.1c3.1-.2 5.1 1.8 5.4 5a.9.9 0 0 1-.9 1h-3.2c-.1-2.4-.5-4.3-1.3-6z"/>',
+    detail: '',
+    line: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.7-3.5 3.4-5.5 6.5-5.5s5.8 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c2 .8 3.2 2.6 3.5 5.4"/>',
+  ),
+  'heart': (
+    body: '<path d="M12 20.3s-7.4-4.5-9.4-9.3a5.2 5.2 0 0 1 9.4-3.4 5.2 5.2 0 0 1 9.4 3.4c-2 4.8-9.4 9.3-9.4 9.3z"/>',
+    soft: '',
+    detail: '<path d="M6.6 8.7a2.8 2.8 0 0 1 2.4-2"/>',
+    line: '<path d="M12 20s-7-4.4-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.6-9 9-9 9z"/>',
+  ),
+  'clips': (
+    body: '<rect x="4" y="2.8" width="16" height="18.4" rx="4.6"/>',
+    soft: '',
+    detail: '<path d="M10.2 8.6v6.8l5.6-3.4z" fill="1"/>',
+    line: '<rect x="4" y="3" width="16" height="18" rx="4"/><path d="M10 9l5 3-5 3z"/>',
+  ),
+  'games': (
+    body: '<path d="M7.2 6.8h9.6a4.8 4.8 0 0 1 4.7 3.9l1 5.5a2.9 2.9 0 0 1-5 2.5l-2.1-2.3H8.6l-2.1 2.3a2.9 2.9 0 0 1-5-2.5l1-5.5a4.8 4.8 0 0 1 4.7-3.9z"/>',
+    soft: '',
+    detail: '<path d="M7.4 10.2v3.6M5.6 12h3.6"/><circle cx="15.9" cy="10.9" r="1.2" fill="1"/><circle cx="18.2" cy="13.2" r="1.2" fill="1"/>',
+    line: '<path d="M7.2 6.8h9.6a4.8 4.8 0 0 1 4.7 3.9l1 5.5a2.9 2.9 0 0 1-5 2.5l-2.1-2.3H8.6l-2.1 2.3a2.9 2.9 0 0 1-5-2.5l1-5.5a4.8 4.8 0 0 1 4.7-3.9z"/><path d="M7.4 10.2v3.6M5.6 12h3.6"/><circle cx="15.9" cy="10.9" r="1.2" fill="1"/><circle cx="18.2" cy="13.2" r="1.2" fill="1"/>',
+  ),
+  // the round button's: a full white bubble with three dots in the accent
+  'chat': (
+    body: '<path d="M12 3.8c5 0 9.2 3.4 9.2 7.7S17 19.2 12 19.2c-1.1 0-2.2-.2-3.2-.5L4.3 20.4l1.3-3.6C4 15.4 2.8 13.6 2.8 11.5c0-4.3 4.2-7.7 9.2-7.7z"/>',
+    soft: '',
+    detail: '<circle cx="8" cy="11.6" r="1.25" fill="1"/><circle cx="12" cy="11.6" r="1.25" fill="1"/><circle cx="16" cy="11.6" r="1.25" fill="1"/>',
+    line: '<path d="M12 3.8c5 0 9.2 3.4 9.2 7.7S17 19.2 12 19.2c-1.1 0-2.2-.2-3.2-.5L4.3 20.4l1.3-3.6C4 15.4 2.8 13.6 2.8 11.5c0-4.3 4.2-7.7 9.2-7.7z"/>',
+  ),
+};
+
+/// One of the tab bar's icons: filled when [on] ([color] the body, [detailColor] the details), lines otherwise.
+class BarIcon extends StatelessWidget {
+  const BarIcon(this.name, {super.key, required this.on, required this.color, this.detailColor = const Color(0xFFFFFFFF), this.size = 26});
+  final String name;
+  final bool on;
+  final Color color, detailColor;
+  final double size;
+  @override
+  Widget build(BuildContext context) =>
+      SizedBox.square(dimension: size, child: CustomPaint(painter: _BarIconPainter(name, on, color, detailColor)));
+}
+
+class _BarIconPainter extends CustomPainter {
+  _BarIconPainter(this.name, this.on, this.color, this.detail);
+  final String name;
+  final bool on;
+  final Color color, detail;
+
+  @override
   void paint(Canvas canvas, Size size) {
+    final ic = _bar[name];
+    if (ic == null) return;
     canvas.save();
-    canvas.scale(size.width / 64);
-    final g = const LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [Color(0xFF7B6CFF), Color(0xFF4F46E5), Color(0xFF3A2EC4)],
-      stops: [0, .55, 1],
-    ).createShader(const Rect.fromLTWH(0, 0, 64, 64));
-    canvas.drawPath(_bubble, Paint()..shader = g);
-    canvas.drawPath(_pLetter, Paint()..color = const Color(0xFFFFFFFF));
-    canvas.translate(47.5, 11.5);
-    canvas.rotate(-13 * math.pi / 180);
-    canvas.translate(-47.5, -11.5);
-    canvas.drawPath(_capBand, Paint()..color = const Color(0xFFF08C00));
-    canvas.drawPath(_capTop, Paint()..color = const Color(0xFFFFB020));
-    canvas.drawLine(
-        const Offset(59, 11),
-        const Offset(59, 17.2),
-        Paint()
-          ..color = const Color(0xFFFFB020)
-          ..strokeWidth = 1.9
-          ..strokeCap = StrokeCap.round);
-    canvas.drawCircle(const Offset(59, 18.6), 2, Paint()..color = const Color(0xFFFFB020));
+    canvas.scale(math.min(size.width, size.height) / 24);
+    Paint line(Color c, double w) => Paint()
+      ..color = c
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    if (!on) {
+      for (final p in _parse(ic.line)) {
+        canvas.drawPath(p.path, p.fill ? (Paint()..color = color) : line(color, 1.9));
+      }
+    } else {
+      final body = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color.lerp(color, const Color(0xFFFFFFFF), .22)!, color],
+        ).createShader(const Rect.fromLTWH(0, 0, 24, 24));
+      for (final p in _parse(ic.soft)) {
+        canvas.drawPath(p.path, Paint()..color = color.withValues(alpha: .45));
+      }
+      for (final p in _parse(ic.body)) {
+        canvas.drawPath(p.path, body);
+      }
+      for (final p in _parse(ic.detail)) {
+        canvas.drawPath(p.path, p.fill ? (Paint()..color = detail) : line(detail, 2));
+      }
+    }
     canvas.restore();
   }
 
   @override
-  bool shouldRepaint(_MarkPainter o) => false;
+  bool shouldRepaint(_BarIconPainter o) => o.name != name || o.on != on || o.color != color || o.detail != detail;
 }
 
 /// An SVG path ("M… L… C…") as a Flutter path, for drawings outside the icon set (the greeting cards).

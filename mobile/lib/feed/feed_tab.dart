@@ -413,19 +413,19 @@ class _Prompt extends StatelessWidget {
           tooltip: label,
           onPressed: onTap,
           padding: EdgeInsets.zero,
-          constraints: const BoxConstraints.tightFor(width: 46, height: 56),
-          icon: PIcon(name, size: 34, color: color),
+          constraints: const BoxConstraints.tightFor(width: 44, height: 50),
+          icon: PIcon(name, size: 29, color: color),
         );
     return Container(
-      margin: const EdgeInsets.fromLTRB(10, 12, 10, 10),
-      padding: const EdgeInsets.fromLTRB(10, 10, 4, 10),
-      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(22), border: Border.all(color: c.line)),
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+      padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(20), border: Border.all(color: c.line)),
       child: Row(children: [
         Semantics(
           button: true,
           label: 'ჩემი პროფილი',
           excludeSemantics: true,
-          child: GestureDetector(key: const ValueKey('compose-me'), behavior: HitTestBehavior.opaque, onTap: onMe, child: Avatar(p: me, size: 62)),
+          child: GestureDetector(key: const ValueKey('compose-me'), behavior: HitTestBehavior.opaque, onTap: onMe, child: Avatar(p: me, size: 48)),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -437,21 +437,21 @@ class _Prompt extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               onTap: onWrite,
               child: Container(
-                height: 60,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                height: 50,
+                padding: const EdgeInsets.symmetric(horizontal: 15),
                 alignment: Alignment.centerLeft,
-                decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(30)),
+                decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(25)),
                 // the words stay whole inside the field: a long name makes them smaller, never cut
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
-                  child: Text('რა ხდება, ${me.name.split(' ').first}?', maxLines: 1, style: TextStyle(color: c.muted, fontSize: 19)),
+                  child: Text('რა ხდება, ${me.name.split(' ').first}?', maxLines: 1, style: TextStyle(color: c.muted, fontSize: 18)),
                 ),
               ),
             ),
           ),
         ),
-        const SizedBox(width: 2),
+        const SizedBox(width: 4),
         icon('image', 'compose-photo', 'ფოტოს დამატება', c.vine, onPhoto),
         icon('poll', 'compose-poll', 'გამოკითხვა', c.gold, onPoll),
       ]),

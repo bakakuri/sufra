@@ -197,18 +197,15 @@ Future<void> settle(WidgetTester t) async {
   }
 }
 
-/// The feed, the way a person gets there from anywhere: the logo.
+/// The feed, from its button on the tab bar (the Peera mark).
 Future<void> toFeed(WidgetTester t) async {
-  await t.tap(find.byKey(const ValueKey('top-logo')).first);
+  await t.tap(find.byKey(const ValueKey('tab-home')));
   await settle(t);
 }
 
-/// My profile, the way a person gets there: the feed by the logo (at its top), then my picture on it.
+/// My profile, from its button on the tab bar (my picture in a ring).
 Future<void> toProfile(WidgetTester t) async {
-  final me = find.byKey(const ValueKey('compose-me'));
-  await toFeed(t);
-  if (me.hitTestable().evaluate().isEmpty) await toFeed(t);
-  await t.tap(me);
+  await t.tap(find.byKey(const ValueKey('tab-me')));
   await settle(t);
 }
 
