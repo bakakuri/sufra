@@ -493,7 +493,14 @@ void main() {
     testWidgets('albums ($k)', (t) async => page(t, const AlbumsScreen(), '50-albums'));
     testWidgets('an album ($k)', (t) async => page(t, const AlbumScreen(id: 1), '51-album'));
     testWidgets('the family tree ($k)', (t) async => page(t, TreeScreen(uid: nino.id), '52-tree'));
-    testWidgets('coins ($k)', (t) async => page(t, const CoinsScreen(), '53-coins'));
+    testWidgets('coins ($k)', (t) async {
+      await page(t, const CoinsScreen(), '53-coins');
+      await t.ensureVisible(find.byKey(const ValueKey('crgrp-me')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('crgrp-me')));
+      await settle(t);
+      await _shot(t, '53b-coins-earn-$k');
+    });
     testWidgets('my CV ($k)', (t) async => page(t, const CvEditScreen(), '54-cv-edit'));
     testWidgets('a surname ($k)', (t) async => page(t, const SurnameScreen(surname: 'ბერიძე'), '56-surname'));
     testWidgets('a greeting card ($k)', (t) async => page(t, CardPicker(uid: giorgi.id, toName: giorgi.name), '58-card'));
