@@ -626,6 +626,15 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
             onChanged: (v) => _set('guest', v),
           ),
         ]),
+        SGroup(title: 'ჩემი ფოტოები', children: [
+          SChoice<String>(
+            id: 'priv-photos',
+            title: 'ვინ ნახოს ჩემი ფოტოები',
+            options: const [('all', 'ყველამ'), ('friends', 'მეგობრებმა'), ('none', 'არავინ')],
+            value: '${priv['photos'] ?? 'friends'}',
+            onChanged: (v) => _set('photos', v),
+          ),
+        ]),
         SGroup(title: 'ვინ დამიკავშირდეს', children: [
           SChoice<String>(id: 'priv-dm', title: 'ვინ მომწეროს', options: const [('all', 'ყველამ'), ('friends', 'მეგობრებმა')], value: '${priv['dm'] ?? 'all'}', onChanged: (v) => _set('dm', v)),
           SChoice<String>(

@@ -1,8 +1,6 @@
 // The notifications put together as Facebook and Instagram do: many people on one post become one line ("მარიამი,
 // ლუკა და კიდევ 3 ❤️ შენს პოსტზე"), one person on many posts too ("გიორგი ❤️ შენს 5 პოსტზე"), and everything in parts
 // of time — new, today, yesterday, this week, earlier. Each kind has its own small sign on the picture.
-import 'package:flutter/material.dart';
-
 import '../data/models.dart';
 import 'note_text.dart';
 

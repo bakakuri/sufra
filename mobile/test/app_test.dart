@@ -19,6 +19,7 @@ import 'package:peera/main.dart';
 import 'package:peera/map/live_map.dart';
 import 'package:peera/map/loc_device.dart';
 import 'package:peera/media/voice.dart';
+import 'package:peera/data/stores.dart';
 import 'package:peera/people/albums.dart';
 import 'package:peera/people/cards.dart';
 import 'package:peera/people/coins.dart';
@@ -27,7 +28,9 @@ import 'package:peera/people/edu.dart';
 import 'package:peera/people/family.dart';
 import 'package:peera/people/my_space.dart';
 import 'package:peera/people/verify.dart';
+import 'package:peera/people/friends_tab.dart';
 import 'package:peera/people/person_screen.dart';
+import 'package:peera/people/photos.dart';
 import 'package:peera/notes/notes_screen.dart';
 import 'package:peera/profile/profile.dart';
 import 'package:peera/people/namedays.dart';
@@ -1061,6 +1064,59 @@ void main() {
     expect(icon('pause'), isNull);
   });
 
+  testWidgets("my own photos: uploaded straight, a new album, who sees them; someone else's closed to a stranger", (t) async {
+    phone(t);
+    final api = await shell(t);
+    await _tab(t, 'me');
+    await proTo(t, find.byKey(const ValueKey('ptab-photos')));
+    await t.tap(find.byKey(const ValueKey('ptab-photos')));
+    await settle(t);
+    expect(api.calls, contains('photos u1'));
+    expect(find.byKey(const ValueKey('ph-who')), findsOneWidget);
+    // two chosen on the phone go up one after the other
+    await proTo(t, find.byKey(const ValueKey('ph-up')));
+    await t.tap(find.byKey(const ValueKey('ph-up')));
+    await settle(t);
+    expect(api.calls.where((c) => c == 'addphoto').length, 2);
+    await proTo(t, find.byKey(const ValueKey('ph-900')));
+    expect(find.byKey(const ValueKey('ph-901')), findsOneWidget);
+    // a new album opens, and back shows it among the albums
+    await proTo(t, find.byKey(const ValueKey('ph-newalb')));
+    await t.tap(find.byKey(const ValueKey('ph-newalb')));
+    await settle(t);
+    await t.enterText(find.byKey(const ValueKey('phalb-title')), 'ზაფხული');
+    await t.tap(find.byKey(const ValueKey('phalb-ok')));
+    await settle(t);
+    expect(api.calls, contains('newphalbum ზაფხული'));
+    expect(find.byType(PhotoAlbumScreen), findsOneWidget);
+    await _back(t);
+    expect(find.byType(PhotoAlbumScreen), findsNothing);
+    await proTo(t, find.byKey(const ValueKey('pal-902')));
+    // a photo held moves into it
+    await proTo(t, find.byKey(const ValueKey('ph-900')));
+    await t.longPress(find.byKey(const ValueKey('ph-900')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('ph-move')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('ph-to-902')));
+    await settle(t);
+    expect(api.calls, contains('movephoto 900 902'));
+
+    // someone who shows their photos to friends only, to someone who is not their friend
+    api.photoAccessOf[tamar.id] = 'friends';
+    await t.tap(find.byKey(const ValueKey('tab-friends')));
+    await settle(t);
+    final ctx = t.element(find.byType(FriendsTab));
+    openPage(ctx, PersonScreen(uid: tamar.id));
+    await settle(t);
+    await proTo(t, find.byKey(const ValueKey('ptab-photos')));
+    await t.tap(find.byKey(const ValueKey('ptab-photos')));
+    await settle(t);
+    expect(find.byKey(const ValueKey('ph-locked')), findsOneWidget);
+    expect(find.text('ფოტოებს მხოლოდ მეგობრები ხედავენ'), findsOneWidget);
+    expect(api.calls, isNot(contains('photos ${tamar.id}')));
+  });
+
   Finder pro() => find.descendant(of: find.byType(PersonScreen).first, matching: find.byType(Scrollable)).first;
   Future<void> proTo(WidgetTester t, Finder f) async {
     await t.scrollUntilVisible(f, 250, scrollable: pro());
@@ -1103,9 +1159,9 @@ void main() {
     expect(find.descendant(of: find.byKey(const ValueKey('stat-mutual')), matching: find.text('12')), findsOneWidget);
     expect(find.descendant(of: find.byKey(const ValueKey('stat-friends')), matching: find.text('248')), findsOneWidget);
 
-    // the posts are a grid; a square opens the post, back comes back
-    await proTo(t, find.byKey(const ValueKey('grid-107')));
-    await t.tap(find.byKey(const ValueKey('grid-107')));
+    // the posts are posts, whole, as on Facebook; a post's words open it, back comes back
+    await proTo(t, find.byKey(const ValueKey('pbody-107')));
+    await t.tap(find.byKey(const ValueKey('pbody-107')));
     await settle(t);
     expect(find.byType(PostScreen), findsOneWidget);
     await _back(t);

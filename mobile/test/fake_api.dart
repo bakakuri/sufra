@@ -159,6 +159,85 @@ class FakeApi implements PeeraApi {
   @override
   Future<List<Comment>> comments(int postId) async => [...?_comments[postId]];
 
+  // ---- my own photos ----
+  /// what a visitor is told about someone's photos (uid → 'ok' / 'friends' / 'none'); everyone's 'ok' unless set
+  final photoAccessOf = <String, String>{};
+  final photoAlbumList = <PhotoAlbum>[];
+  final photoList = <Photo>[];
+  int _photoId = 900;
+
+  @override
+  Future<String> photoAccess(String uid) async {
+    calls.add('phaccess $uid');
+    return photoAccessOf[uid] ?? 'ok';
+  }
+
+  @override
+  Future<List<PhotoAlbum>> photoAlbums(String uid) async => [
+        for (final a in photoAlbumList)
+          PhotoAlbum(
+            id: a.id,
+            title: a.title,
+            n: photoList.where((p) => p.albumId == a.id).length,
+            cover: photoList.where((p) => p.albumId == a.id).firstOrNull?.url,
+            createdAt: a.createdAt,
+          ),
+      ];
+
+  @override
+  Future<List<Photo>> photos(String uid, {int? album, int from = 0, int count = 60}) async {
+    calls.add('photos $uid${album == null ? '' : ' $album'}');
+    return [for (final p in photoList) if (album == null || p.albumId == album) p].skip(from).take(count).toList();
+  }
+
+  @override
+  Future<Photo> addPhoto(Media m, {int? album, String caption = ''}) async {
+    calls.add('addphoto${album == null ? '' : ' $album'}');
+    final p = Photo(id: _photoId++, owner: nino.id, albumId: album, url: m.url, sm: m.sm, w: m.w, h: m.h, caption: caption, createdAt: DateTime.now());
+    photoList.insert(0, p);
+    return p;
+  }
+
+  @override
+  Future<void> deletePhoto(int id) async {
+    calls.add('delphoto $id');
+    photoList.removeWhere((p) => p.id == id);
+  }
+
+  @override
+  Future<void> movePhoto(int id, int? album) async {
+    calls.add('movephoto $id $album');
+    final i = photoList.indexWhere((p) => p.id == id);
+    if (i < 0) return;
+    final p = photoList[i];
+    photoList[i] = Photo(id: p.id, owner: p.owner, albumId: album, url: p.url, sm: p.sm, w: p.w, h: p.h, caption: p.caption, createdAt: p.createdAt);
+  }
+
+  @override
+  Future<PhotoAlbum> makePhotoAlbum(String title) async {
+    calls.add('newphalbum $title');
+    final a = PhotoAlbum(id: _photoId++, title: title, createdAt: DateTime.now());
+    photoAlbumList.insert(0, a);
+    return a;
+  }
+
+  @override
+  Future<void> renamePhotoAlbum(int id, String title) async {
+    calls.add('renphalbum $id $title');
+    final i = photoAlbumList.indexWhere((a) => a.id == id);
+    if (i >= 0) photoAlbumList[i] = PhotoAlbum(id: id, title: title, createdAt: photoAlbumList[i].createdAt);
+  }
+
+  @override
+  Future<void> deletePhotoAlbum(int id) async {
+    calls.add('delphalbum $id');
+    photoAlbumList.removeWhere((a) => a.id == id);
+    for (var i = 0; i < photoList.length; i++) {
+      final p = photoList[i];
+      if (p.albumId == id) photoList[i] = Photo(id: p.id, owner: p.owner, url: p.url, sm: p.sm, w: p.w, h: p.h, caption: p.caption, createdAt: p.createdAt);
+    }
+  }
+
   @override
   Future<List<Comment>> commentsPage(int postId, {int from = 0, int count = 15}) async {
     calls.add('cpage $postId $from $count');

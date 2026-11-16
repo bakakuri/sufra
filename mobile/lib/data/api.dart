@@ -31,6 +31,18 @@ abstract class PeeraApi {
 
   /// a post's comments a page at a time, the newest first
   Future<List<Comment>> commentsPage(int postId, {int from = 0, int count = 15});
+
+  /// a person's own photos: whether I may see them ('ok', or 'friends' / 'none' when not), their albums, the photos
+  /// (all, or one album's), newest first
+  Future<String> photoAccess(String uid);
+  Future<List<PhotoAlbum>> photoAlbums(String uid);
+  Future<List<Photo>> photos(String uid, {int? album, int from = 0, int count = 60});
+  Future<Photo> addPhoto(Media m, {int? album, String caption = ''});
+  Future<void> deletePhoto(int id);
+  Future<void> movePhoto(int id, int? album);
+  Future<PhotoAlbum> makePhotoAlbum(String title);
+  Future<void> renamePhotoAlbum(int id, String title);
+  Future<void> deletePhotoAlbum(int id);
   Future<Comment> addComment(int postId, String body, {int? parentId, Map<String, dynamic>? media});
   Future<Media> uploadPhoto(PreparedPhoto p);
   /// a post: now, as a draft, or waiting for [publishAt]; with a place, or quoting another post ([repostOf])
@@ -875,6 +887,43 @@ class SupaApi implements PeeraApi {
   @override
   Future<List<Comment>> comments(int postId) async =>
       (await sb.from('comments').select(commentSel).eq('post_id', postId).order('created_at').limit(400)).map(Comment.fromJson).toList();
+
+  @override
+  Future<String> photoAccess(String uid) async => '${await sb.rpc('photo_access', params: {'p_user': uid}) ?? 'none'}';
+
+  @override
+  Future<List<PhotoAlbum>> photoAlbums(String uid) async =>
+      [for (final r in (await sb.rpc('photo_albums_of', params: {'p_user': uid}) as List? ?? const [])) PhotoAlbum.fromJson(Map<String, dynamic>.from(r as Map))];
+
+  @override
+  Future<List<Photo>> photos(String uid, {int? album, int from = 0, int count = 60}) async {
+    var q = sb.from('photos').select().eq('owner', uid);
+    if (album != null) q = q.eq('album_id', album);
+    final r = await q.order('created_at', ascending: false).order('id', ascending: false).range(from, from + count - 1);
+    return [for (final x in r) Photo.fromJson(x)];
+  }
+
+  @override
+  Future<Photo> addPhoto(Media m, {int? album, String caption = ''}) async => Photo.fromJson(await sb
+      .from('photos')
+      .insert({'url': m.url, 'sm': m.sm ?? m.md, if (m.w > 0) 'w': m.w, if (m.h > 0) 'h': m.h, 'album_id': album, 'caption': caption})
+      .select()
+      .single());
+
+  @override
+  Future<void> deletePhoto(int id) => sb.from('photos').delete().eq('id', id);
+
+  @override
+  Future<void> movePhoto(int id, int? album) => sb.from('photos').update({'album_id': album}).eq('id', id);
+
+  @override
+  Future<PhotoAlbum> makePhotoAlbum(String title) async => PhotoAlbum.fromJson(await sb.from('photo_albums').insert({'title': title.trim()}).select().single());
+
+  @override
+  Future<void> renamePhotoAlbum(int id, String title) => sb.from('photo_albums').update({'title': title.trim()}).eq('id', id);
+
+  @override
+  Future<void> deletePhotoAlbum(int id) => sb.from('photo_albums').delete().eq('id', id);
 
   @override
   Future<List<Comment>> commentsPage(int postId, {int from = 0, int count = 15}) async => (await sb

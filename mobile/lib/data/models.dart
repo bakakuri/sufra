@@ -706,3 +706,45 @@ class JokerLine {
   final int? rating;
   final int games, wins;
 }
+
+/// One of a person's own photos (the profile's "ფოტოები"), loose or in one of their albums.
+class Photo {
+  const Photo({required this.id, required this.owner, this.albumId, required this.url, this.sm, this.w = 0, this.h = 0, this.caption = '', required this.createdAt});
+  final int id;
+  final String owner;
+  final int? albumId;
+  final String url;
+  final String? sm;
+  final int w, h;
+  final String caption;
+  final DateTime createdAt;
+  Media get media => Media(url: url, sm: sm, w: w, h: h);
+  factory Photo.fromJson(Map<String, dynamic> j) => Photo(
+        id: asInt(j['id']),
+        owner: '${j['owner']}',
+        albumId: j['album_id'] == null ? null : asInt(j['album_id']),
+        url: '${j['url']}',
+        sm: j['sm'] as String?,
+        w: asInt(j['w']),
+        h: asInt(j['h']),
+        caption: '${j['caption'] ?? ''}',
+        createdAt: DateTime.tryParse('${j['created_at'] ?? ''}')?.toLocal() ?? DateTime.now(),
+      );
+}
+
+/// A person's own album of photos: its name, how many, the newest as its cover.
+class PhotoAlbum {
+  const PhotoAlbum({required this.id, required this.title, this.n = 0, this.cover, required this.createdAt});
+  final int id;
+  final String title;
+  final int n;
+  final String? cover;
+  final DateTime createdAt;
+  factory PhotoAlbum.fromJson(Map<String, dynamic> j) => PhotoAlbum(
+        id: asInt(j['id']),
+        title: '${j['title'] ?? ''}',
+        n: asInt(j['n']),
+        cover: j['cover'] as String?,
+        createdAt: DateTime.tryParse('${j['created_at'] ?? ''}')?.toLocal() ?? DateTime.now(),
+      );
+}

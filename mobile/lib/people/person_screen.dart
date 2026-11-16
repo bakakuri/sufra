@@ -12,12 +12,14 @@ import '../data/photos.dart';
 import '../data/stores.dart';
 import '../feed/compose_screen.dart';
 import '../feed/photo_viewer.dart';
+import '../feed/post_card.dart';
 import '../profile/profile.dart';
 import '../settings/edit_profile.dart';
 import '../settings/frame_photo.dart';
 import '../settings/settings_screens.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
+import '../ui/motion.dart';
 import '../ui/net_image.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
@@ -29,6 +31,7 @@ import 'edu.dart';
 import 'family.dart';
 import 'my_space.dart';
 import 'namedays.dart';
+import 'photos.dart';
 import 'post_grid.dart';
 import 'profile_parts.dart';
 import 'verify.dart';
@@ -50,8 +53,8 @@ class PersonScreen extends StatefulWidget {
   State<PersonScreen> createState() => _PersonScreenState();
 }
 
-const _tabsMine = [('posts', 'grid', 'პოსტები'), ('albums', 'image', 'ალბომები'), ('cv', 'school', 'CV'), ('saved', 'bookmark', 'შენახული')];
-const _tabsOther = [('posts', 'grid', 'პოსტები'), ('albums', 'image', 'ალბომები'), ('friends', 'users', 'მეგობრები'), ('cv', 'school', 'CV')];
+const _tabsMine = [('posts', 'edit', 'პოსტები'), ('photos', 'image', 'ფოტოები'), ('albums', 'folder', 'ალბომები'), ('cv', 'school', 'CV'), ('saved', 'bookmark', 'შენახული')];
+const _tabsOther = [('posts', 'edit', 'პოსტები'), ('photos', 'image', 'ფოტოები'), ('albums', 'folder', 'ალბომები'), ('friends', 'users', 'მეგობრები'), ('cv', 'school', 'CV')];
 
 class _PersonScreenState extends State<PersonScreen> {
   Profile? p;
@@ -534,6 +537,11 @@ class _PersonScreenState extends State<PersonScreen> {
               onTap: isMe ? () => _myPic(cover: true) : null,
               child: Stack(fit: StackFit.expand, children: [
                 ColoredBox(color: c.sunk, child: pic),
+                const IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment(0, .2), end: Alignment.bottomCenter, colors: [Color(0x00000000), Color(0x40000000)])),
+                  ),
+                ),
                 if (isMe)
                   Positioned(
                     right: 12,
@@ -565,10 +573,20 @@ class _PersonScreenState extends State<PersonScreen> {
                     ? () => _myPic(cover: false)
                     : ((who.avatarUrl ?? '').isEmpty ? null : () => openPhotos(context, [Media(url: who.avatarUrl!)])),
                 child: Stack(clipBehavior: Clip.none, children: [
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(color: c.surface, shape: BoxShape.circle, boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 12, offset: Offset(0, 4))]),
-                    child: Avatar(p: who, size: 104),
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: .82, end: 1),
+                    duration: const Duration(milliseconds: 620),
+                    curve: Curves.elasticOut,
+                    builder: (_, v, ch) => Transform.scale(scale: v, child: ch),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c.surface, Color.alphaBlend(c.accent.withValues(alpha: .25), c.surface)]),
+                        boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 18, offset: Offset(0, 6))],
+                      ),
+                      child: Avatar(p: who, size: 104),
+                    ),
                   ),
                   if (isMe)
                     Positioned(
@@ -741,43 +759,55 @@ class _PersonScreenState extends State<PersonScreen> {
   Widget _stats(BuildContext context, Profile who, bool isMe) {
     final c = context.pc;
     final items = [
-      ('posts', counts?.posts, 'პოსტი'),
-      ('friends', counts?.friends, 'მეგობარი'),
-      ('rating', who.rating ?? 1500, 'რეიტინგი'),
-      if (!isMe) ('mutual', mutual, 'საერთო'),
+      ('posts', counts?.posts, 'პოსტი', 'edit', const Color(0xFF6366F1)),
+      ('friends', counts?.friends, 'მეგობარი', 'users', const Color(0xFF0EA5E9)),
+      ('rating', who.rating ?? 1500, 'რეიტინგი', 'trophy', const Color(0xFFF59E0B)),
+      if (!isMe) ('mutual', mutual, 'საერთო', 'uadd', const Color(0xFF10B981)),
     ];
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Material(
-        color: c.sunk,
-        child: Row(children: [
-          for (var i = 0; i < items.length; i++)
-            Expanded(
+    return Row(children: [
+      for (var i = 0; i < items.length; i++) ...[
+        if (i > 0) const SizedBox(width: 8),
+        Expanded(
+          child: Rise(
+            order: i,
+            dy: 12,
+            child: Pressable(
+              key: ValueKey('stat-${items[i].$1}'),
+              onTap: () => _stat(items[i].$1),
               child: Container(
-                decoration: BoxDecoration(border: i == 0 ? null : Border(left: BorderSide(color: c.line))),
-                child: InkWell(
-                  key: ValueKey('stat-${items[i].$1}'),
-                  onTap: () => _stat(items[i].$1),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-                    child: Column(children: [
-                      Text(items[i].$2 == null ? '·' : grouped(items[i].$2!),
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, height: 1.2, fontFeatures: [FontFeature.tabularFigures()])),
-                      Text(items[i].$3, style: TextStyle(fontSize: 11.5, color: c.muted)),
-                    ]),
-                  ),
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                decoration: cardLook(context, radius: 16),
+                child: Column(children: [
+                  PIcon(items[i].$4, size: 16, color: items[i].$5),
+                  const SizedBox(height: 3),
+                  items[i].$2 == null
+                      ? const Text('·', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, height: 1.2))
+                      : TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0, end: items[i].$2!.toDouble()),
+                          duration: const Duration(milliseconds: 700),
+                          curve: Curves.easeOutCubic,
+                          builder: (_, v, __) => FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(grouped(v.round()),
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, height: 1.2, fontFeatures: [FontFeature.tabularFigures()])),
+                          ),
+                        ),
+                  Text(items[i].$3, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, color: c.muted)),
+                ]),
               ),
             ),
-        ]),
-      ),
-    );
+          ),
+        ),
+      ],
+    ]);
   }
 
   /// my coins (the site's wallet card): the balance, and whether today's bonus waits
   Widget _wallet(BuildContext context) {
     final c = context.pc, me = context.me;
-    return Material(
+    return DecoratedBox(
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: c.gold.withValues(alpha: .22), blurRadius: 18, offset: const Offset(0, 6))]),
+      child: Material(
       color: Color.alphaBlend(c.gold.withValues(alpha: .12), c.surface),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Color.alphaBlend(c.gold.withValues(alpha: .3), c.line))),
       child: InkWell(
@@ -790,12 +820,22 @@ class _PersonScreenState extends State<PersonScreen> {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(10, 10, 14, 10),
           child: Row(children: [
-            Container(
-              width: 40,
-              height: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: c.gold, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: c.gold.withValues(alpha: .35), blurRadius: 12, offset: const Offset(0, 4))]),
-              child: const PIcon('coin', size: 22, color: Color(0xFF1A1205)),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 900),
+              curve: Curves.easeOutBack,
+              builder: (_, v, ch) => Transform(alignment: Alignment.center, transform: Matrix4.rotationY((1 - v) * 3.1416), child: ch),
+              child: Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFCD34D), Color(0xFFE08A00)]),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [BoxShadow(color: c.gold.withValues(alpha: .35), blurRadius: 12, offset: const Offset(0, 4))],
+                ),
+                child: const PIcon('coin', size: 22, color: Color(0xFF1A1205)),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -809,6 +849,7 @@ class _PersonScreenState extends State<PersonScreen> {
           ]),
         ),
       ),
+    ),
     );
   }
 
@@ -816,9 +857,11 @@ class _PersonScreenState extends State<PersonScreen> {
   Widget _space(BuildContext context, Profile who) {
     final c = context.pc, app = context.app;
     Widget tile(String key, String icon, String label, Color col, VoidCallback onTap, {int badge = 0, String? note}) => Padding(
-          padding: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.only(right: 8, bottom: 3),
           child: Material(
-            color: c.sunk,
+            color: c.surface,
+            elevation: 2,
+            shadowColor: const Color(0x33141830),
             borderRadius: BorderRadius.circular(999),
             child: InkWell(
               key: ValueKey('space-$key'),
@@ -853,7 +896,7 @@ class _PersonScreenState extends State<PersonScreen> {
         );
     final got = badges.where((b) => badgeList.containsKey(b.$1)).length;
     return SizedBox(
-      height: 46,
+      height: 49,
       child: ListenableBuilder(
         listenable: app.friends,
         builder: (context, _) => ListView(key: const ValueKey('space-row'), scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(vertical: 2), children: [
@@ -914,47 +957,109 @@ class _PersonScreenState extends State<PersonScreen> {
     );
   }
 
-  Widget _tabBar(BuildContext context, List<(String, String, String)> tabs) {
+  /// "რას ფიქრობ?": my picture and a line that opens writing a post, with a photo button beside it
+  Widget _writeLine(BuildContext context) {
     final c = context.pc;
+    Future<void> write({bool photos = false}) async {
+      final x = await openPage<Post>(context, ComposeScreen(startWithPhotos: photos), full: true);
+      if (x != null && mounted) _load();
+    }
+
+    return Rise(
+      order: 0,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+        padding: const EdgeInsets.fromLTRB(10, 10, 6, 10),
+        decoration: cardLook(context, radius: 18),
+        child: Row(children: [
+          Avatar(p: context.me, size: 40),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Pressable(
+              key: const ValueKey('pro-write'),
+              onTap: write,
+              child: Container(
+                height: 40,
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(20)),
+                child: Text('რას ფიქრობ?', style: TextStyle(color: c.muted, fontSize: 14.5)),
+              ),
+            ),
+          ),
+          IconBtn('image', key: const ValueKey('pro-write-photo'), label: 'ფოტო', color: c.vine, onTap: () => write(photos: true)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _tabBar(BuildContext context, List<(String, String, String)> tabs) {
+    final c = context.pc, at = tabs.indexWhere((t) => t.$1 == tab);
     return Container(
       key: _tabsKey,
-      margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(color: c.surface, border: Border.symmetric(horizontal: BorderSide(color: c.line))),
-      child: Row(children: [
-        for (final t in tabs)
-          Expanded(
-            child: Semantics(
-              selected: tab == t.$1,
-              button: true,
-              child: InkWell(
-                key: ValueKey('ptab-${t.$1}'),
-                onTap: () => _tab(t.$1),
-                child: Container(
-                  height: 46,
-                  decoration: BoxDecoration(border: Border(bottom: BorderSide(color: tab == t.$1 ? c.accent : Colors.transparent, width: 2))),
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  // the whole word, made a little smaller when four do not fit
-                  child: Center(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        PIcon(t.$2, size: 18, color: tab == t.$1 ? c.ink : c.muted),
-                        const SizedBox(width: 5),
-                        Text(t.$3, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: tab == t.$1 ? c.ink : c.muted)),
-                      ]),
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      padding: const EdgeInsets.all(4),
+      height: 62,
+      decoration: cardLook(context, radius: 18),
+      child: LayoutBuilder(builder: (context, box) {
+        final w = box.maxWidth / tabs.length;
+        return Stack(children: [
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 340),
+            curve: Curves.easeOutBack,
+            left: w * (at < 0 ? 0 : at),
+            top: 0,
+            bottom: 0,
+            width: w,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c.accent.withValues(alpha: .16), c.accent.withValues(alpha: .08)]),
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+          Row(children: [
+            for (final t in tabs)
+              Expanded(
+                child: Semantics(
+                  selected: tab == t.$1,
+                  button: true,
+                  child: GestureDetector(
+                    key: ValueKey('ptab-${t.$1}'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _tab(t.$1),
+                    child: Center(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: Column(mainAxisSize: MainAxisSize.min, children: [
+                            AnimatedScale(
+                              scale: tab == t.$1 ? 1.12 : 1,
+                              duration: const Duration(milliseconds: 260),
+                              curve: Curves.easeOutBack,
+                              child: PIcon(t.$2, size: 20, color: tab == t.$1 ? c.accent : c.muted),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(t.$3, style: TextStyle(fontSize: 12, fontWeight: tab == t.$1 ? FontWeight.w800 : FontWeight.w600, color: tab == t.$1 ? c.accent : c.muted)),
+                          ]),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-      ]),
+          ]),
+        ]);
+      }),
     );
   }
 
   Widget _tabBody(BuildContext context, bool isMe) {
     const wait = Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator(strokeWidth: 2.4)));
     switch (tab) {
+      case 'photos':
+        return PhotosTab(key: ValueKey('photos-${widget.uid}'), uid: widget.uid, mine: isMe);
       case 'albums':
         final a = albums;
         if (a == null) return wait;
@@ -1059,7 +1164,16 @@ class _PersonScreenState extends State<PersonScreen> {
                 : null,
           );
         }
-        return PostGrid(posts: l, onGone: (x) => setState(() => posts!.removeWhere((y) => y.id == x.id)));
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (isMe) _writeLine(context),
+          const SizedBox(height: 8),
+          for (final (i, x) in l.indexed)
+            Rise(
+              key: ValueKey('ppost-${x.id}'),
+              order: i,
+              child: PostCard(post: x, onDeleted: () => setState(() => posts!.removeWhere((y) => y.id == x.id))),
+            ),
+        ]);
     }
   }
 }

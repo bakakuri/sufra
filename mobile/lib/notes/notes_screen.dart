@@ -174,7 +174,8 @@ class _NotesScreenState extends State<NotesScreen> {
                               itemCount: noteFilters.length,
                               separatorBuilder: (_, __) => const SizedBox(width: 7),
                               itemBuilder: (_, i) {
-                                final (k, t) = noteFilters[i], on = filter == k;
+                                final (k, t) = noteFilters[i];
+                                final on = filter == k;
                                 final cnt = k == 'new' ? fresh.length : 0;
                                 return GestureDetector(
                                   key: ValueKey('nf-$k'),

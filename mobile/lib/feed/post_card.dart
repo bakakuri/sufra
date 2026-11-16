@@ -174,6 +174,7 @@ class _PostViewState extends State<_PostView> with SingleTickerProviderStateMixi
           _Head(post: post, onDeleted: widget.onDeleted, inPostScreen: inPostScreen, sponsored: widget.sponsored),
           if (post.body.trim().isNotEmpty && post.body.trim() != post.poll?.q.trim())
             GestureDetector(
+              key: ValueKey('pbody-${post.id}'),
               behavior: HitTestBehavior.opaque,
               onTap: () => _open(context),
               child: Padding(
