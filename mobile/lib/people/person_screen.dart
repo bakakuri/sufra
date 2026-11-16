@@ -774,15 +774,19 @@ class _PersonScreenState extends State<PersonScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text.rich(
-                    TextSpan(children: [
-                      const TextSpan(text: 'ინფორმაცია', style: TextStyle(fontWeight: FontWeight.w800)),
-                      TextSpan(text: '  ·  ', style: TextStyle(color: c.muted)),
-                      TextSpan(text: who.name, style: TextStyle(color: c.accent, fontWeight: FontWeight.w700)),
-                    ]),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 15.5),
+                  // the whole name shows: a long one makes the line a little smaller
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text.rich(
+                      TextSpan(children: [
+                        const TextSpan(text: 'ინფორმაცია', style: TextStyle(fontWeight: FontWeight.w800)),
+                        TextSpan(text: ' · ', style: TextStyle(color: c.muted)),
+                        TextSpan(text: who.name, style: TextStyle(color: c.accent, fontWeight: FontWeight.w700)),
+                      ]),
+                      maxLines: 1,
+                      style: const TextStyle(fontSize: 15.5),
+                    ),
                   ),
                 ),
                 AnimatedRotation(

@@ -183,6 +183,16 @@ void main() {
       await t.tap(find.text('გიორგი კაპანაძე').first);
       await settle(t);
       await _shot(t, '12-person-$k');
+      // the information opened
+      await t.tap(find.byKey(const ValueKey('pro-info')));
+      await settle(t);
+      await t.drag(find.descendant(of: find.byType(PersonScreen).first, matching: find.byType(Scrollable)).first, const Offset(0, -300));
+      await settle(t);
+      await _shot(t, '12b-person-info-$k');
+      await t.drag(find.descendant(of: find.byType(PersonScreen).first, matching: find.byType(Scrollable)).first, const Offset(0, 300));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('pro-info')));
+      await settle(t);
       final list = find.descendant(of: find.byType(PersonScreen).first, matching: find.byType(Scrollable)).first;
       await t.drag(list, const Offset(0, -420));
       await settle(t);
@@ -207,6 +217,15 @@ void main() {
       await toProfile(t);
       await settle(t);
       await _shot(t, '13-profile-$k');
+      await t.tap(find.byKey(const ValueKey('pro-info')));
+      await settle(t);
+      await t.drag(find.descendant(of: find.byType(PersonScreen).first, matching: find.byType(Scrollable)).first, const Offset(0, -300));
+      await settle(t);
+      await _shot(t, '13b-profile-info-$k');
+      await t.drag(find.descendant(of: find.byType(PersonScreen).first, matching: find.byType(Scrollable)).first, const Offset(0, 300));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('pro-info')));
+      await settle(t);
       final list = find.descendant(of: find.byType(PersonScreen).first, matching: find.byType(Scrollable)).first;
       await t.drag(list, const Offset(0, -380));
       await settle(t);
