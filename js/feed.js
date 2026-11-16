@@ -271,18 +271,22 @@ A.cimgv=t=>openImage(t.dataset.src,{top:true});
 function cToggleText(open,n){return open?'პასუხების დამალვა':(n===1?'1 პასუხის ნახვა':`ყველა ${n} პასუხის ნახვა`)}
 function threadHTML(c,kids,pa,d=0){const ks=kids.get(c.id)||[],open=!!CMT?.open?.has(c.id),n=cUnder(c.id,kids);
  return `<div class="cth d${d}" data-th="${c.id}">${commentRow(c,pa,false,d)}${ks.length?`<div class="creps"${open?'':' hidden'}>${ks.map(k=>threadHTML(k,kids,pa,Math.min(d+1,2))).join('')}</div><button class="cmore" data-a="cthread" data-th="${c.id}" data-n="${n}" aria-expanded="${open}">${cToggleText(open,n)}</button>`:''}</div>`}
-function renderComments(st,pa){const cb=$('#cb');if(!cb||CMT!==st)return;const kids=cKids(st),top=[...st.rows.values()].filter(c=>!c.parent_id||!st.rows.has(c.parent_id)).sort(cByTime);
+function renderComments(st,pa){const cb=$('#cbl');if(!cb||CMT!==st)return;const kids=cKids(st),top=[...st.rows.values()].filter(c=>!c.parent_id||!st.rows.has(c.parent_id)).sort(cByTime);
  cb.innerHTML=top.map(c=>threadHTML(c,kids,pa)).join('')||'<p class="muted" id="cempty">ჯერ არავის დაუწერია. იყავი პირველი.</p>'}
 A.cthread=t=>{const st=CMT,id=+t.dataset.th;if(!st)return;const on=!st.open.has(id);if(on)st.open.add(id);else st.open.delete(id);const reps=t.parentElement&&t.parentElement.querySelector(':scope>.creps');if(reps)reps.hidden=!on;t.textContent=cToggleText(on,+t.dataset.n||0);t.setAttribute('aria-expanded',String(on))};
 function setCReply(c){if(!CMT)return;CMT.reply=c?{id:c.id,name:pname(c.author)}:null;const bar=$('#crb'),i=$('#cin');if(!bar||!i)return;
  if(!c){bar.hidden=true;bar.innerHTML='';i.placeholder='დაწერე კომენტარი…';return}
  bar.hidden=false;bar.innerHTML=`${ic('reply')}<div class="grow"><b>პასუხი: ${esc(String(pname(c.author)).split(' ')[0])}</b><span>${esc(String(c.body).slice(0,80))}</span></div><button type="button" class="ibtn sm" id="crbx" aria-label="პასუხის გაუქმება">${ic('x')}</button>`;$('#crbx').onclick=()=>setCReply(null);
  const un=prof(c.author).username;if(cDepth(c)>=2&&un&&c.author!==ME.id&&!i.value.includes('@'+un))i.value=`@${un} `+i.value;i.placeholder=`უპასუხე ${String(pname(c.author)).split(' ')[0]}-ს…`;i.focus()}
-async function openComments(id){const p=POSTS.get(id),pa=p?.author;CMT={post:id,rows:new Map(),liked:new Set(),open:new Set(),reply:null};const st=CMT;
- navMark('comments',()=>openComments(id));sheet(head('კომენტარები')+`<div class="ph-body" id="cb">${skel(2)}</div><form class="ph-foot chatfoot cfoot" id="cf"><div class="replybar" id="crb" hidden></div><div class="chrow"><button type="button" class="ibtn" id="c_stk" data-a="emo" data-for="cin" aria-label="სმაილები და სტიკერები" aria-expanded="false">${ic('smile')}</button><button type="button" class="ibtn" id="c_img" aria-label="ფოტო">${ic('image')}</button><input class="field" id="cin" maxlength="1000" placeholder="დაწერე კომენტარი…" aria-label="კომენტარი" autocomplete="off"><button class="btn" aria-label="გაგზავნა">${ic('send')}</button></div></form>`,'',()=>{if(CMT===st)CMT=null});mentionable($('#cin'));
+/* a post never opens as a page of its own: it comes up whole, with its comments under it, over wherever one is */
+async function openPost(id,toComments){id=+id;if(!id)return;toComments=toComments??!!S.openComments;S.openComments=0;
+ if(!POSTS.get(id)){try{const rows=await fetchPosts(b=>b.eq('id',id));if(!rows.length){toast('პოსტი ვერ მოიძებნა: შეიძლება წაშლილია ან დამალული');return}}catch(e){toast(errMsg(e));return}}
+ return openComments(id,{post:true,end:toComments})}
+async function openComments(id,o={}){const p=POSTS.get(id),pa=p?.author,withPost=!!(o.post&&p);CMT={post:id,rows:new Map(),liked:new Set(),open:new Set(),reply:null,withPost};const st=CMT;
+ navMark(withPost?'post':'comments',()=>openComments(id,o));sheet(head(withPost?`${esc(String(pname(pa)).split(' ')[0])}-ს პოსტი`:'კომენტარები')+`<div class="ph-body${withPost?' cwpost':''}" id="cb">${withPost?`<div class="cpost">${postHTML(p)}</div><h3 class="csec" id="csec">კომენტარები</h3>`:''}<div id="cbl">${skel(2)}</div></div><form class="ph-foot chatfoot cfoot" id="cf"><div class="replybar" id="crb" hidden></div><div class="chrow"><button type="button" class="ibtn" id="c_stk" data-a="emo" data-for="cin" aria-label="სმაილები და სტიკერები" aria-expanded="false">${ic('smile')}</button><button type="button" class="ibtn" id="c_img" aria-label="ფოტო">${ic('image')}</button><input class="field" id="cin" maxlength="1000" placeholder="დაწერე კომენტარი…" aria-label="კომენტარი" autocomplete="off"><button class="btn" aria-label="გაგზავნა">${ic('send')}</button></div></form>`,'',()=>{if(CMT===st)CMT=null});mentionable($('#cin'));
  try{const rows=await q(sb.from('comments').select(CSEL).eq('post_id',id).order('created_at').limit(400));rows.forEach(c=>st.rows.set(c.id,c));
   if(rows.length){try{(await q(sb.from('comment_likes').select('comment_id').eq('user_id',ME.id).in('comment_id',rows.map(c=>c.id).slice(0,400)))).forEach(x=>st.liked.add(x.comment_id))}catch(e){}}
-  if(CMT!==st)return;renderComments(st,pa);$('#cb').scrollTop=S.openComments===false?0:1e6}catch(e){$('#cb').innerHTML=`<p class="muted">${errMsg(e)}</p>`}
+  if(CMT!==st)return;renderComments(st,pa);const cb=$('#cb');if(withPost){if(o.end)$('#csec')?.scrollIntoView({block:'start'})}else cb.scrollTop=S.openComments===false?0:1e6}catch(e){const l=$('#cbl');if(l)l.innerHTML=`<p class="muted">${errMsg(e)}</p>`}
  const send=async(v,media)=>{const par=st.reply;setCReply(null);
   /* the comment answered goes as parent_id; the server hangs it where it belongs (two steps in at most) */
   try{const c=await q(sb.from('comments').insert({post_id:id,author:ME.id,body:v,parent_id:par?par.id:null,media:media||null}).select(CSEL).single());if(CMT!==st)return true;st.rows.set(c.id,c);const cb=$('#cb');
@@ -293,7 +297,8 @@ async function openComments(id){const p=POSTS.get(id),pa=p?.author;CMT={post:id,
  $('#cin')._stk=k=>{if(CMT!==st)return;send(cmStk(k)||'✨',{sticker:k})};
  $('#c_img').onclick=async()=>{const b=await pickImage({max:ECO()?1080:1600});if(!b||CMT!==st)return;const i=$('#cin'),v=i?i.value.trim():'';
   try{toast('იტვირთება…');const m=await uploadMedia(b,'image');if(i)i.value='';if(!await send(v||'📷',{url:m.url,sm:m.sm||undefined,w:m.w,h:m.h})&&i)i.value=v}catch(e){toast(errMsg(e))}}}
-A.comments=t=>openComments(pidOf(t));
+/* the comment button of the post already open with its comments goes to them */
+A.comments=t=>{const id=pidOf(t);if(CMT&&CMT.withPost&&CMT.post===id&&t.closest('#sheet')){$('#csec')?.scrollIntoView({block:'start',behavior:'smooth'});$('#cin')?.focus({preventScroll:true});return}openComments(id)};
 A.creply=t=>{const c=CMT?.rows.get(+t.dataset.cid);if(c)setCReply(c)};
 A.cmore=t=>{const th=t.closest('.cth');if(!th)return;$$('.trow[hidden]',th).forEach(r=>r.hidden=false);t.remove()};
 A.cmlike=async t=>{const st=CMT,c=st?.rows.get(+t.dataset.cid);if(!c)return;const on=!st.liked.has(c.id);if(on)st.liked.add(c.id);else st.liked.delete(c.id);c.likes=Math.max(0,(c.likes||0)+(on?1:-1));

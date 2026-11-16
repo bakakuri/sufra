@@ -198,8 +198,6 @@ PG.tag={r(tag){view.innerHTML=pgHead('#'+esc(tag),`${tagFollowBtn(tag)}<button c
  fetchPosts(b=>b.contains('tags',[tag]).order('created_at',{ascending:false}).limit(40)).then(rows=>{const el=$('#tagb');if(el){el.innerHTML=`<p class="hint" style="padding:12px 16px 4px">${rows.length} პოსტი</p>`+(rows.map(postHTML).join('')||empty('ჯერ არავის დაუწერია','იყავი პირველი ამ ჰეშთეგით.'));staggerIn($$('.post',el).slice(0,6))}}).catch(e=>{const el=$('#tagb');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))})}};
 A.composetag=async t=>{await compose();const ta=$('#ct');if(ta){ta.value=' #'+t.dataset.t;ta.oninput&&ta.oninput();ta.focus();ta.setSelectionRange(0,0)}};
 PG.saved={r(){view.innerHTML=pgHead('შენახული')+`<div class="savwrap" id="savb"></div>`;savedView($('#savb'),false)}};
-PG.post={r(id){id=+id;view.innerHTML=pgHead('პოსტი')+`<div id="postb">${skel(1)}</div>`;
- fetchPosts(b=>b.eq('id',id)).then(rows=>{const el=$('#postb');if(!el)return;if(!rows.length){el.innerHTML=empty('პოსტი ვერ მოიძებნა','შეიძლება წაშლილია ან დამალული.');return}el.innerHTML=postHTML(rows[0])+`<div style="padding:12px 16px"><button class="btn ghost" data-a="comments" data-pid="${id}">${ic('comment')}კომენტარების ნახვა</button></div>`;if(S.openComments){S.openComments=0;openComments(id)}}).catch(e=>{const el=$('#postb');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))})}};
 
 /* "on this day" memories */
 async function loadMemories(){const el=$('#memo');if(!el)return;try{const ids=await rpc('my_memories');if(!ids.length||!$('#memo'))return;const rows=await fetchPosts(b=>b.in('id',ids.slice(0,1)));if(!rows.length)return;const p=rows[0],yrs=new Date().getFullYear()-new Date(p.created_at).getFullYear();

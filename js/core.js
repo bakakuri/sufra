@@ -63,7 +63,7 @@ const empty=(t,sub='',btn='')=>`<div class="empty3"><h3>${t}</h3>${sub?`<p>${sub
 
 /* pages */
 const pgHead=(t,extra='')=>`<div class="pghead"><button class="ibtn" data-a="back" aria-label="უკან">${ic('back')}</button><h2>${t}</h2>${extra}</div>`;
-function openPage(id,arg,back,noPush){if(!PG[id])return;closeSheet(true);stopMedia();S.page={id,arg,back};view.className=PG[id].cls||'';const app=$('#app');app.classList.toggle('media',PG[id].cls==='is-clips');app.classList.remove('barhidden');view.scrollTop=0;
+function openPage(id,arg,back,noPush){if(id==='post'&&typeof openPost==='function')return openPost(arg);if(!PG[id])return;closeSheet(true);stopMedia();S.page={id,arg,back};view.className=PG[id].cls||'';const app=$('#app');app.classList.toggle('media',PG[id].cls==='is-clips');app.classList.remove('barhidden');view.scrollTop=0;
  if(!noPush)navStep();
  const r=PG[id].r(arg);if(typeof earnBar==='function')try{earnBar(id)}catch(e){}const d=S._dir||1;S._dir=0;enterView(28*d);return r}
 const rp=()=>{if(S.page)return PG[S.page.id].r(S.page.arg)};

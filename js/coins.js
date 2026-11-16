@@ -6,12 +6,12 @@ const CN={rules:null,my:null,t:0,tm:0};
 /* rule page → name, icon, where it opens */
 const CPAGE={home:['ფიდი','home','home'],chat:['შეტყობინებები','msg','chat'],stories:['ისტორიები','story','storyarch'],clips:['კლიპები','clips','clips'],
  groups:['ჯგუფები','users','groups'],friends:['მეგობრები','user','friends'],sport:['სპორტი','trophy','sport'],games:['თამაშები','dice','games'],
- recipes:['სამზარეულო','pot','recipes'],help:['დახმარება','help','help'],places:['ადგილები','pin','places'],albums:['ალბომები','image','albums'],
- events:['შეხვედრები','cal','events'],toasts:['სადღეგრძელოები','wine','toasts'],market:['ბაზრობა','store','market'],jobs:['ვაკანსიები','work','jobs'],
+ help:['დახმარება','help','help'],places:['ადგილები','pin','places'],albums:['ალბომები','image','albums'],
+ events:['შეხვედრები','cal','events'],market:['ბაზრობა','store','market'],jobs:['ვაკანსიები','work','jobs'],
  rides:['მგზავრობა','route','rides'],tree:['ოჯახის ხე','tree','tree'],schedule:['ლექციების ცხრილი','school','schedule'],exams:['დავალებები','clock','exams'],me:['პროფილი','user','me']};
 /* app page → the rules shown on it */
-const PG2RULE={groups:'groups',group:'groups',friends:'friends',sport:'sport',fixture:'sport',recipes:'recipes',recipe:'recipes',help:'help',helpreq:'help',
- places:'places',place:'places',albums:'albums',album:'albums',events:'events',event:'events',toasts:'toasts',market:'market',jobs:'jobs',job:'jobs',
+const PG2RULE={groups:'groups',group:'groups',friends:'friends',sport:'sport',fixture:'sport',help:'help',helpreq:'help',
+ places:'places',place:'places',albums:'albums',album:'albums',events:'events',event:'events',market:'market',jobs:'jobs',job:'jobs',
  rides:'rides',ride:'rides',tree:'tree',schedule:'schedule',exams:'exams',storyarch:'stories'};
 const nf=n=>Number(n||0).toLocaleString('en-US');
 const cgel=(n,rate)=>{const v=(n||0)/(rate||10000);return v>0&&v<0.01?v.toFixed(4):v.toFixed(2)};

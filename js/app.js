@@ -48,14 +48,12 @@ A.menu=()=>{navMark('menu',A.menu);const svc=SVC.filter(x=>pageOk(x[0]));if(isSt
 const CREATE=[['cpost','edit','პოსტი','ტექსტი, ფოტო, ჰეშთეგი'],['cnote','book','კონსპექტი','ფოტო, ტექსტი, საგანი'],['clesson','cal','ლექცია ცხრილში','დღე, დრო, აუდიტორია'],['cexam','clock','გამოცდა ან დავალება','ვადით'],['croom','video','სასწავლო ოთახი','ვიდეო-შეხვედრა კურსელებთან'],['cbirja','mic','დისკუსია','ხმოვანი ოთახი თემაზე'],['cphoto','image','ფოტო','ფილტრით და ჭრით'],['cclip','clips','კლიპი','მოკლე ვერტიკალური ვიდეო'],['cpoll','poll','გამოკითხვა','მეგობრების აზრი'],['cstory','story','ისტორია','ქრება 24 საათში'],['cevent','cal','შეხვედრა','ლექცია, ექსკურსია, წვეულება'],['clisting','store','განცხადება','გაყიდე ან გააჩუქე'],['cgroup','users','ჯგუფი','საერთო ინტერესით'],['cpage','mega','არხი ან გვერდი','ბიზნესი და რეკლამა'],['cgchat','msg','ჯგუფური ჩატი','რამდენიმე მეგობართან'],['clive','live','ლაივი','პირდაპირი ეთერი'],['cplace','map','ადგილი','კაფე, ბიბლიოთეკა, სივრცე'],['chelp','help','დახმარების თხოვნა','სისხლი, ცხოველი, მოხალისე'],['cride','pin','მგზავრობა','ადგილები მანქანაში'],['cjob','school','ვაკანსია','მოძებნე თანამშრომელი']];
 A.create=()=>(navMark('create',A.create),sheet(head('შექმნა')+`<div class="createg">${CREATE.filter(x=>createOk(x[0])).map(([a,i,l,s])=>`<button data-a="${a}"><span class="cgi">${ic(i)}</span><b>${l}</b><small>${s}</small></button>`).join('')}</div>`,'short'));
 A.cpost=()=>compose();
-A.crecipe=()=>{closeSheet();A.recipenew()};
 A.croom=()=>{S.rkind='supra';closeSheet();A.newroom()};
 A.cbirja=()=>{S.rkind='birja';closeSheet();A.newroom()};
 A.cride=()=>openPage('ridenew',undefined,['rides']);
 A.clive=()=>{S.rkind='live';A.newroom()};
 A.cplace=()=>openPage('placenew',undefined,['places']);
 A.chelp=()=>openPage('helpnew',undefined,['help']);
-A.ctoast=()=>A.newtoast();
 A.cjob=()=>openPage('jobnew',undefined,['jobs']);
 A.cphoto=async()=>{await compose();$('#c_img')?.click()};
 A.cclip=()=>newClip();
@@ -113,6 +111,7 @@ function route(h){h=String(h||'');if(!h||h==='#'||h.includes('='))return false;l
  if(id==='notifications'){base();openNotes();return true}
  if(id==='storyv'&&arg){base();openStoryById(+arg);return true}
  if(id==='chats'){base();openChats();return true}
+ if(id==='post'&&/^\d+$/.test(arg||'')){base();openPost(+arg);return true}
  if(R[id]){go(id);return true}
  if(PG[id]||typeof GLZ_PG!=='undefined'&&GLZ_PG.includes(id)){openPage(id,arg);return true}
  return false}
