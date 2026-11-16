@@ -112,7 +112,8 @@ class FeedTabState extends State<FeedTab> {
     final app = context.app;
     app.home.load(force: force);
     final off = app.home.off, admin = context.me.role == 'admin';
-    upcomingDays(context, 14).then((d) {
+    // friends' days stand in the stories on the day itself, not before it (the days coming up are in the calendar)
+    upcomingDays(context, 0).then((d) {
       if (mounted && (admin || !app.home.off.contains('calendar'))) setState(() => remind = d);
     }, onError: (_) {});
     loadPromos(context).then((r) {

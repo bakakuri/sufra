@@ -157,10 +157,10 @@ async function upcoming(days){const now=new Date();now.setHours(0,0,0,0);const o
  return out.sort((a,b)=>a.n-b.n)}
 const whenTxt=n=>n===0?'დღეს':n===1?'ხვალ':n+' დღეში';
 const remRow=e=>`<div class="rrow">${av(e.p,40)}<div class="grow"><span class="when">${whenTxt(e.n)} · ${e.dt.getDate()} ${MONTHS[e.dt.getMonth()]}</span><b>${esc(e.p.name)} · ${e.kind==='b'?'დაბადების დღე':'ანგელოზის დღე, '+e.label}</b></div><button class="btn ghost" data-a="greet" data-u="${e.p.id}" data-k="${e.kind}">მილოცვა</button><button class="btn ghost" data-a="gift" data-u="${e.p.id}" aria-label="საჩუქრის გაგზავნა">${ic('gift')}</button></div>`;
-/* friends' days coming up are not in the feed: they stand first in the row of stories, only while one is near (two weeks),
-   and a touch opens them with a greeting and a gift at hand; the whole calendar is a tap further */
+/* friends' days are not in the feed: they stand first in the row of stories on the day itself (not before),
+   and a touch opens them with a greeting and a gift at hand; the days coming up are in the calendar, a tap further */
 const REMC={at:0,u:null};
-async function remList(){if(!FRIENDS.size)return[];if(!REMC.u||Date.now()-REMC.at>6e5){REMC.u=await upcoming(14);REMC.at=Date.now()}return REMC.u}
+async function remList(){if(!FRIENDS.size)return[];if(!REMC.u||Date.now()-REMC.at>6e5){REMC.u=await upcoming(0);REMC.at=Date.now()}return REMC.u}
 async function remStory(){const el=$('#stories');if(!el||typeof featOff==='function'&&!isAdm()&&featOff('calendar'))return;let u=[];try{u=await remList()}catch(e){}const S0=$('#stories');if(!S0||!u.length)return;
  $$('.remst',S0).forEach(x=>x.remove());const e=u[0],today=u.filter(x=>x.n===0).length;
  const fn=String(e.p.name||'').split(' ')[0],tag=today?'დღეს':e.n===1?'ხვალ':e.n+' დღეში';
