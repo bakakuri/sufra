@@ -198,8 +198,10 @@ void main() {
     expect(api.calls, contains('comment 106 📷 photo'));
 
     final before = api.calls.length;
-    await t.ensureVisible(inP(find.text('წაშლა')).last);
-    await t.tap(inP(find.text('წაშლა')).last);
+    // the newest (my photo) is at the top of the window
+    await t.ensureVisible(inP(find.text('წაშლა')).first);
+    await settle(t);
+    await t.tap(inP(find.text('წაშლა')).first);
     await settle(t);
     await t.tap(find.text('წაშლა').last);
     await settle(t);
