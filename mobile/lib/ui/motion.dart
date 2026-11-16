@@ -81,16 +81,19 @@ class SectionHead extends StatelessWidget {
       child: Row(children: [
         Container(width: 4, height: 18, decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [c.accent, c.accent.withValues(alpha: .45)]), borderRadius: BorderRadius.circular(4))),
         const SizedBox(width: 9),
-        Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800))),
-        if (count != null) ...[
-          const SizedBox(width: 7),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
-            decoration: BoxDecoration(color: c.accent.withValues(alpha: .12), borderRadius: BorderRadius.circular(99)),
-            child: Text('$count', style: TextStyle(color: c.accent, fontSize: 12, fontWeight: FontWeight.w800)),
-          ),
-        ],
-        const Spacer(),
+        Expanded(
+          child: Row(children: [
+            Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800))),
+            if (count != null) ...[
+              const SizedBox(width: 7),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
+                decoration: BoxDecoration(color: c.accent.withValues(alpha: .12), borderRadius: BorderRadius.circular(99)),
+                child: Text('$count', style: TextStyle(color: c.accent, fontSize: 12, fontWeight: FontWeight.w800)),
+              ),
+            ],
+          ]),
+        ),
         if (trailing != null) trailing!,
       ]),
     );

@@ -404,7 +404,7 @@ class _Segments extends StatelessWidget {
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
                             AnimatedDefaultTextStyle(
                               duration: const Duration(milliseconds: 200),
-                              style: TextStyle(color: on == i ? c.ink : c.muted, fontWeight: on == i ? FontWeight.w800 : FontWeight.w600, fontSize: 14),
+                              style: DefaultTextStyle.of(context).style.copyWith(color: on == i ? c.ink : c.muted, fontWeight: on == i ? FontWeight.w800 : FontWeight.w600, fontSize: 14),
                               child: Text(segs[i].$1),
                             ),
                             if (segs[i].$2 > 0) ...[
