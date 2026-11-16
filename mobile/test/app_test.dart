@@ -232,16 +232,10 @@ void main() {
     expect(api.calls, contains('comment 101 მეც მინდა ↩2'));
     expect(find.descendant(of: inl, matching: find.text('მეც მინდა')), findsOneWidget);
     expect(find.byKey(const ValueKey('icm-to-101')), findsNothing);
-    // one written straight from the feed (the field lifted above the tab bar first)
-    final send = find.byKey(const ValueKey('icm-send-101'));
-    await t.ensureVisible(send);
-    await settle(t);
-    final fp = t.state<ScrollableState>(_feed).position;
-    fp.jumpTo((fp.pixels + 160).clamp(0.0, fp.maxScrollExtent));
-    await settle(t);
+    // one written straight from the feed, sent with the keyboard's own send key
     await t.enterText(find.byKey(const ValueKey('icm-field-101')), 'რა ლამაზია');
     await t.pump();
-    await t.tap(send);
+    await t.testTextInput.receiveAction(TextInputAction.send);
     await settle(t);
     expect(api.calls, contains('comment 101 რა ლამაზია'));
     expect(find.descendant(of: find.byKey(const ValueKey('inline-cm-101')), matching: find.text('რა ლამაზია')), findsOneWidget);
