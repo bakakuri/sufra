@@ -612,18 +612,20 @@ class _PageFormScreenState extends State<PageFormScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Row(children: [
-                  Expanded(child: Text(weekDays[d - 1], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600))),
-                  Switch(key: ValueKey('pf-day-$d'), value: hours[d] != null, onChanged: (on) => setState(() => hours[d] = on ? (hours[1] ?? ('09:00', '18:00')) : null)),
-                  SizedBox(
-                    width: 150,
-                    child: hours[d] == null
-                        ? Padding(padding: const EdgeInsets.only(left: 10), child: Text('დაკეტილია', style: TextStyle(color: c.muted)))
-                        : Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                            TextButton(key: ValueKey('pf-from-$d'), style: _timeBtn, onPressed: () => _time(d, true), child: Text(hours[d]!.$1)),
-                            Text('–', style: TextStyle(color: c.muted)),
-                            TextButton(key: ValueKey('pf-to-$d'), style: _timeBtn, onPressed: () => _time(d, false), child: Text(hours[d]!.$2)),
-                          ]),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(weekDays[d - 1], style: const TextStyle(fontWeight: FontWeight.w700)),
+                      if (hours[d] == null)
+                        Text('დაკეტილია', style: TextStyle(color: c.muted, fontSize: 13))
+                      else
+                        Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
+                          TextButton(key: ValueKey('pf-from-$d'), style: _timeBtn, onPressed: () => _time(d, true), child: Text(hours[d]!.$1)),
+                          Text('–', style: TextStyle(color: c.muted)),
+                          TextButton(key: ValueKey('pf-to-$d'), style: _timeBtn, onPressed: () => _time(d, false), child: Text(hours[d]!.$2)),
+                        ]),
+                    ]),
                   ),
+                  Switch(key: ValueKey('pf-day-$d'), value: hours[d] != null, onChanged: (on) => setState(() => hours[d] = on ? (hours[1] ?? ('09:00', '18:00')) : null)),
                 ]),
               ),
           ],
