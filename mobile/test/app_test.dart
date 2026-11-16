@@ -1321,9 +1321,11 @@ void main() {
     expect(find.text('@gio.k'), findsOneWidget);
     expect(find.text('ჯოკერი: 1640 რეიტინგი · 38 თამაში · 17 მოგება'), findsOneWidget);
     expect(find.text('გვარი: კაპანაძე'), findsOneWidget);
-    // the numbers: posts, friends, rating, in common
+    // the numbers: posts, friends, the likes their posts got, the friends we share
     expect(find.descendant(of: find.byKey(const ValueKey('stat-mutual')), matching: find.text('12')), findsOneWidget);
     expect(find.descendant(of: find.byKey(const ValueKey('stat-friends')), matching: find.text('248')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('stat-likes')), matching: find.text('1 240')), findsOneWidget);
+    expect(find.byKey(const ValueKey('stat-coins')), findsNothing);
 
     // the posts are posts, whole, as on Facebook; a post's words show whole right there (no page of its own)
     await proTo(t, find.byKey(const ValueKey('pbody-107')));
@@ -1546,7 +1548,7 @@ void main() {
     await settle(t);
     await t.tap(find.text('გიორგი კაპანაძე').first);
     await settle(t);
-    await tapPro(t, 'stat-rating');
+    await tapPro(t, 'chip-joker');
     expect(find.text('სათამაშო ბარათი'), findsOneWidget);
     expect(find.descendant(of: find.byKey(const ValueKey('gc-nardi')), matching: find.text('1620')), findsOneWidget);
     expect(find.descendant(of: find.byKey(const ValueKey('gc-nardi')), matching: find.text('ქალაქის ჩემპიონი')), findsOneWidget);
@@ -1562,7 +1564,7 @@ void main() {
 
   testWidgets('my games card leads to Joker', (t) async {
     await meTab(t);
-    await tapPro(t, 'stat-rating');
+    await tapPro(t, 'chip-joker');
     expect(find.descendant(of: find.byKey(const ValueKey('gc-chess')), matching: find.text('1500')), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('gc-play')));
     await settle(t);
@@ -1607,8 +1609,12 @@ void main() {
 
   testWidgets('coins: the bonus waits on the wallet, is taken on the coins page; back returns to the profile', (t) async {
     final api = await meTab(t);
-    expect(find.text('დღის ბონუსი გელოდება'), findsOneWidget);
-    await tapPro(t, 'pro-wallet');
+    // four numbers: posts, friends, the likes my posts got, my coins (a gold "+" while today's bonus waits); no rating
+    expect(find.byKey(const ValueKey('stat-rating')), findsNothing);
+    expect(find.descendant(of: find.byKey(const ValueKey('stat-likes')), matching: find.text('312')), findsOneWidget);
+    expect(find.byKey(const ValueKey('stat-coins-bonus')), findsOneWidget);
+    expect(find.byKey(const ValueKey('pro-wallet')), findsNothing);
+    await tapPro(t, 'stat-coins');
     expect(find.byType(CoinsScreen), findsOneWidget);
     expect(find.text('12 450'), findsWidgets);
     expect(find.text('ლარად გატანა'), findsNothing);

@@ -396,8 +396,11 @@ class Suggestion {
 }
 
 class Counts {
-  const Counts(this.friends, this.posts);
+  const Counts(this.friends, this.posts, {this.likes});
   final int friends, posts;
+
+  /// the reactions on their posts, all together (null when they could not be counted)
+  final int? likes;
 }
 
 /// One story: a photo or a video for a day.

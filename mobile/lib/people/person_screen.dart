@@ -240,11 +240,13 @@ class _PersonScreenState extends State<PersonScreen> {
 
   /// a number under the profile: posts and friends go to their tab, the rating to Joker
   void _stat(String k) {
-    if (k == 'rating') {
-      final who = p;
-      if (who != null) gamesCard(context, who, joker, mine: widget.uid == context.me.id);
+    if (k == 'coins') {
+      openPage(context, const CoinsScreen(), full: true).then((_) {
+        if (mounted) setState(() {});
+      });
       return;
     }
+    if (k == 'likes') k = 'posts';
     if (k == 'friends' && mine) {
       context.app.goTab?.call('friends');
       return;
@@ -492,9 +494,7 @@ class _PersonScreenState extends State<PersonScreen> {
                 const SizedBox(height: 14),
                 _stats(context, who, isMe),
                 if (isMe) ...[
-                  const SizedBox(height: 12),
-                  _wallet(context),
-                  if (widget.extra != null) widget.extra!,
+                  if (widget.extra != null) ...[const SizedBox(height: 12), widget.extra!],
                   const SizedBox(height: 10),
                   _space(context, who),
                 ],
@@ -659,7 +659,13 @@ class _PersonScreenState extends State<PersonScreen> {
       for (final e in who.edu) _Chip(icon: e['k'] == 'uni' ? 'school' : 'book', text: _eduText(e), onTap: isMe ? _editEdu : null),
       if (isMe && who.edu.isEmpty) _Chip(key: const ValueKey('chip-edu'), icon: 'plus', text: 'სკოლა ან უნივერსიტეტი', onTap: _editEdu),
       if (joker != null)
-        _Chip(icon: 'cards', text: 'ჯოკერი: ${joker!.rating != null ? '${joker!.rating} რეიტინგი · ' : ''}${joker!.games} თამაში · ${joker!.wins} მოგება'),
+        _Chip(
+          key: const ValueKey('chip-joker'),
+          icon: 'cards',
+          text: 'ჯოკერი: ${joker!.rating != null ? '${joker!.rating} რეიტინგი · ' : ''}${joker!.games} თამაში · ${joker!.wins} მოგება',
+          // the games card (the ratings and Joker)
+          onTap: () => gamesCard(context, who, joker, mine: isMe),
+        ),
       if ((who.surname ?? '').isNotEmpty) _Chip(key: const ValueKey('chip-surname'), icon: 'users', text: 'გვარი: ${who.surname}', onTap: () => openPage(context, SurnameScreen(surname: who.surname!))),
       if (days.isNotEmpty) _Chip(icon: 'cal', text: 'ანგელოზის დღე: ${mdText(days.first.$1)}'),
       if ((who.homePlace ?? '').isNotEmpty) _Chip(icon: 'pin', text: who.homePlace!),
@@ -753,12 +759,14 @@ class _PersonScreenState extends State<PersonScreen> {
 
   Widget _stats(BuildContext context, Profile who, bool isMe) {
     final c = context.pc;
+    // four: the posts, the friends, the reactions the posts got, and my coins (someone else's: the friends we share)
     final items = [
       ('posts', counts?.posts, 'პოსტი', 'edit', const Color(0xFF6366F1)),
       ('friends', counts?.friends, 'მეგობარი', 'users', const Color(0xFF0EA5E9)),
-      ('rating', who.rating ?? 1500, 'რეიტინგი', 'trophy', const Color(0xFFF59E0B)),
-      if (!isMe) ('mutual', mutual, 'საერთო', 'uadd', const Color(0xFF10B981)),
+      ('likes', counts?.likes, 'მოწონება', 'heart', const Color(0xFFE11D48)),
+      if (isMe) ('coins', context.me.coins, 'მონეტა', 'coin', const Color(0xFFE0A100)) else ('mutual', mutual, 'საერთო', 'uadd', const Color(0xFF10B981)),
     ];
+    final bonus = isMe && bonusWaits(context.me.lastBonus);
     return Row(children: [
       for (var i = 0; i < items.length; i++) ...[
         if (i > 0) const SizedBox(width: 8),
@@ -771,8 +779,32 @@ class _PersonScreenState extends State<PersonScreen> {
               onTap: () => _stat(items[i].$1),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-                decoration: cardLook(context, radius: 16),
-                child: Column(children: [
+                decoration: items[i].$1 == 'coins'
+                    ? BoxDecoration(
+                        color: Color.alphaBlend(c.gold.withValues(alpha: .12), c.surface),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Color.alphaBlend(c.gold.withValues(alpha: .35), c.line)),
+                      )
+                    : cardLook(context, radius: 16),
+                child: Stack(clipBehavior: Clip.none, alignment: Alignment.topCenter, children: [
+                  // today's bonus waits: a gold "+" on the coins
+                  if (items[i].$1 == 'coins' && bonus)
+                    Positioned(
+                      key: const ValueKey('stat-coins-bonus'),
+                      right: 2,
+                      top: -4,
+                      child: Semantics(
+                        label: 'დღის ბონუსი გელოდება',
+                        child: Container(
+                          width: 18,
+                          height: 18,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(color: const Color(0xFFE0A100), shape: BoxShape.circle, border: Border.all(color: c.surface, width: 2)),
+                          child: const PIcon('plus', size: 10, color: Colors.white, stroke: 3),
+                        ),
+                      ),
+                    ),
+                  Column(children: [
                   PIcon(items[i].$4, size: 16, color: items[i].$5),
                   const SizedBox(height: 3),
                   items[i].$2 == null
@@ -788,6 +820,7 @@ class _PersonScreenState extends State<PersonScreen> {
                           ),
                         ),
                   Text(items[i].$3, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, color: c.muted)),
+                  ]),
                 ]),
               ),
             ),
@@ -795,57 +828,6 @@ class _PersonScreenState extends State<PersonScreen> {
         ),
       ],
     ]);
-  }
-
-  /// my coins (the site's wallet card): the balance, and whether today's bonus waits
-  Widget _wallet(BuildContext context) {
-    final c = context.pc, me = context.me;
-    return DecoratedBox(
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: c.gold.withValues(alpha: .22), blurRadius: 18, offset: const Offset(0, 6))]),
-      child: Material(
-      color: Color.alphaBlend(c.gold.withValues(alpha: .12), c.surface),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Color.alphaBlend(c.gold.withValues(alpha: .3), c.line))),
-      child: InkWell(
-        key: const ValueKey('pro-wallet'),
-        borderRadius: BorderRadius.circular(16),
-        onTap: () async {
-          await openPage(context, const CoinsScreen(), full: true);
-          if (mounted) setState(() {});
-        },
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 10, 14, 10),
-          child: Row(children: [
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 900),
-              curve: Curves.easeOutBack,
-              builder: (_, v, ch) => Transform(alignment: Alignment.center, transform: Matrix4.rotationY((1 - v) * 3.1416), child: ch),
-              child: Container(
-                width: 40,
-                height: 40,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFCD34D), Color(0xFFE08A00)]),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(color: c.gold.withValues(alpha: .35), blurRadius: 12, offset: const Offset(0, 4))],
-                ),
-                child: const PIcon('coin', size: 22, color: Color(0xFF1A1205)),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('მონეტები', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
-                Text(bonusWaits(me.lastBonus) ? 'დღის ბონუსი გელოდება' : 'ისტორია, წესები, ბონუსი',
-                    style: TextStyle(color: bonusWaits(me.lastBonus) ? c.accent : c.muted, fontSize: 12.5, fontWeight: bonusWaits(me.lastBonus) ? FontWeight.w700 : FontWeight.w400)),
-              ]),
-            ),
-            Text(grouped(me.coins), style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: c.ink, fontFeatures: const [FontFeature.tabularFigures()])),
-          ]),
-        ),
-      ),
-    ),
-    );
   }
 
   /// "my space": a row of shortcuts, scrolled sideways (verification first while there is no tick)

@@ -1017,7 +1017,9 @@ class SupaApi implements PeeraApi {
   Future<Counts> counts(String uid) async {
     final f = sb.from('friendships').count(CountOption.exact).eq('status', 'accepted').or('requester.eq.$uid,addressee.eq.$uid');
     final p = sb.from('posts').count(CountOption.exact).eq('author', uid).eq('draft', false);
-    return Counts(await f, await p);
+    // the reactions their posts got
+    final l = sb.from('reactions').select('post_id,posts!inner(author)').eq('posts.author', uid).count(CountOption.exact).then<int?>((r) => r.count, onError: (_) => null);
+    return Counts(await f, await p, likes: await l);
   }
 
   @override

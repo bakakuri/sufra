@@ -304,7 +304,7 @@ class FakeApi implements PeeraApi {
   @override
   Future<Profile?> person(String uid) async => everyone.where((p) => p.id == uid).firstOrNull;
   @override
-  Future<Counts> counts(String uid) async => Counts(uid == giorgi.id ? 248 : 87, _posts.where((p) => p.author == uid).length);
+  Future<Counts> counts(String uid) async => Counts(uid == giorgi.id ? 248 : 87, _posts.where((p) => p.author == uid).length, likes: uid == giorgi.id ? 1240 : 312);
   @override
   Future<List<Profile>> people(List<String> ids) async => everyone.where((p) => ids.contains(p.id)).toList();
   @override
