@@ -53,7 +53,6 @@ CastMember? castNamed(String name) => cast.where((c) => c.name == name).firstOrN
 math.Random Function() jokerRandom = () => math.Random();
 
 /// how long the bots think and how long a taken trick stays on the table (shorter in the tests is not needed: they wait)
-/// how long a bot takes: a card lands before the next one is thrown, one after another
 const _think = {'trump': 900, 'bid': 850, 'play': 1050};
 const collectAfter = Duration(milliseconds: 1400);
 const nextHandAfter = Duration(milliseconds: 3800);
