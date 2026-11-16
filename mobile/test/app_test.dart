@@ -1319,8 +1319,18 @@ void main() {
     // my visit counts among their guests
     expect(api.calls, contains('visit u2'));
     expect(find.text('@gio.k'), findsOneWidget);
-    expect(find.text('ჯოკერი: 1640 რეიტინგი · 38 თამაში · 17 მოგება'), findsOneWidget);
-    expect(find.text('გვარი: კაპანაძე'), findsOneWidget);
+    // the bio is a thought in a cloud by the picture
+    expect(find.descendant(of: find.byKey(const ValueKey('pro-thought')), matching: find.text(giorgi.bio!)), findsOneWidget);
+    // everything else folded under "ინფორმაცია · name", opened by kind
+    expect(find.descendant(of: find.byKey(const ValueKey('pro-info')), matching: find.textContaining('გიორგი კაპანაძე', findRichText: true)), findsOneWidget);
+    expect(find.byKey(const ValueKey('chip-joker')), findsNothing);
+    await tapPro(t, 'pro-info');
+    expect(find.descendant(of: find.byKey(const ValueKey('chip-joker')), matching: find.text('1640 რეიტინგი · 38 თამაში · 17 მოგება')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('chip-surname')), matching: find.text('კაპანაძე')), findsOneWidget);
+    // someone else's page shows only what is filled in
+    expect(find.text('დაამატე'), findsNothing);
+    await tapPro(t, 'pro-info');
+    expect(find.byKey(const ValueKey('chip-joker')), findsNothing);
     // the numbers: posts, friends, the likes their posts got, the friends we share
     expect(find.descendant(of: find.byKey(const ValueKey('stat-mutual')), matching: find.text('12')), findsOneWidget);
     expect(find.descendant(of: find.byKey(const ValueKey('stat-friends')), matching: find.text('248')), findsOneWidget);
@@ -1407,9 +1417,11 @@ void main() {
     expect(api.calls, contains('check badges'));
     expect(api.calls.where((x) => x.startsWith('visit')), isEmpty);
     expect(find.text('12 450'), findsOneWidget);
-    // the chips: the calendar knows ნინო's day; the school is still to add
-    expect(find.text('ანგელოზის დღე: ${mdText(daysOfName('ნინო').map((d) => (d.$1, daysUntil(d.$1))).reduce((a, b) => a.$2 <= b.$2 ? a : b).$1)}'), findsOneWidget);
+    // the information: the calendar knows ნინო's day; the school is still to add
+    await tapPro(t, 'pro-info');
+    expect(find.text(mdText(daysOfName('ნინო').map((d) => (d.$1, daysUntil(d.$1))).reduce((a, b) => a.$2 <= b.$2 ? a : b).$1)), findsOneWidget);
     expect(find.text('სკოლა ან უნივერსიტეტი'), findsOneWidget);
+    await tapPro(t, 'pro-info');
 
     // guests: who came by; one back closes the sheet
     await spaceTo(t, 'guests');
@@ -1548,6 +1560,7 @@ void main() {
     await settle(t);
     await t.tap(find.text('გიორგი კაპანაძე').first);
     await settle(t);
+    await tapPro(t, 'pro-info');
     await tapPro(t, 'chip-joker');
     expect(find.text('სათამაშო ბარათი'), findsOneWidget);
     expect(find.descendant(of: find.byKey(const ValueKey('gc-nardi')), matching: find.text('1620')), findsOneWidget);
@@ -1564,6 +1577,7 @@ void main() {
 
   testWidgets('my games card leads to Joker', (t) async {
     await meTab(t);
+    await tapPro(t, 'pro-info');
     await tapPro(t, 'chip-joker');
     expect(find.descendant(of: find.byKey(const ValueKey('gc-chess')), matching: find.text('1500')), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('gc-play')));
@@ -1754,6 +1768,7 @@ void main() {
 
   testWidgets('school: added from the chip, then classmates of my year and class first', (t) async {
     final api = await meTab(t);
+    await tapKey(t, 'pro-info');
     await tapKey(t, 'chip-edu');
     expect(find.byType(EduScreen), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('edu-add')));
@@ -1840,6 +1855,7 @@ void main() {
 
   testWidgets('surname: the chip opens its people; its group is made after asking', (t) async {
     final api = await meTab(t);
+    await tapKey(t, 'pro-info');
     await tapKey(t, 'chip-surname');
     expect(find.byType(SurnameScreen), findsOneWidget);
     expect(find.text('1 ადამიანი Peera-ზე'), findsOneWidget);

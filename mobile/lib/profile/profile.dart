@@ -25,7 +25,15 @@ class Profile {
     this.guest = false,
     this.gender,
     this.lastBonus,
+    this.abroad,
+    this.since,
   });
+
+  /// the country they live in, when abroad
+  final String? abroad;
+
+  /// on Peera since
+  final DateTime? since;
 
   /// 'f', 'm' or nothing (from the dating card; the family tree uses it for the kinship words)
   final String? gender;
@@ -96,5 +104,7 @@ class Profile {
         guest: j['privacy'] is Map && (j['privacy'] as Map)['guest'] == true,
         gender: j['gender'] as String?,
         lastBonus: j['last_bonus'] as String?,
+        abroad: (j['abroad'] as String?)?.trim().isEmpty == true ? null : j['abroad'] as String?,
+        since: DateTime.tryParse('${j['created_at'] ?? ''}')?.toLocal(),
       );
 }

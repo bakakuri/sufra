@@ -22,6 +22,7 @@ import '../ui/icons.dart';
 import '../ui/motion.dart';
 import '../ui/net_image.dart';
 import '../ui/theme.dart';
+import '../ui/thought_cloud.dart';
 import '../ui/widgets.dart';
 import 'badges.dart';
 import 'coins.dart';
@@ -72,6 +73,9 @@ class _PersonScreenState extends State<PersonScreen> {
   // what each tab shows, loaded when first opened
   Map<String, dynamic>? cv;
   bool cvLoaded = false;
+
+  /// the information, folded under its button until asked for
+  bool infoOpen = false;
   List<String>? friendIds;
   List<Post>? saved;
   List<(int, String)> folders = const [];
@@ -484,11 +488,9 @@ class _PersonScreenState extends State<PersonScreen> {
                 ]),
                 const SizedBox(height: 6),
                 _meta(context, who, isMe),
-                if ((who.bio ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(who.bio!.trim(), style: TextStyle(fontSize: 15, height: 1.45, color: c.ink)),
-                ],
-                _chips(context, who, isMe),
+                const SizedBox(height: 12),
+                // everything about them, folded under one button (the bio is the thought by the picture)
+                _info(context, who, isMe),
                 const SizedBox(height: 14),
                 _actions(context, who, isMe),
                 const SizedBox(height: 14),
@@ -514,11 +516,30 @@ class _PersonScreenState extends State<PersonScreen> {
   Widget _cover(BuildContext context, Profile who, bool isMe) {
     final c = context.pc;
     final pic = (who.coverUrl ?? '').isNotEmpty ? PImage(who.coverUrl!) : CustomPaint(painter: MountainArt(who.hue + 11));
-    // the picture sits over the cover's lower edge (54 of its 112 points), as on the site
-    return SizedBox(
-      height: 172 + 58,
-      child: Stack(children: [
-        Positioned(left: 0, right: 0, top: 172, bottom: 0, child: ColoredBox(color: c.surface)),
+    // the picture sits over the cover's lower edge (54 of its 112 points), as on the site; beside it, the thought
+    // (the bio) in a cloud coming out of it, as tall as its words need
+    final thought = (who.bio ?? '').trim();
+    return Stack(children: [
+        ColoredBox(
+          color: c.surface,
+          child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 172 + 58),
+          child: (thought.isEmpty && !isMe)
+              ? const SizedBox(width: double.infinity)
+              : Padding(
+                  padding: const EdgeInsets.fromLTRB(150, 172 + 8, 14, 4),
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: ThoughtCloud(
+                      key: const ValueKey('pro-thought'),
+                      text: thought.isEmpty ? 'რას ფიქრობ? დაწერე აქ…' : thought,
+                      placeholder: thought.isEmpty,
+                      onTap: isMe ? () => openPage(context, const EditProfileScreen(), full: true).then((_) => _load()) : null,
+                    ),
+                  ),
+                ),
+          ),
+        ),
         Positioned(
           left: 0,
           right: 0,
@@ -551,8 +572,26 @@ class _PersonScreenState extends State<PersonScreen> {
             ),
           ),
         ),
+        if (thought.isNotEmpty || isMe) ...[
+          // the little bubbles from the picture up to the cloud
+          Positioned(left: 129, top: 172 + 36, child: _bubble(context, 4.5)),
+          Positioned(left: 138, top: 172 + 22, child: _bubble(context, 7)),
+        ],
         Positioned(left: 16, top: 172 - 54, child: _top(context, who, isMe)),
-      ]),
+      ]);
+  }
+
+  Widget _bubble(BuildContext context, double r) {
+    final c = context.pc;
+    return Container(
+      width: r * 2,
+      height: r * 2,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color.alphaBlend(c.accent.withValues(alpha: .07), c.surface),
+        border: Border.all(color: Color.alphaBlend(c.accent.withValues(alpha: .18), c.line)),
+        boxShadow: [BoxShadow(color: c.accent.withValues(alpha: .12), blurRadius: 6, offset: const Offset(0, 2))],
+      ),
     );
   }
 
@@ -652,26 +691,132 @@ class _PersonScreenState extends State<PersonScreen> {
     ]);
   }
 
-  /// school or university, Joker, surname, angel's day, home village
-  Widget _chips(BuildContext context, Profile who, bool isMe) {
+  /// "ინფორმაცია · name": a button that opens everything about them, by kind (study, places, family, dates, games,
+  /// on Peera). On my own page the empty ones are there too, as "+" to fill in.
+  Widget _info(BuildContext context, Profile who, bool isMe) {
+    final c = context.pc;
     final days = nameDaysOf(who.name, who.nameday, who.namedayLabel).map((d) => (d.$1, daysUntil(d.$1))).toList()..sort((a, b) => a.$2.compareTo(b.$2));
-    final chips = <Widget>[
-      for (final e in who.edu) _Chip(icon: e['k'] == 'uni' ? 'school' : 'book', text: _eduText(e), onTap: isMe ? _editEdu : null),
-      if (isMe && who.edu.isEmpty) _Chip(key: const ValueKey('chip-edu'), icon: 'plus', text: 'სკოლა ან უნივერსიტეტი', onTap: _editEdu),
-      if (joker != null)
-        _Chip(
-          key: const ValueKey('chip-joker'),
-          icon: 'cards',
-          text: 'ჯოკერი: ${joker!.rating != null ? '${joker!.rating} რეიტინგი · ' : ''}${joker!.games} თამაში · ${joker!.wins} მოგება',
-          // the games card (the ratings and Joker)
-          onTap: () => gamesCard(context, who, joker, mine: isMe),
-        ),
-      if ((who.surname ?? '').isNotEmpty) _Chip(key: const ValueKey('chip-surname'), icon: 'users', text: 'გვარი: ${who.surname}', onTap: () => openPage(context, SurnameScreen(surname: who.surname!))),
-      if (days.isNotEmpty) _Chip(icon: 'cal', text: 'ანგელოზის დღე: ${mdText(days.first.$1)}'),
-      if ((who.homePlace ?? '').isNotEmpty) _Chip(icon: 'pin', text: who.homePlace!),
+    Future<void> edit() async {
+      await openPage(context, const EditProfileScreen(), full: true);
+      if (mounted) _load();
+    }
+
+    final got = badges.where((b) => badgeList.containsKey(b.$1)).length;
+    final groups = <(String, List<_InfoRow>)>[
+      ('სწავლა', [
+        for (final e in who.edu)
+          _InfoRow(icon: e['k'] == 'uni' ? 'school' : 'book', label: e['k'] == 'uni' ? 'უნივერსიტეტი' : 'სკოლა', value: _eduText(e), onTap: isMe ? _editEdu : null),
+        if (isMe && who.edu.isEmpty) _InfoRow(key: const ValueKey('chip-edu'), icon: 'school', label: 'დაამატე', value: 'სკოლა ან უნივერსიტეტი', add: true, onTap: _editEdu),
+      ]),
+      ('ადგილები', [
+        if ((who.city ?? '').isNotEmpty) _InfoRow(icon: 'pin', label: 'ცხოვრობს', value: who.city!),
+        if (isMe && (who.city ?? '').isEmpty) _InfoRow(icon: 'pin', label: 'დაამატე', value: 'ქალაქი, სადაც ცხოვრობ', add: true, onTap: edit),
+        if ((who.homePlace ?? '').isNotEmpty)
+          _InfoRow(icon: 'home', label: 'წარმოშობით', value: [who.homePlace!, if ((who.homeRegion ?? '').isNotEmpty && who.homeRegion != who.homePlace) who.homeRegion!].join(', ')),
+        if (isMe && (who.homePlace ?? '').isEmpty) _InfoRow(icon: 'home', label: 'დაამატე', value: 'საიდან ხარ წარმოშობით', add: true, onTap: edit),
+        if ((who.abroad ?? '').isNotEmpty) _InfoRow(icon: 'send', label: 'ემიგრაციაში', value: who.abroad!),
+      ]),
+      ('ოჯახი', [
+        if ((who.surname ?? '').isNotEmpty)
+          _InfoRow(key: const ValueKey('chip-surname'), icon: 'users', label: 'გვარი', value: who.surname!, onTap: () => openPage(context, SurnameScreen(surname: who.surname!))),
+        if (isMe && (who.surname ?? '').isEmpty) _InfoRow(icon: 'users', label: 'დაამატე', value: 'გვარი', add: true, onTap: edit),
+        _InfoRow(key: const ValueKey('info-tree'), icon: 'tree', label: 'ოჯახის ხე', value: isMe ? 'ჩემი ოჯახის ხე' : 'ნახვა', onTap: () => openPage(context, TreeScreen(uid: who.id), full: true)),
+      ]),
+      ('თარიღები', [
+        if (days.isNotEmpty)
+          _InfoRow(
+            icon: 'cal',
+            label: 'ანგელოზის დღე',
+            value: mdText(days.first.$1),
+            onTap: isMe ? () => openPage(context, const NamedaysScreen(), full: true).then((_) => _load()) : null,
+          ),
+      ]),
+      ('თამაშები', [
+        if (joker != null)
+          _InfoRow(
+            key: const ValueKey('chip-joker'),
+            icon: 'cards',
+            label: 'ჯოკერი',
+            value: '${joker!.rating != null ? '${joker!.rating} რეიტინგი · ' : ''}${joker!.games} თამაში · ${joker!.wins} მოგება',
+            onTap: () => gamesCard(context, who, joker, mine: isMe),
+          )
+        else
+          _InfoRow(key: const ValueKey('info-games'), icon: 'cards', label: 'სათამაშო ბარათი', value: 'რეიტინგები და ჯოკერი', onTap: () => gamesCard(context, who, joker, mine: isMe)),
+      ]),
+      ('Peera-ზე', [
+        if (who.since != null) _InfoRow(icon: 'clock', label: 'წევრია', value: '${monthNames[who.since!.month - 1]} ${who.since!.year}-დან'),
+        if (who.role == 'admin' || who.role == 'moderator') _InfoRow(icon: 'shield', label: 'როლი', value: who.role == 'admin' ? 'ადმინისტრატორი' : 'მოდერატორი'),
+        if (who.verified)
+          const _InfoRow(icon: 'check', label: 'ვერიფიკაცია', value: 'დადასტურებულია')
+        else if (isMe)
+          _InfoRow(icon: 'shield', label: 'დაამატე', value: 'ვერიფიკაცია', add: true, onTap: () => openPage(context, const VerifyScreen(), full: true)),
+        _InfoRow(icon: 'trophy', label: 'ნიშნები', value: '$got / ${badgeList.length}', onTap: () => badgesSheet(context, who.id, who.name)),
+      ]),
     ];
-    if (chips.isEmpty) return const SizedBox.shrink();
-    return Padding(padding: const EdgeInsets.only(top: 10), child: Wrap(spacing: 6, runSpacing: 6, children: chips));
+    return DecoratedBox(
+      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.line)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: const ValueKey('pro-info'),
+            borderRadius: BorderRadius.circular(18),
+            onTap: () => setState(() => infoOpen = !infoOpen),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              child: Row(children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(12)),
+                  child: PIcon('info', size: 19, color: c.accent),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(children: [
+                      const TextSpan(text: 'ინფორმაცია', style: TextStyle(fontWeight: FontWeight.w800)),
+                      TextSpan(text: '  ·  ', style: TextStyle(color: c.muted)),
+                      TextSpan(text: who.name, style: TextStyle(color: c.accent, fontWeight: FontWeight.w700)),
+                    ]),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 15.5),
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: infoOpen ? .25 : 0,
+                  duration: const Duration(milliseconds: 220),
+                  child: PIcon('chev', size: 18, color: c.muted),
+                ),
+              ]),
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: !infoOpen
+              ? const SizedBox(width: double.infinity)
+              : Padding(
+                  key: const ValueKey('pro-info-all'),
+                  padding: const EdgeInsets.fromLTRB(14, 0, 10, 10),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    for (final g in groups)
+                      if (g.$2.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10, bottom: 2),
+                          child: Text(g.$1, style: TextStyle(color: c.muted, fontSize: 12.5, fontWeight: FontWeight.w800)),
+                        ),
+                        ...g.$2,
+                      ],
+                  ]),
+                ),
+        ),
+      ]),
+    );
   }
 
   String _eduText(Map<String, dynamic> e) {
@@ -1141,25 +1286,38 @@ class _PersonScreenState extends State<PersonScreen> {
   }
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({super.key, required this.icon, required this.text, this.onTap});
-  final String icon, text;
+/// One line of the information: its icon, what it is, its value (a "+" line on my page for what is still empty).
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({super.key, required this.icon, required this.label, required this.value, this.onTap, this.add = false});
+  final String icon, label, value;
   final VoidCallback? onTap;
+  final bool add;
   @override
   Widget build(BuildContext context) {
     final c = context.pc;
     return Material(
-      color: c.sunk,
-      borderRadius: BorderRadius.circular(999),
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            PIcon(icon, size: 14, color: c.accent),
-            const SizedBox(width: 5),
-            Flexible(child: Text(text, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: c.ink))),
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          child: Row(children: [
+            Container(
+              width: 34,
+              height: 34,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: add ? c.sunk : c.accentSoft, borderRadius: BorderRadius.circular(11)),
+              child: PIcon(add ? 'plus' : icon, size: 17, color: add ? c.muted : c.accent),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(label, style: TextStyle(color: c.muted, fontSize: 12)),
+                Text(value, style: TextStyle(fontSize: 14.5, fontWeight: add ? FontWeight.w600 : FontWeight.w700, color: add ? c.accent : c.ink)),
+              ]),
+            ),
+            if (onTap != null) PIcon('chev', size: 16, color: c.muted),
           ]),
         ),
       ),
