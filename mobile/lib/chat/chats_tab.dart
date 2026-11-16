@@ -90,7 +90,7 @@ class _ChatsTabState extends State<ChatsTab> {
             ]);
           } else {
             body = ListView(padding: const EdgeInsets.only(top: 4, bottom: 16), children: [
-              if (all.length > 3)
+              if (all.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 4, 14, 6),
                   child: TextField(
@@ -101,18 +101,18 @@ class _ChatsTabState extends State<ChatsTab> {
                       hintText: 'მოძებნე მიმოწერაში',
                       isDense: true,
                       filled: true,
-                      fillColor: c.surface,
-                      prefixIcon: Padding(padding: const EdgeInsets.all(11), child: PIcon('search', size: 18, color: c.muted)),
-                      prefixIconConstraints: const BoxConstraints(minWidth: 40),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.line)),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.accent, width: 1.5)),
+                      fillColor: c.sunk,
+                      prefixIcon: Padding(padding: const EdgeInsets.all(12), child: PIcon('search', size: 19, color: c.muted)),
+                      prefixIconConstraints: const BoxConstraints(minWidth: 44),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(26), borderSide: BorderSide.none),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(26), borderSide: BorderSide(color: c.accent, width: 1.5)),
                     ),
                   ),
                 ),
               if (online.isNotEmpty && words.isEmpty)
                 SizedBox(
-                  height: 92,
+                  height: 104,
                   child: ListView.separated(
                     key: const ValueKey('ch-online'),
                     scrollDirection: Axis.horizontal,
@@ -128,9 +128,9 @@ class _ChatsTabState extends State<ChatsTab> {
                           key: ValueKey('ch-on-${p.id}'),
                           onTap: () => chatWith(context, p.id),
                           child: SizedBox(
-                            width: 66,
+                            width: 72,
                             child: Column(children: [
-                              Avatar(p: p, size: 56, online: true),
+                              Avatar(p: p, size: 62, online: true),
                               const SizedBox(height: 5),
                               Text(p.name.split(' ').first, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: c.muted, fontWeight: FontWeight.w600)),
                             ]),
@@ -146,17 +146,15 @@ class _ChatsTabState extends State<ChatsTab> {
               if (!archived && arch.isNotEmpty && words.isEmpty)
                 Pressable(
                   onTap: () => openPage(context, const ChatsTab(archived: true)),
-                  child: Container(
-                    margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-                    padding: const EdgeInsets.all(10),
-                    decoration: cardLook(context, radius: 18, color: c.sunk),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 14, 8),
                     child: Row(children: [
                       Container(
-                        width: 50,
-                        height: 50,
+                        width: 58,
+                        height: 58,
                         alignment: Alignment.center,
-                        decoration: BoxDecoration(color: c.surface, shape: BoxShape.circle),
-                        child: PIcon('archive', size: 23, color: c.muted),
+                        decoration: BoxDecoration(color: c.sunk, shape: BoxShape.circle),
+                        child: PIcon('archive', size: 24, color: c.muted),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -183,8 +181,8 @@ class _ChatsTabState extends State<ChatsTab> {
   }
 }
 
-/// A conversation in the list: a card with the picture (the green dot when they are online), the name and when, what
-/// was said last, how many are unread; the unread ones lifted a little and tinted.
+/// A conversation in the list, as in Messenger: the big picture (the green dot when they are online), the name with
+/// when at its end, what was said last; the unread ones in bold with the accent's dot; a press lights the row.
 class ChatRow extends StatelessWidget {
   const ChatRow({super.key, required this.chat});
   final Chat chat;
@@ -201,63 +199,63 @@ class ChatRow extends StatelessWidget {
             : '';
     final last = '$from${chat.lastText}';
     final fire = app.chats.streaks[chat.convId];
-    return Pressable(
-      onTap: () => openChat(context, chat.convId),
-      onLongPress: () => chatMenu(context, chat),
-      scale: .98,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-        padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
-        decoration: cardLook(context, radius: 18, raised: unread, color: unread ? Color.alphaBlend(c.accent.withValues(alpha: .07), c.surface) : null),
-        child: Row(children: [
-          if (other != null) Avatar(p: other, size: 54, online: other.online) else GroupAvatar(id: chat.convId, size: 54),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Flexible(
-                  child: Text(title.isEmpty ? 'უსახელო' : title,
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15.5, fontWeight: unread ? FontWeight.w800 : FontWeight.w700)),
-                ),
-                if (other?.verified == true) const Verified(size: 14),
-                if (fire != null) Padding(padding: const EdgeInsets.only(left: 5), child: Text('🔥$fire', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
-                if (chat.muted) Padding(padding: const EdgeInsets.only(left: 5), child: PIcon('mute', size: 15, color: c.muted)),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => openChat(context, chat.convId),
+        onLongPress: () => chatMenu(context, chat),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 14, 8),
+          child: Row(children: [
+            if (other != null) Avatar(p: other, size: 58, online: other.online) else GroupAvatar(id: chat.convId, size: 58),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Flexible(
+                    child: Text(title.isEmpty ? 'უსახელო' : title,
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 16, fontWeight: unread ? FontWeight.w800 : FontWeight.w600)),
+                  ),
+                  if (other?.verified == true) const Verified(size: 14),
+                  if (fire != null) Padding(padding: const EdgeInsets.only(left: 5), child: Text('🔥$fire', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
+                  if (chat.muted) Padding(padding: const EdgeInsets.only(left: 5), child: PIcon('mute', size: 15, color: c.muted)),
+                  const SizedBox(width: 8),
+                  if (chat.lastAt != null)
+                    Text(ago(chat.lastAt!), style: TextStyle(color: unread ? c.accent : c.muted, fontSize: 12.5, fontWeight: unread ? FontWeight.w800 : FontWeight.w500)),
+                ]),
+                const SizedBox(height: 3),
+                Row(children: [
+                  Expanded(
+                    child: Text(last,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: unread ? c.ink : c.muted, fontSize: 14, fontWeight: unread ? FontWeight.w700 : FontWeight.w400)),
+                  ),
+                  if (unread)
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: .4, end: 1),
+                      duration: const Duration(milliseconds: 420),
+                      curve: Curves.elasticOut,
+                      builder: (_, v, ch) => Transform.scale(scale: v, child: ch),
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 8),
+                        constraints: const BoxConstraints(minWidth: 22),
+                        height: 22,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          gradient: chat.muted ? null : LinearGradient(colors: [c.accent, Color.lerp(c.accent, const Color(0xFF8B5CF6), .45)!]),
+                          color: chat.muted ? c.muted : null,
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Text(chat.unread > 99 ? '99+' : '${chat.unread}', style: TextStyle(color: c.onAccent, fontWeight: FontWeight.w800, fontSize: 11.5)),
+                      ),
+                    ),
+                ]),
               ]),
-              const SizedBox(height: 3),
-              Row(children: [
-                Flexible(
-                  child: Text(last,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: unread ? c.ink : c.muted, fontSize: 14, fontWeight: unread ? FontWeight.w600 : FontWeight.w400)),
-                ),
-                if (chat.lastAt != null) Text(' · ${ago(chat.lastAt!)}', style: TextStyle(color: unread ? c.accent : c.muted, fontSize: 13, fontWeight: unread ? FontWeight.w700 : FontWeight.w400)),
-              ]),
-            ]),
-          ),
-          if (unread)
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: .4, end: 1),
-              duration: const Duration(milliseconds: 420),
-              curve: Curves.elasticOut,
-              builder: (_, v, ch) => Transform.scale(scale: v, child: ch),
-              child: Container(
-                margin: const EdgeInsets.only(left: 8),
-                constraints: const BoxConstraints(minWidth: 24),
-                height: 24,
-                padding: const EdgeInsets.symmetric(horizontal: 7),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  gradient: chat.muted ? null : LinearGradient(colors: [c.accent, Color.lerp(c.accent, const Color(0xFFEC4899), .45)!]),
-                  color: chat.muted ? c.muted : null,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: chat.muted ? null : [BoxShadow(color: c.accent.withValues(alpha: .35), blurRadius: 8, offset: const Offset(0, 3))],
-                ),
-                child: Text(chat.unread > 99 ? '99+' : '${chat.unread}', style: TextStyle(color: c.onAccent, fontWeight: FontWeight.w800, fontSize: 12)),
-              ),
             ),
-        ]),
+          ]),
+        ),
       ),
     );
   }

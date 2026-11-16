@@ -323,7 +323,7 @@ class _FlowState extends State<_Flow> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, box) {
       final cw = box.maxWidth;
-      final w = (cw * .47).clamp(160.0, 230.0).toDouble(), h = w * 1.32;
+      final w = (cw * .47).clamp(160.0, 230.0).toDouble(), h = w * 1.4;
       final first = w * .62, gap = ((cw / 2 - first - w * .1) / 1.5).clamp(14.0, 64.0).toDouble();
       _step = first;
       double xOf(double a) => a <= 1 ? a * first : first + (a - 1) * gap;
@@ -443,10 +443,16 @@ class _FlowCard extends StatelessWidget {
               const SizedBox(height: 3),
               Text(g.about, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: white.withValues(alpha: .92), fontSize: 12, height: 1.3)),
               const SizedBox(height: 8),
-              Wrap(spacing: 4, runSpacing: 4, children: [
-                for (final t in shownNames) _Pill(t),
-                if (names.length > shownNames.length) _Pill('+${names.length - shownNames.length}', strong: true),
-              ]),
+              // the pages by name, as many as fit (the rest cut off, never spilling out of the card)
+              Flexible(
+                flex: 4,
+                child: ClipRect(
+                  child: Wrap(spacing: 4, runSpacing: 4, children: [
+                    for (final t in shownNames) _Pill(t),
+                    if (names.length > shownNames.length) _Pill('+${names.length - shownNames.length}', strong: true),
+                  ]),
+                ),
+              ),
             ]),
           ),
           // the side cards a little darker, as if turned from the light

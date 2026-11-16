@@ -861,11 +861,11 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               actions: [
                 if (ch?.other != null) ...[
-                  IconBtn('phone', key: const ValueKey('chat-call'), label: 'ხმოვანი ზარი', onTap: () => callPerson(context, ch!.other!, video: false)),
-                  IconBtn('video', key: const ValueKey('chat-video'), label: 'ვიდეოზარი', onTap: () => callPerson(context, ch!.other!, video: true)),
+                  IconBtn('phone', key: const ValueKey('chat-call'), label: 'ხმოვანი ზარი', color: c.accent, onTap: () => callPerson(context, ch!.other!, video: false)),
+                  IconBtn('video', key: const ValueKey('chat-video'), label: 'ვიდეოზარი', color: c.accent, onTap: () => callPerson(context, ch!.other!, video: true)),
                 ] else if (ch?.isGroup == true)
-                  IconBtn('video', key: const ValueKey('chat-gcall'), label: 'ჯგუფური ვიდეოზარი', onTap: _groupCall),
-                IconBtn('more', key: const ValueKey('chat-more'), label: 'მეტი', onTap: _chatMore),
+                  IconBtn('video', key: const ValueKey('chat-gcall'), label: 'ჯგუფური ვიდეოზარი', color: c.accent, onTap: _groupCall),
+                IconBtn('more', key: const ValueKey('chat-more'), label: 'მეტი', color: c.accent, onTap: _chatMore),
               ],
             ),
             body: Column(children: [
@@ -910,7 +910,22 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               recording
                   ? _RecordBar(ms: recMs, level: recLevel, onCancel: _voiceCancel, onSend: _voiceSend)
-                  : _Composer(field: field, focus: focus, sending: sending, editing: editing != null, onSend: _sendText, onMore: _more, onSticker: _sticker, onMic: _voice),
+                  : _Composer(
+                      field: field,
+                      focus: focus,
+                      sending: sending,
+                      editing: editing != null,
+                      onSend: _sendText,
+                      onMore: _more,
+                      onSticker: _sticker,
+                      onMic: _voice,
+                      onCamera: () => _sendPhoto(camera: true),
+                      onGallery: _sendPhoto,
+                      onLike: () {
+                        _send(body: '👍');
+                        if (scroll.hasClients) scroll.jumpTo(0);
+                      },
+                    ),
             ]),
           ),
         );
@@ -956,22 +971,21 @@ class _ChatScreenState extends State<ChatScreen> {
         final m = msgs[i];
         final newer = i > 0 ? msgs[i - 1] : null, olderM = i + 1 < msgs.length ? msgs[i + 1] : null;
         final dayStart = olderM == null || !_sameDay(olderM.createdAt, m.createdAt);
-        final runStart = dayStart || olderM.sender != m.sender || olderM.kind == 'system';
-        final runEnd = newer == null || newer.sender != m.sender || !_sameDay(newer.createdAt, m.createdAt) || newer.kind == 'system';
+        // a quiet line with the time when half an hour or more has gone by, as in Messenger
+        final pause = !dayStart && m.createdAt.difference(olderM.createdAt) >= const Duration(minutes: 30);
+        final runStart = dayStart || pause || olderM.sender != m.sender || olderM.kind == 'system';
+        final runEnd = newer == null ||
+            newer.sender != m.sender ||
+            !_sameDay(newer.createdAt, m.createdAt) ||
+            newer.kind == 'system' ||
+            newer.createdAt.difference(m.createdAt) >= const Duration(minutes: 30);
         final q = m.replyTo == null || m.deleted ? null : _find(m.replyTo!);
         return Column(key: _keys.putIfAbsent(m.id, GlobalKey.new), children: [
-          if (dayStart)
+          if (dayStart || pause)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
-                decoration: BoxDecoration(
-                  color: c.surface.withValues(alpha: .92),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [BoxShadow(color: const Color(0xFF141830).withValues(alpha: .08), blurRadius: 10, offset: const Offset(0, 3))],
-                ),
-                child: Text(dayLabel(m.createdAt), style: TextStyle(color: c.muted, fontSize: 12.5, fontWeight: FontWeight.w700)),
-              ),
+              padding: const EdgeInsets.fromLTRB(0, 16, 0, 10),
+              child: Text(dayStart ? '${dayLabel(m.createdAt)} · ${hhmm(m.createdAt)}' : hhmm(m.createdAt),
+                  style: TextStyle(color: c.muted, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: .3)),
             ),
           _PopIn(
             fresh: m.createdAt.isAfter(_opened),
@@ -988,8 +1002,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 mine: m.sender == me,
                 who: app.people[m.sender],
                 showName: group && runStart && m.sender != me,
-                showAvatar: group && runEnd && m.sender != me,
+                showAvatar: runEnd && m.sender != me,
                 group: group,
+                top: runStart,
                 tail: runEnd,
                 reacts: reacts[m.id],
                 me: me,
@@ -1011,7 +1026,17 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Padding(
                 padding: const EdgeInsets.only(right: 6, bottom: 2),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  PIcon(seenText == 'გაგზავნილია' ? 'check' : 'eye', size: 13, color: c.muted),
+                  if (seenText != 'გაგზავნილია' && !group && ch?.other != null && app.people[ch!.other!] != null) ...[
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 420),
+                      curve: Curves.easeOutBack,
+                      builder: (_, v, w) => Transform.scale(scale: v, child: w),
+                      child: Avatar(p: app.people[ch.other!]!, size: 16),
+                    ),
+                    const SizedBox(width: 4),
+                  ] else
+                    PIcon(seenText == 'გაგზავნილია' ? 'check' : 'eye', size: 13, color: c.muted),
                   const SizedBox(width: 3),
                   Text(seenText, key: const ValueKey('seen'), style: TextStyle(color: c.muted, fontSize: 11.5)),
                 ]),
@@ -1088,6 +1113,7 @@ class _Bubble extends StatelessWidget {
     this.showName = false,
     this.showAvatar = false,
     this.group = false,
+    this.top = true,
     this.tail = true,
     this.reacts,
     this.quote,
@@ -1096,6 +1122,16 @@ class _Bubble extends StatelessWidget {
   });
   final Message m;
   final bool mine, showName, showAvatar, group, tail;
+
+  /// the first of a run of messages from one person (its outer top corner round)
+  final bool top;
+
+  /// one to three emojis and nothing else
+  static bool _bigEmoji(String b) {
+    final t = b.trim();
+    if (t.isEmpty || t.characters.length > 3) return false;
+    return !RegExp(r'[\p{L}\p{N}\p{P}]', unicode: true).hasMatch(t);
+  }
   final Profile? who;
   final String me;
   final Map<String, String>? reacts;
@@ -1124,13 +1160,14 @@ class _Bubble extends StatelessWidget {
         child: Text(m.body, textAlign: TextAlign.center, style: TextStyle(color: c.muted, fontSize: 13)),
       );
     }
-    final bg = mine ? c.accent : c.surface, fg = mine ? c.onAccent : c.ink;
-    const r = Radius.circular(20), small = Radius.circular(6);
+    final bg = mine ? c.accent : c.sunk, fg = mine ? c.onAccent : c.ink;
+    // as in Messenger: a run of messages from one person reads as one shape, the joined corners small
+    const r = Radius.circular(20), small = Radius.circular(5);
     final shape = BorderRadius.only(
-      topLeft: r,
-      topRight: r,
-      bottomLeft: !mine && tail ? small : r,
-      bottomRight: mine && tail ? small : r,
+      topLeft: !mine && !top ? small : r,
+      topRight: mine && !top ? small : r,
+      bottomLeft: !mine && !tail ? small : r,
+      bottomRight: mine && !tail ? small : r,
     );
     final md = m.media ?? const {};
     final time = Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1277,6 +1314,15 @@ class _Bubble extends StatelessWidget {
           note: 'საიტზე ნახე',
         ),
       );
+    } else if (_bigEmoji(m.body) && quote == null && md['fwd'] == null) {
+      // a few emojis alone stand large, with no bubble, as in Messenger
+      inner = TweenAnimationBuilder<double>(
+        tween: Tween(begin: .4, end: 1),
+        duration: const Duration(milliseconds: 520),
+        curve: Curves.elasticOut,
+        builder: (_, v, ch) => Transform.scale(scale: v, alignment: mine ? Alignment.bottomRight : Alignment.bottomLeft, child: ch),
+        child: small2(Text(m.body.trim(), style: const TextStyle(fontSize: 44, height: 1.1))),
+      );
     } else {
       final style = TextStyle(fontSize: 15.5, height: 1.35, color: fg);
       inner = _box(context, shape, bg, mine ? RichBody(m.body, style: style) : TranslatableBody(m.body, style: style, compact: true), time);
@@ -1340,10 +1386,10 @@ class _Bubble extends StatelessWidget {
         mainAxisAlignment: mine ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (group && !mine)
+          if (!mine)
             SizedBox(
               width: 36,
-              child: showAvatar && who != null ? Align(alignment: Alignment.bottomLeft, child: Avatar(p: who!, size: 30)) : null,
+              child: showAvatar && who != null ? Align(alignment: Alignment.bottomLeft, child: Avatar(p: who!, size: 28)) : null,
             ),
           Flexible(
             child: Column(crossAxisAlignment: mine ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
@@ -1372,13 +1418,7 @@ class _Bubble extends StatelessWidget {
         gradient: lit ? LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(c.accent, const Color(0xFF8B5CF6), .35)!, c.accent]) : null,
         borderRadius: shape,
         border: mine || !dark ? null : Border.all(color: c.line),
-        boxShadow: [
-          BoxShadow(
-            color: lit ? c.accent.withValues(alpha: .28) : const Color(0xFF141830).withValues(alpha: dark ? .3 : .07),
-            blurRadius: lit ? 12 : 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        boxShadow: lit ? [BoxShadow(color: c.accent.withValues(alpha: .22), blurRadius: 10, offset: const Offset(0, 3))] : null,
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
         Align(alignment: Alignment.centerLeft, widthFactor: 1, child: body),
@@ -1468,7 +1508,7 @@ class _ReplyBar extends StatelessWidget {
   }
 }
 
-class _Composer extends StatelessWidget {
+class _Composer extends StatefulWidget {
   const _Composer({
     required this.field,
     required this.focus,
@@ -1478,85 +1518,120 @@ class _Composer extends StatelessWidget {
     required this.onMore,
     required this.onSticker,
     required this.onMic,
+    required this.onCamera,
+    required this.onGallery,
+    required this.onLike,
   });
   final TextEditingController field;
   final FocusNode focus;
   final bool sending, editing;
-  final VoidCallback onSend, onMore, onSticker, onMic;
+  final VoidCallback onSend, onMore, onSticker, onMic, onCamera, onGallery, onLike;
+  @override
+  State<_Composer> createState() => _ComposerState();
+}
+
+/// The writing line as in Messenger: with nothing written, the plus, the camera, the gallery and the microphone, and a
+/// thumb that sends 👍 at once; while writing, the tools fold into one arrow (a tap opens them again) and the thumb turns
+/// into the send button.
+class _ComposerState extends State<_Composer> {
+  bool tools = false;
+
   @override
   Widget build(BuildContext context) {
-    final c = context.pc;
+    final c = context.pc, w = widget;
+    Widget tool(String icon, String key, String label, VoidCallback onTap) => IconBtn(icon, key: ValueKey(key), label: label, size: 23, color: c.accent, onTap: onTap);
     return Container(
-      decoration: BoxDecoration(color: c.surface, border: Border(top: BorderSide(color: c.line))),
+      decoration: BoxDecoration(color: c.surface, border: Border(top: BorderSide(color: c.line.withValues(alpha: .6)))),
       child: SafeArea(
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(2, 6, 6, 6),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            sending
-                ? const Padding(padding: EdgeInsets.all(14), child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2.2)))
-                : IconBtn('plus', key: const ValueKey('chat-plus'), label: 'დამატება', color: c.vine, onTap: onMore),
-            Expanded(
-              child: TextField(
-                controller: field,
-                focusNode: focus,
-                minLines: 1,
-                maxLines: 5,
-                maxLength: 4000,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  hintText: 'შეტყობინება…',
-                  isDense: true,
-                  counterText: '',
-                  filled: true,
-                  fillColor: c.sunk,
-                  contentPadding: const EdgeInsets.fromLTRB(16, 11, 4, 11),
-                  suffixIcon: IconBtn('smile', key: const ValueKey('chat-stk'), label: 'სმაილები და სტიკერები', size: 22, color: c.muted, onTap: onSticker),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide(color: c.accent, width: 1.5)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 4),
-            ListenableBuilder(
-              listenable: field,
-              builder: (_, __) {
-                final can = field.text.trim().isNotEmpty;
-                // with nothing written the button records a voice message, as in the site's chat
-                return Semantics(
-                  key: ValueKey(can ? 'chat-send' : 'chat-mic'),
-                  button: true,
-                  label: can ? (editing ? 'შენახვა' : 'გაგზავნა') : 'ხმოვანი შეტყობინება',
-                  excludeSemantics: true,
-                  child: GestureDetector(
-                    onTap: can ? onSend : (sending ? null : onMic),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutCubic,
-                      width: 44,
-                      height: 44,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: can ? null : c.accentSoft,
-                        gradient: can ? LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(c.accent, const Color(0xFF8B5CF6), .35)!, c.accent]) : null,
-                        shape: BoxShape.circle,
-                        boxShadow: can ? [BoxShadow(color: c.accent.withValues(alpha: .35), blurRadius: 10, offset: const Offset(0, 3))] : null,
-                      ),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 220),
-                        transitionBuilder: (ch, a) => ScaleTransition(scale: CurvedAnimation(parent: a, curve: Curves.easeOutBack), child: FadeTransition(opacity: a, child: ch)),
-                        child: can
-                            ? (editing
-                                ? PIcon('check', key: const ValueKey('i-ok'), size: 22, color: c.onAccent, stroke: 2.2)
-                                : Padding(key: const ValueKey('i-send'), padding: const EdgeInsets.only(left: 2), child: PIcon('send', size: 21, color: c.onAccent, stroke: 2)))
-                            : PIcon('mic', key: const ValueKey('i-mic'), size: 22, color: c.accent, stroke: 2),
-                      ),
+          child: ListenableBuilder(
+            listenable: w.field,
+            builder: (context, _) {
+              final can = w.field.text.trim().isNotEmpty;
+              final open = !can || tools;
+              return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                if (w.sending)
+                  const Padding(padding: EdgeInsets.all(14), child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2.2)))
+                else
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    child: open
+                        ? Row(mainAxisSize: MainAxisSize.min, children: [
+                            tool('plus', 'chat-plus', 'დამატება', w.onMore),
+                            tool('camera', 'chat-cam', 'კამერა', w.onCamera),
+                            tool('image', 'chat-gal', 'ფოტო', w.onGallery),
+                            tool('mic', 'chat-mic', 'ხმოვანი შეტყობინება', w.onMic),
+                          ])
+                        : IconBtn('chev', key: const ValueKey('chat-tools'), label: 'ხელსაწყოები', size: 23, color: c.accent, onTap: () => setState(() => tools = true)),
+                  ),
+                Expanded(
+                  child: TextField(
+                    controller: w.field,
+                    focusNode: w.focus,
+                    minLines: 1,
+                    maxLines: 5,
+                    maxLength: 4000,
+                    textCapitalization: TextCapitalization.sentences,
+                    onTap: () {
+                      if (tools) setState(() => tools = false);
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'შეტყობინება…',
+                      isDense: true,
+                      counterText: '',
+                      filled: true,
+                      fillColor: c.sunk,
+                      contentPadding: const EdgeInsets.fromLTRB(16, 11, 4, 11),
+                      suffixIcon: IconBtn('smile', key: const ValueKey('chat-stk'), label: 'სმაილები და სტიკერები', size: 22, color: c.accent, onTap: w.onSticker),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide(color: c.accent.withValues(alpha: .5), width: 1.2)),
                     ),
                   ),
-                );
-              },
-            ),
-          ]),
+                ),
+                const SizedBox(width: 2),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  transitionBuilder: (ch, a) => ScaleTransition(scale: CurvedAnimation(parent: a, curve: Curves.easeOutBack), child: FadeTransition(opacity: a, child: ch)),
+                  child: can
+                      ? Semantics(
+                          key: const ValueKey('chat-send'),
+                          button: true,
+                          label: w.editing ? 'შენახვა' : 'გაგზავნა',
+                          excludeSemantics: true,
+                          child: GestureDetector(
+                            onTap: w.onSend,
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(c.accent, const Color(0xFF8B5CF6), .35)!, c.accent]),
+                                shape: BoxShape.circle,
+                                boxShadow: [BoxShadow(color: c.accent.withValues(alpha: .35), blurRadius: 10, offset: const Offset(0, 3))],
+                              ),
+                              child: w.editing
+                                  ? PIcon('check', size: 22, color: c.onAccent, stroke: 2.2)
+                                  : Padding(padding: const EdgeInsets.only(left: 2), child: PIcon('send', size: 21, color: c.onAccent, stroke: 2)),
+                            ),
+                          ),
+                        )
+                      : Semantics(
+                          key: const ValueKey('chat-like'),
+                          button: true,
+                          label: 'მოწონების გაგზავნა',
+                          excludeSemantics: true,
+                          child: GestureDetector(
+                            onTap: w.sending ? null : w.onLike,
+                            child: const SizedBox(width: 44, height: 44, child: Center(child: Text('👍', style: TextStyle(fontSize: 27)))),
+                          ),
+                        ),
+                ),
+              ]);
+            },
+          ),
         ),
       ),
     );

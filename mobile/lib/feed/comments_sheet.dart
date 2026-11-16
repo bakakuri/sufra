@@ -67,6 +67,10 @@ class _CommentsPanelState extends State<CommentsPanel> {
   final focus = FocusNode();
   final scroll = ScrollController();
 
+  /// the answer I just wrote, brought into view
+  int? _just;
+  final _justKey = GlobalKey();
+
   int get _id => widget.post.id;
   int get _loaded => tops.length + replies.values.fold<int>(0, (n, l) => n + l.length);
 
@@ -153,7 +157,11 @@ class _CommentsPanelState extends State<CommentsPanel> {
         sending = false;
       });
       app.posts.commented(_id);
-      if (parent == null && scroll.hasClients) scroll.animateTo(0, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
+      if (parent == null) {
+        if (scroll.hasClients) scroll.animateTo(0, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
+      } else {
+        _show(c.id);
+      }
       return true;
     } catch (e) {
       if (!mounted) return false;
@@ -161,6 +169,27 @@ class _CommentsPanelState extends State<CommentsPanel> {
       toast(context, errText(e));
       return false;
     }
+  }
+
+  /// an answer just written: the list goes to it (built or not yet)
+  void _show(int id) {
+    _just = id;
+    var tries = 0;
+    void look() {
+      if (!mounted || tries++ > 12) return;
+      final ctx = _justKey.currentContext;
+      if (ctx != null && ctx.mounted) {
+        Scrollable.ensureVisible(ctx, alignment: .5, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
+        return;
+      }
+      if (scroll.hasClients) {
+        final pos = scroll.position;
+        scroll.jumpTo((pos.pixels + pos.viewportDimension * .8).clamp(0.0, pos.maxScrollExtent));
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) => look());
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => look());
   }
 
   Future<void> _send() async {
@@ -254,7 +283,9 @@ class _CommentsPanelState extends State<CommentsPanel> {
     final me = context.me.id, staff = isStaff(context), author = widget.post.author;
     return _Arrive(
       key: ValueKey('cm-${cm.id}'),
-      child: CommentTile(
+      child: KeyedSubtree(
+        key: cm.id == _just ? _justKey : null,
+        child: CommentTile(
         c: cm,
         reply: reply,
         liked: liked.contains(cm.id),
@@ -263,6 +294,7 @@ class _CommentsPanelState extends State<CommentsPanel> {
         onReply: () => _reply(cm),
         onLike: () => _like(cm),
         onDelete: () => _delete(cm),
+      ),
       ),
     );
   }
