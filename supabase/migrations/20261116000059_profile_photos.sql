@@ -106,5 +106,6 @@ language sql stable security invoker set search_path = '' as $f$
   from public.photo_albums a where a.owner = p_user order by a.created_at desc
 $f$;
 
-revoke execute on function public.can_see_photos(uuid), public.photo_access(uuid), public.photo_albums_of(uuid) from anon;
+revoke execute on function public.can_see_photos(uuid), public.photo_access(uuid), public.photo_albums_of(uuid) from public, anon;
+revoke execute on function private.photo_caps() from public, anon, authenticated;
 grant execute on function public.can_see_photos(uuid), public.photo_access(uuid), public.photo_albums_of(uuid) to authenticated;
