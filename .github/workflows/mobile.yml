@@ -47,7 +47,9 @@ jobs:
         run: curl -sSfL -o test/fonts/NotoColorEmoji.ttf https://github.com/googlefonts/noto-emoji/raw/main/2D/fonts/Noto-COLRv1.ttf || echo "no emoji font"
       - name: Tests and screen pictures
         if: always()
-        run: set -o pipefail; flutter test --update-goldens --reporter expanded 2>&1 | tee ../out/test.txt
+        # a test that hangs fails after two minutes instead of holding the run
+        timeout-minutes: 20
+        run: set -o pipefail; flutter test --update-goldens --timeout 120s --reporter expanded 2>&1 | tee ../out/test.txt
       - name: Signing key
         env:
           KS: ${{ secrets.PEERA_KEYSTORE }}
