@@ -41,6 +41,9 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'calendar.dart';
 import 'service_art.dart';
+import 'services_menu.dart';
+
+export 'services_menu.dart' show servicesMenu;
 
 /// page, icon, title, under the title, and how its number reads (null: no number)
 typedef Service = (String, String, String, String, String Function(int)?);
@@ -64,43 +67,6 @@ final List<Service> stripServices = [
   ('pages', 'mega', 'არხები', 'სიახლეები და ბიზნესი', (n) => '$n გვერდი'),
   ('friends', 'user', 'მეგობრები', 'კლასელები, კურსელები, ნაცნობები', (n) => '$n ახალი მოთხოვნა'),
   ('calendar', 'gift', 'კალენდარი', 'დაბადების და სახელის დღეები', null),
-];
-
-/// page, icon, title, and the room kind for rooms (the menu of all services, app.js SVC)
-const List<(String, String, String, String?)> allServices = [
-  ('study', 'school', 'სწავლა', null),
-  ('schedule', 'cal', 'ლექციების ცხრილი', null),
-  ('exams', 'clock', 'გამოცდები და დავალებები', null),
-  ('notes', 'book', 'კონსპექტები', null),
-  ('classmates', 'school', 'კლასელები და კურსელები', null),
-  ('tips', 'help', 'სასწავლო რჩევები', null),
-  ('rooms', 'video', 'სასწავლო ოთახი', null),
-  ('rooms', 'mic', 'დისკუსია', 'birja'),
-  ('rooms', 'live', 'ლაივი', 'live'),
-  ('groups', 'users', 'ჯგუფები', null),
-  ('friends', 'users', 'მეგობრები', null),
-  ('map', 'globe', 'ლაივ რუკა', null),
-  ('events', 'cal', 'შეხვედრები', null),
-  ('jobs', 'school', 'ვაკანსიები და CV', null),
-  ('pages', 'mega', 'არხები და გვერდები', null),
-  ('albums', 'image', 'ალბომები', null),
-  ('market', 'store', 'ბაზრობა', null),
-  ('places', 'map', 'ადგილები', null),
-  ('sport', 'trophy', 'მატჩის ოთახი', null),
-  ('help', 'help', 'დახმარება', null),
-  ('rides', 'pin', 'ერთად წავიდეთ', null),
-  ('recipes', 'book', 'ქართული სამზარეულო', null),
-  ('toasts', 'wine', 'სადღეგრძელოები', null),
-  ('namedays', 'cal', 'სახელის დღეები', null),
-  ('tree', 'tree', 'ოჯახის ხე', null),
-  ('calendar', 'gift', 'კალენდარი', null),
-  ('tour', 'trophy', 'ტურნირი', null),
-  ('saved', 'bookmark', 'შენახული', null),
-  ('storyarch', 'archive', 'ისტორიების არქივი', null),
-  ('drafts', 'clock', 'დრაფტები', null),
-  ('coins', 'coin', 'მონეტები', null),
-  ('verify', 'shield', 'ვერიფიკაცია', null),
-  ('settings', 'gear', 'პარამეტრები', null),
 ];
 
 /// the services the app opens itself; the others open on the site
@@ -462,80 +428,13 @@ class _ServicesStripState extends State<ServicesStrip> with SingleTickerProvider
   }
 }
 
-/// All the services, in a grid; the ones the app does not have yet carry a small arrow (they open on the site).
-Future<void> servicesMenu(BuildContext context) {
-  final staff = context.me.role == 'admin' || context.me.role == 'moderator';
-  final list = <(String, String, String, String?)>[for (final s in allServices) if (pageOk(context, s.$1)) s, if (staff) ('admin', 'shield', 'ადმინ პანელი', null)];
-  return showModalBottomSheet<void>(
-    context: context,
-    useRootNavigator: true,
-    isScrollControlled: true,
-    showDragHandle: true,
-    backgroundColor: context.pc.surface,
-    builder: (s) {
-      final c = s.pc;
-      return SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(s).height * .85),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 8), child: Text('სერვისები', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
-            Flexible(
-              child: GridView.count(
-                crossAxisCount: 3,
-                shrinkWrap: true,
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: .98,
-                children: [
-                  for (final x in list)
-                    Material(
-                      color: c.sunk,
-                      borderRadius: BorderRadius.circular(16),
-                      child: InkWell(
-                        key: ValueKey('menu-${x.$1}${x.$4 != null ? '-${x.$4}' : ''}'),
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () {
-                          Navigator.of(s).pop();
-                          openService(context, x.$1, arg: x.$4);
-                        },
-                        child: Stack(children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(6, 12, 6, 8),
-                            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              Container(
-                                width: 42,
-                                height: 42,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(color: c.accent.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)),
-                                child: PIcon(x.$2, size: 22, color: c.accent),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(x.$3, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.2)),
-                            ]),
-                          ),
-                          if (!nativeServices.contains(x.$1))
-                            Positioned(top: 6, right: 6, child: Semantics(label: 'საიტზე იხსნება', child: PIcon('link', size: 13, color: c.muted))),
-                        ]),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ]),
-        ),
-      );
-    },
-  );
-}
-
 /// What I can make from here (app.js CREATE, the parts the app has).
 Future<void> createMenu(BuildContext context, {required Future<void> Function({bool photos, bool poll}) write}) {
   final items = <(String, String, String, String, Future<void> Function())>[
     ('cpost', 'edit', 'პოსტი', 'ტექსტი, ფოტო, ჰეშთეგი', () => write()),
     ('cphoto', 'image', 'ფოტო', 'ფილტრით და ჭრით', () => write(photos: true)),
     ('cclip', 'clips', 'კლიპი', 'მოკლე ვერტიკალური ვიდეო', () async {
-      final p = await openPage<Post>(context, const ClipComposer(), full: true);
+      final p = await openPage<Post>(context, const ClipComposer(), full: true, bare: true);
       if (p != null && context.mounted) toast(context, 'კლიპი გამოქვეყნდა');
     }),
     ('cpoll', 'poll', 'გამოკითხვა', 'მეგობრების აზრი', () => write(poll: true)),

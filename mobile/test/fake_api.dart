@@ -160,6 +160,13 @@ class FakeApi implements PeeraApi {
   Future<List<Comment>> comments(int postId) async => [...?_comments[postId]];
 
   @override
+  Future<List<Comment>> commentsPage(int postId, {int from = 0, int count = 15}) async {
+    calls.add('cpage $postId $from $count');
+    final all = [...?_comments[postId]]..sort((a, b) => b.createdAt != a.createdAt ? b.createdAt.compareTo(a.createdAt) : b.id.compareTo(a.id));
+    return all.skip(from).take(count).toList();
+  }
+
+  @override
   Future<Comment> addComment(int postId, String body, {int? parentId, Map<String, dynamic>? media}) async {
     calls.add('comment $postId $body${parentId == null ? '' : ' ↩$parentId'}${media == null ? '' : ' ${media['sticker'] ?? 'photo'}'}');
     final c = Comment(

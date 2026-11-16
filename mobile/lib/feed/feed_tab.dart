@@ -8,10 +8,7 @@ import '../home/calendar.dart';
 import '../home/home_cards.dart';
 import '../home/promos.dart';
 import '../home/services.dart';
-import '../notes/notes_screen.dart';
-import '../people/person_screen.dart';
 import '../people/profile_parts.dart';
-import '../people/search_screen.dart';
 import '../stories/stories.dart';
 import '../ui/format.dart';
 import '../ui/theme.dart';
@@ -73,7 +70,6 @@ class FeedTabState extends State<FeedTab> {
   List<FriendDay> remind = const [];
   List<Promo> promoStories = const [];
   Set<int> seenPromos = {};
-  int newGuests = 0;
   final _steps = GlobalKey<FirstStepsCardState>();
 
   @override
@@ -89,6 +85,8 @@ class FeedTabState extends State<FeedTab> {
     super.didChangeDependencies();
     if (!_started) {
       _started = true;
+      // the top bar's + writes through the feed, so the new post lands at its top
+      context.app.write = ({bool photos = false, bool poll = false}) => _write(photos: photos, poll: poll);
       postOverrides.load();
       _extras();
       load(true);
@@ -127,7 +125,7 @@ class FeedTabState extends State<FeedTab> {
     });
     try {
       final n = await app.api.guestsSince(await guestsSeenAt());
-      if (mounted) setState(() => newGuests = n);
+      if (mounted) app.newGuests.value = n;
     } catch (_) {}
   }
 
@@ -265,26 +263,12 @@ class FeedTabState extends State<FeedTab> {
     }
   }
 
-  Future<void> _guests() async {
-    setState(() => newGuests = 0);
-    await guestsSheet(context, open: (uid) => openPage(context, PersonScreen(uid: uid)), invisible: context.me.guest);
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = context.pc;
     final empty = !loading && items.isEmpty;
+    // the bar with the logo, search, notifications and the rest stands over every tab (the shell's top bar)
     return Scaffold(
-      appBar: peeraBar(context, actions: [
-        IconBtn('search', label: 'ძებნა', onTap: () => openPage(context, const SearchScreen())),
-        ValueListenableBuilder<int>(
-          valueListenable: context.app.unreadNotes,
-          builder: (context, n, _) => IconBtn('bell', key: const ValueKey('bell'), label: 'შეტყობინებები', badge: n, onTap: () => openNotes(context)),
-        ),
-        IconBtn('eye', key: const ValueKey('guests'), label: 'სტუმრები', badge: newGuests, onTap: _guests),
-        IconBtn('grid', key: const ValueKey('services'), label: 'სერვისები', onTap: () => servicesMenu(context)),
-        IconBtn('plus', key: const ValueKey('create'), label: 'შექმნა', onTap: () => createMenu(context, write: ({photos = false, poll = false}) => _write(photos: photos, poll: poll))),
-      ]),
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: CustomScrollView(controller: scroll, physics: const AlwaysScrollableScrollPhysics(), slivers: [

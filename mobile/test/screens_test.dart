@@ -17,6 +17,7 @@ import 'package:peera/community/pages.dart';
 import 'package:peera/community/rides.dart';
 import 'package:peera/community/sport.dart';
 import 'package:peera/community/toasts.dart';
+import 'package:peera/feed/comments_sheet.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/post_actions.dart';
 import 'package:peera/feed/post_screen.dart';
@@ -530,6 +531,9 @@ void main() {
       servicesMenu(await onMe(t));
       await settle(t);
       await _shot(t, '62-services-$k');
+      await t.tap(find.byKey(const ValueKey('mg-study')));
+      await settle(t);
+      await _shot(t, '62-services-study-$k');
     });
 
     testWidgets('making something ($k)', (t) async {
@@ -595,10 +599,14 @@ void main() {
       await settle(t);
       await t.tap(find.byKey(const ValueKey('comments-106')));
       await settle(t);
-      final list = find.descendant(of: find.byType(PostScreen), matching: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)).first;
-      await t.scrollUntilVisible(find.byKey(const ValueKey('cm-22')), 200, scrollable: list);
+      FocusManager.instance.primaryFocus?.unfocus();
       await settle(t);
-      await t.tap(find.text('თარგმნა'));
+      await _shot(t, '72-comments-inline-$k');
+      await t.ensureVisible(find.byKey(const ValueKey('all-cm-106')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('all-cm-106')));
+      await settle(t);
+      await t.tap(find.descendant(of: find.byType(CommentsPanel), matching: find.text('თარგმნა')));
       await settle(t);
       await _shot(t, '72-comments-$k');
     });

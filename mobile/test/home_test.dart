@@ -261,12 +261,18 @@ void main() {
     await settle(t);
     expect(find.descendant(of: find.byKey(const ValueKey('guests')), matching: find.text('2')), findsNothing);
     await _back(t);
-    // all services: the tree here, the schedule on the site (marked)
+    // all services, in groups: a group opens to its pages, back closes it (the menu stays), the search finds the tree
     await t.tap(find.byKey(const ValueKey('services')));
     await settle(t);
+    expect(find.byKey(const ValueKey('menu-rooms-birja')), findsNothing);
+    await t.tap(find.byKey(const ValueKey('mg-study')));
+    await settle(t);
     expect(find.byKey(const ValueKey('menu-rooms-birja')), findsOneWidget);
-    await t.scrollUntilVisible(find.byKey(const ValueKey('menu-tree')), 200,
-        scrollable: find.descendant(of: find.byType(GridView), matching: find.byType(Scrollable)).first);
+    expect(find.byKey(const ValueKey('menu-schedule')), findsOneWidget);
+    await _back(t);
+    expect(find.byKey(const ValueKey('menu-rooms-birja')), findsNothing);
+    expect(find.byKey(const ValueKey('mg-study')), findsOneWidget);
+    await t.enterText(find.byKey(const ValueKey('menu-find')), 'ოჯახის');
     await settle(t);
     await t.tap(find.byKey(const ValueKey('menu-tree')));
     await settle(t);

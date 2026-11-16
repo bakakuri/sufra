@@ -24,6 +24,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'soon_screen.dart';
 import 'tab_bar.dart';
+import 'top_bar.dart';
 
 /// The app after sign-in: seven tabs, each keeping its own stack of screens.
 /// The back button undoes exactly one step and never drops out of the app by surprise (the site's rule):
@@ -72,7 +73,11 @@ class HomeShellState extends State<HomeShell> {
         final i = tabs.indexWhere((t) => t.id == id);
         if (i >= 0 && i != index && mounted) select(i);
       }
+      // the top bar opens its pages inside the open tab, under itself
+      ..tabContext = (() => _navs[index].currentState?.overlay?.context)
       ..start();
+    // and stands over every page opened over the whole app
+    topBarOver = (page) => WithTopBar(child: page);
     app.banner.addListener(_showBanner);
     app.calls.addListener(_callChanged);
     _push?.start(app.api, onOpen: _openFromPush, onForeground: _pushWhileOpen);
@@ -201,13 +206,12 @@ class HomeShellState extends State<HomeShell> {
   }
 
   /// one back step; true when the app should close
-  bool back() {
+  Future<bool> back() async {
     final nav = _navs[index].currentState;
-    if (nav != null && nav.canPop()) {
-      // maybePop: a screen that asks before closing (a form with changes) is asked
-      nav.maybePop();
-      return false;
-    }
+    // the open tab first: its screen closes, or something on it takes the step (comments open under a post, a form
+    // with changes that asks first)
+    if (nav != null && await nav.maybePop()) return false;
+    if (!mounted) return false;
     if (index != 0) {
       setState(() => index = 0);
       app.tab.value = 0;
@@ -250,26 +254,36 @@ class HomeShellState extends State<HomeShell> {
       me: widget.me,
       child: PopScope(
         canPop: false,
-        onPopInvokedWithResult: (didPop, _) {
+        onPopInvokedWithResult: (didPop, _) async {
           if (didPop) return;
-          if (back()) (widget.exit ?? SystemNavigator.pop)();
+          if (await back()) (widget.exit ?? SystemNavigator.pop)();
         },
         child: Scaffold(
           key: _scaffold,
-          body: IndexedStack(
-            index: index,
-            children: [
-              for (var i = 0; i < tabs.length; i++)
-                // the tabs not on screen keep their place but do not animate
-                TickerMode(
-                  enabled: i == index,
-                  child: Navigator(
-                    key: _navs[i],
-                    onGenerateRoute: (s) => MaterialPageRoute(settings: s, builder: (_) => _root(i)),
-                  ),
+          body: Column(children: [
+            // the site's bar over every tab and every page in it
+            const PeeraTopBar(inShell: true),
+            Expanded(
+              child: MediaQuery.removePadding(
+                context: context,
+                removeTop: true,
+                child: IndexedStack(
+                  index: index,
+                  children: [
+                    for (var i = 0; i < tabs.length; i++)
+                      // the tabs not on screen keep their place but do not animate
+                      TickerMode(
+                        enabled: i == index,
+                        child: Navigator(
+                          key: _navs[i],
+                          onGenerateRoute: (s) => MaterialPageRoute(settings: s, builder: (_) => _root(i)),
+                        ),
+                      ),
+                  ],
                 ),
-            ],
-          ),
+              ),
+            ),
+          ]),
           bottomNavigationBar: ListenableBuilder(
             listenable: Listenable.merge([app.chats, app.friends]),
             builder: (_, __) => PeeraTabBar(

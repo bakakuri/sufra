@@ -42,20 +42,29 @@ class PeeraTabBar extends StatelessWidget {
     );
   }
 
-  Widget _badge(BuildContext context, int i) {
+  /// the red number: on a tab's icon, or on the round button's rim (not over its icon)
+  Widget _badge(BuildContext context, int i, {double right = -8, double top = -6, double size = 18}) {
     final n = badges[i] ?? 0;
     if (n <= 0) return const SizedBox.shrink();
     final c = context.pc;
     return Positioned(
-      right: -8,
-      top: -6,
-      child: Container(
-        constraints: const BoxConstraints(minWidth: 18),
-        height: 18,
-        padding: const EdgeInsets.symmetric(horizontal: 5),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(color: c.nope, borderRadius: BorderRadius.circular(9), border: Border.all(color: c.surface, width: 2)),
-        child: Text(n > 99 ? '99+' : '$n', style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800, height: 1)),
+      right: right,
+      top: top,
+      child: TweenAnimationBuilder<double>(
+        key: ValueKey(n),
+        tween: Tween(begin: .5, end: 1),
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutBack,
+        builder: (_, v, child) => Transform.scale(scale: v, child: child),
+        child: Container(
+          key: ValueKey('badge-${tabs[i].id}'),
+          constraints: BoxConstraints(minWidth: size),
+          height: size,
+          padding: const EdgeInsets.symmetric(horizontal: 5),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(color: c.nope, borderRadius: BorderRadius.circular(size / 2), border: Border.all(color: c.surface, width: 2)),
+          child: Text(n > 99 ? '99+' : '$n', style: TextStyle(color: Colors.white, fontSize: size * .58, fontWeight: FontWeight.w800, height: 1)),
+        ),
       ),
     );
   }
@@ -120,9 +129,14 @@ class PeeraTabBar extends StatelessWidget {
                   border: Border.all(color: c.bg, width: 5),
                   boxShadow: [BoxShadow(color: c.accent.withValues(alpha: .28), blurRadius: 14, offset: const Offset(0, 5))],
                 ),
-                child: Stack(clipBehavior: Clip.none, children: [PIcon(t.icon, size: 25, color: Colors.white, stroke: 2.1), _badge(context, i)]),
+                child: PIcon(t.icon, size: 25, color: Colors.white, stroke: 2.1),
               ),
             ),
+          ),
+          // the number sits on the round button's rim, top right, clear of the icon
+          Positioned(
+            top: -26,
+            child: SizedBox(width: 60, height: 60, child: Stack(clipBehavior: Clip.none, children: [_badge(context, i, right: -1, top: -1, size: 20)])),
           ),
           Positioned(
             left: 0,

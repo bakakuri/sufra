@@ -331,10 +331,18 @@ class AppState {
   /// notifications not yet seen (the bell's number)
   final unreadNotes = ValueNotifier<int>(0);
 
-  /// set by the shell: my profile read again (after changing it), a tab opened, signing out
+  /// people who looked at my profile since I last looked (the eye's number in the top bar)
+  final newGuests = ValueNotifier<int>(0);
+
+  /// set by the shell: my profile read again (after changing it), a tab opened, signing out; where the open tab
+  /// pushes its screens (the top bar opens search there, under itself)
   Future<void> Function()? refreshMe;
   void Function(String tab)? goTab;
   Future<void> Function()? signOut;
+  BuildContext? Function()? tabContext;
+
+  /// set by the feed: writing a post that lands at the top of the feed (the top bar's +)
+  Future<void> Function({bool photos, bool poll})? write;
 
   Future<void> countNotes() async {
     try {
@@ -422,12 +430,22 @@ extension AppScopeX on BuildContext {
 
 /// Opens a screen one step deeper. Inside the tab (its bar stays) or, with [full], over the whole app — a
 /// conversation, a post with its comments, writing a post. The back button closes exactly that one screen.
-Future<T?> openPage<T>(BuildContext context, Widget page, {bool full = false}) {
+Future<T?> openPage<T>(BuildContext context, Widget page, {bool full = false, bool bare = false}) {
   final s = AppScope.of(context);
   return Navigator.of(context, rootNavigator: full).push<T>(
-    MaterialPageRoute(builder: (_) => AppScope(app: s.app, me: s.me, child: page)),
+    MaterialPageRoute(
+      builder: (_) => AppScope(
+        app: s.app,
+        me: s.me,
+        // a page over the whole app keeps the site's bar on top (a camera, a story being made, a card table do not)
+        child: full && !bare && topBarOver != null ? topBarOver!(page) : page,
+      ),
+    ),
   );
 }
+
+/// the site's bar put over a page opened over the whole app (set by the shell, so this file needs no screens)
+Widget Function(Widget page)? topBarOver;
 
 /// The admin's settings for everyone (app_settings: the banner, the sections switched off) and how much is going on
 /// in each service (service_counts), read with the home page and kept a few minutes.

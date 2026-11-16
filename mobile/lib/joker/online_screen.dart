@@ -14,7 +14,7 @@ import 'online.dart';
 import 'table_screen.dart';
 
 Future<void> openJokerTable(BuildContext context, int id, {bool hint = true, bool c4 = false}) =>
-    openPage(context, OnlineTableScreen(id: id, hint: hint, c4: c4), full: true);
+    openPage(context, OnlineTableScreen(id: id, hint: hint, c4: c4), full: true, bare: true);
 
 class OnlineTableScreen extends StatefulWidget {
   const OnlineTableScreen({super.key, required this.id, this.hint = true, this.c4 = false});

@@ -2,6 +2,7 @@
 // deleting), @mentions and the composer's extras, search and a topic's page.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:peera/feed/comments_sheet.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/post_actions.dart';
 import 'package:peera/feed/post_screen.dart';
@@ -156,44 +157,50 @@ void main() {
     phone(t);
     final api = await shell(t);
     await _to(t, 'comments-106');
-    expect(find.byType(PostScreen), findsOneWidget);
-    final list = find.descendant(of: find.byType(PostScreen), matching: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)).first;
-    await t.scrollUntilVisible(find.byKey(const ValueKey('cm-22')), 200, scrollable: list);
+    await t.ensureVisible(find.byKey(const ValueKey('all-cm-106')));
     await settle(t);
-    expect(find.byType(StickerView, skipOffstage: false), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('all-cm-106')));
+    await settle(t);
+    final panel = find.byType(CommentsPanel);
+    Finder inP(Finder f, {bool skipOffstage = true}) => find.descendant(of: panel, matching: f, skipOffstage: skipOffstage);
+    expect(panel, findsOneWidget);
+    final list = inP(find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)).first;
+    await t.scrollUntilVisible(find.byKey(const ValueKey('cm-20')), 200, scrollable: list);
+    await settle(t);
+    expect(inP(find.byType(StickerView, skipOffstage: false), skipOffstage: false), findsOneWidget);
     // the sticker's placeholder words are not shown
-    expect(find.text('🥟 ხინკალი'), findsNothing);
+    expect(inP(find.text('🥟 ხინკალი')), findsNothing);
     // English: "თარგმნა"; Georgian in Latin letters: "ქართული ასოებით"
-    expect(find.text('თარგმნა'), findsOneWidget);
-    expect(find.text('ქართული ასოებით'), findsOneWidget);
-    await t.tap(find.text('თარგმნა'));
+    expect(inP(find.text('თარგმნა')), findsOneWidget);
+    expect(inP(find.text('ქართული ასოებით')), findsOneWidget);
+    await t.tap(inP(find.text('თარგმნა')));
     await settle(t);
     expect(api.calls, contains('translate en'));
-    expect(find.text('ნათარგმნი: Looks amazing! Which app is this?'), findsOneWidget);
-    expect(find.text('ორიგინალი'), findsOneWidget);
-    await t.tap(find.text('ორიგინალი'));
+    expect(inP(find.text('ნათარგმნი: Looks amazing! Which app is this?')), findsOneWidget);
+    expect(inP(find.text('ორიგინალი')), findsOneWidget);
+    await t.tap(inP(find.text('ორიგინალი')));
     await settle(t);
-    expect(find.text('Looks amazing! Which app is this?'), findsOneWidget);
+    expect(inP(find.text('Looks amazing! Which app is this?')), findsOneWidget);
 
     await t.tap(find.byKey(const ValueKey('clike-20')));
     await settle(t);
     expect(api.calls, contains('clike 20 true'));
-    expect(find.text('მოგწონს'), findsOneWidget);
+    expect(inP(find.text('მოგწონს')), findsOneWidget);
 
     await t.tap(find.byKey(const ValueKey('c-stk')));
     await settle(t);
     await t.tap(find.byKey(const ValueKey('stk-khinkali')));
     await settle(t);
     expect(api.calls, contains('comment 106 🥟 ხინკალი khinkali'));
-    expect(find.byType(StickerView, skipOffstage: false), findsNWidgets(2));
+    expect(inP(find.byType(StickerView, skipOffstage: false), skipOffstage: false), findsNWidgets(2));
 
     await t.tap(find.byKey(const ValueKey('c-img')));
     await settle(t);
     expect(api.calls, contains('comment 106 📷 photo'));
 
     final before = api.calls.length;
-    await t.ensureVisible(find.text('წაშლა').last);
-    await t.tap(find.text('წაშლა').last);
+    await t.ensureVisible(inP(find.text('წაშლა')).last);
+    await t.tap(inP(find.text('წაშლა')).last);
     await settle(t);
     await t.tap(find.text('წაშლა').last);
     await settle(t);

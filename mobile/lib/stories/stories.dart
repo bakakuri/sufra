@@ -192,7 +192,7 @@ Future<void> addStory(BuildContext context) async {
   if (kind == null || !context.mounted) return;
   try {
     if (kind == 'text') {
-      await openPage<bool>(context, TextStoryScreen(close: close), full: true);
+      await openPage<bool>(context, TextStoryScreen(close: close), full: true, bare: true);
       return;
     }
     if (kind == 'video') {
@@ -201,14 +201,14 @@ Future<void> addStory(BuildContext context) async {
       toast(context, 'ვიდეო მზადდება…');
       final v = await videoPrep(path, (_) {});
       if (!context.mounted) return;
-      await openPage<bool>(context, StoryComposeScreen(video: v, close: close), full: true);
+      await openPage<bool>(context, StoryComposeScreen(video: v, close: close), full: true, bare: true);
       return;
     }
     final got = await photoSource(kind == 'camera');
     if (got.isEmpty || !context.mounted) return;
     final pic = await photoEdit(context, got.first) ?? got.first;
     if (!context.mounted) return;
-    await openPage<bool>(context, StoryComposeScreen(photo: pic, close: close), full: true);
+    await openPage<bool>(context, StoryComposeScreen(photo: pic, close: close), full: true, bare: true);
   } catch (e) {
     if (context.mounted) toast(context, e is VideoTooBig ? e.toString() : errText(e));
   }

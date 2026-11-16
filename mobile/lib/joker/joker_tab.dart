@@ -99,7 +99,7 @@ class _JokerTabState extends State<JokerTab> {
     if (id != null && id! > 0 && mounted) await _table(id!);
   }
 
-  Future<void> _open() => openPage(context, JokerTableScreen(session: s), full: true);
+  Future<void> _open() => openPage(context, JokerTableScreen(session: s), full: true, bare: true);
 
   Future<void> _new(String len) async {
     if (s.playing &&

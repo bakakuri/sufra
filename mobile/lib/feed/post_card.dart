@@ -18,6 +18,7 @@ import '../ui/net_image.dart';
 import '../ui/theme.dart';
 import '../ui/translate.dart';
 import '../ui/widgets.dart';
+import 'comments_sheet.dart';
 import 'photo_viewer.dart';
 import 'post_actions.dart';
 import 'post_screen.dart';
@@ -88,17 +89,70 @@ Future<void> openPerson(BuildContext context, Profile p) async {
   await openPage(context, PersonScreen(uid: p.id, initial: p));
 }
 
-class _PostView extends StatelessWidget {
+class _PostView extends StatefulWidget {
   const _PostView({required this.post, this.onDeleted, this.inPostScreen = false, this.sponsored = false});
   final Post post;
   final VoidCallback? onDeleted;
   final bool sponsored;
   final bool inPostScreen;
+  @override
+  State<_PostView> createState() => _PostViewState();
+}
+
+class _PostViewState extends State<_PostView> with SingleTickerProviderStateMixin {
+  /// the posts whose comments are open, in the order they were opened: back closes the last one on its page
+  static final _openOnes = <_PostViewState>[];
+
+  late final _acc = AnimationController(vsync: this, duration: const Duration(milliseconds: 380), reverseDuration: const Duration(milliseconds: 260));
+  late final _unfold = CurvedAnimation(parent: _acc, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
+  bool open = false;
+  final _accKey = GlobalKey();
+
+  Post get post => widget.post;
+  bool get inPostScreen => widget.inPostScreen;
+
+  @override
+  void dispose() {
+    _openOnes.remove(this);
+    _unfold.dispose();
+    _acc.dispose();
+    super.dispose();
+  }
 
   Future<void> _open(BuildContext context, {bool focus = false}) async {
     if (inPostScreen) return;
     final gone = await openPage<bool>(context, PostScreen(post: post, focus: focus), full: true);
-    if (gone == true) onDeleted?.call();
+    if (gone == true) widget.onDeleted?.call();
+  }
+
+  /// the comments open under the post like an accordion, and close the same way
+  void _toggle() {
+    if (inPostScreen) return;
+    setState(() => open = !open);
+    if (open) {
+      _openOnes
+        ..remove(this)
+        ..add(this);
+      _acc.forward().then((_) {
+        final ctx = _accKey.currentContext;
+        if (open && mounted && ctx != null && ctx.mounted) {
+          Scrollable.ensureVisible(ctx, alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd, duration: const Duration(milliseconds: 280), curve: Curves.easeOut);
+        }
+      });
+    } else {
+      _openOnes.remove(this);
+      _acc.reverse().then((_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  /// back: the last comments opened on this page close, one at a time
+  void _back(bool didPop) {
+    if (didPop || !open) return;
+    final page = ModalRoute.of(context);
+    final here = [for (final s in _openOnes) if (s.mounted && ModalRoute.of(s.context) == page) s];
+    if (here.isNotEmpty && here.last == this) _toggle();
   }
 
   @override
@@ -106,33 +160,45 @@ class _PostView extends StatelessWidget {
     final c = context.pc;
     final hasMedia = post.media.isNotEmpty;
     final quote = post.repostOf != null && !post.plainRepost;
-    return Container(
-      margin: EdgeInsets.fromLTRB(inPostScreen ? 0 : 12, 0, inPostScreen ? 0 : 12, inPostScreen ? 0 : 12),
-      clipBehavior: Clip.antiAlias,
-      decoration: inPostScreen
-          ? BoxDecoration(color: c.surface)
-          : BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.line)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _Head(post: post, onDeleted: onDeleted, inPostScreen: inPostScreen, sponsored: sponsored),
-        if (post.body.trim().isNotEmpty && post.body.trim() != post.poll?.q.trim())
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => _open(context),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-              child: TranslatableBody(post.body.trim(), maxLines: inPostScreen ? null : (hasMedia ? 3 : 6)),
+    final shown = open || _acc.value > 0;
+    return PopScope(
+      canPop: !open,
+      onPopInvokedWithResult: (didPop, _) => _back(didPop),
+      child: Container(
+        margin: EdgeInsets.fromLTRB(inPostScreen ? 0 : 12, 0, inPostScreen ? 0 : 12, inPostScreen ? 0 : 12),
+        clipBehavior: Clip.antiAlias,
+        decoration: inPostScreen
+            ? BoxDecoration(color: c.surface)
+            : BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.line)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _Head(post: post, onDeleted: widget.onDeleted, inPostScreen: inPostScreen, sponsored: widget.sponsored),
+          if (post.body.trim().isNotEmpty && post.body.trim() != post.poll?.q.trim())
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _open(context),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                child: TranslatableBody(post.body.trim(), maxLines: inPostScreen ? null : (hasMedia ? 3 : 6)),
+              ),
             ),
-          ),
-        if (hasMedia) _Gallery(post: post),
-        if (post.media.any((m) => !m.isVideo)) _Grades(post: post),
-        if (post.poll != null) Padding(padding: const EdgeInsets.fromLTRB(14, 10, 14, 4), child: _PollView(post: post)),
-        if (quote)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
-            child: _Quote(original: post.original),
-          ),
-        _Actions(post: post, onComments: () => _open(context, focus: true), inPostScreen: inPostScreen),
-      ]),
+          if (hasMedia) _Gallery(post: post),
+          if (post.media.any((m) => !m.isVideo)) _Grades(post: post),
+          if (post.poll != null) Padding(padding: const EdgeInsets.fromLTRB(14, 10, 14, 4), child: _PollView(post: post)),
+          if (quote)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
+              child: _Quote(original: post.original),
+            ),
+          _Actions(post: post, onComments: _toggle, open: open, inPostScreen: inPostScreen),
+          if (!inPostScreen && shown)
+            SizeTransition(
+              key: _accKey,
+              sizeFactor: _unfold,
+              axisAlignment: -1,
+              child: FadeTransition(opacity: _unfold, child: InlineComments(post: post)),
+            ),
+        ]),
+      ),
     );
   }
 }
@@ -515,9 +581,12 @@ class _Quote extends StatelessWidget {
 }
 
 class _Actions extends StatelessWidget {
-  const _Actions({required this.post, required this.onComments, this.inPostScreen = false});
+  const _Actions({required this.post, required this.onComments, this.open = false, this.inPostScreen = false});
   final Post post;
   final VoidCallback onComments;
+
+  /// the comments are open under the post
+  final bool open;
   final bool inPostScreen;
 
   Future<void> _pick(BuildContext context) async {
@@ -548,7 +617,14 @@ class _Actions extends StatelessWidget {
                 onLong: () => _pick(bctx),
               ),
             ),
-            _Act(key: ValueKey('comments-${post.id}'), label: 'კომენტარები', icon: PIcon('comment', size: 23, color: c.ink), count: s.comments, onTap: onComments),
+            _Act(
+              key: ValueKey('comments-${post.id}'),
+              label: 'კომენტარები',
+              on: open,
+              icon: PIcon('comment', size: 23, color: open ? c.accent : c.ink),
+              count: s.comments,
+              onTap: onComments,
+            ),
             _Act(
               key: ValueKey('share-${post.id}'),
               label: 'გაზიარება',

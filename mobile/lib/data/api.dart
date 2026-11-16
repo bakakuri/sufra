@@ -28,6 +28,9 @@ abstract class PeeraApi {
   Future<void> save(int postId, bool on);
   Future<void> deletePost(int postId);
   Future<List<Comment>> comments(int postId);
+
+  /// a post's comments a page at a time, the newest first
+  Future<List<Comment>> commentsPage(int postId, {int from = 0, int count = 15});
   Future<Comment> addComment(int postId, String body, {int? parentId, Map<String, dynamic>? media});
   Future<Media> uploadPhoto(PreparedPhoto p);
   /// a post: now, as a draft, or waiting for [publishAt]; with a place, or quoting another post ([repostOf])
@@ -872,6 +875,17 @@ class SupaApi implements PeeraApi {
   @override
   Future<List<Comment>> comments(int postId) async =>
       (await sb.from('comments').select(commentSel).eq('post_id', postId).order('created_at').limit(400)).map(Comment.fromJson).toList();
+
+  @override
+  Future<List<Comment>> commentsPage(int postId, {int from = 0, int count = 15}) async => (await sb
+          .from('comments')
+          .select(commentSel)
+          .eq('post_id', postId)
+          .order('created_at', ascending: false)
+          .order('id', ascending: false)
+          .range(from, from + count - 1))
+      .map(Comment.fromJson)
+      .toList();
 
   @override
   Future<Comment> addComment(int postId, String body, {int? parentId, Map<String, dynamic>? media}) async => Comment.fromJson(await sb

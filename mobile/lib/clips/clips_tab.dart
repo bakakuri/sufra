@@ -93,8 +93,8 @@ class _ClipsTabState extends State<ClipsTab> {
   }
 
   Future<void> _upload() async {
-    final p = await (_feed.currentState?.cover<Post>(() => openPage<Post>(context, const ClipComposer(), full: true)) ??
-        openPage<Post>(context, const ClipComposer(), full: true));
+    final p = await (_feed.currentState?.cover<Post>(() => openPage<Post>(context, const ClipComposer(), full: true, bare: true)) ??
+        openPage<Post>(context, const ClipComposer(), full: true, bare: true));
     if (p == null || !mounted) return;
     await app.posts.load([p]);
     setState(() => posts.insert(0, p));

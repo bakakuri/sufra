@@ -8,6 +8,7 @@ import 'package:peera/data/models.dart';
 import 'package:peera/dating/dating_setup.dart';
 import 'package:peera/stories/stories.dart';
 import 'package:peera/feed/compose_screen.dart';
+import 'package:peera/feed/comments_sheet.dart';
 import 'package:peera/feed/post_screen.dart';
 import 'package:peera/joker/engine.dart';
 import 'package:peera/joker/joker_tab.dart';
@@ -96,14 +97,23 @@ void main() {
     await _back(t);
     expect(s.index, 0);
 
-    // a post's comments, then back
+    // a post's comments open under it like an accordion, their window over them; back closes one at a time
     await t.ensureVisible(find.byKey(const ValueKey('comments-101')));
     await settle(t);
     await t.tap(find.byKey(const ValueKey('comments-101')));
     await settle(t);
-    expect(find.byType(PostScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('inline-cm-101')), findsOneWidget);
+    await t.ensureVisible(find.byKey(const ValueKey('all-cm-101')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('all-cm-101')));
+    await settle(t);
+    expect(find.byType(CommentsPanel), findsOneWidget);
     await _back(t);
-    expect(find.byType(PostScreen), findsNothing);
+    expect(find.byType(CommentsPanel), findsNothing);
+    expect(find.byKey(const ValueKey('inline-cm-101')), findsOneWidget);
+    await _back(t);
+    expect(find.byKey(const ValueKey('inline-cm-101')), findsNothing);
+    expect(s.index, 0);
     expect(exits, 0);
 
     // on the main tab the first back only asks; a second one within two seconds closes the app
@@ -154,28 +164,45 @@ void main() {
     expect(find.text('55%'), findsOneWidget);
   });
 
-  testWidgets('comments: read them, answer one', (t) async {
+  testWidgets('comments: the last five under the post, all of them in the window, one answered', (t) async {
     phone(t);
     final api = await shell(t);
     await t.ensureVisible(find.byKey(const ValueKey('comments-101')));
     await settle(t);
     await t.tap(find.byKey(const ValueKey('comments-101')));
     await settle(t);
-    // under the post (its photos and their grades) come the comments
-    await t.scrollUntilVisible(find.text('ჯვრის მონასტერთან ახლოს 🙂'), 100,
-        scrollable: find.descendant(of: find.byType(PostScreen), matching: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)).first);
-    await settle(t);
-    expect(find.text('ჯვრის მონასტერთან ახლოს 🙂'), findsOneWidget);
-    await t.tap(find.text('პასუხი').first);
-    await settle(t);
-    expect(find.text('პასუხი: მარიამ'), findsOneWidget);
-    await t.enterText(find.byType(TextField), 'ზაფხულში ისევ წავალთ');
+    // the last five (here all four), the oldest of them first
+    expect(api.calls, contains('cpage 101 0 5'));
+    final rows = [for (final id in [1, 2, 3, 4]) t.getTopLeft(find.byKey(ValueKey('icm-$id'))).dy];
+    expect(rows, orderedEquals([...rows]..sort()));
+    // one written straight from the feed
+    await t.enterText(find.byKey(const ValueKey('icm-field-101')), 'რა ლამაზია');
     await t.pump();
-    await t.tap(find.byTooltip('გაგზავნა'));
+    await t.tap(find.byTooltip('კომენტარის გაგზავნა'));
+    await settle(t);
+    expect(api.calls, contains('comment 101 რა ლამაზია'));
+    expect(find.descendant(of: find.byKey(const ValueKey('inline-cm-101')), matching: find.text('რა ლამაზია')), findsOneWidget);
+
+    // all of them, the newest first, in the window
+    await t.ensureVisible(find.byKey(const ValueKey('all-cm-101')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('all-cm-101')));
+    await settle(t);
+    expect(api.calls, contains('cpage 101 0 15'));
+    final panel = find.byType(CommentsPanel);
+    Finder inP(Finder f) => find.descendant(of: panel, matching: f);
+    expect(inP(find.text('კომენტარები · 5')), findsOneWidget);
+    expect(inP(find.text('ჯვრის მონასტერთან ახლოს 🙂')), findsOneWidget);
+    await t.tap(inP(find.byKey(const ValueKey('creply-1'))));
+    await settle(t);
+    expect(inP(find.text('პასუხი: მარიამ')), findsOneWidget);
+    await t.enterText(find.byKey(const ValueKey('cs-field')), 'ზაფხულში ისევ წავალთ');
+    await t.pump();
+    await t.tap(inP(find.byTooltip('გაგზავნა')));
     await settle(t);
     expect(api.calls, contains('comment 101 ზაფხულში ისევ წავალთ ↩1'));
-    expect(find.text('ზაფხულში ისევ წავალთ'), findsOneWidget);
-    expect(find.text('კომენტარები · 5'), findsOneWidget);
+    expect(inP(find.text('ზაფხულში ისევ წავალთ')), findsOneWidget);
+    expect(inP(find.text('კომენტარები · 6')), findsOneWidget);
   });
 
   testWidgets('writing a post with two photos puts it at the top of the feed', (t) async {

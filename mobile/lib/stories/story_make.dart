@@ -126,7 +126,7 @@ class _TextStoryScreenState extends State<TextStoryScreen> {
     try {
       final bytes = await textStoryImage(context, t, colour, p != null);
       if (!mounted) return;
-      final done = await openPage<bool>(context, StoryComposeScreen(photo: bytes, poll: p, close: widget.close), full: true);
+      final done = await openPage<bool>(context, StoryComposeScreen(photo: bytes, poll: p, close: widget.close), full: true, bare: true);
       if (done == true && mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) toast(context, errText(e));

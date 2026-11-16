@@ -214,7 +214,7 @@ class _PostScreenState extends State<PostScreen> {
     final c = context.pc, me = context.me.id;
     final threads = list == null ? const <(Comment, List<Comment>)>[] : _threads(list!);
     final staff = isStaff(context), postAuthor = widget.post.author;
-    Widget tile(Comment cm, bool reply) => _CommentTile(
+    Widget tile(Comment cm, bool reply) => CommentTile(
           key: ValueKey('cm-${cm.id}'),
           c: cm,
           reply: reply,
@@ -272,7 +272,7 @@ class _PostScreenState extends State<PostScreen> {
           ]),
         ),
         MentionSuggest(field: field),
-        _InputBar(
+        CommentInputBar(
           field: field,
           focus: focus,
           sending: sending,
@@ -287,8 +287,9 @@ class _PostScreenState extends State<PostScreen> {
   }
 }
 
-class _CommentTile extends StatelessWidget {
-  const _CommentTile({
+/// One comment: the face, the words (or a sticker, a photo), when, a like, an answer, deleting it.
+class CommentTile extends StatelessWidget {
+  const CommentTile({
     super.key,
     required this.c,
     required this.reply,
@@ -383,8 +384,10 @@ class _CommentTile extends StatelessWidget {
   }
 }
 
-class _InputBar extends StatelessWidget {
-  const _InputBar({
+/// Writing a comment: a smile or a sticker, a photo, the words, send; answering someone shows over it.
+class CommentInputBar extends StatelessWidget {
+  const CommentInputBar({
+    super.key,
     required this.field,
     required this.focus,
     required this.sending,
@@ -393,12 +396,16 @@ class _InputBar extends StatelessWidget {
     required this.onSend,
     required this.onSticker,
     required this.onPhoto,
+    this.fieldKey,
   });
   final TextEditingController field;
   final FocusNode focus;
   final bool sending;
   final Comment? replyTo;
   final VoidCallback onCancelReply, onSend, onSticker, onPhoto;
+
+  /// the field's key (two writing places may be on screen at once)
+  final Key? fieldKey;
 
   @override
   Widget build(BuildContext context) {
@@ -429,6 +436,7 @@ class _InputBar extends StatelessWidget {
               const SizedBox(width: 2),
               Expanded(
                 child: TextField(
+                  key: fieldKey,
                   controller: field,
                   focusNode: focus,
                   minLines: 1,
