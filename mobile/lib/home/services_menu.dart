@@ -1,11 +1,15 @@
 // The menu of all the services, in groups. Each group is a card that says what is in it — its colour and picture,
-// a line on what it is for, and its pages by name — and it opens like an accordion to the pages themselves, each with
-// a line on what it does. A search at the top finds a page in any group. Back closes the open group, then the menu.
+// a line on what it is for, and its pages by name — in a row like a cover flow: the one in the middle straight, two
+// on each side turned toward it; under it the middle group's pages, each with a line on what it does, changing as the
+// row turns. A search at the top finds a page in any group. Back closes the menu.
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../data/stores.dart';
 import '../ui/icons.dart';
 import '../ui/mini_svg.dart';
+import '../ui/motion.dart';
 import '../ui/theme.dart';
 import 'service_art.dart';
 import 'services.dart';
@@ -112,27 +116,15 @@ class _Menu extends StatefulWidget {
 }
 
 class _MenuState extends State<_Menu> {
-  String? opened;
+  /// the group in the middle of the carousel
+  int at = 0;
   String q = '';
   final find = TextEditingController();
-  final keys = <String, GlobalKey>{};
 
   @override
   void dispose() {
     find.dispose();
     super.dispose();
-  }
-
-  void _toggle(SvcGroup g) {
-    setState(() => opened = opened == g.id ? null : g.id);
-    if (opened == null) return;
-    // the group's card goes up so its pages are in view
-    Future.delayed(const Duration(milliseconds: 120), () {
-      final ctx = keys[g.id]?.currentContext;
-      if (mounted && opened == g.id && ctx != null && ctx.mounted) {
-        Scrollable.ensureVisible(ctx, alignment: .02, duration: const Duration(milliseconds: 360), curve: Curves.easeOutCubic);
-      }
-    });
   }
 
   void _go(SvcItem i) {
@@ -142,94 +134,325 @@ class _MenuState extends State<_Menu> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.pc, words = q.trim().toLowerCase();
+    final c = context.pc, words = q.trim().toLowerCase(), groups = widget.groups;
     final found = words.isEmpty
         ? const <(SvcGroup, SvcItem)>[]
         : [
-            for (final g in widget.groups)
+            for (final g in groups)
               for (final i in g.items)
                 if (i.title.toLowerCase().contains(words) || i.about.toLowerCase().contains(words) || g.title.toLowerCase().contains(words)) (g, i),
           ];
-    final count = widget.groups.fold<int>(0, (n, g) => n + g.items.length);
-    return PopScope(
-      canPop: opened == null,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && opened != null) setState(() => opened = null);
-      },
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 2),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            const Flexible(child: Text('სერვისები', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, letterSpacing: -.2))),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: Text('${widget.groups.length} ჯგუფი · $count გვერდი', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 12.5)),
-              ),
-            ),
-          ]),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-          child: TextField(
-            key: const ValueKey('menu-find'),
-            controller: find,
-            onChanged: (v) => setState(() => q = v),
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              hintText: 'მოძებნე სერვისი',
-              isDense: true,
-              prefixIcon: Padding(padding: const EdgeInsets.all(11), child: PIcon('search', size: 19, color: c.muted)),
-              prefixIconConstraints: const BoxConstraints(minWidth: 42),
-              suffixIcon: q.isEmpty
-                  ? null
-                  : IconButton(
-                      tooltip: 'გასუფთავება',
-                      onPressed: () {
-                        find.clear();
-                        setState(() => q = '');
-                      },
-                      icon: PIcon('x', size: 17, color: c.muted),
-                    ),
-              filled: true,
-              fillColor: c.sunk,
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: c.accent, width: 1.5)),
+    final count = groups.fold<int>(0, (n, g) => n + g.items.length);
+    final g = groups.isEmpty ? null : groups[at % groups.length];
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 2),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          const Flexible(child: Text('სერვისები', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, letterSpacing: -.2))),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 3),
+              child: Text('${groups.length} ჯგუფი · $count გვერდი', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 12.5)),
             ),
           ),
+        ]),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+        child: TextField(
+          key: const ValueKey('menu-find'),
+          controller: find,
+          onChanged: (v) => setState(() => q = v),
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            hintText: 'მოძებნე სერვისი',
+            isDense: true,
+            prefixIcon: Padding(padding: const EdgeInsets.all(11), child: PIcon('search', size: 19, color: c.muted)),
+            prefixIconConstraints: const BoxConstraints(minWidth: 42),
+            suffixIcon: q.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'გასუფთავება',
+                    onPressed: () {
+                      find.clear();
+                      setState(() => q = '');
+                    },
+                    icon: PIcon('x', size: 17, color: c.muted),
+                  ),
+            filled: true,
+            fillColor: c.sunk,
+            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: c.accent, width: 1.5)),
+          ),
         ),
-        Expanded(
-          child: words.isNotEmpty
-              ? (found.isEmpty
-                  ? Center(child: Text('ასეთი სერვისი ვერ ვიპოვე', style: TextStyle(color: c.muted, fontSize: 14.5)))
-                  : ListView(
-                      key: const ValueKey('menu-found'),
-                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
-                      children: [
-                        for (final (n, (g, i)) in found.indexed) _Rise(order: n, child: _ItemRow(item: i, group: g, showGroup: true, onTap: () => _go(i))),
-                      ],
-                    ))
-              : ListView(
-                  key: const ValueKey('menu-list'),
-                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 28),
-                  children: [
-                    for (final (n, g) in widget.groups.indexed)
-                      _Rise(
-                        order: n,
-                        child: _GroupBlock(
-                          key: keys.putIfAbsent(g.id, GlobalKey.new),
-                          group: g,
-                          open: opened == g.id,
-                          onToggle: () => _toggle(g),
-                          onItem: _go,
-                        ),
+      ),
+      Expanded(
+        child: words.isNotEmpty
+            ? (found.isEmpty
+                ? Center(child: Text('ასეთი სერვისი ვერ ვიპოვე', style: TextStyle(color: c.muted, fontSize: 14.5)))
+                : ListView(
+                    key: const ValueKey('menu-found'),
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
+                    children: [
+                      for (final (n, (g, i)) in found.indexed) _Rise(order: n, child: _ItemRow(item: i, group: g, showGroup: true, onTap: () => _go(i))),
+                    ],
+                  ))
+            : ListView(
+                key: const ValueKey('menu-list'),
+                padding: const EdgeInsets.only(bottom: 28),
+                children: [
+                  if (groups.isNotEmpty)
+                    _Flow(
+                      key: const ValueKey('menu-flow'),
+                      groups: groups,
+                      onAt: (i) {
+                        if (i != at) setState(() => at = i);
+                      },
+                    ),
+                  // the dots: which of the groups is in the middle
+                  if (groups.length > 1)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2, bottom: 6),
+                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        for (var i = 0; i < groups.length; i++)
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 260),
+                            curve: Curves.easeOutCubic,
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
+                            width: i == at % groups.length ? 22 : 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: i == at % groups.length ? Color(groups[i].colors.$1) : c.line,
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                          ),
+                      ]),
+                    ),
+                  // what is in the middle card, changing with it
+                  if (g != null)
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 320),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (ch, a) => FadeTransition(
+                        opacity: a,
+                        child: SlideTransition(position: Tween(begin: const Offset(0, .04), end: Offset.zero).animate(a), child: ch),
                       ),
-                  ],
+                      layoutBuilder: (cur, prev) => Stack(alignment: Alignment.topCenter, children: [...prev, if (cur != null) cur]),
+                      child: Padding(
+                        key: ValueKey('mgc-${g.id}'),
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(4, 4, 4, 10),
+                            child: Row(children: [
+                              Container(
+                                width: 30,
+                                height: 30,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(colors: [Color(g.colors.$1), Color(g.colors.$2)]),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: PIcon(g.icon, size: 16, color: Colors.white),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(child: Text(g.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
+                              Text('${g.items.length} გვერდი', style: TextStyle(color: c.muted, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                            ]),
+                          ),
+                          for (final (n, i) in g.items.indexed) _Rise(order: n, child: _ItemRow(item: i, group: g, onTap: () => _go(i))),
+                        ]),
+                      ),
+                    ),
+                ],
+              ),
+      ),
+    ]);
+  }
+}
+
+/// The groups in one row like a cover flow: the one in the middle straight, two on each side turned toward it. A
+/// swipe turns the row (it goes round), a tap on a side card brings it to the middle.
+class _Flow extends StatefulWidget {
+  const _Flow({super.key, required this.groups, required this.onAt});
+  final List<SvcGroup> groups;
+  final void Function(int) onAt;
+  @override
+  State<_Flow> createState() => _FlowState();
+}
+
+class _FlowState extends State<_Flow> with SingleTickerProviderStateMixin {
+  double p = 0;
+  late final AnimationController anim = AnimationController(vsync: this);
+  Animation<double>? _to;
+  double _step = 120;
+
+  int get n => widget.groups.length;
+
+  @override
+  void initState() {
+    super.initState();
+    anim.addListener(() {
+      final t = _to;
+      if (t != null) _set(t.value);
+    });
+  }
+
+  @override
+  void dispose() {
+    anim.dispose();
+    super.dispose();
+  }
+
+  void _set(double v) {
+    setState(() => p = v);
+    widget.onAt(((v.round() % n) + n) % n);
+  }
+
+  void _go(int k) {
+    final from = p;
+    _to = Tween<double>(begin: from, end: k.toDouble()).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic));
+    anim.duration = Duration(milliseconds: math.min(640, 280 + ((k - from).abs() * 120).round()));
+    anim.forward(from: 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      final cw = box.maxWidth;
+      final w = (cw * .47).clamp(160.0, 230.0).toDouble(), h = w * 1.32;
+      final first = w * .62, gap = ((cw / 2 - first - w * .1) / 1.5).clamp(14.0, 64.0).toDouble();
+      _step = first;
+      double xOf(double a) => a <= 1 ? a * first : first + (a - 1) * gap;
+      final kids = <(double, Widget)>[];
+      final shown = <int>{};
+      // the nearest first, so each group is drawn once even when there are few of them
+      final ks = [for (var k = (p - 3).floor(); k <= (p + 3).ceil(); k++) k]..sort((x, y) => (x - p).abs().compareTo((y - p).abs()));
+      for (final k in ks) {
+        final d = k - p, ad = d.abs();
+        if (ad > 2.6) continue;
+        final gi = ((k % n) + n) % n;
+        if (!shown.add(gi)) continue;
+        final g = widget.groups[gi], sg = d.sign, t = math.min(ad, 1.0), on = ad < .5;
+        kids.add((
+          ad,
+          Positioned(
+            left: cw / 2 - w / 2,
+            top: 14,
+            child: Transform(
+              alignment: Alignment.center,
+              transform: (Matrix4.identity()..setEntry(3, 2, .0012))
+                ..multiply(Matrix4.translationValues(sg * xOf(ad), 0, t * 110 + math.max(0.0, ad - 1) * 60))
+                ..multiply(Matrix4.rotationY(sg * t * 58 * math.pi / 180))
+                ..multiply(Matrix4.diagonal3Values(1 - t * .06, 1 - t * .06, 1)),
+              child: Opacity(
+                opacity: ad <= 2 ? 1.0 : math.max(0.0, (2.6 - ad) / .6),
+                child: Semantics(
+                  button: true,
+                  label: on ? g.title : '${g.title} (გადახვევა)',
+                  child: GestureDetector(
+                    key: ValueKey('mg-${g.id}'),
+                    onTap: on ? null : () => _go(k),
+                    child: SizedBox(width: w, height: h, child: _FlowCard(group: g, front: on, shade: t)),
+                  ),
                 ),
-        ),
-      ]),
+              ),
+            ),
+          ),
+        ));
+      }
+      kids.sort((a, b) => b.$1.compareTo(a.$1));
+      return GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragStart: (_) => anim.stop(),
+        onHorizontalDragUpdate: (e) => _set(p - e.delta.dx / _step),
+        onHorizontalDragEnd: (e) {
+          final v = e.primaryVelocity ?? 0;
+          // a slow drag settles on the nearest card, a flick goes on to the next one in its direction
+          _go(v.abs() < 300 ? p.round() : (v < 0 ? p.floor() + 1 : p.ceil() - 1));
+        },
+        child: SizedBox(height: h + 40, child: Stack(clipBehavior: Clip.none, children: [for (final k in kids) k.$2])),
+      );
+    });
+  }
+}
+
+/// A group's card standing in the carousel: its colours and picture, how many pages, its name and what it is for, its
+/// pages by name. The ones at the sides are shaded, as if turned away from the light.
+class _FlowCard extends StatelessWidget {
+  const _FlowCard({required this.group, required this.front, required this.shade});
+  final SvcGroup group;
+  final bool front;
+  final double shade;
+  @override
+  Widget build(BuildContext context) {
+    final g = group, a = Color(g.colors.$1), b = Color(g.colors.$2), art = g.art == null ? null : serviceArt[g.art];
+    const white = Colors.white;
+    final names = [for (final i in g.items) i.title];
+    final shownNames = names.take(3).toList();
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: a.withValues(alpha: front ? .45 : .2), blurRadius: front ? 28 : 14, offset: Offset(0, front ? 14 : 6))],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(fit: StackFit.expand, children: [
+          DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: const Alignment(-1, -1), end: const Alignment(1, 1), colors: [a, b]))),
+          const DecoratedBox(
+            decoration: BoxDecoration(gradient: RadialGradient(center: Alignment(-.9, -1.1), radius: 1.3, colors: [Color(0x47FFFFFF), Color(0x00FFFFFF)], stops: [0, .6])),
+          ),
+          // the picture of one of its pages, at the top
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 8,
+            height: 110,
+            child: IgnorePointer(
+              child: art != null
+                  ? Padding(padding: const EdgeInsets.symmetric(horizontal: 22), child: MiniSvg(art.$3))
+                  : Center(child: Transform.rotate(angle: -.18, child: PIcon(g.icon, size: 74, color: white.withValues(alpha: .28)))),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: white.withValues(alpha: .22), borderRadius: BorderRadius.circular(10), border: Border.all(color: white.withValues(alpha: .3))),
+                  child: PIcon(g.icon, size: 16, color: white),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: const Color(0x33000000), borderRadius: BorderRadius.circular(99)),
+                  child: Text('${g.items.length} გვერდი', style: const TextStyle(color: white, fontSize: 11, fontWeight: FontWeight.w700)),
+                ),
+              ]),
+              const Spacer(),
+              Text(g.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: white, fontSize: 19, fontWeight: FontWeight.w800, height: 1.15, shadows: [Shadow(color: Color(0x40000000), blurRadius: 8, offset: Offset(0, 1))])),
+              const SizedBox(height: 3),
+              Text(g.about, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: white.withValues(alpha: .92), fontSize: 12, height: 1.3)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 4, runSpacing: 4, children: [
+                for (final t in shownNames) _Pill(t),
+                if (names.length > shownNames.length) _Pill('+${names.length - shownNames.length}', strong: true),
+              ]),
+            ]),
+          ),
+          // the side cards a little darker, as if turned from the light
+          IgnorePointer(child: ColoredBox(color: Colors.black.withValues(alpha: .22 * shade))),
+        ]),
+      ),
     );
   }
 }
@@ -248,190 +471,6 @@ class _Rise extends StatelessWidget {
       curve: Interval(wait / ms, 1, curve: Curves.easeOutCubic),
       builder: (_, v, ch) => Opacity(opacity: v, child: Transform.translate(offset: Offset(0, (1 - v) * 22), child: Transform.scale(scale: .96 + .04 * v, child: ch))),
       child: child,
-    );
-  }
-}
-
-/// pressed: the card gives a little under the finger
-class _Press extends StatefulWidget {
-  const _Press({required this.onTap, required this.child, this.radius = 22, super.key});
-  final VoidCallback onTap;
-  final Widget child;
-  final double radius;
-  @override
-  State<_Press> createState() => _PressState();
-}
-
-class _PressState extends State<_Press> {
-  bool down = false;
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => setState(() => down = true),
-        onTapUp: (_) => setState(() => down = false),
-        onTapCancel: () => setState(() => down = false),
-        onTap: widget.onTap,
-        child: AnimatedScale(scale: down ? .975 : 1, duration: const Duration(milliseconds: 120), curve: Curves.easeOut, child: widget.child),
-      );
-}
-
-/// a group: its card, and under it, when open, its pages
-class _GroupBlock extends StatefulWidget {
-  const _GroupBlock({super.key, required this.group, required this.open, required this.onToggle, required this.onItem});
-  final SvcGroup group;
-  final bool open;
-  final VoidCallback onToggle;
-  final void Function(SvcItem) onItem;
-  @override
-  State<_GroupBlock> createState() => _GroupBlockState();
-}
-
-class _GroupBlockState extends State<_GroupBlock> with SingleTickerProviderStateMixin {
-  late final _ctl = AnimationController(vsync: this, duration: const Duration(milliseconds: 420), reverseDuration: const Duration(milliseconds: 280), value: widget.open ? 1 : 0);
-  late final _ease = CurvedAnimation(parent: _ctl, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
-
-  @override
-  void didUpdateWidget(_GroupBlock old) {
-    super.didUpdateWidget(old);
-    if (widget.open == old.open) return;
-    widget.open
-        ? _ctl.forward()
-        : _ctl.reverse().then((_) {
-            if (mounted) setState(() {});
-          });
-  }
-
-  @override
-  void dispose() {
-    _ease.dispose();
-    _ctl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final g = widget.group, shown = widget.open || _ctl.value > 0;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _Press(key: ValueKey('mg-${g.id}'), onTap: widget.onToggle, child: _GroupCard(group: g, open: widget.open)),
-        if (shown)
-          SizeTransition(
-            sizeFactor: _ease,
-            axisAlignment: -1,
-            child: FadeTransition(
-              opacity: _ease,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  for (final (n, i) in g.items.indexed) _Rise(order: n, child: _ItemRow(item: i, group: g, onTap: () => widget.onItem(i))),
-                ]),
-              ),
-            ),
-          ),
-      ]),
-    );
-  }
-}
-
-/// The group's card: its colour, its picture, its name and what it is for, and its pages by name.
-class _GroupCard extends StatelessWidget {
-  const _GroupCard({required this.group, required this.open});
-  final SvcGroup group;
-  final bool open;
-  @override
-  Widget build(BuildContext context) {
-    final g = group, a = Color(g.colors.$1), b = Color(g.colors.$2), art = g.art == null ? null : serviceArt[g.art];
-    const white = Colors.white;
-    final names = [for (final i in g.items) i.title];
-    final shownNames = names.length > 4 ? names.take(4).toList() : names;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [BoxShadow(color: a.withValues(alpha: open ? .42 : .24), blurRadius: open ? 26 : 16, offset: Offset(0, open ? 12 : 7))],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: Stack(children: [
-          Positioned.fill(
-            child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: const Alignment(-1, -1), end: const Alignment(1, 1), colors: [a, b]))),
-          ),
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(gradient: RadialGradient(center: Alignment(-.9, -1.1), radius: 1.3, colors: [Color(0x47FFFFFF), Color(0x00FFFFFF)], stops: [0, .6])),
-            ),
-          ),
-          // the picture of one of its pages, up in the corner
-          Positioned(
-            right: -6,
-            top: -4,
-            width: 150,
-            height: 96,
-            child: IgnorePointer(
-              child: art != null
-                  ? Opacity(opacity: .92, child: MiniSvg(art.$3))
-                  : Align(
-                      alignment: const Alignment(.55, .1),
-                      child: Transform.rotate(angle: -.18, child: PIcon(g.icon, size: 78, color: white.withValues(alpha: .2))),
-                    ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(color: white.withValues(alpha: .22), borderRadius: BorderRadius.circular(11), border: Border.all(color: white.withValues(alpha: .3))),
-                  child: PIcon(g.icon, size: 19, color: white),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                  decoration: BoxDecoration(color: const Color(0x33000000), borderRadius: BorderRadius.circular(99)),
-                  child: Text('${g.items.length} გვერდი', style: const TextStyle(color: white, fontSize: 11.5, fontWeight: FontWeight.w700)),
-                ),
-              ]),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.only(right: 110),
-                child: Text(g.title, style: const TextStyle(color: white, fontSize: 20, fontWeight: FontWeight.w800, height: 1.15, shadows: [Shadow(color: Color(0x40000000), blurRadius: 8, offset: Offset(0, 1))])),
-              ),
-              const SizedBox(height: 3),
-              Padding(
-                padding: const EdgeInsets.only(right: 70),
-                child: Text(g.about, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: white.withValues(alpha: .92), fontSize: 13, height: 1.3)),
-              ),
-              const SizedBox(height: 10),
-              Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Expanded(
-                  child: Wrap(spacing: 5, runSpacing: 5, children: [
-                    for (final n in shownNames) _Pill(n),
-                    if (names.length > shownNames.length) _Pill('+${names.length - shownNames.length}', strong: true),
-                  ]),
-                ),
-                const SizedBox(width: 8),
-                AnimatedRotation(
-                  turns: open ? .75 : .25,
-                  duration: const Duration(milliseconds: 320),
-                  curve: Curves.easeOutBack,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(color: white.withValues(alpha: open ? .95 : .25), shape: BoxShape.circle),
-                    child: PIcon('chev', size: 17, color: open ? a : white),
-                  ),
-                ),
-              ]),
-            ]),
-          ),
-        ]),
-      ),
     );
   }
 }
@@ -467,8 +506,7 @@ class _ItemRow extends StatelessWidget {
     final site = !nativeServices.contains(item.page);
     return Padding(
       padding: const EdgeInsets.only(bottom: 7),
-      child: _Press(
-        radius: 16,
+      child: Pressable(
         onTap: onTap,
         child: Container(
           key: ValueKey(item.key),

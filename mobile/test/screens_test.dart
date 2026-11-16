@@ -530,9 +530,9 @@ void main() {
       servicesMenu(await onMe(t));
       await settle(t);
       await _shot(t, '62-services-$k');
-      await t.tap(find.byKey(const ValueKey('mg-study')));
+      await t.tap(find.byKey(const ValueKey('mg-people')));
       await settle(t);
-      await _shot(t, '62-services-study-$k');
+      await _shot(t, '62-services-people-$k');
     });
 
     testWidgets('making something ($k)', (t) async {

@@ -261,17 +261,19 @@ void main() {
     await settle(t);
     expect(find.descendant(of: find.byKey(const ValueKey('guests')), matching: find.text('2')), findsNothing);
     await _back(t);
-    // all services, in groups: a group opens to its pages, back closes it (the menu stays), the search finds the tree
+    // all services, in groups turning like a cover flow: the middle group's pages under it; a swipe brings the next
+    // group, a tap on a side card brings it to the middle; the search finds the tree
     await t.tap(find.byKey(const ValueKey('services')));
     await settle(t);
-    expect(find.byKey(const ValueKey('menu-rooms-birja')), findsNothing);
-    await t.tap(find.byKey(const ValueKey('mg-study')));
-    await settle(t);
     expect(find.byKey(const ValueKey('menu-rooms-birja')), findsOneWidget);
-    expect(find.byKey(const ValueKey('menu-schedule')), findsOneWidget);
-    await _back(t);
+    expect(find.byKey(const ValueKey('menu-friends')), findsNothing);
+    await t.drag(find.byKey(const ValueKey('menu-flow')), const Offset(-110, 0));
+    await settle(t);
+    expect(find.byKey(const ValueKey('menu-friends')), findsOneWidget);
     expect(find.byKey(const ValueKey('menu-rooms-birja')), findsNothing);
-    expect(find.byKey(const ValueKey('mg-study')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('mg-daily')));
+    await settle(t);
+    expect(find.byKey(const ValueKey('menu-market')), findsOneWidget);
     await t.enterText(find.byKey(const ValueKey('menu-find')), 'ოჯახის');
     await settle(t);
     await t.tap(find.byKey(const ValueKey('menu-tree')));
