@@ -113,7 +113,7 @@ class ReminderRing extends StatelessWidget {
                     shape: BoxShape.circle,
                     gradient: LinearGradient(colors: today ? [const Color(0xFFF59E0B), const Color(0xFFE11D48)] : [const Color(0xFFFBBF24), const Color(0xFFF59E0B)]),
                   ),
-                  child: Container(padding: const EdgeInsets.all(2), decoration: BoxDecoration(color: c.bg, shape: BoxShape.circle), child: Avatar(p: e.p, size: 54)),
+                  child: Container(padding: const EdgeInsets.all(2), decoration: BoxDecoration(color: c.bg, shape: BoxShape.circle), child: Avatar(p: e.p, size: 54, ring: false)),
                 ),
                 Positioned(
                   left: -12,

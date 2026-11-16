@@ -808,7 +808,7 @@ class _RoomScreenState extends State<RoomScreen> {
           Container(
             padding: const EdgeInsets.all(2.5),
             decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: speaking && micOn ? c.vine : Colors.transparent, width: 2.5)),
-            child: Avatar(p: p, size: speaking ? 62 : 50),
+            child: Avatar(p: p, size: speaking ? 62 : 50, ring: false),
           ),
           if (speaking)
             Positioned(

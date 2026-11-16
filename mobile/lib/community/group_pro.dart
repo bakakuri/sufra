@@ -90,7 +90,7 @@ class GroupStars extends StatelessWidget {
                             child: Container(
                               padding: const EdgeInsets.all(2),
                               decoration: BoxDecoration(color: c.surface, shape: BoxShape.circle),
-                              child: Avatar(p: p, size: 50),
+                              child: Avatar(p: p, size: 50, ring: false),
                             ),
                           ),
                           Positioned(

@@ -1,10 +1,8 @@
-import 'dart:async';
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../data/stores.dart';
 import '../ui/icons.dart';
+import '../ui/sparkles.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 
@@ -26,10 +24,6 @@ const tabs = [
   PTab('me', 'პროფილი', 'me'),
 ];
 const tabMid = 3;
-
-/// the little stars and Peera marks that scatter from my picture now and then (the tests turn them off: they wait
-/// for a still screen)
-bool barSparkles = true;
 
 class PeeraTabBar extends StatelessWidget {
   const PeeraTabBar({super.key, required this.index, required this.onTap, this.badges = const {}});
@@ -175,143 +169,38 @@ class PeeraTabBar extends StatelessWidget {
   }
 }
 
-/// My picture in a ring, and now and then a little burst of stars and Peera marks scattering from it.
-class _MeCell extends StatefulWidget {
+/// My picture in a ring, and now and then a little burst of stars and Peera marks scattering from it (more often than
+/// from the other small pictures; opening my profile sets one off at once).
+class _MeCell extends StatelessWidget {
   const _MeCell({required this.on});
   final bool on;
-  @override
-  State<_MeCell> createState() => _MeCellState();
-}
-
-class _MeCellState extends State<_MeCell> with SingleTickerProviderStateMixin {
-  late final burst = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400))
-    ..addStatusListener((s) {
-      if (s == AnimationStatus.completed) _later(const Duration(seconds: 4));
-    });
-  Timer? _next;
-
-  @override
-  void initState() {
-    super.initState();
-    if (barSparkles) _later(const Duration(milliseconds: 900));
-  }
-
-  @override
-  void didUpdateWidget(_MeCell old) {
-    super.didUpdateWidget(old);
-    // opening my profile sets one off at once
-    if (widget.on && !old.on) _go();
-  }
-
-  void _later(Duration d) {
-    _next?.cancel();
-    _next = Timer(d, _go);
-  }
-
-  void _go() {
-    if (!mounted || !barSparkles || burst.isAnimating) return;
-    _next?.cancel();
-    // a phone asked for less movement gets none
-    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return;
-    burst.forward(from: 0);
-  }
-
-  @override
-  void dispose() {
-    _next?.cancel();
-    burst.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final c = context.pc, on = widget.on;
+    final c = context.pc;
     const ring = 40.0;
-    return SizedBox.square(
-      dimension: ring,
-      child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
-        Positioned.fill(
-          child: IgnorePointer(
-            child: RepaintBoundary(child: CustomPaint(key: const ValueKey('me-sparkles'), painter: _Sparkles(burst, c.accent))),
-          ),
+    return Sparkles(
+      key: const ValueKey('me-sparkles'),
+      size: ring,
+      first: const Duration(milliseconds: 900),
+      every: const Duration(seconds: 4),
+      now: on,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        width: ring,
+        height: ring,
+        padding: EdgeInsets.all(on ? 2.6 : 2),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: SweepGradient(colors: [c.accent, const Color(0xFFC026D3), const Color(0xFFFFB020), const Color(0xFF22C3A6), c.accent]),
+          boxShadow: on ? [BoxShadow(color: c.accent.withValues(alpha: .35), blurRadius: 10)] : const [],
         ),
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          width: ring,
-          height: ring,
-          padding: EdgeInsets.all(on ? 2.6 : 2),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: SweepGradient(colors: [c.accent, const Color(0xFFC026D3), const Color(0xFFFFB020), const Color(0xFF22C3A6), c.accent]),
-            boxShadow: on ? [BoxShadow(color: c.accent.withValues(alpha: .35), blurRadius: 10)] : const [],
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(shape: BoxShape.circle, color: c.surface),
-            child: FittedBox(child: Avatar(p: context.me, size: 32)),
-          ),
+        child: Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(shape: BoxShape.circle, color: c.surface),
+          child: FittedBox(child: Avatar(p: context.me, size: 32, ring: false)),
         ),
-      ]),
+      ),
     );
   }
-}
-
-/// The burst: each piece leaves the ring at its own moment, flies out, turns a little and fades.
-class _Sparkles extends CustomPainter {
-  _Sparkles(this.t, this.accent) : super(repaint: t);
-  final Animation<double> t;
-  final Color accent;
-
-  static final _pieces = () {
-    final r = math.Random(7);
-    return [
-      for (var i = 0; i < 11; i++)
-        (
-          angle: -math.pi / 2 + i / 11 * 2 * math.pi + (r.nextDouble() - .5) * .5,
-          far: 13 + r.nextDouble() * 12,
-          size: 3.2 + r.nextDouble() * 2.6,
-          delay: i * .05 + r.nextDouble() * .06,
-          spin: (r.nextBool() ? 1 : -1) * (.6 + r.nextDouble()),
-          mark: i % 3 == 1,
-          tint: i % 3,
-        ),
-    ];
-  }();
-
-  static Path _star(double s) => Path()
-    ..moveTo(0, -s)
-    ..quadraticBezierTo(0, 0, s, 0)
-    ..quadraticBezierTo(0, 0, 0, s)
-    ..quadraticBezierTo(0, 0, -s, 0)
-    ..quadraticBezierTo(0, 0, 0, -s)
-    ..close();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final v = t.value;
-    if (v <= 0 || v >= 1) return;
-    final center = size.center(Offset.zero), r0 = size.shortestSide / 2;
-    final tints = [const Color(0xFFFFB020), const Color(0xFFC026D3), accent];
-    for (final p in _pieces) {
-      final u = ((v - p.delay) / .55).clamp(0.0, 1.0);
-      if (u <= 0 || u >= 1) continue;
-      final fade = math.sin(math.pi * u), d = r0 + p.far * Curves.easeOutCubic.transform(u);
-      final at = center + Offset(math.cos(p.angle), math.sin(p.angle)) * d;
-      canvas.save();
-      canvas.translate(at.dx, at.dy);
-      canvas.rotate(p.spin * u);
-      if (p.mark) {
-        final s = p.size * 2.3 * (.7 + .3 * fade);
-        canvas.translate(-s / 2, -s / 2);
-        drawPeeraMark(canvas, s, opacity: fade);
-      } else {
-        final s = p.size * (.6 + .5 * fade);
-        canvas.drawPath(_star(s), Paint()..color = tints[p.tint].withValues(alpha: fade));
-      }
-      canvas.restore();
-    }
-  }
-
-  @override
-  bool shouldRepaint(_Sparkles o) => o.accent != accent;
 }

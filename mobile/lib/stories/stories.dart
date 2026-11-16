@@ -15,6 +15,7 @@ import '../profile/profile.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
 import '../ui/net_image.dart';
+import '../ui/sparkles.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'story_make.dart';
@@ -85,8 +86,9 @@ class _Ring extends StatelessWidget {
         child: SizedBox(
           width: 76,
           child: Column(children: [
-            SizedBox.square(
-              dimension: 66,
+            // the stars scatter from the ring now and then, as from every small picture
+            Sparkles(
+              size: 66,
               child: Stack(clipBehavior: Clip.none, children: [
                 Container(
                   width: 66,
@@ -100,7 +102,7 @@ class _Ring extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(color: c.bg, shape: BoxShape.circle),
-                    child: Avatar(p: p, size: 54),
+                    child: Avatar(p: p, size: 54, ring: false),
                   ),
                 ),
                 if (plus)

@@ -205,7 +205,7 @@ Widget promoAvatar(Promo p, double size) => p.house
         decoration: const BoxDecoration(color: Color(0xFFEEF2FF), shape: BoxShape.circle),
         child: PeeraMark(size: size * .7),
       )
-    : Avatar(p: Profile(id: 'promo-${p.id}', name: p.brand, avatarUrl: p.brandUrl, hue: 330), size: size);
+    : Avatar(p: Profile(id: 'promo-${p.id}', name: p.brand, avatarUrl: p.brandUrl, hue: 330), size: size, ring: false);
 
 /// "რეკლამა": why it is here, and hiding it for good.
 Future<void> promoMore(BuildContext context, Promo p, {VoidCallback? hidden}) => showModalBottomSheet<void>(

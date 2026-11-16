@@ -41,6 +41,7 @@ import 'package:peera/settings/edit_profile.dart';
 import 'package:peera/settings/settings_screens.dart';
 import 'package:peera/shell/home_shell.dart';
 import 'package:peera/shell/tab_bar.dart';
+import 'package:peera/ui/sparkles.dart';
 import 'package:peera/ui/icons.dart';
 import 'package:peera/ui/look.dart';
 import 'package:peera/ui/widgets.dart';
@@ -205,26 +206,30 @@ void main() {
     expect(find.text('12 450'), findsOneWidget);
   });
 
-  testWidgets('my picture on the tab bar: now and then stars and Peera marks scatter from it, then it is still again', (t) async {
+  testWidgets('small pictures sit in a ring and now and then stars and Peera marks scatter from them; mine on the bar most often', (t) async {
     phone(t);
-    barSparkles = true;
-    addTearDown(() => barSparkles = false);
+    sparklesOn = true;
+    addTearDown(() => sparklesOn = false);
     await shell(t);
-    // within a few seconds, a burst (the screen moves again)
-    var moving = false;
-    for (var i = 0; i < 80 && !moving; i++) {
-      await t.pump(const Duration(milliseconds: 100));
-      moving = t.binding.hasScheduledFrame;
-    }
-    expect(moving, isTrue);
-    // it ends, and the bar is still until the next one
-    await t.pump(const Duration(milliseconds: 2600));
-    expect(t.binding.hasScheduledFrame, isFalse);
-    // opening my profile sets one off at once
-    await t.tap(find.byKey(const ValueKey('tab-me')));
-    await t.pump();
+    final me = find.byKey(const ValueKey('me-sparkles'));
+    Finder burstIn(Finder f) => find.descendant(of: f, matching: find.byKey(const ValueKey('sparkles')));
+    // nothing flies before the first burst; mine comes a little after the start
+    expect(burstIn(me), findsNothing);
+    await t.pump(const Duration(milliseconds: 1000));
     await t.pump(const Duration(milliseconds: 300));
+    expect(burstIn(me), findsOneWidget);
     expect(t.binding.hasScheduledFrame, isTrue);
+    // the feed's small pictures: each in its ring, ready to sparkle (the big ones and the story rings' own pictures
+    // are not ringed twice)
+    final post = find.byKey(const ValueKey('post-101'));
+    expect(find.descendant(of: post, matching: find.byType(Sparkles)), findsWidgets);
+    expect(find.descendant(of: find.byKey(const ValueKey('story-me')), matching: find.byType(Sparkles)), findsOneWidget);
+    expect(t.widget<Avatar>(find.descendant(of: find.byKey(const ValueKey('story-me')), matching: find.byType(Avatar))).ringed, isFalse);
+    // within a dozen seconds the others have had their turn too
+    for (var i = 0; i < 120; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    expect(burstIn(post), findsWidgets);
     await t.pump(const Duration(seconds: 3));
   });
 

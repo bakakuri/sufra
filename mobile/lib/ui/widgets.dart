@@ -4,19 +4,52 @@ import '../profile/profile.dart';
 import 'format.dart';
 import 'icons.dart';
 import 'net_image.dart';
+import 'sparkles.dart';
 import 'theme.dart';
 
 /// A round picture: the photo when there is one, otherwise the first letter on the person's own colour (as on the site).
+/// A small one (24 to 64 across) sits in a coloured ring, and now and then little stars and Peera marks scatter from it,
+/// as from my picture on the tab bar; a big one, or one already in a ring of its own ([ring] false), stays plain.
 class Avatar extends StatelessWidget {
-  const Avatar({super.key, required this.p, this.size = 40, this.online = false});
+  const Avatar({super.key, required this.p, this.size = 40, this.online = false, this.ring});
   final Profile p;
   final double size;
 
   /// a green dot at the corner
   final bool online;
 
+  /// in the ring with the stars (by default when it is small)
+  final bool? ring;
+
+  bool get ringed => ring ?? (size >= 24 && size <= 64);
+
   @override
   Widget build(BuildContext context) {
+    if (!ringed) return _pic(context, size, online);
+    final w = (size * .07).clamp(1.6, 3.4).toDouble(), inner = size - 2 * w - 2 * (size * .05).clamp(1.5, 3).toDouble();
+    return Sparkles(
+      size: size,
+      child: SizedBox.square(
+        dimension: size,
+        child: Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
+          Positioned.fill(child: CustomPaint(painter: RingPainter(accent: context.pc.accent, width: w))),
+          _pic(context, inner, false),
+          if (online) Positioned(right: 0, bottom: 0, child: _dot(context)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _dot(BuildContext context) {
+    final d = (size * .28).clamp(10.0, 16.0).toDouble();
+    return Container(
+      width: d,
+      height: d,
+      decoration: BoxDecoration(color: context.pc.vine, shape: BoxShape.circle, border: Border.all(color: context.pc.surface, width: 2)),
+    );
+  }
+
+  Widget _pic(BuildContext context, double size, bool online) {
     final h = (p.hue % 360).toDouble();
     final letter = p.name.trim().isEmpty ? '?' : p.name.trim().characters.first.toUpperCase();
     final initials = Container(
@@ -51,21 +84,9 @@ class Avatar extends StatelessWidget {
             ),
           );
     if (!online) return pic;
-    final d = (size * .28).clamp(10.0, 16.0).toDouble();
     return SizedBox.square(
       dimension: size,
-      child: Stack(clipBehavior: Clip.none, children: [
-        pic,
-        Positioned(
-          right: 0,
-          bottom: 0,
-          child: Container(
-            width: d,
-            height: d,
-            decoration: BoxDecoration(color: context.pc.vine, shape: BoxShape.circle, border: Border.all(color: context.pc.surface, width: 2)),
-          ),
-        ),
-      ]),
+      child: Stack(clipBehavior: Clip.none, children: [pic, Positioned(right: 0, bottom: 0, child: _dot(context))]),
     );
   }
 }
