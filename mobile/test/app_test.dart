@@ -232,19 +232,24 @@ void main() {
     expect(inP(find.text('ჯვრის მონასტერთან ახლოს 🙂')), findsOneWidget);
     // one step in, saying whom it answers; the answer to it one step further, folded under it
     expect(inP(find.byKey(const ValueKey('cto-2'))), findsOneWidget);
-    final x0 = t.getTopLeft(inP(find.byKey(const ValueKey('cm-1')))).dx;
     expect(inP(find.text('ზუსტად, მცხეთის თავზე')), findsNothing);
+    // (the list builds only what is near the screen)
+    final list = inP(find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)).first;
+    await t.scrollUntilVisible(inP(find.byKey(const ValueKey('cthread-2'))), 100, scrollable: list);
+    await settle(t);
     await t.tap(inP(find.byKey(const ValueKey('cthread-2'))));
     await settle(t);
-    expect(inP(find.text('ზუსტად, მცხეთის თავზე')), findsOneWidget);
-    Finder bubble(String s) => inP(find.ancestor(of: find.text(s), matching: find.byType(Container)).first);
-    final a1 = t.getTopLeft(bubble('რა ლამაზია! სად არის ზუსტად?')).dx,
-        a2 = t.getTopLeft(bubble('ჯვრის მონასტერთან ახლოს 🙂')).dx,
-        a3 = t.getTopLeft(bubble('ზუსტად, მცხეთის თავზე')).dx;
-    expect(a1 < a2 && a2 < a3, isTrue);
-    expect(x0, lessThanOrEqualTo(a1));
+    await t.scrollUntilVisible(inP(find.text('ზუსტად, მცხეთის თავზე')), 100, scrollable: list);
+    await settle(t);
+    // the three steps, each one further in
+    int depthOf(String s) =>
+        t.widget<CommentTile>(find.descendant(of: panel, matching: find.ancestor(of: find.text(s, skipOffstage: false), matching: find.byType(CommentTile, skipOffstage: false)), skipOffstage: false).first).depth;
+    expect([depthOf('რა ლამაზია! სად არის ზუსტად?'), depthOf('ჯვრის მონასტერთან ახლოს 🙂'), depthOf('ზუსტად, მცხეთის თავზე')], [0, 1, 2]);
+    expect(inP(find.byKey(const ValueKey('cto-5'))), findsOneWidget);
     // an answer can be answered too
     expect(inP(find.byKey(const ValueKey('creply-2'))), findsOneWidget);
+    await t.scrollUntilVisible(inP(find.byKey(const ValueKey('creply-1'))), -100, scrollable: list);
+    await settle(t);
     await t.tap(inP(find.byKey(const ValueKey('creply-1'))));
     await settle(t);
     expect(inP(find.text('პასუხი: მარიამ')), findsOneWidget);
@@ -256,7 +261,7 @@ void main() {
     expect(inP(find.text('ზაფხულში ისევ წავალთ')), findsOneWidget);
     expect(inP(find.text('კომენტარები · 7')), findsOneWidget);
     // an answer to one already two steps in stays on that step, names its author and is tagged with them
-    await t.ensureVisible(inP(find.byKey(const ValueKey('creply-5'))));
+    await t.scrollUntilVisible(inP(find.byKey(const ValueKey('creply-5'))), 100, scrollable: list);
     await settle(t);
     await t.tap(inP(find.byKey(const ValueKey('creply-5'))));
     await settle(t);
