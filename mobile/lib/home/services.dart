@@ -21,6 +21,7 @@ import '../community/sport.dart';
 import '../community/toasts.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
+import '../feed/post_actions.dart';
 import '../feed/post_card.dart';
 import '../map/live_map.dart';
 import '../people/albums.dart';
@@ -439,7 +440,8 @@ Future<void> createMenu(BuildContext context, {required Future<void> Function({b
     }),
     ('cpoll', 'poll', 'გამოკითხვა', 'მეგობრების აზრი', () => write(poll: true)),
     ('cstory', 'story', 'ისტორია', 'ქრება 24 საათში', () => addStory(context)),
-    ('calbum', 'image', 'ალბომი', 'საერთო ფოტოები ერთად', () => albumForm(context)),
+    // a shared album: the staff only make them
+    if (isStaff(context)) ('calbum', 'image', 'ალბომი', 'საერთო ფოტოები ერთად', () => albumForm(context)),
   ];
   final off = context.app.home.off;
   const feat = {'cclip': 'clips', 'cpoll': 'polls', 'cstory': 'stories', 'calbum': 'albums'};

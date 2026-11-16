@@ -32,6 +32,7 @@ import 'package:peera/people/friends_tab.dart';
 import 'package:peera/people/person_screen.dart';
 import 'package:peera/people/photos.dart';
 import 'package:peera/notes/notes_screen.dart';
+import 'package:peera/home/services.dart';
 import 'package:peera/profile/profile.dart';
 import 'package:peera/people/namedays.dart';
 import 'package:peera/push/push.dart';
@@ -1115,13 +1116,11 @@ void main() {
     expect(find.byType(PostScreen), findsNothing);
     expect(find.byType(PersonScreen), findsOneWidget);
 
-    // the tabs (back up above the posts): albums, friends, CV
-    await t.scrollUntilVisible(find.byKey(const ValueKey('ptab-albums')), -250, scrollable: pro());
-    await t.ensureVisible(find.byKey(const ValueKey('ptab-albums')));
+    // the tabs (back up above the posts): no shared albums; friends, CV
+    await t.scrollUntilVisible(find.byKey(const ValueKey('ptab-friends')), -250, scrollable: pro());
+    await t.ensureVisible(find.byKey(const ValueKey('ptab-friends')));
     await settle(t);
-    await t.tap(find.byKey(const ValueKey('ptab-albums')));
-    await settle(t);
-    expect(find.text('სვანეთი 2026'), findsOneWidget);
+    expect(find.byKey(const ValueKey('ptab-albums')), findsNothing);
     await t.tap(find.byKey(const ValueKey('ptab-friends')));
     await settle(t);
     expect(find.byKey(const ValueKey('pfriend-u3')), findsOneWidget);
@@ -1405,11 +1404,17 @@ void main() {
     expect(find.byType(PersonScreen), findsOneWidget);
   });
 
-  testWidgets('albums: mine opened, photos added, a friend invited, a photo viewed; a new album made; back steps out one at a time', (t) async {
+  testWidgets('shared albums: not on the profile; in the services mine opens, photos added, a friend invited, a photo viewed; no new one without a staff role', (t) async {
     final api = await meTab(t);
-    await proTo(t, find.byKey(const ValueKey('ptab-albums')));
-    await t.tap(find.byKey(const ValueKey('ptab-albums')));
+    expect(find.byKey(const ValueKey('ptab-albums'), skipOffstage: false), findsNothing);
+    expect(find.byKey(const ValueKey('space-albums'), skipOffstage: false), findsNothing);
+    openService(t.element(find.byType(PersonScreen).first), 'albums');
     await settle(t);
+    expect(find.byType(AlbumsScreen), findsOneWidget);
+    expect(find.text('მეგობრების ალბომები'), findsNothing);
+    expect(find.text('სადაც მონაწილე ვარ'), findsOneWidget);
+    // the staff make them; nobody else sees the button
+    expect(find.byKey(const ValueKey('albums-new')), findsNothing);
     await tapKey(t, 'album-2');
     expect(find.byType(AlbumScreen), findsOneWidget);
     expect(find.text('ნინოს დაბადების დღე'), findsWidgets);
@@ -1436,15 +1441,18 @@ void main() {
     expect(find.byType(AlbumScreen), findsOneWidget);
     await _back(t);
     expect(find.byType(AlbumScreen), findsNothing);
-    expect(find.byType(PersonScreen), findsOneWidget);
-
-    // a new album from the albums page: it opens, and back goes to the page
-    await spaceTo(t, 'albums');
-    await t.tap(find.byKey(const ValueKey('space-albums')));
-    await settle(t);
     expect(find.byType(AlbumsScreen), findsOneWidget);
-    expect(find.text('მეგობრების ალბომები'), findsNothing);
-    expect(find.text('სადაც მონაწილე ვარ'), findsOneWidget);
+    await _back(t);
+    expect(find.byType(AlbumsScreen), findsNothing);
+    expect(find.byType(PersonScreen), findsOneWidget);
+  });
+
+  testWidgets('a new shared album, made by an admin: it opens, and back goes to the albums', (t) async {
+    phone(t);
+    final api = await shell(t, me: Profile(id: 'u1', name: 'ნინო ბერიძე', surname: 'ბერიძე', username: 'nino.beridze', city: 'ქუთაისი', hue: 312, onboarded: true, role: 'admin'));
+    await _tab(t, 'me');
+    openService(t.element(find.byType(PersonScreen).first), 'albums');
+    await settle(t);
     await t.tap(find.byKey(const ValueKey('albums-new')));
     await settle(t);
     await t.tap(find.byKey(const ValueKey('al-ok')));

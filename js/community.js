@@ -262,5 +262,5 @@ A.evpay=async t=>{const E=EVT;if(!E)return;try{await q(sb.from('event_payments')
 A.evgot=async t=>{const E=EVT;if(!E)return;try{await q(sb.from('event_payments').insert({event_id:E.e.id,from_user:t.dataset.from,to_user:ME.id,amount:+t.dataset.m,added_by:ME.id}));toast('ჩაიწერა');loadEvCosts()}catch(e){toast(errMsg(e))}};
 A.evinvite=t=>{const id=+t.dataset.id;friendPicker('მეგობრების მოწვევა','მოწვევა',async sel=>{const n=await rpc('invite_to_event',{p_event:id,p_users:sel});closeSheet();toast(n?`მოწვევა გაეგზავნა: ${n}`:'ყველა უკვე მოწვეულია')},new Set(EVT?.going||[]))};
 A.evalbum=async t=>{const id=+t.dataset.id;try{const a=await q(sb.from('albums').select('id').eq('event_id',id).order('id').limit(1).maybeSingle());if(a){openPage('album',a.id,['event',id]);return}
- const E=EVT;if(!E||!(E.host||E.going.includes(ME.id))){toast('ალბომი ჯერ არ შექმნილა. შექმნა შეუძლიათ მასპინძელს და სტუმრებს');return}
+ const E=EVT;if(!E||!isStaff()){toast('ალბომი ჯერ არ შექმნილა. საერთო ალბომს ადმინისტრაცია ქმნის');return}
  const n=await q(sb.from('albums').insert({owner:ME.id,title:E.e.title.slice(0,80),event_id:id,audience:'members'}).select('id').single());toast('ალბომი შეიქმნა. სტუმრებს შეუძლიათ ფოტოების დამატება');openPage('album',n.id,['event',id])}catch(e){toast(errMsg(e))}};

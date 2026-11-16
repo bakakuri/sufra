@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
 import '../feed/compose_screen.dart';
+import '../feed/post_actions.dart';
 import '../profile/profile.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
@@ -78,6 +79,10 @@ Widget albumGrid(List<Album> list, {VoidCallback? onChanged}) => GridView.count(
 
 /// Making an album, or changing one: name, about, who sees it. The new one opens.
 Future<void> albumForm(BuildContext context, {Map<String, dynamic>? album, VoidCallback? done}) async {
+  if (album == null && !isStaff(context)) {
+    toast(context, 'საერთო ალბომს ადმინისტრაცია ქმნის');
+    return;
+  }
   final app = context.app;
   final title = TextEditingController(text: '${album?['title'] ?? ''}'), about = TextEditingController(text: '${album?['about'] ?? ''}');
   var aud = '${album?['audience'] ?? 'friends'}';
@@ -184,7 +189,10 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
     final c = context.pc, d = data;
     Widget sec(String t) => Padding(padding: const EdgeInsets.fromLTRB(16, 18, 16, 10), child: Text(t, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)));
     return Scaffold(
-      appBar: peeraBar(context, title: 'ალბომები', actions: [IconBtn('plus', key: const ValueKey('albums-new'), label: 'ახალი', onTap: () => albumForm(context, done: _load))]),
+      // shared albums are made by the staff only; everyone adds their photos to the ones they are in
+      appBar: peeraBar(context, title: 'ალბომები', actions: [
+        if (isStaff(context)) IconBtn('plus', key: const ValueKey('albums-new'), label: 'ახალი', onTap: () => albumForm(context, done: _load)),
+      ]),
       body: d == null
           ? (error != null ? Center(child: Empty(icon: 'image', title: 'ვერ ჩაიტვირთა', text: errText(error!), action: 'თავიდან', onAction: _load)) : const Center(child: CircularProgressIndicator()))
           : RefreshIndicator(
@@ -192,15 +200,16 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
               child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: Text('საერთო ალბომში ყველა მონაწილე ამატებს თავის ფოტოებს: ქორწილი, დაბადების დღე, ლაშქრობა.', style: TextStyle(color: c.muted, fontSize: 13.5, height: 1.4)),
+                  child: Text('საერთო ალბომებს Peera-ს ადმინისტრაცია ქმნის, მონაწილეები კი თავიანთ ფოტოებს ამატებენ: ღონისძიება, ექსკურსია, ლაშქრობა.',
+                      style: TextStyle(color: c.muted, fontSize: 13.5, height: 1.4)),
                 ),
                 if (d.$1.isEmpty && d.$2.isEmpty && d.$3.isEmpty)
                   Empty(
                     icon: 'image',
                     title: 'ალბომები ჯერ არ არის',
-                    text: 'შექმენი ალბომი და მოიწვიე მეგობრები, რომ თავიანთი ფოტოები დაამატონ.',
-                    action: 'ალბომის შექმნა',
-                    onAction: () => albumForm(context, done: _load),
+                    text: isStaff(context) ? 'შექმენი ალბომი და მოიწვიე ხალხი, რომ თავიანთი ფოტოები დაამატონ.' : 'როცა ალბომში მოგიწვევენ, აქ გამოჩნდება.',
+                    action: isStaff(context) ? 'ალბომის შექმნა' : null,
+                    onAction: isStaff(context) ? () => albumForm(context, done: _load) : null,
                   ),
                 if (d.$1.isNotEmpty) ...[sec('ჩემი ალბომები'), albumGrid(d.$1, onChanged: _load)],
                 if (d.$2.isNotEmpty) ...[sec('სადაც მონაწილე ვარ'), albumGrid(d.$2, onChanged: _load)],

@@ -16,8 +16,9 @@ A.unfriend=t=>{const id=t.dataset.u;confirmSheet('მეგობრობის
 /* profile page */
 R.me=()=>{view.innerHTML=`<div id="ub">${skel(2)}</div>`;loadUser(ME.id)};
 PG.user={r(id){const mine=id===ME.id;view.innerHTML=(mine&&!S.page?'':pgHead(''))+`<div id="ub">${skel(2)}</div>`;loadUser(id)}};
-const PTABS_ME=[['posts','grid','პოსტები'],['albums','image','ალბომები'],['cv','school','CV'],['saved','bookmark','შენახული']];
-const PTABS_OTHER=[['posts','grid','პოსტები'],['albums','image','ალბომები'],['friends','users','მეგობრები'],['cv','school','CV']];
+/* the shared albums are not on a profile: they are among the services */
+const PTABS_ME=[['posts','grid','პოსტები'],['cv','school','CV'],['saved','bookmark','შენახული']];
+const PTABS_OTHER=[['posts','grid','პოსტები'],['friends','users','მეგობრები'],['cv','school','CV']];
 /* "my space": one row of shortcuts under the numbers, scrolled sideways; the verification shortcut leads while there is no tick */
 const myTiles=p=>[...(p.verified?[]:[['page','verify','shield','ვერიფიკაცია','var(--super)']]),['page','friends','users','მეგობრები','var(--wine)',PENDING_IN.size],['ptsheet','guests','eye','სტუმრები','var(--super)'],['badges','','trophy','ნიშნები','var(--gold)'],['ptsheet','gifts','gift','საჩუქრები','var(--nope)'],['page','storyarch','story','ისტორიები','var(--wine)'],['tree','','tree','ოჯახის ხე','var(--vine)'],['page','close','star','ახლო მეგობრები','var(--gold)'],['page','drafts','clock','დრაფტები','var(--muted)'],['page','namedays','cal','ანგელოზის დღე','var(--vine)']];
 const spaceHTML=p=>myTiles(p).map(([a,pg,i,l,c,badge])=>`<button class="psp" data-a="${a}" ${a==='page'?`data-p="${pg}"`:a==='ptsheet'?`data-k="${pg}"`:a==='badges'?`data-u="${p.id}"`:''}><span class="pspi" style="--c:${c}">${ic(i)}</span><span>${l}</span>${a==='badges'?'<em id="psbn"></em>':''}${badge?`<i class="badge">${badge}</i>`:''}</button>`).join('');

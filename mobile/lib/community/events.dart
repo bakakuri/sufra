@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../config.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
+import '../feed/post_actions.dart';
 import '../people/albums.dart';
 import '../people/person_screen.dart';
 import '../people/profile_parts.dart';
@@ -399,8 +400,9 @@ class _EventScreenState extends State<EventScreen> {
         await openPage(context, AlbumScreen(id: a), full: true);
         return;
       }
-      if (!(host || going.contains(me))) {
-        toast(context, 'ალბომი ჯერ არ შექმნილა. შექმნა შეუძლიათ მასპინძელს და სტუმრებს');
+      // shared albums are made by the staff only
+      if (!isStaff(context)) {
+        toast(context, 'ალბომი ჯერ არ შექმნილა. საერთო ალბომს ადმინისტრაცია ქმნის');
         return;
       }
       final n = await app.api.makeEventAlbum(widget.id, '${e['title']}');

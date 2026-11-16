@@ -1,6 +1,6 @@
 // A profile page, as on the site (js/people.js loadUser): the cover (or the drawn mountains), the picture, the name,
 // a line of who they are, about, chips (school, Joker, surname, angel's day, home), what can be done, the numbers,
-// my coins and "my space" on my own page, the highlights, and the tabs: posts as a grid, albums, CV, saved or friends.
+// my coins and "my space" on my own page, the highlights, and the tabs: posts, photos, CV, saved or friends.
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -23,7 +23,6 @@ import '../ui/motion.dart';
 import '../ui/net_image.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-import 'albums.dart';
 import 'badges.dart';
 import 'coins.dart';
 import 'cv_edit.dart';
@@ -53,8 +52,9 @@ class PersonScreen extends StatefulWidget {
   State<PersonScreen> createState() => _PersonScreenState();
 }
 
-const _tabsMine = [('posts', 'edit', 'პოსტები'), ('photos', 'image', 'ფოტოები'), ('albums', 'folder', 'ალბომები'), ('cv', 'school', 'CV'), ('saved', 'bookmark', 'შენახული')];
-const _tabsOther = [('posts', 'edit', 'პოსტები'), ('photos', 'image', 'ფოტოები'), ('albums', 'folder', 'ალბომები'), ('friends', 'users', 'მეგობრები'), ('cv', 'school', 'CV')];
+// the shared albums are not on a profile (they are in the services); a profile's own albums are under its photos
+const _tabsMine = [('posts', 'edit', 'პოსტები'), ('photos', 'image', 'ფოტოები'), ('cv', 'school', 'CV'), ('saved', 'bookmark', 'შენახული')];
+const _tabsOther = [('posts', 'edit', 'პოსტები'), ('photos', 'image', 'ფოტოები'), ('friends', 'users', 'მეგობრები'), ('cv', 'school', 'CV')];
 
 class _PersonScreenState extends State<PersonScreen> {
   Profile? p;
@@ -70,7 +70,6 @@ class _PersonScreenState extends State<PersonScreen> {
   final _tabsKey = GlobalKey();
 
   // what each tab shows, loaded when first opened
-  List<Album>? albums;
   Map<String, dynamic>? cv;
   bool cvLoaded = false;
   List<String>? friendIds;
@@ -202,10 +201,6 @@ class _PersonScreenState extends State<PersonScreen> {
     final app = context.app, uid = widget.uid;
     try {
       switch (k) {
-        case 'albums':
-          if (albums != null && !force) return;
-          final a = await app.api.albums(uid);
-          if (mounted) setState(() => albums = a);
         case 'cv':
           if (cvLoaded && !force) return;
           final v = await app.api.cv(uid);
@@ -907,7 +902,6 @@ class _PersonScreenState extends State<PersonScreen> {
           tile('gifts', 'gift', 'საჩუქრები', c.nope, () => giftsGotSheet(context)),
           tile('stories', 'story', 'ისტორიები', c.accent, () => openPage(context, const StoryArchiveScreen(), full: true).then((_) => _load())),
           tile('tree', 'tree', 'ოჯახის ხე', c.vine, () => openPage(context, TreeScreen(uid: who.id), full: true)),
-          tile('albums', 'image', 'ალბომები', c.accent, () => openPage(context, const AlbumsScreen(), full: true).then((_) => _loadTab('albums', force: true))),
           tile('close', 'star', 'ახლო მეგობრები', c.gold, () => openPage(context, const CloseFriendsScreen(), full: true)),
           tile('drafts', 'clock', 'დრაფტები', c.muted, () => openPage(context, const DraftsScreen(), full: true).then((_) => _load())),
           tile('namedays', 'cal', 'ანგელოზის დღე', c.vine, () => openPage(context, const NamedaysScreen(), full: true).then((_) => _load())),
@@ -1060,19 +1054,6 @@ class _PersonScreenState extends State<PersonScreen> {
     switch (tab) {
       case 'photos':
         return PhotosTab(key: ValueKey('photos-${widget.uid}'), uid: widget.uid, mine: isMe);
-      case 'albums':
-        final a = albums;
-        if (a == null) return wait;
-        if (a.isEmpty) {
-          return Empty(
-            icon: 'image',
-            title: isMe ? 'ალბომები ჯერ არ გაქვს' : 'ალბომები ჯერ არ არის',
-            text: isMe ? 'შექმენი ალბომი და მოიწვიე მეგობრები.' : null,
-            action: isMe ? 'ალბომის შექმნა' : null,
-            onAction: isMe ? () => albumForm(context, done: () => _loadTab('albums', force: true)) : null,
-          );
-        }
-        return Padding(padding: const EdgeInsets.only(top: 12), child: albumGrid(a, onChanged: () => _loadTab('albums', force: true)));
       case 'cv':
         if (!cvLoaded) return wait;
         final v = cv;

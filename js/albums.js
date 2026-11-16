@@ -1,7 +1,8 @@
 /* shared albums: a wedding or a supra where every guest adds their photos */
 const AUD_TXT={friends:'მეგობრები ხედავენ',members:'მხოლოდ მონაწილეები',all:'ყველა ხედავს'};
 const albumCard=a=>`<button class="albc" data-a="album" data-id="${a.id}"><span class="albcov">${safeU(a.cover_url)?`<img src="${esc(a.cover_url)}" alt="" loading="lazy">`:`<i>${ic('image')}</i>`}<em>${a.photos||0}</em></span><b>${esc(a.title)}</b><small>${a.owner===ME.id?'შენი':esc(pname(a.owner))} · ${ago(a.updated_at||a.created_at)}</small></button>`;
-PG.albums={r(){view.innerHTML=pgHead('ალბომები',`<button class="btn sm" data-a="newalbum">${ic('plus')}ახალი</button>`)+`<p class="hint" style="padding:12px 16px 0">საერთო ალბომში ყველა მონაწილე ამატებს თავის ფოტოებს: ქორწილი, დაბადების დღე, ლაშქრობა.</p><div id="albb">${skel(2)}</div>`;
+/* shared albums are made by the staff only; everyone adds their photos to the ones they are in */
+PG.albums={r(){view.innerHTML=pgHead('ალბომები',isStaff()?`<button class="btn sm" data-a="newalbum">${ic('plus')}ახალი</button>`:'')+`<p class="hint" style="padding:12px 16px 0">საერთო ალბომებს Peera-ს ადმინისტრაცია ქმნის, მონაწილეები კი თავიანთ ფოტოებს ამატებენ: ღონისძიება, ექსკურსია, ლაშქრობა.</p><div id="albb">${skel(2)}</div>`;
  Promise.all([q(sb.from('albums').select('id,owner,title,cover_url,photos,updated_at,created_at,event_id').eq('owner',ME.id).order('updated_at',{ascending:false}).limit(60)),
   q(sb.from('album_members').select('album_id').eq('user_id',ME.id).limit(100)),
   q(sb.from('albums').select('id,owner,title,cover_url,photos,updated_at,created_at,event_id').neq('owner',ME.id).order('updated_at',{ascending:false}).limit(40))])
@@ -9,10 +10,10 @@ PG.albums={r(){view.innerHTML=pgHead('ალბომები',`<button class="
   const shared=other.filter(a=>memIds.has(a.id)),rest=other.filter(a=>!memIds.has(a.id));
   el.innerHTML=(mine.length?`<h3 class="sec2">ჩემი ალბომები</h3><div class="albgrid">${mine.map(albumCard).join('')}</div>`:'')+(shared.length?`<h3 class="sec2">სადაც მონაწილე ვარ</h3><div class="albgrid">${shared.map(albumCard).join('')}</div>`:'')
    +(rest.length?`<h3 class="sec2">მეგობრების ალბომები</h3><div class="albgrid">${rest.map(albumCard).join('')}</div>`:'')
-   ||empty('ალბომები ჯერ არ არის','შექმენი ალბომი და მოიწვიე მეგობრები, რომ თავიანთი ფოტოები დაამატონ.','<button class="btn" data-a="newalbum">ალბომის შექმნა</button>');staggerIn($$('.albc',el).slice(0,8))})
+   ||(isStaff()?empty('ალბომები ჯერ არ არის','შექმენი ალბომი და მოიწვიე ხალხი, რომ თავიანთი ფოტოები დაამატონ.','<button class="btn" data-a="newalbum">ალბომის შექმნა</button>'):empty('ალბომები ჯერ არ არის','როცა ალბომში მოგიწვევენ, აქ გამოჩნდება.'));staggerIn($$('.albc',el).slice(0,8))})
  .catch(e=>{const el=$('#albb');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))})}};
 A.album=t=>openPage('album',+t.dataset.id,S.page?[S.page.id,S.page.arg]:['albums']);
-A.newalbum=(t,ev)=>albumForm(null,t?.dataset?.ev?+t.dataset.ev:null);
+A.newalbum=(t,ev)=>{if(!isStaff()){toast('საერთო ალბომს ადმინისტრაცია ქმნის');return}albumForm(null,t?.dataset?.ev?+t.dataset.ev:null)};
 function albumForm(a,eventId){sheet(head(a?'ალბომის რედაქტირება':'ახალი ალბომი')+`<form class="ph-body" id="alf"><label class="fld">სახელი<input id="al_t" maxlength="80" required value="${esc(a?.title||'')}" placeholder="მაგ. ნინოს და გიორგის ქორწილი"></label>
   <label class="fld">აღწერა<textarea id="al_d" maxlength="500" rows="2">${esc(a?.about||'')}</textarea></label>
   <div class="fld"><span>ვინ ნახავს</span><div class="seg flat" role="group" aria-label="ვინ ნახავს">${Object.entries(AUD_TXT).map(([k,l])=>`<button type="button" data-aud="${k}" aria-pressed="${(a?.audience||'friends')===k}">${l}</button>`).join('')}</div></div>
