@@ -622,7 +622,7 @@ class _CoinsScreenState extends State<CoinsScreen> {
                   line: pg.$4,
                   icon: pg.$2,
                   color: Color(pg.$3),
-                  amount: earned > 0 ? '+$earned დღეს' : (cap > 0 ? '+$cap-მდე' : '✓'),
+                  amount: earned > 0 ? '+$earned დღეს' : (cap > 0 ? '+$cap-მდე' : null),
                   green: earned > 0,
                   top: p == top,
                   on: p == open,
@@ -686,7 +686,7 @@ class _CoinsScreenState extends State<CoinsScreen> {
               ),
               const SizedBox(width: 6),
               if (cap > 0) _Amount('+$cap-მდე'),
-              PIcon('up', size: 18, color: c.muted),
+              PIcon('chevup', size: 20, color: c.muted),
             ]),
           ),
         ),
@@ -980,7 +980,10 @@ class _PageCard extends StatelessWidget {
     this.top = false,
     this.on = false,
   });
-  final String name, line, icon, amount;
+  final String name, line, icon;
+
+  /// what it gives (null: all of it is taken already)
+  final String? amount;
   final Color color;
   final VoidCallback onTap;
   final bool green, top, on;
@@ -996,22 +999,31 @@ class _PageCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 12, 12),
+              padding: EdgeInsets.fromLTRB(14, top ? 18 : 14, 12, 12),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   _Tile(icon: icon, color: color, size: 42),
                   const Spacer(),
-                  Flexible(
-                    flex: 3,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                      decoration: BoxDecoration(color: green ? c.vine.withValues(alpha: .12) : c.sunk, borderRadius: BorderRadius.circular(10)),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(amount, style: TextStyle(color: green ? c.vine : c.ink, fontWeight: FontWeight.w800, fontSize: 13)),
+                  if (amount == null)
+                    Container(
+                      width: 30,
+                      height: 30,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(color: c.vine.withValues(alpha: .12), shape: BoxShape.circle),
+                      child: PIcon('check', size: 16, color: c.vine, stroke: 2.4),
+                    )
+                  else
+                    Flexible(
+                      flex: 3,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                        decoration: BoxDecoration(color: green ? c.vine.withValues(alpha: .12) : c.sunk, borderRadius: BorderRadius.circular(10)),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(amount!, style: TextStyle(color: green ? c.vine : c.ink, fontWeight: FontWeight.w800, fontSize: 13)),
+                        ),
                       ),
                     ),
-                  ),
                 ]),
                 const Spacer(),
                 Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
@@ -1024,8 +1036,8 @@ class _PageCard extends StatelessWidget {
       ),
       if (top)
         Positioned(
-          right: 18,
-          top: -9,
+          right: 22,
+          top: -10,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
             decoration: BoxDecoration(color: c.accent, borderRadius: BorderRadius.circular(10), border: Border.all(color: c.surface, width: 2)),
