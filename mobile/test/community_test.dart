@@ -19,6 +19,14 @@ Future<void> _open(WidgetTester t, String service) async {
   await settle(t);
 }
 
+/// words typed into a field that may be below the screen
+Future<void> _type(WidgetTester t, String key, String text) async {
+  await reveal(t, find.byKey(ValueKey(key), skipOffstage: false));
+  await t.ensureVisible(find.byKey(ValueKey(key), skipOffstage: false));
+  await settle(t);
+  await t.enterText(find.byKey(ValueKey(key)), text);
+}
+
 Future<void> _tap(WidgetTester t, String key) async {
   // a list builds only what is near the screen
   await reveal(t, find.byKey(ValueKey(key), skipOffstage: false));
@@ -141,11 +149,11 @@ void main() {
     expect(api.calls, contains('rsvp 70 yes'));
     await _tap(t, 'claim-2');
     expect(api.calls, contains('claim 2 true'));
-    await t.enterText(find.byKey(const ValueKey('item-new')), 'ტყემალი');
+    await _type(t, 'item-new', 'ტყემალი');
     await _tap(t, 'item-add');
     expect(api.calls, contains('item 70 ტყემალი'));
-    await t.enterText(find.byKey(const ValueKey('cost-what')), 'პიცა');
-    await t.enterText(find.byKey(const ValueKey('cost-amount')), '40');
+    await _type(t, 'cost-what', 'პიცა');
+    await _type(t, 'cost-amount', '40');
     await _tap(t, 'cost-add');
     expect(api.calls, contains('cost 70 u1 40.0 პიცა'));
     expect(find.text('70 ₾'), findsOneWidget);

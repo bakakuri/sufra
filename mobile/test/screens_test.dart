@@ -20,7 +20,6 @@ import 'package:peera/community/toasts.dart';
 import 'package:peera/feed/comments_sheet.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/post_actions.dart';
-import 'package:peera/feed/post_screen.dart';
 import 'package:peera/feed/tag_screen.dart';
 import 'package:peera/media/photo_edit.dart';
 import 'package:peera/ui/stickers.dart';
@@ -586,6 +585,8 @@ void main() {
     testWidgets('sharing a post ($k)', (t) async {
       phone(t);
       await shell(t, mode: m);
+      await t.ensureVisible(find.byKey(const ValueKey('share-101')));
+      await settle(t);
       await t.tap(find.byKey(const ValueKey('share-101')));
       await settle(t);
       await _shot(t, '71-share-$k');

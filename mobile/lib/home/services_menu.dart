@@ -88,17 +88,20 @@ List<SvcGroup> menuGroups(BuildContext context) {
 }
 
 /// All the services, grouped.
-Future<void> servicesMenu(BuildContext context) => showModalBottomSheet<void>(
-      context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: context.pc.surface,
-      builder: (s) => SizedBox(
-        height: MediaQuery.sizeOf(s).height * .88,
-        child: _Menu(groups: menuGroups(context), open: (i) => openService(context, i.page, arg: i.kind)),
-      ),
-    );
+Future<void> servicesMenu(BuildContext context) {
+  final groups = menuGroups(context);
+  return showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: context.pc.surface,
+    builder: (s) => SizedBox(
+      height: MediaQuery.sizeOf(s).height * .88,
+      child: _Menu(groups: groups, open: (i) => openService(context, i.page, arg: i.kind)),
+    ),
+  );
+}
 
 class _Menu extends StatefulWidget {
   const _Menu({required this.groups, required this.open});
@@ -157,9 +160,14 @@ class _MenuState extends State<_Menu> {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 2),
           child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            const Text('სერვისები', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, letterSpacing: -.2)),
+            const Flexible(child: Text('სერვისები', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, letterSpacing: -.2))),
             const SizedBox(width: 8),
-            Padding(padding: const EdgeInsets.only(bottom: 3), child: Text('${widget.groups.length} ჯგუფი · $count გვერდი', style: TextStyle(color: c.muted, fontSize: 12.5))),
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text('${widget.groups.length} ჯგუფი · $count გვერდი', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 12.5)),
+              ),
+            ),
           ]),
         ),
         Padding(

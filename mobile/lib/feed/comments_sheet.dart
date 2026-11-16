@@ -18,17 +18,25 @@ import 'post_screen.dart';
 /// how many come first, and how many more each time
 const commentsFirst = 15, commentsMore = 10;
 
-Future<void> showCommentsSheet(BuildContext context, Post post) => showModalBottomSheet<void>(
-      context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: context.pc.surface,
-      builder: (s) => Padding(
+Future<void> showCommentsSheet(BuildContext context, Post post) {
+  // the window stands over the whole app, outside the tab: it takes the app with it
+  final scope = AppScope.of(context);
+  return showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: context.pc.surface,
+    builder: (s) => AppScope(
+      app: scope.app,
+      me: scope.me,
+      child: Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(s).bottom),
         child: SizedBox(height: MediaQuery.sizeOf(s).height * .86, child: CommentsPanel(post: post)),
       ),
-    );
+    ),
+  );
+}
 
 class CommentsPanel extends StatefulWidget {
   const CommentsPanel({super.key, required this.post});

@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:peera/feed/comments_sheet.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/post_actions.dart';
-import 'package:peera/feed/post_screen.dart';
 import 'package:peera/feed/tag_screen.dart';
 import 'package:peera/people/search_screen.dart';
 import 'package:peera/ui/stickers.dart';
