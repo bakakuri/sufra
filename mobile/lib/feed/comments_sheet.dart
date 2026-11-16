@@ -1,5 +1,6 @@
-// All of a post's comments in a window that comes up from below: the newest first, fifteen at the start and ten more each
-// time the reader comes near the end of what is there; writing, answering, liking and deleting, as on the post's page.
+// All of a post's comments in a window that comes up from below, as Facebook shows them: the comments the newest first
+// (fifteen at the start and ten more each time the reader comes near the end), the answers to each folded under it
+// behind "N პასუხის ნახვა", "პასუხი" under every comment and every answer; liking and deleting as on the post's page.
 import 'package:flutter/material.dart';
 
 import '../data/models.dart';
@@ -18,7 +19,8 @@ import 'post_screen.dart';
 /// how many come first, and how many more each time
 const commentsFirst = 15, commentsMore = 10;
 
-Future<void> showCommentsSheet(BuildContext context, Post post) {
+/// The window; [replyTo] opens it answering that comment, [thread] with that comment's answers open.
+Future<void> showCommentsSheet(BuildContext context, Post post, {Comment? replyTo, int? thread}) {
   // the window stands over the whole app, outside the tab: it takes the app with it
   final scope = AppScope.of(context);
   return showModalBottomSheet<void>(
@@ -32,21 +34,30 @@ Future<void> showCommentsSheet(BuildContext context, Post post) {
       me: scope.me,
       child: Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(s).bottom),
-        child: SizedBox(height: MediaQuery.sizeOf(s).height * .86, child: CommentsPanel(post: post)),
+        child: SizedBox(height: MediaQuery.sizeOf(s).height * .86, child: CommentsPanel(post: post, replyTo: replyTo, thread: thread)),
       ),
     ),
   );
 }
 
 class CommentsPanel extends StatefulWidget {
-  const CommentsPanel({super.key, required this.post});
+  const CommentsPanel({super.key, required this.post, this.replyTo, this.thread});
   final Post post;
+  final Comment? replyTo;
+  final int? thread;
   @override
   State<CommentsPanel> createState() => _CommentsPanelState();
 }
 
 class _CommentsPanelState extends State<CommentsPanel> {
-  final list = <Comment>[];
+  /// the comments (not the answers), newest first
+  final tops = <Comment>[];
+
+  /// the answers under each comment, oldest first
+  final replies = <int, List<Comment>>{};
+
+  /// the comments whose answers are open
+  final open = <int>{};
   bool loading = false, done = false, sending = false, _started = false;
   Object? error;
   Comment? replyTo;
@@ -57,12 +68,21 @@ class _CommentsPanelState extends State<CommentsPanel> {
   final scroll = ScrollController();
 
   int get _id => widget.post.id;
+  int get _loaded => tops.length + replies.values.fold<int>(0, (n, l) => n + l.length);
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
+    if (widget.thread != null) open.add(widget.thread!);
+    final r = widget.replyTo;
+    if (r != null) {
+      open.add(r.parentId ?? r.id);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _reply(r);
+      });
+    }
     _more();
   }
 
@@ -74,28 +94,34 @@ class _CommentsPanelState extends State<CommentsPanel> {
     super.dispose();
   }
 
-  /// the next page: fifteen at first, then ten more
+  /// the next page: fifteen at first, then ten more, each with its answers
   Future<void> _more() async {
     if (loading || done) return;
-    final app = context.app, first = list.isEmpty, n = first ? commentsFirst : commentsMore;
+    final app = context.app, first = tops.isEmpty, n = first ? commentsFirst : commentsMore;
     setState(() => loading = true);
     try {
-      final r = await app.api.commentsPage(_id, from: list.length, count: n);
+      final r = await app.api.commentsPage(_id, from: tops.length, count: n);
+      final have = {for (final c in tops) c.id};
+      final fresh = [for (final c in r) if (!have.contains(c.id)) c];
+      final rs = await app.api.commentReplies(_id, [for (final c in fresh) c.id]);
       if (!mounted) return;
       setState(() {
-        final have = {for (final c in list) c.id};
-        list.addAll([for (final c in r) if (!have.contains(c.id)) c]);
-        for (final c in r) {
+        tops.addAll(fresh);
+        for (final x in rs) {
+          final l = replies[x.parentId!] ??= [];
+          if (!l.any((y) => y.id == x.id)) l.add(x);
+        }
+        for (final c in [...fresh, ...rs]) {
           likes[c.id] ??= c.likes;
         }
         done = r.length < n;
         loading = false;
         error = null;
       });
-      // the first page tells how many there are when it is the only one
+      // with everything here, the count under the post is put right
       final s = app.posts.of(_id);
-      if (first && done && s.comments != list.length) app.posts.commented(_id, list.length - s.comments);
-      app.api.commentLikes([for (final c in r) c.id]).then((l) {
+      if (done && s.comments != _loaded) app.posts.commented(_id, _loaded - s.comments);
+      app.api.commentLikes([for (final c in [...fresh, ...rs]) c.id]).then((l) {
         if (mounted) setState(() => liked = {...liked, ...l});
       }).catchError((_) {});
     } catch (e) {
@@ -110,19 +136,24 @@ class _CommentsPanelState extends State<CommentsPanel> {
 
   Future<bool> _post(String body, {Map<String, dynamic>? media}) async {
     if (sending) return false;
-    final app = context.app, par = replyTo;
+    final app = context.app, par = replyTo, parent = par == null ? null : (par.parentId ?? par.id);
     setState(() => sending = true);
     try {
-      final c = await app.api.addComment(_id, body, parentId: par == null ? null : (par.parentId ?? par.id), media: media);
+      final c = await app.api.addComment(_id, body, parentId: parent, media: media);
       if (!mounted) return true;
       setState(() {
-        list.insert(0, c);
+        if (parent == null) {
+          tops.insert(0, c);
+        } else {
+          (replies[parent] ??= []).add(c);
+          open.add(parent);
+        }
         likes[c.id] = 0;
         replyTo = null;
         sending = false;
       });
       app.posts.commented(_id);
-      if (scroll.hasClients) scroll.animateTo(0, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
+      if (parent == null && scroll.hasClients) scroll.animateTo(0, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
       return true;
     } catch (e) {
       if (!mounted) return false;
@@ -170,8 +201,12 @@ class _CommentsPanelState extends State<CommentsPanel> {
     }
   }
 
+  /// answering: a comment, or an answer (then it goes under the same comment, with the person named)
   void _reply(Comment c) {
-    setState(() => replyTo = c);
+    setState(() {
+      replyTo = c;
+      open.add(c.parentId ?? c.id);
+    });
     final u = c.ap?.username ?? '';
     if (c.parentId != null && u.isNotEmpty && c.author != context.me.id && !field.text.contains('@$u')) {
       field.text = '@$u ${field.text}';
@@ -203,14 +238,82 @@ class _CommentsPanelState extends State<CommentsPanel> {
     if (!yes || !mounted) return;
     final app = context.app;
     if (!await attempt(context, () => app.api.deleteComment(c.id)) || !mounted) return;
-    final gone = {c.id, for (final x in list) if (x.parentId == c.id) x.id};
-    setState(() => list.removeWhere((x) => gone.contains(x.id)));
-    app.posts.commented(_id, -gone.length);
+    var gone = 1;
+    setState(() {
+      if (c.parentId == null) {
+        tops.removeWhere((x) => x.id == c.id);
+        gone += replies.remove(c.id)?.length ?? 0;
+      } else {
+        replies[c.parentId!]?.removeWhere((x) => x.id == c.id);
+      }
+    });
+    app.posts.commented(_id, -gone);
+  }
+
+  Widget _tile(Comment cm, {required bool reply}) {
+    final me = context.me.id, staff = isStaff(context), author = widget.post.author;
+    return _Arrive(
+      key: ValueKey('cm-${cm.id}'),
+      child: CommentTile(
+        c: cm,
+        reply: reply,
+        liked: liked.contains(cm.id),
+        likes: likes[cm.id] ?? cm.likes,
+        canDelete: cm.author == me || author == me || staff,
+        onReply: () => _reply(cm),
+        onLike: () => _like(cm),
+        onDelete: () => _delete(cm),
+      ),
+    );
+  }
+
+  /// "N პასუხის ნახვა" with the first answerer's face, or "პასუხების დამალვა"
+  Widget _threadToggle(Comment top, List<Comment> rs) {
+    final c = context.pc, isOpen = open.contains(top.id), first = rs.first.ap;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(58, 0, 14, 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: InkWell(
+          key: ValueKey('cthread-${top.id}'),
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => setState(() => isOpen ? open.remove(top.id) : open.add(top.id)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 22, height: 1.5, color: c.line),
+              const SizedBox(width: 8),
+              if (!isOpen && first != null) ...[Avatar(p: first, size: 20), const SizedBox(width: 6)],
+              Text(isOpen ? 'პასუხების დამალვა' : (rs.length == 1 ? '1 პასუხის ნახვა' : 'ყველა ${rs.length} პასუხის ნახვა'),
+                  style: TextStyle(color: c.muted, fontWeight: FontWeight.w800, fontSize: 13)),
+            ]),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final c = context.pc, me = context.me.id, staff = isStaff(context), author = widget.post.author;
+    final c = context.pc;
+    // a flat list: each comment, then its answers (or the line that opens them)
+    final rows = <Widget Function()>[];
+    final topAt = <int>[];
+    for (var i = 0; i < tops.length; i++) {
+      final t = tops[i], rs = replies[t.id] ?? const <Comment>[];
+      rows.add(() => _tile(t, reply: false));
+      topAt.add(i);
+      if (rs.isNotEmpty) {
+        if (open.contains(t.id)) {
+          for (final r in rs) {
+            rows.add(() => _tile(r, reply: true));
+            topAt.add(i);
+          }
+        }
+        rows.add(() => _threadToggle(t, rs));
+        topAt.add(i);
+      }
+    }
     return ListenableBuilder(
       listenable: context.app.posts,
       builder: (context, _) {
@@ -227,7 +330,7 @@ class _CommentsPanelState extends State<CommentsPanel> {
           ),
           Divider(height: 1, color: c.line),
           Expanded(
-            child: list.isEmpty
+            child: tops.isEmpty
                 ? (error != null
                     ? Empty(icon: 'comment', title: 'კომენტარები ვერ ჩაიტვირთა', text: errText(error!), action: 'ხელახლა ცდა', onAction: _more)
                     : loading || !done
@@ -237,27 +340,14 @@ class _CommentsPanelState extends State<CommentsPanel> {
                     key: const ValueKey('cs-list'),
                     controller: scroll,
                     padding: const EdgeInsets.only(top: 6, bottom: 12),
-                    itemCount: list.length + (done ? 0 : 1),
+                    itemCount: rows.length + (done ? 0 : 1),
                     itemBuilder: (context, i) {
-                      // near the end of what is here (five before it), the next ten are asked for
-                      if (!done && i >= list.length - 5) WidgetsBinding.instance.addPostFrameCallback((_) => _more());
-                      if (i >= list.length) {
+                      // near the end of what is here (five comments before it), the next ten are asked for
+                      if (!done && (i >= rows.length || topAt[i] >= tops.length - 5)) WidgetsBinding.instance.addPostFrameCallback((_) => _more());
+                      if (i >= rows.length) {
                         return const Padding(padding: EdgeInsets.all(18), child: Center(child: SizedBox.square(dimension: 22, child: CircularProgressIndicator(strokeWidth: 2.2))));
                       }
-                      final cm = list[i];
-                      return _Arrive(
-                        key: ValueKey('cm-${cm.id}'),
-                        child: CommentTile(
-                          c: cm,
-                          reply: cm.parentId != null,
-                          liked: liked.contains(cm.id),
-                          likes: likes[cm.id] ?? cm.likes,
-                          canDelete: cm.author == me || author == me || staff,
-                          onReply: () => _reply(cm),
-                          onLike: () => _like(cm),
-                          onDelete: () => _delete(cm),
-                        ),
-                      );
+                      return rows[i]();
                     },
                   ),
           ),
@@ -293,8 +383,9 @@ class _Arrive extends StatelessWidget {
       );
 }
 
-/// The newest comments under a post in the feed, opened like an accordion: the last five (oldest of them first), all of
-/// them in the window below, and a line to write one straight away.
+/// The newest comments under a post in the feed, opened like an accordion: the last five (oldest of them first), each
+/// with "პასუხი" and how many answers it has (both open the window), all of them in the window, and a line to write one
+/// straight away — what is written shows at once.
 class InlineComments extends StatefulWidget {
   const InlineComments({super.key, required this.post});
   final Post post;
@@ -304,9 +395,11 @@ class InlineComments extends StatefulWidget {
 
 class _InlineCommentsState extends State<InlineComments> {
   List<Comment>? last;
+  Map<int, int> answers = {};
   Object? error;
   bool sending = false, _started = false;
   final field = TextEditingController();
+  final _endKey = GlobalKey();
 
   @override
   void didChangeDependencies() {
@@ -323,14 +416,20 @@ class _InlineCommentsState extends State<InlineComments> {
   }
 
   Future<void> _load() async {
+    final api = context.app.api;
     try {
-      final r = await context.app.api.commentsPage(widget.post.id, from: 0, count: 5);
-      if (mounted) {
-        setState(() {
-          last = r.reversed.toList();
-          error = null;
-        });
+      final r = await api.commentsPage(widget.post.id, from: 0, count: 5);
+      final rs = await api.commentReplies(widget.post.id, [for (final c in r) c.id]).catchError((_) => const <Comment>[]);
+      if (!mounted) return;
+      final n = <int, int>{};
+      for (final x in rs) {
+        n[x.parentId!] = (n[x.parentId!] ?? 0) + 1;
       }
+      setState(() {
+        last = r.reversed.toList();
+        answers = n;
+        error = null;
+      });
     } catch (e) {
       if (mounted) setState(() => error = e);
     }
@@ -351,11 +450,24 @@ class _InlineCommentsState extends State<InlineComments> {
         sending = false;
       });
       app.posts.commented(widget.post.id);
+      // the new comment is shown where the writing line is, not under the keyboard
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final ctx = _endKey.currentContext;
+        if (mounted && ctx != null && ctx.mounted) {
+          Scrollable.ensureVisible(ctx, alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd, duration: const Duration(milliseconds: 220));
+        }
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() => sending = false);
       toast(context, errText(e));
     }
+  }
+
+  Future<void> _sheet({Comment? replyTo, int? thread}) async {
+    await showCommentsSheet(context, widget.post, replyTo: replyTo, thread: thread);
+    // what was written or deleted in the window shows here too
+    if (mounted) _load();
   }
 
   @override
@@ -374,22 +486,28 @@ class _InlineCommentsState extends State<InlineComments> {
         else if (l.isEmpty)
           Padding(padding: const EdgeInsets.fromLTRB(4, 10, 4, 4), child: Text('ჯერ არავის დაუწერია. იყავი პირველი!', style: TextStyle(color: c.muted, fontSize: 14)))
         else
-          for (final (i, cm) in l.indexed) _Unfold(order: i, child: _MiniComment(key: ValueKey('icm-${cm.id}'), c: cm)),
+          for (final (i, cm) in l.indexed)
+            _Unfold(
+              order: i,
+              child: _MiniComment(
+                key: ValueKey('icm-${cm.id}'),
+                c: cm,
+                answers: answers[cm.id] ?? 0,
+                onReply: () => _sheet(replyTo: cm),
+                onAnswers: () => _sheet(thread: cm.id),
+              ),
+            ),
         if (l != null && l.isNotEmpty)
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
               key: ValueKey('all-cm-${widget.post.id}'),
-              onPressed: () async {
-                await showCommentsSheet(context, widget.post);
-                // what was written or deleted in the window shows here too
-                if (mounted) _load();
-              },
+              onPressed: _sheet,
               icon: PIcon('comment', size: 17, color: c.accent),
               label: Text(total > l.length ? 'ყველას ნახვა · $total' : 'ყველას ნახვა'),
             ),
           ),
-        Row(children: [
+        Row(key: _endKey, children: [
           Avatar(p: context.me, size: 30),
           const SizedBox(width: 8),
           Expanded(
@@ -400,6 +518,7 @@ class _InlineCommentsState extends State<InlineComments> {
               maxLines: 3,
               maxLength: 1000,
               textCapitalization: TextCapitalization.sentences,
+              textInputAction: TextInputAction.send,
               onSubmitted: (_) => _send(),
               decoration: InputDecoration(
                 hintText: 'დაწერე კომენტარი…',
@@ -419,7 +538,7 @@ class _InlineCommentsState extends State<InlineComments> {
                 key: ValueKey('icm-send-${widget.post.id}'),
                 tooltip: 'კომენტარის გაგზავნა',
                 onPressed: can ? _send : null,
-                icon: PIcon('send', size: 22, color: can ? c.accent : c.muted),
+                icon: sending ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)) : PIcon('send', size: 22, color: can ? c.accent : c.muted),
               );
             },
           ),
@@ -447,35 +566,53 @@ class _Unfold extends StatelessWidget {
   }
 }
 
-/// a comment in the accordion: the face, the name and the words in a bubble, when
+/// a comment in the accordion: the face, the name and the words in a bubble, when; under it "პასუხი" and how many
+/// answers it has
 class _MiniComment extends StatelessWidget {
-  const _MiniComment({super.key, required this.c});
+  const _MiniComment({super.key, required this.c, required this.answers, required this.onReply, required this.onAnswers});
   final Comment c;
+  final int answers;
+  final VoidCallback onReply, onAnswers;
   @override
   Widget build(BuildContext context) {
     final pc = context.pc, who = c.ap ?? Profile(id: c.author, name: '');
     var text = c.body.trim();
     if (c.sticker != null) text = '🙂 სტიკერი';
     if (c.media != null && c.sticker == null && text == '📷') text = '📷 ფოტო';
+    Widget link(String key, String t, VoidCallback onTap, {bool strong = false}) => InkWell(
+          key: ValueKey('$key-${c.id}'),
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: Text(t, style: TextStyle(color: strong ? pc.accent : pc.muted, fontWeight: FontWeight.w800, fontSize: 12.5)),
+          ),
+        );
     return Padding(
-      padding: EdgeInsets.fromLTRB(c.parentId != null ? 30 : 0, 6, 0, 0),
+      padding: const EdgeInsets.only(top: 6),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Avatar(p: who, size: 28),
         const SizedBox(width: 8),
         Flexible(
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(11, 7, 11, 8),
-            decoration: BoxDecoration(color: pc.sunk, borderRadius: BorderRadius.circular(15)),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(mainAxisSize: MainAxisSize.min, children: [
-                Flexible(child: Text(who.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13))),
-                const SizedBox(width: 6),
-                Text(ago(c.createdAt), style: TextStyle(color: pc.muted, fontSize: 11.5)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(
+              padding: const EdgeInsets.fromLTRB(11, 7, 11, 8),
+              decoration: BoxDecoration(color: pc.sunk, borderRadius: BorderRadius.circular(15)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Flexible(child: Text(who.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13))),
+                  const SizedBox(width: 6),
+                  Text(ago(c.createdAt), style: TextStyle(color: pc.muted, fontSize: 11.5)),
+                ]),
+                const SizedBox(height: 1),
+                Text(text, maxLines: 4, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, height: 1.35)),
               ]),
-              const SizedBox(height: 1),
-              Text(text, maxLines: 4, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, height: 1.35)),
+            ),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              link('icm-reply', 'პასუხი', onReply),
+              if (answers > 0) link('icm-answers', answers == 1 ? '1 პასუხი' : '$answers პასუხი', onAnswers, strong: true),
             ]),
-          ),
+          ]),
         ),
       ]),
     );

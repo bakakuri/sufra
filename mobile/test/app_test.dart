@@ -177,10 +177,13 @@ void main() {
     await settle(t);
     await t.tap(find.byKey(const ValueKey('comments-101')));
     await settle(t);
-    // the last five (here all four), the oldest of them first
+    // the last five comments (here three; the answer to the first is folded), the oldest of them first, the first one
+    // saying it has an answer
     expect(api.calls, contains('cpage 101 0 5'));
-    final rows = [for (final id in [1, 2, 3, 4]) t.getTopLeft(find.byKey(ValueKey('icm-$id'))).dy];
+    final rows = [for (final id in [1, 3, 4]) t.getTopLeft(find.byKey(ValueKey('icm-$id'))).dy];
     expect(rows, orderedEquals([...rows]..sort()));
+    expect(find.byKey(const ValueKey('icm-2')), findsNothing);
+    expect(find.byKey(const ValueKey('icm-answers-1')), findsOneWidget);
     // one written straight from the feed
     await t.enterText(find.byKey(const ValueKey('icm-field-101')), 'რა ლამაზია');
     await t.pump();
@@ -198,7 +201,13 @@ void main() {
     final panel = find.byType(CommentsPanel);
     Finder inP(Finder f) => find.descendant(of: panel, matching: f);
     expect(inP(find.text('კომენტარები · 5')), findsOneWidget);
+    // an answer is folded under its comment until asked for, as on Facebook
+    expect(inP(find.text('ჯვრის მონასტერთან ახლოს 🙂')), findsNothing);
+    await t.tap(inP(find.byKey(const ValueKey('cthread-1'))));
+    await settle(t);
     expect(inP(find.text('ჯვრის მონასტერთან ახლოს 🙂')), findsOneWidget);
+    // an answer can be answered too
+    expect(inP(find.byKey(const ValueKey('creply-2'))), findsOneWidget);
     await t.tap(inP(find.byKey(const ValueKey('creply-1'))));
     await settle(t);
     expect(inP(find.text('პასუხი: მარიამ')), findsOneWidget);

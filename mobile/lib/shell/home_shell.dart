@@ -267,7 +267,13 @@ class HomeShellState extends State<HomeShell> {
               child: MediaQuery.removePadding(
                 context: context,
                 removeTop: true,
-                child: IndexedStack(
+                // this Scaffold already makes room for the keyboard; the tabs' own pages must not make room again
+                // (that left a tall empty band under a comment being written)
+                child: Builder(
+                  builder: (inner) => MediaQuery.removeViewInsets(
+                    context: inner,
+                    removeBottom: true,
+                    child: IndexedStack(
                   index: index,
                   children: [
                     for (var i = 0; i < tabs.length; i++)
@@ -280,6 +286,8 @@ class HomeShellState extends State<HomeShell> {
                         ),
                       ),
                   ],
+                ),
+                  ),
                 ),
               ),
             ),
