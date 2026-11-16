@@ -436,6 +436,8 @@ class _PageFormScreenState extends State<PageFormScreen> {
     super.dispose();
   }
 
+  static final _timeBtn = TextButton.styleFrom(minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: 8), tapTargetSize: MaterialTapTargetSize.shrinkWrap);
+
   Future<void> _time(int day, bool from) async {
     final h = hours[day] ?? ('09:00', '18:00');
     final now = from ? h.$1 : h.$2, parts = now.split(':');
@@ -610,16 +612,18 @@ class _PageFormScreenState extends State<PageFormScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Row(children: [
-                  SizedBox(width: 98, child: Text(weekDays[d - 1], style: const TextStyle(fontWeight: FontWeight.w600))),
+                  Expanded(child: Text(weekDays[d - 1], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600))),
                   Switch(key: ValueKey('pf-day-$d'), value: hours[d] != null, onChanged: (on) => setState(() => hours[d] = on ? (hours[1] ?? ('09:00', '18:00')) : null)),
-                  const SizedBox(width: 4),
-                  if (hours[d] == null)
-                    Expanded(child: Text('დაკეტილია', style: TextStyle(color: c.muted)))
-                  else ...[
-                    TextButton(key: ValueKey('pf-from-$d'), onPressed: () => _time(d, true), child: Text(hours[d]!.$1)),
-                    Text('–', style: TextStyle(color: c.muted)),
-                    TextButton(key: ValueKey('pf-to-$d'), onPressed: () => _time(d, false), child: Text(hours[d]!.$2)),
-                  ],
+                  SizedBox(
+                    width: 150,
+                    child: hours[d] == null
+                        ? Padding(padding: const EdgeInsets.only(left: 10), child: Text('დაკეტილია', style: TextStyle(color: c.muted)))
+                        : Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                            TextButton(key: ValueKey('pf-from-$d'), style: _timeBtn, onPressed: () => _time(d, true), child: Text(hours[d]!.$1)),
+                            Text('–', style: TextStyle(color: c.muted)),
+                            TextButton(key: ValueKey('pf-to-$d'), style: _timeBtn, onPressed: () => _time(d, false), child: Text(hours[d]!.$2)),
+                          ]),
+                  ),
                 ]),
               ),
           ],

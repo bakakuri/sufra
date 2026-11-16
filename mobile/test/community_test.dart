@@ -108,7 +108,7 @@ void main() {
     await _back(t);
     expect(find.byType(GroupScreen), findsOneWidget);
     await _tap(t, 'gtb-events');
-    expect(find.byKey(const ValueKey('ev-71')), findsOneWidget);
+    expect(find.byKey(const ValueKey('ev-72')), findsOneWidget);
     expect(find.byKey(const ValueKey('g-event')), findsOneWidget);
     await _tap(t, 'gtb-about');
     expect(find.byKey(const ValueKey('g-about')), findsOneWidget);

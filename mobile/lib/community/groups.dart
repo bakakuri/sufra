@@ -1077,7 +1077,7 @@ class _GroupManageScreenState extends State<GroupManageScreen> {
                               ]),
                             ),
                           ]),
-                          for (final (i, a) in [for (final a in (x['answers'] as List? ?? const [])) '$a'].indexed)
+                          for (final (i, a) in [for (final v in (x['answers'] as List? ?? const [])) '$v'].indexed)
                             Container(
                               key: ValueKey('gm-ans-$u-$i'),
                               width: double.infinity,
