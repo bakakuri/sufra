@@ -7,7 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../chat/chat_screen.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
-import '../feed/post_screen.dart';
+import '../feed/comments_sheet.dart';
 import '../people/albums.dart';
 import '../people/person_screen.dart';
 import '../profile/profile.dart';
@@ -505,7 +505,7 @@ class _PageStatsScreenState extends State<PageStatsScreen> {
                         final p = await app.api.post(asInt(t['id']));
                         if (p == null || !context.mounted) return;
                         await app.posts.load([p]);
-                        if (context.mounted) await openPage(context, PostScreen(post: p), full: true);
+                        if (context.mounted) await openPost(context, p);
                       },
                     ),
                 ],

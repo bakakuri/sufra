@@ -1,13 +1,11 @@
-// Places, help, rides, the match room, jobs, the kitchen and the toast book.
+// Places, help, rides, the match room and jobs.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:peera/community/events.dart';
 import 'package:peera/community/help.dart';
 import 'package:peera/community/jobs.dart';
-import 'package:peera/community/kitchen.dart';
 import 'package:peera/community/rides.dart';
 import 'package:peera/community/sport.dart';
-import 'package:peera/community/toasts.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/home/services.dart';
 import 'package:peera/people/person_screen.dart';
@@ -317,111 +315,5 @@ void main() {
     await _tap(t, 'jb-mine');
     expect(find.byType(MyJobsScreen), findsOneWidget);
     expect(find.byKey(const ValueKey('myapp-1')), findsOneWidget);
-  });
-
-  testWidgets('the kitchen: portions change the amounts, cooking a step at a time, the ingredients taken to an event, "I made it too", a new recipe', (t) async {
-    phone(t);
-    final api = FakeApi()..rsvps.add({'event_id': 70, 'user_id': 'u1', 'status': 'yes'});
-    await shell(t, api: api);
-    await _open(t, 'recipes');
-    expect(find.byKey(const ValueKey('rcp-2')), findsOneWidget);
-    await _tap(t, 'rcc-ცომეული');
-    expect(find.byKey(const ValueKey('rcp-2')), findsNothing);
-    await _tap(t, 'rcp-1');
-    expect(find.byType(RecipeScreen), findsOneWidget);
-    expect(find.text('4 პორცია'), findsOneWidget);
-    await _tap(t, 'rc-less');
-    await _tap(t, 'rc-less');
-    expect(find.text('2 პორცია'), findsOneWidget);
-    expect(find.text('250 გ'), findsOneWidget);
-    expect(find.text('½ კგ'), findsOneWidget);
-    expect(find.text('¼ კონა'), findsOneWidget);
-    await _tap(t, 'rc-like');
-    expect(api.calls, contains('rlike 1 true'));
-    expect(find.text('გემრიელია · 13'), findsOneWidget);
-
-    await _tap(t, 'rc-cook');
-    expect(find.text('ნაბიჯი 1 / 3'), findsOneWidget);
-    expect(find.byKey(const ValueKey('ck-timer')), findsOneWidget);
-    await _tap(t, 'ck-next');
-    expect(find.text('ნაბიჯი 2 / 3'), findsOneWidget);
-    await _back(t);
-    expect(find.byType(CookScreen), findsNothing);
-    expect(find.byType(RecipeScreen), findsOneWidget);
-
-    await _tap(t, 'rc-event');
-    await _tap(t, 'rce-i-3');
-    await _tap(t, 'rce-ok');
-    expect(api.calls, contains('items 70 ფქვილი (250 გ)|საქონლის ხორცი (½ კგ)|ხახვი (1)'));
-    expect(find.byType(EventScreen), findsOneWidget);
-    await _back(t);
-    expect(find.byType(RecipeScreen), findsOneWidget);
-
-    await _tap(t, 'rc-made');
-    await t.enterText(find.byKey(const ValueKey('rcm-note')), 'გამომივიდა');
-    await _tap(t, 'rcm-ok');
-    expect(api.calls, contains('cooked 1 false გამომივიდა'));
-    expect(find.text('გამომივიდა'), findsOneWidget);
-    await _back(t);
-
-    await _tap(t, 'rc-new');
-    await t.enterText(find.byKey(const ValueKey('rcf-title')), 'ლობიანი');
-    await _tap(t, 'rcf-c-ცომეული');
-    await _type(t, 'rcf-in-0', 'ლობიო');
-    await _type(t, 'rcf-iq-0', '500 გ');
-    await _type(t, 'rcf-st-0', 'მოხარშე ლობიო 1 საათი.');
-    await _tap(t, 'rcf-ok');
-    expect(api.calls, contains('recipe new ლობიანი 1 1'));
-    expect(find.byType(RecipeScreen), findsOneWidget);
-  });
-
-  testWidgets('the toast book: liked, by occasion, mine changed, a new one, another posted', (t) async {
-    phone(t);
-    final api = await shell(t);
-    await _open(t, 'toasts');
-    expect(find.byKey(const ValueKey('tc-1')), findsOneWidget);
-    await _tap(t, 'tl-1');
-    expect(api.calls, contains('tlike 1 true'));
-    expect(find.text('31'), findsOneWidget);
-    await _tap(t, 'tm-1');
-    await _tap(t, 'tm-post');
-    expect(find.byType(ComposeScreen), findsOneWidget);
-    expect(find.byWidgetPredicate((w) => w is TextField && (w.controller?.text.startsWith('🍷 სუფრის სადღეგრძელო') ?? false)), findsOneWidget);
-    await _back(t);
-    expect(find.byType(ToastsScreen), findsOneWidget);
-
-    await _tap(t, 'tso-friends');
-    expect(api.calls, contains('toasts friends top'));
-    expect(find.byKey(const ValueKey('tc-1')), findsNothing);
-    await _tap(t, 'tm-2');
-    await _tap(t, 'tm-edit');
-    await t.enterText(find.byKey(const ValueKey('tn-title')), 'მეგობრების სადღეგრძელო');
-    await _tap(t, 'tn-ok');
-    expect(api.calls, contains('toast 2 friends მეგობრების სადღეგრძელო'));
-    expect(find.text('მეგობრების სადღეგრძელო'), findsOneWidget);
-
-    await _tap(t, 'ts-new');
-    await _tap(t, 'tn-o-love');
-    await t.enterText(find.byKey(const ValueKey('tn-title')), 'სიყვარულის სადღეგრძელო');
-    await t.enterText(find.byKey(const ValueKey('tn-body')), 'გაუმარჯოს სიყვარულს, რომელიც ყველაფერს ძლევს.');
-    await _tap(t, 'tn-ok');
-    expect(api.calls, contains('toast new love სიყვარულის სადღეგრძელო'));
-    expect(api.calls, contains('toasts friends new'));
-  });
-
-  test('amounts follow the portions; a step names its minutes', () {
-    expect(scaleAmount('500 გ', .5), '250 გ');
-    expect(scaleAmount('½ კონა', 2), '1 კონა');
-    expect(scaleAmount('2–3 კბილი', 2), '4–6 კბილი');
-    expect(scaleAmount('მარილი გემოვნებით', 3), 'მარილი გემოვნებით');
-    expect(scaleAmount('1 კგ', 1.5), '1½ კგ');
-    expect(stepMinutes('მოხარშე 12–15 წუთი.'), 15);
-    expect(stepMinutes('გამოაცხვე 1 საათი'), 60);
-    expect(stepMinutes('მოზილე ცომი'), 0);
-    expect(cookTime(90), '1 სთ 30 წთ');
-    expect(gel(0), 'უფასოდ');
-    expect(salaryText({'salary_from': 1200}), '1,200 ₾-დან');
-    expect(helpKind('blood').$3, '🩸');
-    expect(occasionName('wedding'), 'ქორწილი');
   });
 }

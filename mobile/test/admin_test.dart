@@ -213,7 +213,7 @@ void main() {
     await _tap(t, 'at-notify');
     expect(find.text('მიიღებს 1500 ადამიანი'), findsOneWidget);
     await _type(t, 'an-t', 'Peera-ზე ახალი რეცეპტებია 🍲');
-    await _tap(t, 'an-l#recipes');
+    await _tap(t, 'an-l#study');
     await _tap(t, 'an-test');
     expect(api.calls, contains('broadcast me Peera-ზე ახალი რეცეპტებია 🍲'));
     await _tap(t, 'an-go');

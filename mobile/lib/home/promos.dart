@@ -8,7 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../data/stores.dart';
 import '../feed/photo_viewer.dart';
-import '../feed/post_screen.dart';
+import '../feed/comments_sheet.dart';
 import '../data/models.dart';
 import '../media/player.dart';
 import '../people/person_screen.dart';
@@ -34,7 +34,7 @@ Future<void> openLink(BuildContext context, String link) async {
   final page = m.group(1)!, arg = m.group(2);
   if (page == 'post' && int.tryParse(arg ?? '') != null) {
     final p = await context.app.api.post(int.parse(arg!));
-    if (p != null && context.mounted) await openPage(context, PostScreen(post: p), full: true);
+    if (p != null && context.mounted) await openPost(context, p);
     return;
   }
   if ((page == 'user' || page == 'u') && arg != null) {

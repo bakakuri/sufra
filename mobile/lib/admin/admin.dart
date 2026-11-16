@@ -11,7 +11,6 @@ import '../community/events.dart';
 import '../community/groups.dart';
 import '../community/help.dart';
 import '../community/jobs.dart';
-import '../community/kitchen.dart';
 import '../community/pages.dart';
 import '../community/rides.dart';
 import '../community/sport.dart';
@@ -20,7 +19,7 @@ import '../data/stores.dart';
 import '../feed/compose_screen.dart';
 import '../feed/photo_viewer.dart';
 import '../feed/post_card.dart';
-import '../feed/post_screen.dart';
+import '../feed/comments_sheet.dart';
 import '../media/video_tools.dart';
 import '../people/person_screen.dart';
 import '../places/places.dart';
@@ -51,13 +50,13 @@ const adminTabs = [
 
 const targetNames = {
   'post': 'პოსტი', 'comment': 'კომენტარი', 'user': 'პროფილი', 'listing': 'განცხადება', 'message': 'შეტყობინება', 'page': 'გვერდი', //
-  'story': 'ისტორია', 'event': 'ღონისძიება', 'place': 'ადგილი', 'review': 'შეფასება', 'toast': 'სადღეგრძელო', 'help': 'დახმარება',
-  'job': 'ვაკანსია', 'ride': 'მგზავრობა', 'recipe': 'რეცეპტი', 'group': 'ჯგუფი', 'room': 'ოთახი', 'album': 'ალბომი',
+  'story': 'ისტორია', 'event': 'ღონისძიება', 'place': 'ადგილი', 'review': 'შეფასება', 'help': 'დახმარება',
+  'job': 'ვაკანსია', 'ride': 'მგზავრობა', 'group': 'ჯგუფი', 'room': 'ოთახი', 'album': 'ალბომი',
 };
 const roleNames = {'user': 'მომხმარებელი', 'moderator': 'მოდერატორი', 'admin': 'ადმინისტრატორი'};
 
 /// the site's links a notification, a banner or an ad can open
-const siteLinks = [('#events', 'შეხვედრები'), ('#market', 'ბაზრობა'), ('#rooms', 'სასწავლო ოთახები'), ('#recipes', 'რეცეპტები'), ('#jobs', 'ვაკანსიები'), ('#help', 'დახმარება')];
+const siteLinks = [('#events', 'შეხვედრები'), ('#market', 'ბაზრობა'), ('#rooms', 'სასწავლო ოთახები'), ('#study', 'სწავლა'), ('#jobs', 'ვაკანსიები'), ('#help', 'დახმარება')];
 
 bool linkOk(String l) => l.isEmpty || RegExp(r'''^https://[^\s"'<>()]+$''').hasMatch(l) || RegExp(r'''^#[a-z]+(-[^\s"'<>()]+)?$''').hasMatch(l);
 
@@ -67,7 +66,7 @@ const siteFeatures = [
   ('rides', 'ერთად წავიდეთ'), ('jobs', 'ვაკანსიები და CV'), ('market', 'ბაზრობა'), ('events', 'შეხვედრები'), ('albums', 'ალბომები'),
   ('groups', 'ჯგუფები'), ('pages', 'არხები და გვერდები'), ('tree', 'ოჯახის ხე'), ('namedays', 'სახელის დღეები'),
   ('map', 'ლაივ რუკა და ლოკაციის გაზიარება'), ('calendar', 'კალენდარი და შეხსენებები'), ('study', 'სწავლა: ცხრილი, გამოცდები, კონსპექტები, კლასელები, რჩევები'),
-  ('recipes', 'რეცეპტები'), ('toasts', 'სადღეგრძელოები'), ('stories', 'ისტორიები'), ('memories', 'მოგონებები'), ('polls', 'გამოკითხვები'),
+  ('stories', 'ისტორიები'), ('memories', 'მოგონებები'), ('polls', 'გამოკითხვები'),
   ('gchat', 'ჯგუფური ჩატები'), ('gifts', 'საჩუქრები'), ('clips', 'კლიპები'), ('date', 'გაცნობა'),
 ];
 
@@ -80,8 +79,6 @@ const contentKinds = [
   ('event', 'ღონისძიებები', 'events', 'id,host,title,starts_at,created_at', 'host', 'title', false),
   ('listing', 'განცხადებები', 'listings', 'id,seller,title,media,hidden,created_at', 'seller', 'title', true),
   ('place', 'ადგილები', 'places', 'id,created_by,name,photo,hidden,created_at', 'created_by', 'name', true),
-  ('recipe', 'რეცეპტები', 'recipes', 'id,author,title,photo_url,created_at', 'author', 'title', false),
-  ('toast', 'სადღეგრძელოები', 'toasts', 'id,author,title,body,hidden,created_at', 'author', 'title', true),
   ('help', 'დახმარება', 'help_requests', 'id,author,title,media,hidden,created_at', 'author', 'title', true),
   ('job', 'ვაკანსიები', 'jobs', 'id,poster,title,company,hidden,created_at', 'poster', 'title', true),
   ('ride', 'მგზავრობა', 'rides', 'id,driver,from_city,to_city,depart_at,created_at', 'driver', 'from_city', false),
@@ -89,7 +86,6 @@ const contentKinds = [
   ('album', 'ალბომები', 'albums', 'id,owner,title,cover_url,created_at', 'owner', 'title', false),
   ('review', 'ადგილის შეფასებები', 'place_reviews', 'id,place_id,author,rating,body,created_at', 'author', 'body', false),
   ('fixchat', 'მატჩის ჩატი', 'fixture_chat', 'id,fixture_id,user_id,body,created_at', 'user_id', 'body', false),
-  ('cook', '„მოვამზადე“ ფოტოები', 'recipe_cooks', 'id,recipe_id,user_id,photo_url,note,created_at', 'user_id', 'note', false),
   ('highlight', 'ისტორიების ალბომები', 'highlights', 'id,owner,title,cover_url,created_at', 'owner', 'title', false),
 ];
 
@@ -118,7 +114,8 @@ Future<void> openThing(BuildContext context, String kind, Map<String, dynamic> r
         return;
       }
       await app.posts.load([p]);
-      page = PostScreen(post: p);
+      if (context.mounted) await openPost(context, p);
+      return;
     case 'group':
       page = GroupScreen(id: n('id'));
     case 'page':
@@ -129,10 +126,6 @@ Future<void> openThing(BuildContext context, String kind, Map<String, dynamic> r
       page = PlaceScreen(id: n('id'));
     case 'review':
       page = PlaceScreen(id: n('place_id'));
-    case 'recipe':
-      page = RecipeScreen(id: n('id'));
-    case 'cook':
-      page = RecipeScreen(id: n('recipe_id'));
     case 'help':
       page = HelpRequestScreen(id: n('id'));
     case 'job':
@@ -331,7 +324,7 @@ class _Overview extends StatelessWidget {
         const SecHead('საიტზე'),
         tiles([
           ('groups', 'ჯგუფი'), ('pages', 'გვერდი'), ('events_soon', 'ღონისძიება წინ'), ('rooms_live', 'ცოცხალი ოთახი'), //
-          ('listings', 'განცხადება'), ('recipes', 'რეცეპტი'), ('promos_live', 'აქტიური რეკლამა'), ('banned', 'შეზღუდული'), ('open_reports', 'ღია საჩივარი'),
+          ('listings', 'განცხადება'), ('promos_live', 'აქტიური რეკლამა'), ('banned', 'შეზღუდული'), ('open_reports', 'ღია საჩივარი'),
         ]),
         if (admin)
           Padding(
@@ -1803,7 +1796,7 @@ class _SiteState extends State<_Site> {
       ),
       const SizedBox(height: 10),
       Row(children: [
-        Expanded(child: TextField(key: const ValueKey('bn-l'), controller: link, maxLength: 300, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'ბმული', hintText: '#recipes ან https://…', counterText: ''))),
+        Expanded(child: TextField(key: const ValueKey('bn-l'), controller: link, maxLength: 300, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'ბმული', hintText: '#study ან https://…', counterText: ''))),
         const SizedBox(width: 8),
         Expanded(child: TextField(key: const ValueKey('bn-c'), controller: cta, maxLength: 24, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'ღილაკი', hintText: 'ნახვა', counterText: ''))),
       ]),
@@ -2137,7 +2130,7 @@ const _logWords = {
 };
 const _logTables = {
   'posts': 'პოსტი', 'comments': 'კომენტარი', 'stories': 'ისტორია', 'groups': 'ჯგუფი', 'pages': 'გვერდი', 'events': 'ღონისძიება', 'listings': 'განცხადება', //
-  'recipes': 'რეცეპტი', 'jobs': 'ვაკანსია', 'places': 'ადგილი', 'toasts': 'სადღეგრძელო', 'help_requests': 'დახმარება', 'albums': 'ალბომი', 'rides': 'მგზავრობა',
+  'jobs': 'ვაკანსია', 'places': 'ადგილი', 'help_requests': 'დახმარება', 'albums': 'ალბომი', 'rides': 'მგზავრობა',
 };
 bool _isUid(Object? x) => RegExp(r'^[0-9a-f-]{36}$').hasMatch('${x ?? ''}') || RegExp(r'^u\d+$').hasMatch('${x ?? ''}');
 

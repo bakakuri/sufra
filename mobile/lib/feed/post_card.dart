@@ -21,7 +21,6 @@ import '../ui/widgets.dart';
 import 'comments_sheet.dart';
 import 'photo_viewer.dart';
 import 'post_actions.dart';
-import 'post_screen.dart';
 
 /// One post as the site draws it: who wrote it, the words, photos (swipe, double tap for ❤️), a poll,
 /// a shared post, then reactions, comments, the link and saving.
@@ -123,11 +122,8 @@ class _PostViewState extends State<_PostView> with SingleTickerProviderStateMixi
     super.dispose();
   }
 
-  Future<void> _open(BuildContext context, {bool focus = false}) async {
-    if (inPostScreen) return;
-    final gone = await openPage<bool>(context, PostScreen(post: post, focus: focus), full: true);
-    if (gone == true) widget.onDeleted?.call();
-  }
+  /// a post's words: a tap shows them whole, right where they are (a post never opens as a page of its own)
+  bool whole = false;
 
   /// the comments open under the post like an accordion, and close the same way
   void _toggle() {
@@ -180,10 +176,10 @@ class _PostViewState extends State<_PostView> with SingleTickerProviderStateMixi
             GestureDetector(
               key: ValueKey('pbody-${post.id}'),
               behavior: HitTestBehavior.opaque,
-              onTap: () => _open(context),
+              onTap: inPostScreen || whole ? null : () => setState(() => whole = true),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-                child: TranslatableBody(post.body.trim(), maxLines: inPostScreen ? null : (hasMedia ? 3 : 6)),
+                child: TranslatableBody(post.body.trim(), maxLines: inPostScreen || whole ? null : (hasMedia ? 3 : 6)),
               ),
             ),
           if (hasMedia) _Gallery(post: post),
@@ -367,7 +363,9 @@ class _GalleryState extends State<_Gallery> with SingleTickerProviderStateMixin 
     }
     final photos = widget.post.media.where((x) => !x.isVideo).toList();
     final at = photos.indexOf(m);
-    openPhotos(context, photos, start: at > 0 ? at : 0);
+    // the post's comments come up over its photo too
+    openPhotos(context, photos,
+        start: at > 0 ? at : 0, comments: context.app.posts.of(widget.post.id).comments, onComments: () => showCommentsSheet(context, widget.post));
   }
 
   @override
@@ -559,7 +557,7 @@ class _Quote extends StatelessWidget {
     final who = o.ap ?? Profile(id: o.author, name: ''), m = o.media.firstOrNull;
     return InkWell(
       borderRadius: BorderRadius.circular(14),
-      onTap: () => openPage(context, PostScreen(post: o), full: true),
+      onTap: () => openPost(context, o),
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: c.line)),

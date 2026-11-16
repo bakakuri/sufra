@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/stores.dart';
-import '../feed/post_screen.dart';
+import '../feed/comments_sheet.dart';
 import '../ui/icons.dart';
 import '../ui/net_image.dart';
 import '../ui/theme.dart';
@@ -99,7 +99,7 @@ class _Tile extends StatelessWidget {
       child: GestureDetector(
         key: ValueKey('grid-${post.id}'),
         onTap: () async {
-          final gone = await openPage<bool>(context, PostScreen(post: post), full: true);
+          final gone = await openPost(context, post);
           if (gone == true) onGone?.call(post);
         },
         child: Opacity(

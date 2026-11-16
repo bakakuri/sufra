@@ -13,12 +13,10 @@ import '../community/events.dart';
 import '../community/groups.dart';
 import '../community/help.dart';
 import '../community/jobs.dart';
-import '../community/kitchen.dart';
 import '../community/market.dart';
 import '../community/pages.dart';
 import '../community/rides.dart';
 import '../community/sport.dart';
-import '../community/toasts.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
 import '../feed/post_actions.dart';
@@ -76,7 +74,7 @@ const nativeServices = {
   'groups', 'group', 'pages', 'pagev', 'events', 'event', 'evnew', 'market', //
   'study', 'schedule', 'exams', 'notes', 'tips', //
   'places', 'place', 'placenew', 'help', 'helpnew', 'helpreq', 'rides', 'ride', 'ridenew', 'sport', 'fixture', //
-  'jobs', 'job', 'jobnew', 'myjobs', 'cv', 'recipes', 'recipe', 'toasts', 'rooms', 'room', 'admin',
+  'jobs', 'job', 'jobnew', 'myjobs', 'cv', 'rooms', 'room', 'admin',
 };
 
 /// the sections the admin can switch off (promo.js FEATS) that each page belongs to
@@ -85,7 +83,7 @@ const _featOf = {
   'events': 'events', 'albums': 'albums', 'groups': 'groups', 'pages': 'pages', 'tree': 'tree', 'namedays': 'namedays', 'map': 'map',
   'calendar': 'calendar', 'study': 'study', 'schedule': 'study', 'exams': 'study', 'notes': 'study', 'classmates': 'study', 'tips': 'study',
   'tour': 'tour', 'place': 'places', 'placenew': 'places', 'helpnew': 'help', 'helpreq': 'help', 'ride': 'rides', 'ridenew': 'rides', //
-  'fixture': 'sport', 'job': 'jobs', 'jobnew': 'jobs', 'myjobs': 'jobs', 'cv': 'jobs', 'recipes': 'recipes', 'recipe': 'recipes', 'toasts': 'toasts', 'room': 'rooms',
+  'fixture': 'sport', 'job': 'jobs', 'jobnew': 'jobs', 'myjobs': 'jobs', 'cv': 'jobs', 'room': 'rooms',
 };
 
 /// whether a page is on (the admin sees everything, so a switched-off one can be checked)
@@ -195,12 +193,6 @@ Future<void> openService(BuildContext context, String k, {String? arg}) async {
       await openPage(context, const MyJobsScreen(), full: true);
     case 'cv':
       await openPage(context, const CvEditScreen(), full: true);
-    case 'recipes':
-      await openPage(context, const RecipesScreen(), full: true);
-    case 'recipe':
-      await openPage(context, RecipeScreen(id: int.tryParse(arg ?? '') ?? 0), full: true);
-    case 'toasts':
-      await openPage(context, const ToastsScreen(), full: true);
     case 'rooms':
       await openPage(context, RoomsScreen(kind: arg ?? 'supra'), full: true);
     case 'room':

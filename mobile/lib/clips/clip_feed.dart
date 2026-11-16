@@ -6,7 +6,7 @@ import '../config.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
 import '../feed/post_card.dart';
-import '../feed/post_screen.dart';
+import '../feed/comments_sheet.dart';
 import '../media/player.dart';
 import '../profile/profile.dart';
 import '../ui/format.dart';
@@ -219,7 +219,8 @@ class _ClipPageState extends State<ClipPage> with SingleTickerProviderStateMixin
   }
 
   Future<void> _comments() async {
-    await widget.cover(() => openPage<bool>(context, PostScreen(post: p, focus: false), full: true));
+    // the comments come up over the clip, as on Instagram and Facebook
+    await widget.cover(() => showCommentsSheet(context, p));
   }
 
   Future<void> _person(Profile who) async {

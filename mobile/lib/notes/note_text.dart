@@ -25,8 +25,6 @@ String noteText(String kind, Map r) {
       return '${asInt(r['coins']) > 0 ? '+' : ''}${asInt(r['coins'])} მონეტა · ${_s(r, 'note')}';
     case 'story_mention':
       return 'მოგნიშნა თავის ისტორიაზე';
-    case 'recipe_cook':
-      return 'შენი კონსპექტით ისწავლა 📚';
     case 'jk_invite':
       return 'გეპატიჟება ჯოკერზე 🃏';
     case 'grade_plus':
@@ -178,7 +176,6 @@ String? noteSitePath(String kind, Map r) {
   if (kind == 'admin_coins') return '#coins';
   if (kind.startsWith('payout_')) return '#payout';
   if (kind.startsWith('shop_')) return '#shop';
-  if (kind == 'recipe_cook' && id('recipe').isNotEmpty) return '#recipe-${id('recipe')}';
   if (kind.startsWith('event_') && id('event').isNotEmpty) return '#event-${id('event')}';
   if (kind.startsWith('album_') && id('album').isNotEmpty) return '#album-${id('album')}';
   if (kind.startsWith('group_') && id('group').isNotEmpty) return '#group-${id('group')}';

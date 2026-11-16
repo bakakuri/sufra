@@ -10,7 +10,7 @@ import '../chat/chats_tab.dart';
 import '../data/api.dart';
 import '../data/stores.dart';
 import '../feed/feed_tab.dart';
-import '../feed/post_screen.dart';
+import '../feed/comments_sheet.dart';
 import '../dating/dating_tab.dart';
 import '../joker/joker_tab.dart';
 import '../joker/online_screen.dart';
@@ -116,7 +116,7 @@ class HomeShellState extends State<HomeShell> {
         final p = await app.api.post(to.post!).catchError((_) => null);
         if (p == null || !ctx.mounted) return;
         await app.posts.load([p]);
-        if (ctx.mounted) await openPage(ctx, PostScreen(post: p), full: true);
+        if (ctx.mounted) await openPost(ctx, p);
       } else if (to.jk != null) {
         final i = tabs.indexWhere((t) => t.id == 'joker');
         if (i >= 0 && i != index) select(i);

@@ -759,33 +759,6 @@ class _RoomScreenState extends State<RoomScreen> {
     if (u != null) _setSt({'floor': u.isEmpty ? null : u});
   }
 
-  Future<void> _bookPick() async {
-    List<Map<String, dynamic>> rows = const [];
-    try {
-      rows = await api.toastBook();
-    } catch (_) {}
-    if (!mounted) return;
-    final c = context.pc;
-    final id = await showModalBottomSheet<int>(
-      context: context,
-      useRootNavigator: true,
-      showDragHandle: true,
-      isScrollControlled: true,
-      backgroundColor: c.surface,
-      builder: (s) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: .6,
-        builder: (s, sc) => ListView(controller: sc, children: [
-          if (rows.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Text('წიგნი ცარიელია')),
-          for (final x in rows) ListTile(key: ValueKey('tpb-${x['id']}'), title: Text('${x['title']}'), onTap: () => Navigator.of(s).pop(asInt(x['id']))),
-        ]),
-      ),
-    );
-    if (id == null || !mounted) return;
-    final t = await api.toastText(id).catchError((_) => null);
-    if (t != null) _setSt({'custom': '${t['title'] ?? ''}', 'book': '${t['body'] ?? ''}', 'toast': -1, 'floor': null});
-  }
-
   // ---------- the screen ----------
   Profile _who(String uid) {
     final m = present[uid];
@@ -926,7 +899,6 @@ class _RoomScreenState extends State<RoomScreen> {
                   ),
                   OutlinedButton(key: const ValueKey('tp-list'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40)), onPressed: _agendaPick, child: const Text('დღის გეგმა')),
                   OutlinedButton(key: const ValueKey('tp-floor'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40)), onPressed: _floorPick, child: const Text('სიტყვის მიცემა')),
-                  OutlinedButton(key: const ValueKey('tp-book'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40)), onPressed: _bookPick, child: const Text('სადღეგრძელოების წიგნი')),
                 ]),
                 const SizedBox(height: 8),
                 Row(children: [

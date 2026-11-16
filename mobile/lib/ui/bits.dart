@@ -1,4 +1,4 @@
-// Small pieces the board pages share (places, help, rides, the match room, jobs, the kitchen, the toast book): a row of
+// Small pieces the board pages share (places, help, rides, the match room, jobs): a row of
 // chips that scrolls sideways, a little label, stars, a link opened outside, the map's tiles.
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';

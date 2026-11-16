@@ -321,72 +321,6 @@ class _EventScreenState extends State<EventScreen> {
     await _do(() => app.api.setTamada(widget.id, pick.isEmpty ? null : pick), ok: pick.isEmpty ? 'წამყვანი მოიხსნა' : 'წამყვანი არჩეულია');
   }
 
-  Future<void> _book() async {
-    final app = context.app;
-    final rows = await app.api.toastBook().catchError((_) => <Map<String, dynamic>>[]);
-    if (!mounted) return;
-    final sel = <int>{};
-    final ok = await showModalBottomSheet<bool>(
-      context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: context.pc.surface,
-      builder: (s) => StatefulBuilder(
-        builder: (s, set) => SafeArea(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(s).height * .75),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              const Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 8), child: Text('რჩევების წიგნი', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
-              Flexible(
-                child: ListView(shrinkWrap: true, children: [
-                  if (rows.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Text('წიგნი ჯერ ცარიელია.')),
-                  for (final r in rows)
-                    CheckboxListTile(
-                      key: ValueKey('tb-${r['id']}'),
-                      value: sel.contains(asInt(r['id'])),
-                      onChanged: (v) => set(() => v == true ? sel.add(asInt(r['id'])) : sel.remove(asInt(r['id']))),
-                      title: Text('${r['title'] ?? ''}'),
-                    ),
-                ]),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: FilledButton(key: const ValueKey('tb-ok'), onPressed: () => Navigator.of(s).pop(true), child: const Text('დამატება')),
-              ),
-            ]),
-          ),
-        ),
-      ),
-    );
-    if (ok != true || sel.isEmpty || !mounted) return;
-    final base = (agenda ?? const []).fold<int>(0, (m, r) => asInt(r['pos']) > m ? asInt(r['pos']) : m);
-    await _do(() => app.api.addAgenda(widget.id, [for (final r in rows) if (sel.contains(asInt(r['id']))) ('${r['title']}', asInt(r['id']))], base), all: false);
-    _agenda();
-  }
-
-  Future<void> _read(int tid) async {
-    final r = await context.app.api.toastText(tid).catchError((_) => null);
-    if (r == null || !mounted) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: context.pc.surface,
-      builder: (s) => SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(s).height * .8),
-          child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(20, 0, 20, 20), children: [
-            Text('${r['title'] ?? ''}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 10),
-            Text('${r['body'] ?? ''}', style: const TextStyle(fontSize: 16, height: 1.55)),
-          ]),
-        ),
-      ),
-    );
-  }
-
   Future<void> _addPoints(List<(String, int?)> rows) async {
     final base = (agenda ?? const []).fold<int>(0, (m, r) => asInt(r['pos']) > m ? asInt(r['pos']) : m);
     await _do(() => context.app.api.addAgenda(widget.id, rows, base), all: false);
@@ -572,12 +506,7 @@ class _EventScreenState extends State<EventScreen> {
                   child: done ? const PIcon('check', size: 15, color: Colors.white) : Text('${i + 1}', style: TextStyle(color: now ? Colors.white : c.ink, fontWeight: FontWeight.w800, fontSize: 13)),
                 ),
                 title: Text('${r['title'] ?? ''}', style: TextStyle(decoration: done ? TextDecoration.lineThrough : null, color: done ? c.muted : c.ink, fontWeight: now ? FontWeight.w800 : FontWeight.w500)),
-                subtitle: now || r['toast_id'] != null
-                    ? Wrap(children: [
-                        if (now) Text('ახლა  ', style: TextStyle(color: c.accent, fontWeight: FontWeight.w700, fontSize: 12.5)),
-                        if (r['toast_id'] != null) link('ტექსტი', () => _read(asInt(r['toast_id']))),
-                      ])
-                    : null,
+                subtitle: now ? Text('ახლა', style: TextStyle(color: c.accent, fontWeight: FontWeight.w700, fontSize: 12.5)) : null,
                 trailing: lead
                     ? Row(mainAxisSize: MainAxisSize.min, children: [
                         IconBtn(done ? 'back' : 'check', key: ValueKey('agdone-$id'), label: done ? 'დაბრუნება' : 'შესრულდა', size: 18, onTap: () async {
@@ -623,13 +552,6 @@ class _EventScreenState extends State<EventScreen> {
                     icon: PIcon('note', size: 16, color: c.ink),
                     label: const Text('მზა წესრიგი'),
                   ),
-                OutlinedButton.icon(
-                  key: const ValueKey('ag-book'),
-                  style: OutlinedButton.styleFrom(minimumSize: const Size(0, 38)),
-                  onPressed: _book,
-                  icon: PIcon('star', size: 16, color: c.ink),
-                  label: const Text('რჩევების წიგნიდან'),
-                ),
               ]),
             ),
           ],

@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/stores.dart';
-import '../profile/profile.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
 import '../ui/mentions.dart';
@@ -16,16 +15,25 @@ import '../ui/widgets.dart';
 import 'comment_tree.dart';
 import 'compose_screen.dart';
 import 'post_actions.dart';
+import 'post_card.dart';
 import 'post_screen.dart';
 
 /// how many come first, and how many more each time
 const commentsFirst = 15, commentsMore = 10;
 
 /// The window; [replyTo] opens it answering that comment, [thread] with that comment's answers open.
-Future<void> showCommentsSheet(BuildContext context, Post post, {Comment? replyTo, int? thread}) {
+Future<void> showCommentsSheet(BuildContext context, Post post, {Comment? replyTo, int? thread}) =>
+    _commentsWindow<void>(context, post, replyTo: replyTo, thread: thread, withPost: false);
+
+/// A post seen by itself (from a notification, a link, a grid, a chat): never a page of its own, but the window over
+/// where one is, the post on top and its comments under it. True when the post was deleted from there.
+Future<bool?> openPost(BuildContext context, Post post, {Comment? replyTo, int? thread, bool focus = false}) =>
+    _commentsWindow<bool>(context, post, replyTo: replyTo, thread: thread, withPost: true, focus: focus);
+
+Future<T?> _commentsWindow<T>(BuildContext context, Post post, {Comment? replyTo, int? thread, required bool withPost, bool focus = false}) {
   // the window stands over the whole app, outside the tab: it takes the app with it
   final scope = AppScope.of(context);
-  return showModalBottomSheet<void>(
+  return showModalBottomSheet<T>(
     context: context,
     useRootNavigator: true,
     isScrollControlled: true,
@@ -36,17 +44,26 @@ Future<void> showCommentsSheet(BuildContext context, Post post, {Comment? replyT
       me: scope.me,
       child: Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(s).bottom),
-        child: SizedBox(height: MediaQuery.sizeOf(s).height * .86, child: CommentsPanel(post: post, replyTo: replyTo, thread: thread)),
+        child: SizedBox(
+          height: MediaQuery.sizeOf(s).height * (withPost ? .93 : .86),
+          child: CommentsPanel(post: post, replyTo: replyTo, thread: thread, withPost: withPost, focus: focus),
+        ),
       ),
     ),
   );
 }
 
 class CommentsPanel extends StatefulWidget {
-  const CommentsPanel({super.key, required this.post, this.replyTo, this.thread});
+  const CommentsPanel({super.key, required this.post, this.replyTo, this.thread, this.withPost = false, this.focus = false});
   final Post post;
   final Comment? replyTo;
   final int? thread;
+
+  /// the post itself on top of its comments (a post opened by itself)
+  final bool withPost;
+
+  /// the field ready to type in
+  final bool focus;
   @override
   State<CommentsPanel> createState() => _CommentsPanelState();
 }
@@ -83,6 +100,11 @@ class _CommentsPanelState extends State<CommentsPanel> {
     if (_started) return;
     _started = true;
     if (widget.thread != null) open.add(widget.thread!);
+    if (widget.focus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) focus.requestFocus();
+      });
+    }
     final r = widget.replyTo;
     if (r != null) {
       open.add(r.id);
@@ -314,19 +336,29 @@ class _CommentsPanelState extends State<CommentsPanel> {
       listenable: context.app.posts,
       builder: (context, _) {
         final total = context.app.posts.of(_id).comments;
+        final head = Padding(
+          padding: EdgeInsets.fromLTRB(20, widget.withPost ? 10 : 0, 20, 6),
+          child: Row(children: [
+            Expanded(
+              child: Text(total > 0 ? 'კომენტარები · $total' : 'კომენტარები', key: const ValueKey('cs-title'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+            ),
+            Text('ჯერ ახლები', style: TextStyle(color: c.muted, fontSize: 12.5)),
+          ]),
+        );
+        // a post by itself: the post, then its comments, in one list
+        final post = !widget.withPost
+            ? null
+            : PostCard(
+                key: ValueKey('cs-post-$_id'),
+                post: widget.post,
+                inPostScreen: true,
+                onDeleted: () => Navigator.of(context).pop(true),
+              );
+        final lead = post == null ? 0 : 2, none = post != null && done && tops.isEmpty;
         return Column(children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
-            child: Row(children: [
-              Expanded(
-                child: Text(total > 0 ? 'კომენტარები · $total' : 'კომენტარები', key: const ValueKey('cs-title'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
-              ),
-              Text('ჯერ ახლები', style: TextStyle(color: c.muted, fontSize: 12.5)),
-            ]),
-          ),
-          Divider(height: 1, color: c.line),
+          if (post == null) ...[head, Divider(height: 1, color: c.line)],
           Expanded(
-            child: tops.isEmpty
+            child: tops.isEmpty && post == null
                 ? (error != null
                     ? Empty(icon: 'comment', title: 'კომენტარები ვერ ჩაიტვირთა', text: errText(error!), action: 'ხელახლა ცდა', onAction: _more)
                     : loading || !done
@@ -336,10 +368,22 @@ class _CommentsPanelState extends State<CommentsPanel> {
                     key: const ValueKey('cs-list'),
                     controller: scroll,
                     padding: const EdgeInsets.only(top: 6, bottom: 12),
-                    itemCount: rows.length + (done ? 0 : 1),
-                    itemBuilder: (context, i) {
+                    itemCount: lead + rows.length + (done ? 0 : 1) + (none ? 1 : 0),
+                    itemBuilder: (context, j) {
+                      if (post != null && j == 0) return post;
+                      if (post != null && j == 1) return Column(children: [Divider(height: 1, color: c.line), head]);
+                      final i = j - lead;
+                      if (none) {
+                        return Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                          child: Text(error != null ? errText(error!) : 'ჯერ არავის დაუწერია. იყავი პირველი!', style: TextStyle(color: c.muted, fontSize: 14.5)),
+                        );
+                      }
                       // near the end of what is here (five comments before it), the next ten are asked for
-                      if (!done && (i >= rows.length || rows[i].$1 >= tops.length - 5)) WidgetsBinding.instance.addPostFrameCallback((_) => _more());
+                      if (!done && error == null && (i >= rows.length || rows[i].$1 >= tops.length - 5)) WidgetsBinding.instance.addPostFrameCallback((_) => _more());
+                      if (i >= rows.length && error != null) {
+                        return Center(child: TextButton(onPressed: _more, child: const Text('ვერ ჩაიტვირთა. ხელახლა ცდა')));
+                      }
                       if (i >= rows.length) {
                         return const Padding(padding: EdgeInsets.all(18), child: Center(child: SizedBox.square(dimension: 22, child: CircularProgressIndicator(strokeWidth: 2.2))));
                       }
@@ -389,13 +433,24 @@ class InlineComments extends StatefulWidget {
   State<InlineComments> createState() => _InlineCommentsState();
 }
 
+/// Under the post, as Facebook keeps it: the last comments, each with "ყველა N პასუხის ნახვა" right under it that
+/// opens its answers there (one step in, and one more), "პასუხი" under every one answering it here; "ყველას ნახვა"
+/// opens every comment in the window.
 class _InlineCommentsState extends State<InlineComments> {
-  List<Comment>? last;
-  Map<int, int> answers = {};
+  List<Comment>? tops;
+  final replies = <Comment>[];
+  final open = <int>{};
+  Set<int> liked = {};
+  final likes = <int, int>{};
+  Comment? replyTo;
   Object? error;
   bool sending = false, _started = false;
   final field = TextEditingController();
+  final focus = FocusNode();
   final _endKey = GlobalKey();
+
+  int get _id => widget.post.id;
+  CommentForest get _forest => CommentForest(tops ?? const [], replies);
 
   @override
   void didChangeDependencies() {
@@ -408,43 +463,76 @@ class _InlineCommentsState extends State<InlineComments> {
   @override
   void dispose() {
     field.dispose();
+    focus.dispose();
     super.dispose();
   }
 
   Future<void> _load() async {
     final api = context.app.api;
     try {
-      final r = await api.commentsPage(widget.post.id, from: 0, count: 5);
-      final rs = await api.commentReplies(widget.post.id, [for (final c in r) c.id]).catchError((_) => const <Comment>[]);
+      final r = await api.commentsPage(_id, from: 0, count: 5);
+      final rs = await api.commentReplies(_id, [for (final c in r) c.id]).catchError((_) => const <Comment>[]);
       if (!mounted) return;
-      // every answer under a comment, on both steps
-      final f = CommentForest(r, rs);
-      final n = {for (final t in r) t.id: f.under(t.id).length};
       setState(() {
-        last = r.reversed.toList();
-        answers = n;
+        tops = r.reversed.toList();
+        replies
+          ..clear()
+          ..addAll(rs);
+        for (final c in [...r, ...rs]) {
+          likes[c.id] = c.likes;
+        }
         error = null;
       });
+      api.commentLikes([for (final c in [...r, ...rs]) c.id]).then((l) {
+        if (mounted) setState(() => liked = {...l});
+      }).catchError((_) {});
     } catch (e) {
       if (mounted) setState(() => error = e);
     }
   }
 
+  /// answering here: the field says whom; an answer to one already two steps in names its author
+  void _reply(Comment c) {
+    final f = _forest;
+    setState(() {
+      replyTo = c;
+      for (Comment? x = c; x != null; x = f.byId[x.parentId]) {
+        open.add(x.id);
+      }
+    });
+    final u = c.ap?.username ?? '';
+    if (f.depth(c) >= 2 && u.isNotEmpty && c.author != context.me.id && !field.text.contains('@$u')) {
+      field.text = '@$u ${field.text}';
+      field.selection = TextSelection.collapsed(offset: field.text.length);
+    }
+    focus.requestFocus();
+  }
+
   Future<void> _send() async {
     final t = field.text.trim();
     if (t.isEmpty || sending) return;
-    final app = context.app;
+    final app = context.app, par = replyTo;
     setState(() => sending = true);
     try {
-      final c = await app.api.addComment(widget.post.id, t);
+      final c = await app.api.addComment(_id, t, parentId: par?.id);
       if (!mounted) return;
       field.clear();
       setState(() {
-        final l = [...?last, c];
-        last = l.length > 5 ? l.sublist(l.length - 5) : l;
+        if (c.parentId == null) {
+          final l = [...?tops, c];
+          tops = l.length > 5 ? l.sublist(l.length - 5) : l;
+        } else {
+          replies.add(c);
+          final f = _forest;
+          for (Comment? x = f.byId[c.parentId]; x != null; x = f.byId[x.parentId]) {
+            open.add(x.id);
+          }
+        }
+        likes[c.id] = 0;
+        replyTo = null;
         sending = false;
       });
-      app.posts.commented(widget.post.id);
+      app.posts.commented(_id);
       // the new comment is shown where the writing line is, not under the keyboard
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final ctx = _endKey.currentContext;
@@ -459,19 +547,73 @@ class _InlineCommentsState extends State<InlineComments> {
     }
   }
 
-  Future<void> _sheet({Comment? replyTo, int? thread}) async {
-    await showCommentsSheet(context, widget.post, replyTo: replyTo, thread: thread);
+  Future<void> _like(Comment c) async {
+    final on = !liked.contains(c.id);
+    setState(() {
+      on ? liked.add(c.id) : liked.remove(c.id);
+      likes[c.id] = ((likes[c.id] ?? c.likes) + (on ? 1 : -1)).clamp(0, 1 << 30).toInt();
+    });
+    try {
+      await context.app.api.likeComment(c.id, on);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        on ? liked.remove(c.id) : liked.add(c.id);
+        likes[c.id] = ((likes[c.id] ?? 0) + (on ? -1 : 1)).clamp(0, 1 << 30).toInt();
+      });
+      toast(context, errText(e));
+    }
+  }
+
+  Future<void> _delete(Comment c) async {
+    final yes = await confirm(context, title: 'კომენტარის წაშლა', text: 'წაიშლება კომენტარი და მისი პასუხებიც.', yes: 'წაშლა', danger: true);
+    if (!yes || !mounted) return;
+    final app = context.app;
+    if (!await attempt(context, () => app.api.deleteComment(c.id)) || !mounted) return;
+    final ids = {c.id, for (final x in _forest.under(c.id)) x.id};
+    setState(() {
+      tops?.removeWhere((x) => ids.contains(x.id));
+      replies.removeWhere((x) => ids.contains(x.id));
+      if (replyTo != null && ids.contains(replyTo!.id)) replyTo = null;
+    });
+    app.posts.commented(_id, -ids.length);
+  }
+
+  Future<void> _sheet() async {
+    await showCommentsSheet(context, widget.post);
     // what was written or deleted in the window shows here too
     if (mounted) _load();
   }
 
+  Widget _tile(Comment cm, int depth, Comment? to) {
+    final me = context.me.id, staff = isStaff(context), author = widget.post.author;
+    return KeyedSubtree(
+      key: ValueKey('icm-${cm.id}'),
+      child: CommentTile(
+        c: cm,
+        depth: depth,
+        answered: to,
+        liked: liked.contains(cm.id),
+        likes: likes[cm.id] ?? cm.likes,
+        canDelete: cm.author == me || author == me || staff,
+        onReply: () => _reply(cm),
+        onLike: () => _like(cm),
+        onDelete: () => _delete(cm),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final c = context.pc, l = last;
-    final total = context.app.posts.of(widget.post.id).comments;
+    final c = context.pc, l = tops;
+    final total = context.app.posts.of(_id).comments;
+    final rows = l == null || l.isEmpty
+        ? const <(int, Widget Function())>[]
+        : commentRows(context, _forest, open: open, tile: _tile, toggle: (id) => setState(() => open.contains(id) ? open.remove(id) : open.add(id)));
+    final to = replyTo;
     return Container(
-      key: ValueKey('inline-cm-${widget.post.id}'),
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
+      key: ValueKey('inline-cm-$_id'),
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 10),
       decoration: BoxDecoration(border: Border(top: BorderSide(color: c.line))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (l == null)
@@ -479,65 +621,82 @@ class _InlineCommentsState extends State<InlineComments> {
               ? TextButton(onPressed: _load, child: const Text('ვერ ჩაიტვირთა. ხელახლა ცდა'))
               : const Padding(padding: EdgeInsets.all(14), child: Center(child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2.2))))
         else if (l.isEmpty)
-          Padding(padding: const EdgeInsets.fromLTRB(4, 10, 4, 4), child: Text('ჯერ არავის დაუწერია. იყავი პირველი!', style: TextStyle(color: c.muted, fontSize: 14)))
+          Padding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 4), child: Text('ჯერ არავის დაუწერია. იყავი პირველი!', style: TextStyle(color: c.muted, fontSize: 14)))
         else
-          for (final (i, cm) in l.indexed)
-            _Unfold(
-              order: i,
-              child: _MiniComment(
-                key: ValueKey('icm-${cm.id}'),
-                c: cm,
-                answers: answers[cm.id] ?? 0,
-                onReply: () => _sheet(replyTo: cm),
-                onAnswers: () => _sheet(thread: cm.id),
-              ),
-            ),
+          for (final (i, r) in rows.indexed) _Unfold(order: i < 8 ? i : 8, child: r.$2()),
         if (l != null && l.isNotEmpty)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              key: ValueKey('all-cm-${widget.post.id}'),
-              onPressed: _sheet,
-              icon: PIcon('comment', size: 17, color: c.accent),
-              label: Text(total > l.length ? 'ყველას ნახვა · $total' : 'ყველას ნახვა'),
-            ),
-          ),
-        Row(key: _endKey, children: [
-          Avatar(p: context.me, size: 30),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              key: ValueKey('icm-field-${widget.post.id}'),
-              controller: field,
-              minLines: 1,
-              maxLines: 3,
-              maxLength: 1000,
-              textCapitalization: TextCapitalization.sentences,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _send(),
-              decoration: InputDecoration(
-                hintText: 'დაწერე კომენტარი…',
-                isDense: true,
-                counterText: '',
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: c.accent, width: 1.5)),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: ValueKey('all-cm-$_id'),
+                onPressed: _sheet,
+                icon: PIcon('comment', size: 17, color: c.accent),
+                label: Text(total > _forest.byId.length ? 'სხვა კომენტარების ნახვა · $total' : 'ყველა კომენტარი ცალკე ფანჯარაში'),
               ),
             ),
           ),
-          ListenableBuilder(
-            listenable: field,
-            builder: (_, __) {
-              final can = field.text.trim().isNotEmpty && !sending;
-              return IconButton(
-                key: ValueKey('icm-send-${widget.post.id}'),
-                tooltip: 'კომენტარის გაგზავნა',
-                onPressed: can ? _send : null,
-                icon: sending ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)) : PIcon('send', size: 22, color: can ? c.accent : c.muted),
-              );
-            },
+        if (to != null)
+          Padding(
+            key: ValueKey('icm-to-$_id'),
+            padding: const EdgeInsets.fromLTRB(54, 4, 8, 0),
+            child: Row(children: [
+              PIcon('reply', size: 13, color: c.muted),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text('პასუხი: ${(to.ap?.name ?? '').split(' ').first}',
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 12.5, fontWeight: FontWeight.w700)),
+              ),
+              InkWell(
+                key: ValueKey('icm-to-x-$_id'),
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => setState(() => replyTo = null),
+                child: Padding(padding: const EdgeInsets.all(4), child: PIcon('x', size: 15, color: c.muted)),
+              ),
+            ]),
           ),
-        ]),
+        Padding(
+          key: _endKey,
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+          child: Row(children: [
+            Avatar(p: context.me, size: 30),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                key: ValueKey('icm-field-$_id'),
+                controller: field,
+                focusNode: focus,
+                minLines: 1,
+                maxLines: 3,
+                maxLength: 1000,
+                textCapitalization: TextCapitalization.sentences,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _send(),
+                decoration: InputDecoration(
+                  hintText: to != null ? 'დაწერე პასუხი…' : 'დაწერე კომენტარი…',
+                  isDense: true,
+                  counterText: '',
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: c.accent, width: 1.5)),
+                ),
+              ),
+            ),
+            ListenableBuilder(
+              listenable: field,
+              builder: (_, __) {
+                final can = field.text.trim().isNotEmpty && !sending;
+                return IconButton(
+                  key: ValueKey('icm-send-$_id'),
+                  tooltip: 'კომენტარის გაგზავნა',
+                  onPressed: can ? _send : null,
+                  icon: sending ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)) : PIcon('send', size: 22, color: can ? c.accent : c.muted),
+                );
+              },
+            ),
+          ]),
+        ),
       ]),
     );
   }
@@ -557,59 +716,6 @@ class _Unfold extends StatelessWidget {
       curve: Interval(order * 60 / ms, 1, curve: Curves.easeOutCubic),
       builder: (_, v, c) => Opacity(opacity: v, child: Transform.translate(offset: Offset(0, (v - 1) * 12), child: c)),
       child: child,
-    );
-  }
-}
-
-/// a comment in the accordion: the face, the name and the words in a bubble, when; under it "პასუხი" and how many
-/// answers it has
-class _MiniComment extends StatelessWidget {
-  const _MiniComment({super.key, required this.c, required this.answers, required this.onReply, required this.onAnswers});
-  final Comment c;
-  final int answers;
-  final VoidCallback onReply, onAnswers;
-  @override
-  Widget build(BuildContext context) {
-    final pc = context.pc, who = c.ap ?? Profile(id: c.author, name: '');
-    var text = c.body.trim();
-    if (c.sticker != null) text = '🙂 სტიკერი';
-    if (c.media != null && c.sticker == null && text == '📷') text = '📷 ფოტო';
-    Widget link(String key, String t, VoidCallback onTap, {bool strong = false}) => InkWell(
-          key: ValueKey('$key-${c.id}'),
-          borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            child: Text(t, style: TextStyle(color: strong ? pc.accent : pc.muted, fontWeight: FontWeight.w800, fontSize: 12.5)),
-          ),
-        );
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Avatar(p: who, size: 28),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(11, 7, 11, 8),
-              decoration: BoxDecoration(color: pc.sunk, borderRadius: BorderRadius.circular(15)),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(mainAxisSize: MainAxisSize.min, children: [
-                  Flexible(child: Text(who.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13))),
-                  const SizedBox(width: 6),
-                  Text(ago(c.createdAt), style: TextStyle(color: pc.muted, fontSize: 11.5)),
-                ]),
-                const SizedBox(height: 1),
-                Text(text, maxLines: 4, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, height: 1.35)),
-              ]),
-            ),
-            Row(mainAxisSize: MainAxisSize.min, children: [
-              link('icm-reply', 'პასუხი', onReply),
-              if (answers > 0) link('icm-answers', answers == 1 ? '1 პასუხი' : '$answers პასუხი', onAnswers, strong: true),
-            ]),
-          ]),
-        ),
-      ]),
     );
   }
 }

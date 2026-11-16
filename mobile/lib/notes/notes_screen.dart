@@ -6,7 +6,7 @@ import '../chat/chat_screen.dart';
 import '../data/models.dart';
 import '../dating/dating_tab.dart';
 import '../data/stores.dart';
-import '../feed/post_screen.dart';
+import '../feed/comments_sheet.dart';
 import '../home/services.dart';
 import '../joker/online_screen.dart';
 import '../people/albums.dart';
@@ -89,7 +89,9 @@ class _NotesScreenState extends State<NotesScreen> {
         final x = await app.api.post(p);
         if (x == null || !mounted) return;
         await app.posts.load([x]);
-        if (mounted) await openPage(context, PostScreen(post: x), full: true);
+        // the post comes up over the notifications with its comments, the answered one open
+        final cm = int.tryParse('${n.ref['comment'] ?? ''}');
+        if (mounted) await openPost(context, x, thread: cm);
       } catch (e) {
         if (mounted) toast(context, errText(e));
       }

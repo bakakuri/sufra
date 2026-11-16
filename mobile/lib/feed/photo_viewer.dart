@@ -4,21 +4,24 @@ import '../data/models.dart';
 import '../ui/icons.dart';
 import '../ui/net_image.dart';
 
-/// Photos over the whole screen: swipe between them, pinch to zoom; back closes it.
-Future<void> openPhotos(BuildContext context, List<Media> photos, {int start = 0}) =>
+/// Photos over the whole screen: swipe between them, pinch to zoom; back closes it. A post's photos carry its
+/// comments: [onComments] opens them over the photo.
+Future<void> openPhotos(BuildContext context, List<Media> photos, {int start = 0, VoidCallback? onComments, int comments = 0}) =>
     Navigator.of(context, rootNavigator: true).push(PageRouteBuilder(
       opaque: false,
       barrierColor: Colors.black,
       transitionDuration: const Duration(milliseconds: 200),
       reverseTransitionDuration: const Duration(milliseconds: 160),
-      pageBuilder: (_, __, ___) => PhotoViewer(photos: photos, start: start),
+      pageBuilder: (_, __, ___) => PhotoViewer(photos: photos, start: start, onComments: onComments, comments: comments),
       transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
     ));
 
 class PhotoViewer extends StatefulWidget {
-  const PhotoViewer({super.key, required this.photos, this.start = 0});
+  const PhotoViewer({super.key, required this.photos, this.start = 0, this.onComments, this.comments = 0});
   final List<Media> photos;
   final int start;
+  final VoidCallback? onComments;
+  final int comments;
   @override
   State<PhotoViewer> createState() => _PhotoViewerState();
 }
@@ -72,6 +75,28 @@ class _PhotoViewerState extends State<PhotoViewer> {
             ]),
           ),
         ),
+        if (widget.onComments != null)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    key: const ValueKey('pv-comments'),
+                    style: TextButton.styleFrom(foregroundColor: Colors.white, backgroundColor: Colors.white.withValues(alpha: .14), shape: const StadiumBorder()),
+                    onPressed: widget.onComments,
+                    icon: const PIcon('comment', size: 19, color: Colors.white),
+                    label: Text(widget.comments > 0 ? 'კომენტარები · ${widget.comments}' : 'კომენტარის დაწერა', style: const TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ),
+            ),
+          ),
       ]),
     );
   }

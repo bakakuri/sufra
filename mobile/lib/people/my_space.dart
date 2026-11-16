@@ -7,7 +7,7 @@ import '../data/stores.dart';
 import '../feed/compose_screen.dart';
 import '../feed/photo_viewer.dart';
 import '../feed/post_card.dart';
-import '../feed/post_screen.dart';
+import '../feed/comments_sheet.dart';
 import '../profile/profile.dart';
 import '../stories/stories.dart';
 import '../ui/format.dart';
@@ -224,13 +224,13 @@ class _StoryArchiveScreenState extends State<StoryArchiveScreen> {
     );
   }
 
-  Future<void> _openPost(Post p) => openPage(context, PostScreen(post: p), full: true);
+  Future<void> _openPost(Post p) => openPost(context, p);
 
   /// a photo opens in the viewer at itself, with its post's other photos beside it (extras.js pvopen)
   Future<void> _openPhoto((Post, Media) x) {
     final all = x.$1.media.where((m) => !m.isVideo).toList();
     final i = all.indexOf(x.$2);
-    return openPhotos(context, all, start: i < 0 ? 0 : i);
+    return openPhotos(context, all, start: i < 0 ? 0 : i, comments: context.app.posts.of(x.$1.id).comments, onComments: () => showCommentsSheet(context, x.$1));
   }
 
   List<Widget> _body() {

@@ -590,10 +590,6 @@ abstract class PeeraApi {
   Future<void> agendaPos(int rowId, int pos);
   Future<void> agendaDelete(int rowId);
 
-  /// the toast book's titles, and one toast's text
-  Future<List<Map<String, dynamic>>> toastBook();
-  Future<Map<String, dynamic>?> toastText(int id);
-
   /// shared costs and the payments between people
   Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)> eventCosts(int id);
   Future<void> addEventCost(int id, String paidBy, double amount, String what);
@@ -710,29 +706,6 @@ abstract class PeeraApi {
 
   /// my pages and channels (a vacancy's company can be one)
   Future<List<Map<String, dynamic>>> myPages();
-
-  // ---------- the Georgian kitchen (kitchen.js) ----------
-
-  Future<List<Map<String, dynamic>>> recipes({String cat = '', String q = ''});
-  Future<({Map<String, dynamic> r, bool liked, List<Map<String, dynamic>> cooks})?> recipe(int id);
-  Future<void> likeRecipe(int id, bool on);
-  Future<int> saveRecipe(Map<String, dynamic> row, {int? id});
-  Future<void> deleteRecipe(int id);
-
-  /// "I made it too": a photo and a few words
-  Future<void> cookedRecipe(int id, String? photo, String note);
-
-  /// my coming events (mine and the ones I said yes to), for a recipe's ingredients
-  Future<List<Map<String, dynamic>>> myComingEvents();
-  Future<void> addEventItems(int event, List<String> names);
-
-  // ---------- the toast book (toasts.js) ----------
-
-  /// by occasion, the best or the newest; which of them I liked
-  Future<(List<Map<String, dynamic>>, Set<int>)> toasts({String occ = '', String sort = 'top'});
-  Future<void> likeToast(int id, bool on);
-  Future<void> saveToast({int? id, required String occasion, required String title, required String body});
-  Future<void> deleteToast(int id);
 
   // ---------- calls and rooms (chat.js calls, rooms.js): signals over realtime, the same as the site's ----------
 
@@ -2616,12 +2589,6 @@ class SupaApi implements PeeraApi {
   Future<void> agendaDelete(int rowId) => sb.from('event_toasts').delete().eq('id', rowId);
 
   @override
-  Future<List<Map<String, dynamic>>> toastBook() async => await sb.from('toasts').select('id,title,occasion').eq('hidden', false).order('likes', ascending: false).limit(80);
-
-  @override
-  Future<Map<String, dynamic>?> toastText(int id) async => await sb.from('toasts').select('title,body').eq('id', id).maybeSingle();
-
-  @override
   Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)> eventCosts(int id) async {
     final c = sb.from('event_costs').select('id,paid_by,amount,what,added_by').eq('event_id', id).order('id');
     final p = sb.from('event_payments').select('id,from_user,to_user,amount,added_by').eq('event_id', id).order('id');
@@ -3014,83 +2981,6 @@ class SupaApi implements PeeraApi {
 
   @override
   Future<List<Map<String, dynamic>>> myPages() async => await sb.from('pages').select('id,name').eq('owner', myId).limit(40);
-
-  // ---------- the kitchen ----------
-  static const _recipeSel = 'id,author,title,about,photo_url,category,region,servings,minutes,ingredients,steps,likes,cooks,created_at';
-
-  @override
-  Future<List<Map<String, dynamic>>> recipes({String cat = '', String q = ''}) async {
-    var b = sb.from('recipes').select(_recipeSel);
-    if (cat.isNotEmpty) b = b.eq('category', cat);
-    final t = _like(q);
-    if (t.isNotEmpty) b = b.ilike('title', '%$t%');
-    return await b.order('likes', ascending: false).order('created_at', ascending: false).limit(80);
-  }
-
-  @override
-  Future<({Map<String, dynamic> r, bool liked, List<Map<String, dynamic>> cooks})?> recipe(int id) async {
-    final r = await sb.from('recipes').select(_recipeSel).eq('id', id).maybeSingle();
-    if (r == null) return null;
-    final lk = await sb.from('recipe_likes').select('user_id').eq('recipe_id', id).eq('user_id', myId).maybeSingle();
-    final ck = await sb.from('recipe_cooks').select('id,user_id,photo_url,note,created_at').eq('recipe_id', id).order('created_at', ascending: false).limit(30);
-    return (r: r, liked: lk != null, cooks: ck);
-  }
-
-  @override
-  Future<void> likeRecipe(int id, bool on) =>
-      on ? sb.from('recipe_likes').insert({'recipe_id': id, 'user_id': myId}) : sb.from('recipe_likes').delete().eq('recipe_id', id).eq('user_id', myId);
-
-  @override
-  Future<int> saveRecipe(Map<String, dynamic> row, {int? id}) async {
-    if (id != null) {
-      await sb.from('recipes').update(row).eq('id', id);
-      return id;
-    }
-    return asInt((await sb.from('recipes').insert({...row, 'author': myId}).select('id').single())['id']);
-  }
-
-  @override
-  Future<void> deleteRecipe(int id) => sb.from('recipes').delete().eq('id', id);
-
-  @override
-  Future<void> cookedRecipe(int id, String? photo, String note) => sb.from('recipe_cooks').insert({'recipe_id': id, 'user_id': myId, 'photo_url': photo, 'note': note});
-
-  @override
-  Future<List<Map<String, dynamic>>> myComingEvents() async {
-    final now = DateTime.now().toUtc().toIso8601String();
-    final own = await sb.from('events').select('id,title,starts_at').eq('host', myId).gte('starts_at', now);
-    final rs = await sb.from('event_rsvps').select('event_id').eq('user_id', myId).eq('status', 'yes');
-    final ids = [for (final x in rs) if (!own.any((e) => e['id'] == x['event_id'])) x['event_id']];
-    final other = ids.isEmpty ? <Map<String, dynamic>>[] : await sb.from('events').select('id,title,starts_at').inFilter('id', ids).gte('starts_at', now);
-    return [...own, ...other]..sort((a, b) => '${a['starts_at']}'.compareTo('${b['starts_at']}'));
-  }
-
-  @override
-  Future<void> addEventItems(int event, List<String> names) =>
-      sb.from('event_items').insert([for (final n in names) {'event_id': event, 'name': n.length > 80 ? n.substring(0, 80) : n, 'added_by': myId}]);
-
-  // ---------- the toast book ----------
-  @override
-  Future<(List<Map<String, dynamic>>, Set<int>)> toasts({String occ = '', String sort = 'top'}) async {
-    var b = sb.from('toasts').select('id,author,occasion,title,body,likes,hidden,created_at').eq('hidden', false);
-    if (occ.isNotEmpty) b = b.eq('occasion', occ);
-    final rows = await (sort == 'new' ? b.order('created_at', ascending: false) : b.order('likes', ascending: false).order('created_at', ascending: true)).limit(60);
-    if (rows.isEmpty) return (rows, <int>{});
-    final lk = await sb.from('toast_likes').select('toast_id').eq('user_id', myId).inFilter('toast_id', [for (final r in rows) r['id']]);
-    return (rows, {for (final x in lk) asInt(x['toast_id'])});
-  }
-
-  @override
-  Future<void> likeToast(int id, bool on) =>
-      on ? sb.from('toast_likes').insert({'toast_id': id, 'user_id': myId}) : sb.from('toast_likes').delete().eq('toast_id', id).eq('user_id', myId);
-
-  @override
-  Future<void> saveToast({int? id, required String occasion, required String title, required String body}) => id == null
-      ? sb.from('toasts').insert({'author': myId, 'occasion': occasion, 'title': title, 'body': body})
-      : sb.from('toasts').update({'occasion': occasion, 'title': title, 'body': body}).eq('id', id);
-
-  @override
-  Future<void> deleteToast(int id) => sb.from('toasts').delete().eq('id', id);
 
   // ---------- calls and rooms ----------
   RealtimeChannel? _callMine;

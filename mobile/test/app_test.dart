@@ -206,7 +206,32 @@ void main() {
     final rows = [for (final id in [1, 3, 4]) t.getTopLeft(find.byKey(ValueKey('icm-$id'))).dy];
     expect(rows, orderedEquals([...rows]..sort()));
     expect(find.byKey(const ValueKey('icm-2')), findsNothing);
-    expect(find.byKey(const ValueKey('icm-answers-1')), findsOneWidget);
+    // the answers come right under their comment, as on Facebook, and open there
+    final inl = find.byKey(const ValueKey('inline-cm-101'));
+    final tg = find.descendant(of: inl, matching: find.byKey(const ValueKey('cthread-1')));
+    expect(find.descendant(of: tg, matching: find.text('ყველა 2 პასუხის ნახვა')), findsOneWidget);
+    expect(t.getTopLeft(tg).dy, greaterThan(t.getTopLeft(find.byKey(const ValueKey('icm-1'))).dy));
+    expect(t.getTopLeft(tg).dy, lessThan(t.getTopLeft(find.byKey(const ValueKey('icm-3'))).dy));
+    await t.ensureVisible(tg);
+    await settle(t);
+    await t.tap(tg);
+    await settle(t);
+    expect(find.byKey(const ValueKey('icm-2')), findsOneWidget);
+    expect(find.descendant(of: inl, matching: find.byKey(const ValueKey('cto-2'))), findsOneWidget);
+    // answered right there
+    final r2 = find.descendant(of: inl, matching: find.byKey(const ValueKey('creply-2')));
+    await t.ensureVisible(r2);
+    await settle(t);
+    await t.tap(r2);
+    await settle(t);
+    expect(find.byKey(const ValueKey('icm-to-101')), findsOneWidget);
+    await t.enterText(find.byKey(const ValueKey('icm-field-101')), 'მეც მინდა');
+    await t.pump();
+    await t.tap(find.byTooltip('კომენტარის გაგზავნა'));
+    await settle(t);
+    expect(api.calls, contains('comment 101 მეც მინდა ↩2'));
+    expect(find.descendant(of: inl, matching: find.text('მეც მინდა')), findsOneWidget);
+    expect(find.byKey(const ValueKey('icm-to-101')), findsNothing);
     // one written straight from the feed
     await t.enterText(find.byKey(const ValueKey('icm-field-101')), 'რა ლამაზია');
     await t.pump();
@@ -223,10 +248,10 @@ void main() {
     expect(api.calls, contains('cpage 101 0 15'));
     final panel = find.byType(CommentsPanel);
     Finder inP(Finder f) => find.descendant(of: panel, matching: f);
-    expect(inP(find.text('კომენტარები · 6')), findsOneWidget);
+    expect(inP(find.text('კომენტარები · 7')), findsOneWidget);
     // an answer is folded under its comment until asked for, as on Facebook
     expect(inP(find.text('ჯვრის მონასტერთან ახლოს 🙂')), findsNothing);
-    expect(inP(find.text('ყველა 2 პასუხის ნახვა')), findsOneWidget);
+    expect(inP(find.text('ყველა 3 პასუხის ნახვა')), findsOneWidget);
     await t.tap(inP(find.byKey(const ValueKey('cthread-1'))));
     await settle(t);
     expect(inP(find.text('ჯვრის მონასტერთან ახლოს 🙂')), findsOneWidget);
@@ -259,7 +284,7 @@ void main() {
     await settle(t);
     expect(api.calls, contains('comment 101 ზაფხულში ისევ წავალთ ↩1'));
     expect(inP(find.text('ზაფხულში ისევ წავალთ')), findsOneWidget);
-    expect(inP(find.text('კომენტარები · 7')), findsOneWidget);
+    expect(inP(find.text('კომენტარები · 8')), findsOneWidget);
     // an answer to one already two steps in stays on that step, names its author and is tagged with them
     await t.scrollUntilVisible(inP(find.byKey(const ValueKey('creply-5'))), 100, scrollable: list);
     await settle(t);
@@ -467,10 +492,12 @@ void main() {
     await _back(t);
     expect(find.byType(ChatScreen), findsNothing);
 
+    // a post never opens as a page of its own: it comes up with its comments over where one is
     push.open!(const PushTarget(post: 101));
     await settle(t);
-    expect(find.byType(PostScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('cs-post-101')), findsOneWidget);
     await _back(t);
+    expect(find.byType(CommentsPanel), findsNothing);
 
     push.open!(const PushTarget(tab: 'friends'));
     await settle(t);
@@ -968,7 +995,8 @@ void main() {
     // a comment opens the post
     await t.tap(find.byKey(const ValueKey('note-70')));
     await settle(t);
-    expect(find.byType(PostScreen), findsOneWidget);
+    expect(find.byType(CommentsPanel), findsOneWidget);
+    expect(find.byKey(const ValueKey('cs-post-106')), findsOneWidget);
     await _back(t);
     expect(find.byType(NotesScreen), findsOneWidget);
 
@@ -1177,13 +1205,11 @@ void main() {
     expect(find.descendant(of: find.byKey(const ValueKey('stat-mutual')), matching: find.text('12')), findsOneWidget);
     expect(find.descendant(of: find.byKey(const ValueKey('stat-friends')), matching: find.text('248')), findsOneWidget);
 
-    // the posts are posts, whole, as on Facebook; a post's words open it, back comes back
+    // the posts are posts, whole, as on Facebook; a post's words show whole right there (no page of its own)
     await proTo(t, find.byKey(const ValueKey('pbody-107')));
     await t.tap(find.byKey(const ValueKey('pbody-107')));
     await settle(t);
-    expect(find.byType(PostScreen), findsOneWidget);
-    await _back(t);
-    expect(find.byType(PostScreen), findsNothing);
+    expect(find.byType(CommentsPanel), findsNothing);
     expect(find.byType(PersonScreen), findsOneWidget);
 
     // the tabs (back up above the posts): no shared albums; friends, CV

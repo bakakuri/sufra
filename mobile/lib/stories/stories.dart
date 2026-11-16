@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
 import '../feed/compose_screen.dart';
-import '../feed/post_screen.dart';
+import '../feed/comments_sheet.dart';
 import '../media/photo_edit.dart';
 import '../media/player.dart';
 import '../media/video_tools.dart';
@@ -523,7 +523,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
       return;
     }
     await app.posts.load([p]);
-    if (mounted) await openPage(context, PostScreen(post: p), full: true);
+    if (mounted) await openPost(context, p);
     if (mounted) _hold(false);
   }
 

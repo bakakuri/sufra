@@ -15,7 +15,7 @@ import '../data/stores.dart';
 import '../feed/compose_screen.dart';
 import '../feed/photo_viewer.dart';
 import '../feed/post_actions.dart';
-import '../feed/post_screen.dart';
+import '../feed/comments_sheet.dart';
 import '../map/live_map.dart';
 import '../map/loc_device.dart';
 import '../media/voice.dart';
@@ -1273,7 +1273,7 @@ class _Bubble extends StatelessWidget {
             return;
           }
           await app.posts.load([p]);
-          if (context.mounted) await openPage(context, PostScreen(post: p), full: true);
+          if (context.mounted) await openPost(context, p);
         },
         child: _box(
           context,
