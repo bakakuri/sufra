@@ -1624,7 +1624,8 @@ class _ComposerState extends State<_Composer> {
                           label: 'მოწონების გაგზავნა',
                           excludeSemantics: true,
                           child: GestureDetector(
-                            onTap: w.sending ? null : w.onLike,
+                            // while the thumb is still turning into the send button, a tap sends what is written
+                            onTap: w.sending ? null : () => w.field.text.trim().isNotEmpty ? w.onSend() : w.onLike(),
                             child: const SizedBox(width: 44, height: 44, child: Center(child: Text('👍', style: TextStyle(fontSize: 27)))),
                           ),
                         ),
