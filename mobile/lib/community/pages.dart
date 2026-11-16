@@ -346,7 +346,8 @@ class _PageScreenState extends State<PageScreen> {
                       Row(mainAxisSize: MainAxisSize.min, children: [
                         Container(width: 8, height: 8, decoration: BoxDecoration(color: open.$1 ? c.vine : c.nope, shape: BoxShape.circle)),
                         const SizedBox(width: 5),
-                        Text(open.$2, style: TextStyle(color: open.$1 ? c.vine : c.nope, fontWeight: FontWeight.w700, fontSize: 13)),
+                        // "closed · opens on … at …" can be long: it wraps instead of running past the edge
+                        Flexible(child: Text(open.$2, style: TextStyle(color: open.$1 ? c.vine : c.nope, fontWeight: FontWeight.w700, fontSize: 13))),
                       ]),
                   ]),
                 ),
