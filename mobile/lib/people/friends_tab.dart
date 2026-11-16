@@ -405,7 +405,8 @@ class _FriendsTabState extends State<FriendsTab> {
   }
 }
 
-/// The switch between the three parts: one track, the marker sliding under the part that is open.
+/// The switch between the three parts: one track, the marker sliding under the part that is open. Each part is as wide
+/// as its words need (with its number), so a longer name is not made smaller than the others.
 class _Segments extends StatelessWidget {
   const _Segments({required this.segs, required this.on, required this.alert, required this.onPick});
   final List<(String, int)> segs;
@@ -420,15 +421,17 @@ class _Segments extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(16)),
       child: LayoutBuilder(builder: (context, box) {
-        final w = box.maxWidth / n;
+        final weights = <double>[for (final x in segs) (x.$1.length + (x.$2 > 0 ? 3 : 0)).toDouble()];
+        final all = weights.fold<double>(0, (a, b) => a + b);
+        double at(int i) => box.maxWidth * weights.take(i).fold<double>(0, (a, b) => a + b) / all;
         return Stack(children: [
           AnimatedPositioned(
             duration: const Duration(milliseconds: 320),
             curve: Curves.easeOutBack,
-            left: w * on,
+            left: at(on),
             top: 0,
             bottom: 0,
-            width: w,
+            width: at(on + 1) - at(on),
             child: Container(
               decoration: BoxDecoration(
                 color: c.surface,
@@ -439,7 +442,8 @@ class _Segments extends StatelessWidget {
           ),
           Row(children: [
             for (var i = 0; i < n; i++)
-              Expanded(
+              SizedBox(
+                width: at(i + 1) - at(i),
                 child: Semantics(
                   button: true,
                   selected: on == i,
