@@ -1025,6 +1025,22 @@ button.qcard:hover{border-color:color-mix(in srgb,var(--wine) 35%,var(--line))}
 .clk{display:inline-flex;align-items:center;gap:3px;color:var(--wine);font-weight:700}
 .clk svg{width:13px;height:13px}
 .creps{display:flex;flex-direction:column;gap:6px;padding-left:42px}
+/* Facebook's threads: an answer one step in, an answer to it a step further, lines from a face to its answers */
+#cb .cth{position:relative}
+#cb .creps{position:relative;padding-left:40px;gap:0}
+#cb .creps::before{content:'';position:absolute;left:16px;top:-6px;bottom:30px;border-left:1.6px solid var(--line)}
+#cb .creps>.cth::before{content:'';position:absolute;left:-24px;top:-6px;width:20px;height:26px;border-left:1.6px solid var(--line);border-bottom:1.6px solid var(--line);border-bottom-left-radius:12px}
+#cb .cth.d1>.creps{padding-left:34px}
+#cb .cth.d1>.creps::before{left:13px}
+#cb .cth.d1>.creps>.cth::before{left:-21px;width:17px;height:24px}
+#cb .cth>.cmore{margin-left:40px}
+#cb .cth.d1>.cmore{margin-left:34px}
+#cb .cth.d2>.cmore{margin-left:30px}
+.cto{display:flex;align-items:center;gap:4px;padding:0 0 3px 8px;font-size:11.5px;font-weight:700;color:var(--muted);min-width:0}
+.cto svg{width:12px;height:12px;flex:none;transform:scaleX(-1)}
+.cto span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cto b{color:var(--wine);font-weight:800}
+.trow.cmt.d2 .cbub{font-size:13.5px}
 .creps:empty{display:none}
 .trow.rep .cbub{font-size:13.5px}
 .cmore{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;font-size:12.5px;font-weight:700;color:var(--muted);padding:4px 0}
