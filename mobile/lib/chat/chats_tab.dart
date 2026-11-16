@@ -6,15 +6,32 @@ import '../people/search_screen.dart';
 import '../profile/profile.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
+import '../ui/motion.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'chat_screen.dart';
 import 'chat_tools.dart';
 
-/// The conversations, newest first, with what was said last and how many are unread.
-class ChatsTab extends StatelessWidget {
+/// The conversations, newest first: a search over them, who is online now in a row (a tap writes to them), each
+/// conversation a card with what was said last, when, and how many are unread (the unread ones stand out).
+class ChatsTab extends StatefulWidget {
   const ChatsTab({super.key, this.archived = false});
   final bool archived;
+  @override
+  State<ChatsTab> createState() => _ChatsTabState();
+}
+
+class _ChatsTabState extends State<ChatsTab> {
+  String q = '';
+  final findCtl = TextEditingController();
+
+  bool get archived => widget.archived;
+
+  @override
+  void dispose() {
+    findCtl.dispose();
+    super.dispose();
+  }
 
   Future<void> _new(BuildContext context) async {
     final uid = await openPage<String>(context, const _PickFriend());
@@ -33,6 +50,12 @@ class ChatsTab extends StatelessWidget {
     if (id != null && context.mounted) await openChat(context, id);
   }
 
+  String _title(Chat ch) {
+    final app = context.app;
+    if (ch.isGroup) return (ch.title ?? '').isEmpty ? 'ჯგუფი' : ch.title!;
+    return ch.other == null ? '' : (app.people[ch.other!]?.fullName ?? '');
+  }
+
   @override
   Widget build(BuildContext context) {
     final app = context.app, c = context.pc;
@@ -42,17 +65,20 @@ class ChatsTab extends StatelessWidget {
         if (!archived) IconBtn('edit', label: 'ახალი მიმოწერა', onTap: () => _new(context)),
       ]),
       body: ListenableBuilder(
-        listenable: Listenable.merge([app.chats, app.people]),
+        listenable: Listenable.merge([app.chats, app.people, app.friends]),
         builder: (context, _) {
           final store = app.chats;
-          final list = store.chats.where((x) => x.archived == archived).toList();
+          final all = store.chats.where((x) => x.archived == archived).toList();
+          final words = q.trim().toLowerCase();
+          final list = words.isEmpty ? all : [for (final x in all) if (_title(x).toLowerCase().contains(words) || x.lastText.toLowerCase().contains(words)) x];
           final arch = store.chats.where((x) => x.archived).toList();
+          final online = archived ? const <Profile>[] : [for (final id in app.friends.friends) if (app.people[id]?.online == true) app.people[id]!];
           Widget body;
           if (!store.loaded) {
             body = const Center(child: SizedBox.square(dimension: 26, child: CircularProgressIndicator(strokeWidth: 2.4)));
           } else if (store.error != null && store.chats.isEmpty) {
             body = ListView(children: [Empty(icon: 'msg', title: 'მიმოწერა ვერ ჩაიტვირთა', text: errText(store.error!), action: 'ხელახლა ცდა', onAction: store.load)]);
-          } else if (list.isEmpty && (archived || arch.isEmpty)) {
+          } else if (all.isEmpty && (archived || arch.isEmpty)) {
             body = ListView(children: [
               Empty(
                 icon: 'msg',
@@ -63,25 +89,89 @@ class ChatsTab extends StatelessWidget {
               ),
             ]);
           } else {
-            body = ListView(padding: const EdgeInsets.symmetric(vertical: 4), children: [
-              for (final ch in list) ChatRow(key: ValueKey('chat-${ch.convId}'), chat: ch),
-              if (!archived && arch.isNotEmpty)
-                ListTile(
-                  leading: Container(
-                    width: 52,
-                    height: 52,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(color: c.sunk, shape: BoxShape.circle),
-                    child: PIcon('archive', size: 24, color: c.muted),
+            body = ListView(padding: const EdgeInsets.only(top: 4, bottom: 16), children: [
+              if (all.length > 3)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 4, 14, 6),
+                  child: TextField(
+                    key: const ValueKey('ch-find'),
+                    controller: findCtl,
+                    onChanged: (v) => setState(() => q = v),
+                    decoration: InputDecoration(
+                      hintText: 'მოძებნე მიმოწერაში',
+                      isDense: true,
+                      filled: true,
+                      fillColor: c.surface,
+                      prefixIcon: Padding(padding: const EdgeInsets.all(11), child: PIcon('search', size: 18, color: c.muted)),
+                      prefixIconConstraints: const BoxConstraints(minWidth: 40),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.line)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.accent, width: 1.5)),
+                    ),
                   ),
-                  title: const Text('არქივი', style: TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text('${arch.length} მიმოწერა', style: TextStyle(color: c.muted)),
-                  trailing: PIcon('chev', size: 20, color: c.muted),
+                ),
+              if (online.isNotEmpty && words.isEmpty)
+                SizedBox(
+                  height: 92,
+                  child: ListView.separated(
+                    key: const ValueKey('ch-online'),
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+                    itemCount: online.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 6),
+                    itemBuilder: (_, i) {
+                      final p = online[i];
+                      return Rise(
+                        order: i,
+                        dy: 8,
+                        child: Pressable(
+                          key: ValueKey('ch-on-${p.id}'),
+                          onTap: () => chatWith(context, p.id),
+                          child: SizedBox(
+                            width: 66,
+                            child: Column(children: [
+                              Avatar(p: p, size: 56, online: true),
+                              const SizedBox(height: 5),
+                              Text(p.name.split(' ').first, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: c.muted, fontWeight: FontWeight.w600)),
+                            ]),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              if (list.isEmpty && words.isNotEmpty)
+                Padding(padding: const EdgeInsets.all(28), child: Center(child: Text('ასეთი მიმოწერა ვერ ვიპოვე', style: TextStyle(color: c.muted)))),
+              for (final (i, ch) in list.indexed) Rise(key: ValueKey('chr-${ch.convId}'), order: i, child: ChatRow(key: ValueKey('chat-${ch.convId}'), chat: ch)),
+              if (!archived && arch.isNotEmpty && words.isEmpty)
+                Pressable(
                   onTap: () => openPage(context, const ChatsTab(archived: true)),
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                    padding: const EdgeInsets.all(10),
+                    decoration: cardLook(context, radius: 18, color: c.sunk),
+                    child: Row(children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(color: c.surface, shape: BoxShape.circle),
+                        child: PIcon('archive', size: 23, color: c.muted),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          const Text('არქივი', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                          Text('${arch.length} მიმოწერა', style: TextStyle(color: c.muted, fontSize: 13)),
+                        ]),
+                      ),
+                      PIcon('chev', size: 20, color: c.muted),
+                    ]),
+                  ),
                 ),
               if (list.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
                   child: Text('საუბარს დიდხანს დააჭირე: დადუმება ან არქივი.', style: TextStyle(color: c.muted, fontSize: 12.5)),
                 ),
             ]);
@@ -93,6 +183,8 @@ class ChatsTab extends StatelessWidget {
   }
 }
 
+/// A conversation in the list: a card with the picture (the green dot when they are online), the name and when, what
+/// was said last, how many are unread; the unread ones lifted a little and tinted.
 class ChatRow extends StatelessWidget {
   const ChatRow({super.key, required this.chat});
   final Chat chat;
@@ -109,11 +201,15 @@ class ChatRow extends StatelessWidget {
             : '';
     final last = '$from${chat.lastText}';
     final fire = app.chats.streaks[chat.convId];
-    return InkWell(
+    return Pressable(
       onTap: () => openChat(context, chat.convId),
       onLongPress: () => chatMenu(context, chat),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      scale: .98,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
+        decoration: cardLook(context, radius: 18, raised: unread, color: unread ? Color.alphaBlend(c.accent.withValues(alpha: .07), c.surface) : null),
         child: Row(children: [
           if (other != null) Avatar(p: other, size: 54, online: other.online) else GroupAvatar(id: chat.convId, size: 54),
           const SizedBox(width: 12),
@@ -136,19 +232,30 @@ class ChatRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: unread ? c.ink : c.muted, fontSize: 14, fontWeight: unread ? FontWeight.w600 : FontWeight.w400)),
                 ),
-                if (chat.lastAt != null) Text(' · ${ago(chat.lastAt!)}', style: TextStyle(color: c.muted, fontSize: 13)),
+                if (chat.lastAt != null) Text(' · ${ago(chat.lastAt!)}', style: TextStyle(color: unread ? c.accent : c.muted, fontSize: 13, fontWeight: unread ? FontWeight.w700 : FontWeight.w400)),
               ]),
             ]),
           ),
           if (unread)
-            Container(
-              margin: const EdgeInsets.only(left: 8),
-              constraints: const BoxConstraints(minWidth: 22),
-              height: 22,
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: chat.muted ? c.muted : c.accent, borderRadius: BorderRadius.circular(11)),
-              child: Text(chat.unread > 99 ? '99+' : '${chat.unread}', style: TextStyle(color: c.onAccent, fontWeight: FontWeight.w800, fontSize: 12)),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: .4, end: 1),
+              duration: const Duration(milliseconds: 420),
+              curve: Curves.elasticOut,
+              builder: (_, v, ch) => Transform.scale(scale: v, child: ch),
+              child: Container(
+                margin: const EdgeInsets.only(left: 8),
+                constraints: const BoxConstraints(minWidth: 24),
+                height: 24,
+                padding: const EdgeInsets.symmetric(horizontal: 7),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  gradient: chat.muted ? null : LinearGradient(colors: [c.accent, Color.lerp(c.accent, const Color(0xFFEC4899), .45)!]),
+                  color: chat.muted ? c.muted : null,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: chat.muted ? null : [BoxShadow(color: c.accent.withValues(alpha: .35), blurRadius: 8, offset: const Offset(0, 3))],
+                ),
+                child: Text(chat.unread > 99 ? '99+' : '${chat.unread}', style: TextStyle(color: c.onAccent, fontWeight: FontWeight.w800, fontSize: 12)),
+              ),
             ),
         ]),
       ),

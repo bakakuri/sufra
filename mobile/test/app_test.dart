@@ -158,6 +158,8 @@ void main() {
     expect(api.calls.last, 'react 102 null');
 
     await t.scrollUntilVisible(find.text('მთაში'), 300, scrollable: _feed);
+    await t.ensureVisible(find.text('მთაში'));
+    await settle(t);
     await t.tap(find.text('მთაში'));
     await settle(t);
     expect(api.calls.last, 'vote 103 1');
@@ -900,7 +902,7 @@ void main() {
     expect(find.byType(NotesScreen), findsOneWidget);
 
     // a request goes to the friends tab
-    await t.tap(find.byKey(const ValueKey('note-69')));
+    await t.tap(find.textContaining('გიგზავნის მეგობრობის მოთხოვნას'));
     await settle(t);
     expect(find.byType(NotesScreen), findsNothing);
     expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 1);

@@ -250,7 +250,7 @@ class _FriendsTabState extends State<FriendsTab> {
                       Row(children: [
                         PIcon('clock', size: 13, color: c.muted),
                         const SizedBox(width: 4),
-                        Text('ელოდება პასუხს', style: TextStyle(color: c.muted, fontSize: 12.5)),
+                        Flexible(child: Text('ელოდება პასუხს', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 12.5))),
                       ]),
                     ]),
                   ),

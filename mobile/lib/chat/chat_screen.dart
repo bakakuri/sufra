@@ -86,6 +86,9 @@ class _ChatScreenState extends State<ChatScreen> {
   /// newest first, as the list is drawn from the bottom up
   final msgs = <Message>[];
   bool loading = true, older = false, done = false, sending = false;
+
+  /// when the conversation was opened: what comes after it comes in with a little movement
+  final _opened = DateTime.now().subtract(const Duration(seconds: 2));
   Object? error;
   StreamSubscription<Message>? _live;
   StreamSubscription<(int, String, String?)>? _reactSub;
@@ -891,7 +894,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
                 ),
-              Expanded(child: _list(context, ch)),
+              Expanded(child: _ChatBackdrop(child: _list(context, ch))),
               if (replyTo != null || editing != null)
                 _ReplyBar(
                   icon: editing != null ? 'edit' : 'reply',
@@ -961,12 +964,19 @@ class _ChatScreenState extends State<ChatScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(12)),
-                child: Text(dayLabel(m.createdAt), style: TextStyle(color: c.muted, fontSize: 12.5, fontWeight: FontWeight.w600)),
+                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
+                decoration: BoxDecoration(
+                  color: c.surface.withValues(alpha: .92),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [BoxShadow(color: const Color(0xFF141830).withValues(alpha: .08), blurRadius: 10, offset: const Offset(0, 3))],
+                ),
+                child: Text(dayLabel(m.createdAt), style: TextStyle(color: c.muted, fontSize: 12.5, fontWeight: FontWeight.w700)),
               ),
             ),
-          AnimatedContainer(
+          _PopIn(
+            fresh: m.createdAt.isAfter(_opened),
+            mine: m.sender == me,
+            child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             decoration: BoxDecoration(color: flash == m.id ? c.accentSoft : Colors.transparent, borderRadius: BorderRadius.circular(14)),
             child: GestureDetector(
@@ -994,6 +1004,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           ),
+          ),
           if (i == 0 && seenText != null)
             Align(
               alignment: Alignment.centerRight,
@@ -1012,6 +1023,57 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   static bool _sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+/// A message that came after the conversation was opened: it rises in from its side, a little small, and settles.
+class _PopIn extends StatelessWidget {
+  const _PopIn({required this.fresh, required this.mine, required this.child});
+  final bool fresh, mine;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        tween: Tween(begin: fresh ? 0 : 1, end: 1),
+        duration: const Duration(milliseconds: 340),
+        curve: Curves.easeOutBack,
+        builder: (_, v, ch) => Opacity(
+          opacity: v.clamp(0, 1).toDouble(),
+          child: Transform.translate(
+            offset: Offset((1 - v) * (mine ? 24 : -24), (1 - v) * 14),
+            child: Transform.scale(scale: .92 + .08 * v, alignment: mine ? Alignment.bottomRight : Alignment.bottomLeft, child: ch),
+          ),
+        ),
+        child: child,
+      );
+}
+
+/// Behind the messages: the page's colour with two soft pools of the accent, so the conversation has a place.
+class _ChatBackdrop extends StatelessWidget {
+  const _ChatBackdrop({required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.pc, dark = Theme.of(context).brightness == Brightness.dark;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: c.bg,
+        gradient: RadialGradient(
+          center: const Alignment(1.1, -1.0),
+          radius: 1.3,
+          colors: [c.accent.withValues(alpha: dark ? .14 : .08), c.bg.withValues(alpha: 0)],
+        ),
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: const Alignment(-1.2, 1.0),
+            radius: 1.2,
+            colors: [const Color(0xFFEC4899).withValues(alpha: dark ? .08 : .05), const Color(0x00EC4899)],
+          ),
+        ),
+        child: child,
+      ),
+    );
+  }
 }
 
 /// the disappearing times' names
@@ -1302,9 +1364,22 @@ class _Bubble extends StatelessWidget {
 
   Widget _box(BuildContext context, BorderRadius shape, Color bg, Widget body, Widget time, {String? note}) {
     final c = context.pc;
+    final dark = Theme.of(context).brightness == Brightness.dark, lit = mine && bg == c.accent;
     return Container(
       padding: const EdgeInsets.fromLTRB(13, 8, 13, 6),
-      decoration: BoxDecoration(color: bg, borderRadius: shape, border: mine ? null : Border.all(color: c.line)),
+      decoration: BoxDecoration(
+        color: lit ? null : bg,
+        gradient: lit ? LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(c.accent, const Color(0xFF8B5CF6), .35)!, c.accent]) : null,
+        borderRadius: shape,
+        border: mine || !dark ? null : Border.all(color: c.line),
+        boxShadow: [
+          BoxShadow(
+            color: lit ? c.accent.withValues(alpha: .28) : const Color(0xFF141830).withValues(alpha: dark ? .3 : .07),
+            blurRadius: lit ? 12 : 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
         Align(alignment: Alignment.centerLeft, widthFactor: 1, child: body),
         const SizedBox(height: 2),
@@ -1433,6 +1508,8 @@ class _Composer extends StatelessWidget {
                   hintText: 'შეტყობინება…',
                   isDense: true,
                   counterText: '',
+                  filled: true,
+                  fillColor: c.sunk,
                   contentPadding: const EdgeInsets.fromLTRB(16, 11, 4, 11),
                   suffixIcon: IconBtn('smile', key: const ValueKey('chat-stk'), label: 'სმაილები და სტიკერები', size: 22, color: c.muted, onTap: onSticker),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
@@ -1454,16 +1531,26 @@ class _Composer extends StatelessWidget {
                   child: GestureDetector(
                     onTap: can ? onSend : (sending ? null : onMic),
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
                       width: 44,
                       height: 44,
                       alignment: Alignment.center,
-                      decoration: BoxDecoration(color: can ? c.accent : c.accentSoft, shape: BoxShape.circle),
-                      child: can
-                          ? (editing
-                              ? PIcon('check', size: 22, color: c.onAccent, stroke: 2.2)
-                              : Padding(padding: const EdgeInsets.only(left: 2), child: PIcon('send', size: 21, color: c.onAccent, stroke: 2)))
-                          : PIcon('mic', size: 22, color: c.accent, stroke: 2),
+                      decoration: BoxDecoration(
+                        color: can ? null : c.accentSoft,
+                        gradient: can ? LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(c.accent, const Color(0xFF8B5CF6), .35)!, c.accent]) : null,
+                        shape: BoxShape.circle,
+                        boxShadow: can ? [BoxShadow(color: c.accent.withValues(alpha: .35), blurRadius: 10, offset: const Offset(0, 3))] : null,
+                      ),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        transitionBuilder: (ch, a) => ScaleTransition(scale: CurvedAnimation(parent: a, curve: Curves.easeOutBack), child: FadeTransition(opacity: a, child: ch)),
+                        child: can
+                            ? (editing
+                                ? PIcon('check', key: const ValueKey('i-ok'), size: 22, color: c.onAccent, stroke: 2.2)
+                                : Padding(key: const ValueKey('i-send'), padding: const EdgeInsets.only(left: 2), child: PIcon('send', size: 21, color: c.onAccent, stroke: 2)))
+                            : PIcon('mic', key: const ValueKey('i-mic'), size: 22, color: c.accent, stroke: 2),
+                      ),
                     ),
                   ),
                 );
