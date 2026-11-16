@@ -10,6 +10,7 @@ import 'package:peera/stories/stories.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/comments_sheet.dart';
 import 'package:peera/feed/post_screen.dart';
+import 'package:peera/games/games_tab.dart';
 import 'package:peera/joker/engine.dart';
 import 'package:peera/joker/joker_tab.dart';
 import 'package:peera/joker/online.dart';
@@ -65,6 +66,13 @@ final _feed = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection =
 
 Future<void> _tab(WidgetTester t, String id) async {
   await t.tap(find.byKey(ValueKey('tab-$id')));
+  await settle(t);
+}
+
+/// Joker's page: the games tab, then Joker's card
+Future<void> _jokerPage(WidgetTester t) async {
+  await _tab(t, 'joker');
+  await t.tap(find.byKey(const ValueKey('games-joker')));
   await settle(t);
 }
 
@@ -404,6 +412,41 @@ void main() {
     expect(find.descendant(of: find.byKey(const ValueKey('tab-friends')), matching: find.text('1')), findsNothing);
   });
 
+  testWidgets('friends: my relatives from the family tree with its words, then the friends online now, then all of them', (t) async {
+    phone(t);
+    final api = FakeApi();
+    // გიორგი is my brother in my tree (he said yes); ლუკა was asked and has not answered yet
+    api.kinRows.add({'id': 9, 'owner': 'u1', 'anchor': null, 'relative': 'u2', 'name': null, 'relation': 'sibling', 'sex': 'm', 'born': null, 'died': null, 'status': 'ok'});
+    await shell(t, api: api);
+    await _tab(t, 'friends');
+    await t.tap(find.byKey(const ValueKey('seg-0')));
+    await settle(t);
+    expect(find.descendant(of: find.byKey(const ValueKey('seg-0')), matching: find.text('ყველა მეგობარი')), findsOneWidget);
+    expect(find.text('ნათესავები'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('kin-u2')), matching: find.text('ძმა')), findsOneWidget);
+    expect(find.byKey(const ValueKey('kin-u4')), findsNothing);
+    // the friends online now: only them, in a row
+    expect(find.text('ონლაინ მეგობრები'), findsOneWidget);
+    expect(find.byKey(const ValueKey('fr-on-u2')), findsOneWidget);
+    expect(find.byKey(const ValueKey('fr-on-u3')), findsNothing);
+    final y = [for (final k in ['kin-u2', 'fr-on-u2']) t.getTopLeft(find.byKey(ValueKey(k))).dy];
+    expect(y[0], lessThan(y[1]));
+    expect(t.getTopLeft(find.text('ყველა მეგობარი').last).dy, greaterThan(y[1]));
+    // a relative opens their profile
+    await t.tap(find.byKey(const ValueKey('kin-u2')));
+    await settle(t);
+    expect(find.byType(PersonScreen), findsOneWidget);
+    await _back(t);
+    // with no relatives on Peera, the family tree is offered
+    api.kinRows.removeWhere((r) => r['id'] == 9);
+    await t.drag(find.byKey(const ValueKey('kin-u2')), const Offset(0, 300));
+    await settle(t);
+    expect(find.byKey(const ValueKey('kin-hint')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('kin-hint')));
+    await settle(t);
+    expect(find.byType(TreeScreen), findsOneWidget);
+  });
+
   testWidgets('a conversation: read on open, a reply sent, a message arriving live', (t) async {
     phone(t);
     final api = await shell(t);
@@ -593,9 +636,25 @@ void main() {
     phone(t);
     SharedPreferences.setMockInitialValues({});
     final api = await shell(t);
+    // the games: backgammon's card says it is not open yet and does not start; Joker's opens its page
     await _tab(t, 'joker');
+    expect(find.byType(GamesTab), findsOneWidget);
+    expect(find.text('ონლაინ ნარდი და ჯოკერი'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('games-nardi')), matching: find.text('ჯერ არ არის ხელმისაწვდომი')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('games-nardi')));
+    await t.pump();
+    expect(find.text(nardiSoon), findsOneWidget);
+    await settle(t);
+    expect(find.byType(JokerTab), findsNothing);
+    await t.tap(find.byKey(const ValueKey('games-joker')));
+    await settle(t);
     expect(find.text('ჯოკერი ოთხ კაცზე'), findsOneWidget);
-    expect(find.text('თამაშები'), findsNothing);
+    // back steps out to the games, the big card's button opens Joker too
+    await _back(t);
+    expect(find.byType(JokerTab), findsNothing);
+    await t.tap(find.byKey(const ValueKey('games-play')));
+    await settle(t);
+    expect(find.byType(JokerTab), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('joker-new-quick')));
     await settle(t);
     expect(find.byType(JokerTableScreen), findsOneWidget);
@@ -673,7 +732,7 @@ void main() {
     phone(t);
     SharedPreferences.setMockInitialValues({});
     await shell(t);
-    await _tab(t, 'joker');
+    await _jokerPage(t);
     await t.tap(find.byKey(const ValueKey('joker-new-nines')));
     await settle(t);
     final s1 = t.widget<JokerTableScreen>(find.byType(JokerTableScreen)).session;
@@ -685,8 +744,7 @@ void main() {
     // a new start of the app: the game is read back
     await t.pumpWidget(const SizedBox());
     await shell(t);
-    await _tab(t, 'joker');
-    await settle(t);
+    await _jokerPage(t);
     expect(find.byKey(const ValueKey('joker-current')), findsOneWidget);
     expect(find.textContaining('ცხრიანები · ხელი'), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('joker-continue')));
@@ -706,7 +764,7 @@ void main() {
     phone(t);
     SharedPreferences.setMockInitialValues({});
     final api = await shell(t);
-    await _tab(t, 'joker');
+    await _jokerPage(t);
     await t.tap(find.byKey(const ValueKey('joker-new-quick')));
     await settle(t);
     final s = t.widget<JokerTableScreen>(find.byType(JokerTableScreen)).session;
@@ -843,7 +901,7 @@ void main() {
     phone(t);
     SharedPreferences.setMockInitialValues({});
     final api = await shell(t);
-    await _tab(t, 'joker');
+    await _jokerPage(t);
     await t.scrollUntilVisible(find.byKey(const ValueKey('joker-friends-table')), 250, scrollable: find.descendant(of: find.byType(JokerTab), matching: find.byType(Scrollable)).first);
     await settle(t);
     await t.tap(find.byKey(const ValueKey('joker-friends-table')));
@@ -1504,7 +1562,8 @@ void main() {
     await t.tap(find.byKey(const ValueKey('gc-play')));
     await settle(t);
     expect(find.text('სათამაშო ბარათი'), findsNothing);
-    expect(find.byType(JokerTab), findsOneWidget);
+    // the games, where Joker is
+    expect(find.byType(GamesTab), findsOneWidget);
   });
 
   testWidgets('staff: someone restricted from the more menu, after asking; others do not see it', (t) async {

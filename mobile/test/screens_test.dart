@@ -162,7 +162,10 @@ void main() {
 
     testWidgets('friends ($k)', (t) async {
       phone(t);
-      await shell(t, mode: m);
+      // a brother on Peera in my family tree
+      final api = FakeApi()
+        ..kinRows.add({'id': 9, 'owner': 'u1', 'anchor': null, 'relative': 'u2', 'name': null, 'relation': 'sibling', 'sex': 'm', 'born': null, 'died': null, 'status': 'ok'});
+      await shell(t, mode: m, api: api);
       await t.tap(find.byKey(const ValueKey('tab-friends')));
       await settle(t);
       await _shot(t, '09-friends-requests-$k');
@@ -295,10 +298,13 @@ void main() {
       await _shot(t, '19-new-clip-$k');
     });
 
-    testWidgets('joker tab ($k)', (t) async {
+    testWidgets('games and Joker ($k)', (t) async {
       phone(t);
       await shell(t, mode: m);
       await t.tap(find.byKey(const ValueKey('tab-joker')));
+      await settle(t);
+      await _shot(t, '19-games-$k');
+      await t.tap(find.byKey(const ValueKey('games-joker')));
       await settle(t);
       await _shot(t, '20-joker-$k');
     });
@@ -389,6 +395,8 @@ void main() {
       api.jk[60] = const JkTable(id: 60, host: 'u1', len: 'quick', seats: ['u1', 'u2', null, null], pub: true, state: {'srv': true});
       await shell(t, mode: m, api: api);
       await t.tap(find.byKey(const ValueKey('tab-joker')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('games-joker')));
       await settle(t);
       await t.scrollUntilVisible(find.byKey(const ValueKey('jtable-60')), 250, scrollable: find.descendant(of: find.byType(JokerTab), matching: find.byType(Scrollable)).first);
       await settle(t);

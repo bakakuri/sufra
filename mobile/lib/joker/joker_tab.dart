@@ -1,4 +1,4 @@
-// The Joker tab: a game against the computer (quick, full or nines), the game in progress to continue,
+// Joker's page (opened from the games tab): a game against the computer (quick, full or nines), the game in progress to continue,
 // the bots' level, the hint and the four-colour deck, and the rules.
 import 'package:flutter/material.dart';
 
@@ -30,7 +30,10 @@ const _modes = [
 ];
 
 class JokerTab extends StatefulWidget {
-  const JokerTab({super.key});
+  const JokerTab({super.key, this.friends = false});
+
+  /// opened to play with friends: a table for them is made at once
+  final bool friends;
   @override
   State<JokerTab> createState() => _JokerTabState();
 }
@@ -58,6 +61,7 @@ class _JokerTabState extends State<JokerTab> {
       ..load();
     app.tab.addListener(_shown);
     _shown();
+    if (widget.friends) WidgetsBinding.instance.addPostFrameCallback((_) => _online(api.jkNew));
   }
 
   void _shown() {

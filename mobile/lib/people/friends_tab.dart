@@ -10,12 +10,14 @@ import '../ui/icons.dart';
 import '../ui/motion.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'family.dart';
 import 'people_cards.dart';
 import 'person_screen.dart';
 import 'search_screen.dart';
 
-/// Friends, requests to you, and people you may know, under a switch whose marker slides between them. Friends: who
-/// is online now in a row, a search among them, each a card with a button to write. Requests: each a card with its
+/// Friends, requests to you, and people you may know, under a switch whose marker slides between them. Friends: my
+/// relatives first (the people on Peera in my family tree, each with the tree's word for them), then the friends online
+/// now in a row, then all of them, each a card with a button to write. Requests: each a card with its
 /// two answers; one accepted stays a moment, saying you are friends now. People you may know: two to a row, the
 /// picture large, as Facebook shows them.
 class FriendsTab extends StatefulWidget {
@@ -32,6 +34,12 @@ class _FriendsTabState extends State<FriendsTab> {
   bool _started = false, _chosen = false;
   String find = '';
   final findCtl = TextEditingController();
+
+  /// my family tree's rows (null while they load)
+  List<Map<String, dynamic>>? kin;
+
+  /// the row of friends online shows them all once "+N" is tapped
+  bool allOnline = false;
 
   /// requests accepted here: they stay in the list a moment, saying so
   final accepted = <String>{};
@@ -79,6 +87,12 @@ class _FriendsTabState extends State<FriendsTab> {
     try {
       await Future.wait([
         app.friends.load(),
+        app.api.kinOf(app.api.myId).then((rows) async {
+          await app.people.ensure([for (final r in rows) if (r['relative'] != null) '${r['relative']}']);
+          if (mounted) setState(() => kin = rows);
+        }, onError: (_) {
+          if (mounted) setState(() => kin ??= const []);
+        }),
         app.api.suggestions().then((s) {
           for (final x in s) {
             app.people.put(x.p);
@@ -117,82 +131,119 @@ class _FriendsTabState extends State<FriendsTab> {
 
   // ---------- friends ----------
 
-  Widget _friends(List<Profile> friends) {
+  /// the people on Peera in my family tree (their request answered), each with the tree's word for them
+  List<(Profile, String)> _relatives(Profile Function(String) who) {
+    final rows = kin;
+    if (rows == null || rows.isEmpty) return const [];
+    final people = context.app.people;
+    final n = buildTree(context.me, rows, (id) => people[id]);
+    return [for (final x in n.values) if (!x.root && x.uid != null && !x.pending) (who(x.uid!), x.label)];
+  }
+
+  Widget _friends(List<Profile> friends, List<(Profile, String)> relatives) {
     final c = context.pc;
-    if (friends.isEmpty) {
-      return ListView(children: [
-        Empty(icon: 'users', title: 'ჯერ მეგობრები არ გყავს', text: 'მოძებნე ნაცნობები ან ნახე, ვის შეიძლება იცნობდე.', action: 'შეიძლება იცნობდე', onAction: () => _pick(2)),
-      ]);
-    }
     final online = [for (final p in friends) if (p.online) p];
     final q = find.trim().toLowerCase();
     final shown = q.isEmpty ? friends : [for (final p in friends) if (p.fullName.toLowerCase().contains(q) || (p.username ?? '').toLowerCase().contains(q)) p];
+    final row = allOnline || online.length <= 5 ? online : online.take(4).toList();
     return ListView(padding: const EdgeInsets.only(bottom: 24), children: [
-      if (online.isNotEmpty && q.isEmpty) ...[
-        SectionHead('ახლა ონლაინ', count: online.length, padding: const EdgeInsets.fromLTRB(16, 6, 12, 8)),
-        SizedBox(
-          height: 96,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            itemCount: online.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 6),
-            itemBuilder: (_, i) {
-              final p = online[i];
-              return Rise(
-                order: i,
-                dy: 10,
-                child: Pressable(
-                  key: ValueKey('fr-on-${p.id}'),
-                  onTap: () => chatWith(context, p.id),
-                  child: SizedBox(
-                    width: 70,
-                    child: Column(children: [
-                      Container(
-                        padding: const EdgeInsets.all(2.5),
-                        decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [Color(0xFF22C55E), Color(0xFF10B981)])),
-                        child: Container(padding: const EdgeInsets.all(2), decoration: BoxDecoration(color: c.bg, shape: BoxShape.circle), child: Avatar(p: p, size: 54, online: true)),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(p.name.split(' ').first, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
-                    ]),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
+      // relatives, from the family tree
+      if (q.isEmpty && kin != null) ...[
+        SectionHead('ნათესავები', count: relatives.length, padding: const EdgeInsets.fromLTRB(16, 6, 12, 8)),
+        if (relatives.isEmpty)
+          _KinHint(onOpen: () => openPage(context, TreeScreen(uid: context.app.api.myId)))
+        else
+          for (final (i, (p, word)) in relatives.indexed)
+            Rise(
+              key: ValueKey('kin-${p.id}'),
+              order: i,
+              child: _FriendCard(p: p, kin: word, onOpen: () => _open(p), onWrite: () => chatWith(context, p.id)),
+            ),
       ],
-      if (friends.length > 4)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 6, 14, 2),
-          child: TextField(
-            key: const ValueKey('fr-find'),
-            controller: findCtl,
-            onChanged: (v) => setState(() => find = v),
-            decoration: InputDecoration(
-              hintText: 'მოძებნე მეგობრებში',
-              isDense: true,
-              filled: true,
-              fillColor: c.surface,
-              prefixIcon: Padding(padding: const EdgeInsets.all(11), child: PIcon('search', size: 18, color: c.muted)),
-              prefixIconConstraints: const BoxConstraints(minWidth: 40),
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.line)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.accent, width: 1.5)),
+      if (friends.isEmpty)
+        Empty(icon: 'users', title: 'ჯერ მეგობრები არ გყავს', text: 'მოძებნე ნაცნობები ან ნახე, ვის შეიძლება იცნობდე.', action: 'შეიძლება იცნობდე', onAction: () => _pick(2))
+      else ...[
+        // only the friends online now
+        if (online.isNotEmpty && q.isEmpty) ...[
+          SectionHead('ონლაინ მეგობრები', count: online.length, padding: const EdgeInsets.fromLTRB(16, 14, 12, 8)),
+          SizedBox(
+            height: 92,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                for (final (i, p) in row.indexed)
+                  Rise(
+                    order: i,
+                    dy: 10,
+                    child: Pressable(
+                      key: ValueKey('fr-on-${p.id}'),
+                      onTap: () => chatWith(context, p.id),
+                      child: SizedBox(
+                        width: 72,
+                        child: Column(children: [
+                          Avatar(p: p, size: 58, online: true),
+                          const SizedBox(height: 6),
+                          Text(p.name.split(' ').first, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                        ]),
+                      ),
+                    ),
+                  ),
+                if (row.length < online.length)
+                  Pressable(
+                    key: const ValueKey('fr-on-more'),
+                    onTap: () => setState(() => allOnline = true),
+                    child: SizedBox(
+                      width: 72,
+                      child: Column(children: [
+                        Container(
+                          width: 58,
+                          height: 58,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(c.accent, Colors.white, .2)!, c.accent]),
+                          ),
+                          child: Text('+${online.length - row.length}', style: TextStyle(color: c.onAccent, fontSize: 17, fontWeight: FontWeight.w900)),
+                        ),
+                      ]),
+                    ),
+                  ),
+              ],
             ),
           ),
-        ),
-      SectionHead(q.isEmpty ? 'ყველა მეგობარი' : 'ნაპოვნი', count: shown.length),
-      if (shown.isEmpty)
-        Padding(padding: const EdgeInsets.all(24), child: Center(child: Text('ასეთი მეგობარი ვერ ვიპოვე', style: TextStyle(color: c.muted))))
-      else
-        for (final (i, p) in shown.indexed)
-          Rise(
-            key: ValueKey('frr-${p.id}'),
-            order: i,
-            child: _FriendCard(p: p, onOpen: () => _open(p), onWrite: () => chatWith(context, p.id)),
+        ],
+        if (friends.length > 4)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 6, 14, 2),
+            child: TextField(
+              key: const ValueKey('fr-find'),
+              controller: findCtl,
+              onChanged: (v) => setState(() => find = v),
+              decoration: InputDecoration(
+                hintText: 'მოძებნე მეგობრებში',
+                isDense: true,
+                filled: true,
+                fillColor: c.surface,
+                prefixIcon: Padding(padding: const EdgeInsets.all(11), child: PIcon('search', size: 18, color: c.muted)),
+                prefixIconConstraints: const BoxConstraints(minWidth: 40),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.line)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.accent, width: 1.5)),
+              ),
+            ),
           ),
+        SectionHead(q.isEmpty ? 'ყველა მეგობარი' : 'ნაპოვნი', count: shown.length),
+        if (shown.isEmpty)
+          Padding(padding: const EdgeInsets.all(24), child: Center(child: Text('ასეთი მეგობარი ვერ ვიპოვე', style: TextStyle(color: c.muted))))
+        else
+          for (final (i, p) in shown.indexed)
+            Rise(
+              key: ValueKey('frr-${p.id}'),
+              order: i,
+              child: _FriendCard(p: p, onOpen: () => _open(p), onWrite: () => chatWith(context, p.id)),
+            ),
+      ],
     ]);
   }
 
@@ -318,14 +369,14 @@ class _FriendsTabState extends State<FriendsTab> {
           final friends = f.friends.map(who).toList()..sort((a, b) => a.name.compareTo(b.name));
           final incoming = f.incoming.map(who).toList(), outgoing = f.outgoing.map(who).toList();
           final justFriends = [for (final id in accepted) if (f.stateWith(id) == Friendship.friends) who(id)];
-          final segs = [('მეგობრები', friends.length), ('მოთხოვნები', incoming.length), ('იქნებ იცნობ', 0)];
+          final segs = [('ყველა მეგობარი', friends.length), ('მოთხოვნები', incoming.length), ('იქნებ იცნობ', 0)];
           Widget list;
           if (!f.loaded && error == null) {
             list = _spinner();
           } else if (error != null && !f.loaded) {
             list = ListView(children: [Empty(icon: 'users', title: 'ვერ ჩაიტვირთა', text: errText(error!), action: 'ხელახლა ცდა', onAction: _load)]);
           } else if (seg == 0) {
-            list = _friends(friends);
+            list = _friends(friends, _relatives(who));
           } else if (seg == 1) {
             list = _requests(incoming, outgoing, justFriends);
           } else {
@@ -436,9 +487,12 @@ class _Segments extends StatelessWidget {
 /// A friend: the picture with the green dot when online, the name, the username and town (or "ონლაინ"), a button to
 /// write to them.
 class _FriendCard extends StatelessWidget {
-  const _FriendCard({required this.p, required this.onOpen, required this.onWrite});
+  const _FriendCard({required this.p, required this.onOpen, required this.onWrite, this.kin});
   final Profile p;
   final VoidCallback onOpen, onWrite;
+
+  /// a relative: the family tree's word for them (ძმა, დეიდა, ბიძაშვილი…)
+  final String? kin;
   @override
   Widget build(BuildContext context) {
     final c = context.pc;
@@ -455,9 +509,23 @@ class _FriendCard extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               NameLine(p, size: 15.5),
-              if (sub.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: p.online ? c.vine : c.muted, fontSize: 13, fontWeight: p.online ? FontWeight.w700 : FontWeight.w400)),
+              if (sub.isNotEmpty || kin != null) ...[
+                const SizedBox(height: 3),
+                Row(children: [
+                  if (kin != null) ...[
+                    Container(
+                      key: ValueKey('kin-word-${p.id}'),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(10)),
+                      child: Text(kin!, style: TextStyle(color: c.accent, fontSize: 12, fontWeight: FontWeight.w800)),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Flexible(
+                    child: Text(sub,
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: p.online ? c.vine : c.muted, fontSize: 13, fontWeight: p.online ? FontWeight.w700 : FontWeight.w400)),
+                  ),
+                ]),
               ],
             ]),
           ),
@@ -555,6 +623,43 @@ class _RequestCard extends StatelessWidget {
               ),
             ]),
           ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// No relatives on Peera yet: they come from the family tree.
+class _KinHint extends StatelessWidget {
+  const _KinHint({required this.onOpen});
+  final VoidCallback onOpen;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.pc;
+    return Pressable(
+      key: const ValueKey('kin-hint'),
+      onTap: onOpen,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+        decoration: cardLook(context, radius: 16),
+        child: Row(children: [
+          Container(
+            width: 46,
+            height: 46,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: c.accentSoft, shape: BoxShape.circle),
+            child: PIcon('tree', size: 22, color: c.accent),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('ოჯახის ხე', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 2),
+              Text('დაამატე ნათესავები ოჯახის ხეში და აქ გამოჩნდებიან', style: TextStyle(color: c.muted, fontSize: 13)),
+            ]),
+          ),
+          PIcon('chev', size: 18, color: c.muted),
         ]),
       ),
     );

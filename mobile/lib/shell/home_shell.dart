@@ -12,7 +12,7 @@ import '../data/stores.dart';
 import '../feed/feed_tab.dart';
 import '../feed/comments_sheet.dart';
 import '../dating/dating_tab.dart';
-import '../joker/joker_tab.dart';
+import '../games/games_tab.dart';
 import '../joker/online_screen.dart';
 import '../map/live_map.dart';
 import '../map/loc_device.dart';
@@ -265,7 +265,7 @@ class HomeShellState extends State<HomeShell> {
       case 'clips':
         return const ClipsTab();
       case 'joker':
-        return const JokerTab();
+        return const GamesTab();
       case 'date':
         return const DatingTab();
       case 'me':
