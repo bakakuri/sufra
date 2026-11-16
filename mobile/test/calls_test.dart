@@ -33,7 +33,7 @@ Future<void> _chat(WidgetTester t, String name) async {
 }
 
 Future<void> _service(WidgetTester t, String k, {String? arg}) async {
-  await t.tap(find.byKey(const ValueKey('tab-me')));
+  await toProfile(t);
   await settle(t);
   openService(t.element(find.byType(PersonScreen).first), k, arg: arg);
   await settle(t);

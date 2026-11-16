@@ -13,7 +13,7 @@ final _admin = Profile(id: 'u1', name: 'ნინო ბერიძე', surnam
 final _mod = Profile(id: 'u1', name: 'ნინო ბერიძე', surname: 'ბერიძე', username: 'nino.beridze', city: 'ქუთაისი', hue: 312, onboarded: true, role: 'moderator');
 
 Future<void> _open(WidgetTester t, {String? tab}) async {
-  await t.tap(find.byKey(const ValueKey('tab-me')));
+  await toProfile(t);
   await settle(t);
   openService(t.element(find.byType(PersonScreen).first), 'admin', arg: tab);
   await settle(t);

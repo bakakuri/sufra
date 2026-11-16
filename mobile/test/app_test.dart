@@ -63,6 +63,9 @@ Future<void> _formTo(WidgetTester t, Finder f, [double delta = 250]) async {
 final _feed = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
 
 Future<void> _tab(WidgetTester t, String id) async {
+  // the feed and my profile have no button on the bar: the logo, and my picture on the feed
+  if (id == 'me') return toProfile(t);
+  if (id == 'home') return toFeed(t);
   await t.tap(find.byKey(ValueKey('tab-$id')));
   await settle(t);
 }
@@ -151,12 +154,31 @@ void main() {
     expect(exits, 1);
   });
 
-  testWidgets('the seven tabs of the site, messages raised in the middle, unread on the badges', (t) async {
+  testWidgets('five tabs on the bar, messages raised in the middle, unread on the badges; the feed by the logo, my profile by my picture', (t) async {
     phone(t);
     await shell(t);
     for (final tab in tabs) {
-      expect(find.descendant(of: find.byKey(ValueKey('tab-${tab.id}')), matching: find.text(tab.label)), findsOneWidget);
+      expect(find.descendant(of: find.byKey(ValueKey('tab-${tab.id}')), matching: find.text(tab.label)), barTabs.contains(tab.id) ? findsOneWidget : findsNothing);
     }
+    expect(find.byKey(const ValueKey('tab-home')), findsNothing);
+    expect(find.byKey(const ValueKey('tab-me')), findsNothing);
+    expect(find.byTooltip('შექმნა'), findsNothing);
+    // the round "+" over the feed stays in its place as the feed scrolls, and opens everything that can be made
+    final plus = find.byKey(const ValueKey('create'));
+    final at = t.getTopLeft(plus);
+    await t.drag(_feed, const Offset(0, -500));
+    await settle(t);
+    expect(t.getTopLeft(plus), at);
+    await t.tap(plus);
+    await settle(t);
+    expect(find.byKey(const ValueKey('create-cpost')), findsOneWidget);
+    await _back(t);
+    // only on the feed
+    await _tab(t, 'clips');
+    expect(find.byKey(const ValueKey('create')), findsNothing);
+    await _tab(t, 'home');
+    expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 0);
+    expect(find.byKey(const ValueKey('create')), findsOneWidget);
     // 2 from გიორგი + 5 in the group; one friend request
     expect(find.descendant(of: find.byKey(const ValueKey('tab-chats')), matching: find.text('7')), findsOneWidget);
     expect(find.descendant(of: find.byKey(const ValueKey('tab-friends')), matching: find.text('1')), findsOneWidget);

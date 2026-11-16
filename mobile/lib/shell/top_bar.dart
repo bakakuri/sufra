@@ -1,10 +1,9 @@
-// The site's bar at the top of every page: the logo and name, search, notifications, who looked at me, all the
-// services, making something. On the tabs it stands over them all and opens its pages inside the open tab; on a page
+// The site's bar at the top of every page: the logo and name (back to the feed), search, notifications, who looked at
+// me, all the services (making something is the round "+" on the feed). On the tabs it stands over them all and opens its pages inside the open tab; on a page
 // opened over the whole app it stands over that page.
 import 'package:flutter/material.dart';
 
 import '../data/stores.dart';
-import '../feed/compose_screen.dart';
 import '../home/services.dart';
 import '../notes/notes_screen.dart';
 import '../people/person_screen.dart';
@@ -23,12 +22,6 @@ class PeeraTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.pc, app = context.app;
     BuildContext at() => inShell ? (app.tabContext?.call() ?? context) : context;
-    Future<void> write({bool photos = false, bool poll = false}) async {
-      final w = app.write;
-      // the feed writes it, so the new post stands at its top
-      if (w != null) return w(photos: photos, poll: poll);
-      await openPage(at(), ComposeScreen(startWithPhotos: photos, startWithPoll: poll), full: true);
-    }
 
     return Material(
       color: c.surface,
@@ -71,7 +64,6 @@ class PeeraTopBar extends StatelessWidget {
                 ),
               ),
               IconBtn('grid', key: const ValueKey('services'), label: 'სერვისები', onTap: () => servicesMenu(at())),
-              IconBtn('plus', key: const ValueKey('create'), label: 'შექმნა', onTap: () => createMenu(at(), write: write)),
               const SizedBox(width: 4),
             ]),
           ),

@@ -197,6 +197,21 @@ Future<void> settle(WidgetTester t) async {
   }
 }
 
+/// The feed, the way a person gets there from anywhere: the logo.
+Future<void> toFeed(WidgetTester t) async {
+  await t.tap(find.byKey(const ValueKey('top-logo')).first);
+  await settle(t);
+}
+
+/// My profile, the way a person gets there: the feed by the logo (at its top), then my picture on it.
+Future<void> toProfile(WidgetTester t) async {
+  final me = find.byKey(const ValueKey('compose-me'));
+  await toFeed(t);
+  if (me.hitTestable().evaluate().isEmpty) await toFeed(t);
+  await t.tap(me);
+  await settle(t);
+}
+
 /// A phone the size of the site's screenshots: 390 × 844 points at twice the pixels.
 void phone(WidgetTester t, {double w = 390, double h = 844}) {
   t.view.physicalSize = Size(w * 2, h * 2);

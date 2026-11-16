@@ -11,7 +11,7 @@ import 'package:peera/ui/look.dart';
 import 'helpers.dart';
 
 Future<void> _settings(WidgetTester t) async {
-  await t.tap(find.byKey(const ValueKey('tab-me')));
+  await toProfile(t);
   await settle(t);
   openPage(t.element(find.byType(PersonScreen).first), const SettingsScreen(), full: true);
   await settle(t);
@@ -36,7 +36,7 @@ void main() {
     expect(find.textContaining('ეკონომიური რეჟიმი'), findsOneWidget);
     await t.binding.handlePopRoute();
     await settle(t);
-    await t.tap(find.byKey(const ValueKey('tab-home')));
+    await toFeed(t);
     await settle(t);
     expect(find.byKey(const ValueKey('eco-101')), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('eco-101')));

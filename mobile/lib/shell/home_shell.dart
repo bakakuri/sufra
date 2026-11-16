@@ -26,7 +26,8 @@ import 'soon_screen.dart';
 import 'tab_bar.dart';
 import 'top_bar.dart';
 
-/// The app after sign-in: seven tabs, each keeping its own stack of screens.
+/// The app after sign-in: seven tabs, each keeping its own stack of screens (five on the bar; the feed comes by the logo
+/// and my profile by my picture on the feed).
 /// The back button undoes exactly one step and never drops out of the app by surprise (the site's rule):
 /// first the open screen inside the tab, then back to the main tab, and on the main tab it asks for a second press.
 /// Screens opened over the whole app (a conversation, a post) are closed first, by the app's own navigator.

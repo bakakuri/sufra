@@ -11,6 +11,7 @@ import '../home/services.dart';
 import '../people/profile_parts.dart';
 import '../stories/stories.dart';
 import '../ui/format.dart';
+import '../ui/icons.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'compose_screen.dart';
@@ -270,6 +271,20 @@ class FeedTabState extends State<FeedTab> {
     final empty = !loading && items.isEmpty;
     // the bar with the logo, search, notifications and the rest stands over every tab (the shell's top bar)
     return Scaffold(
+      // making anything starts here: the round "+" stays in its place over the feed while it scrolls (only on the feed),
+      // and steps aside while something is being typed
+      floatingActionButton: ListenableBuilder(
+        listenable: FocusManager.instance,
+        builder: (context, _) {
+          final f = FocusManager.instance.primaryFocus?.context;
+          final typing = f != null && f.mounted && f.findAncestorWidgetOfExactType<EditableText>() != null;
+          return AnimatedScale(
+            scale: typing ? 0 : 1,
+            duration: const Duration(milliseconds: 180),
+            child: _CreateButton(onTap: () => createMenu(context, write: ({bool photos = false, bool poll = false}) => _write(photos: photos, poll: poll))),
+          );
+        },
+      ),
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: CustomScrollView(controller: scroll, physics: const AlwaysScrollableScrollPhysics(), slivers: [
@@ -291,7 +306,15 @@ class FeedTabState extends State<FeedTab> {
           const SliverToBoxAdapter(child: ServicesStrip()),
           SliverToBoxAdapter(child: FirstStepsCard(key: _steps, onWrite: (t) => _write(text: t))),
           SliverToBoxAdapter(child: MemoriesCard(onShare: (t) => _write(text: t))),
-          SliverToBoxAdapter(child: _Prompt(onWrite: () => _write(), onPhoto: () => _write(photos: true), onPoll: () => _write(poll: true))),
+          SliverToBoxAdapter(
+            child: _Prompt(
+              // my picture is the way to my profile (it has no button on the bar)
+              onMe: () => context.app.goTab?.call('me'),
+              onWrite: () => _write(),
+              onPhoto: () => _write(photos: true),
+              onPoll: () => _write(poll: true),
+            ),
+          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 2, 4, 10),
@@ -375,17 +398,30 @@ class FeedTabState extends State<FeedTab> {
 }
 
 class _Prompt extends StatelessWidget {
-  const _Prompt({required this.onWrite, required this.onPhoto, required this.onPoll});
-  final VoidCallback onWrite, onPhoto, onPoll;
+  const _Prompt({required this.onMe, required this.onWrite, required this.onPhoto, required this.onPoll});
+  final VoidCallback onMe, onWrite, onPhoto, onPoll;
   @override
   Widget build(BuildContext context) {
     final c = context.pc, me = context.me;
+    Widget icon(String name, String key, String label, Color color, VoidCallback onTap) => IconButton(
+          key: ValueKey(key),
+          tooltip: label,
+          onPressed: onTap,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints.tightFor(width: 46, height: 56),
+          icon: PIcon(name, size: 34, color: color),
+        );
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-      padding: const EdgeInsets.fromLTRB(12, 10, 2, 10),
-      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.line)),
+      margin: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+      padding: const EdgeInsets.fromLTRB(10, 10, 4, 10),
+      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(22), border: Border.all(color: c.line)),
       child: Row(children: [
-        Avatar(p: me, size: 40),
+        Semantics(
+          button: true,
+          label: 'ჩემი პროფილი',
+          excludeSemantics: true,
+          child: GestureDetector(key: const ValueKey('compose-me'), behavior: HitTestBehavior.opaque, onTap: onMe, child: Avatar(p: me, size: 62)),
+        ),
         const SizedBox(width: 10),
         Expanded(
           child: Semantics(
@@ -396,18 +432,61 @@ class _Prompt extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               onTap: onWrite,
               child: Container(
-                height: 42,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                height: 60,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 alignment: Alignment.centerLeft,
-                decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(21)),
-                child: Text('რა ხდება, ${me.name.split(' ').first}?', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 15)),
+                decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(30)),
+                // the words stay whole inside the field: a long name makes them smaller, never cut
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text('რა ხდება, ${me.name.split(' ').first}?', maxLines: 1, style: TextStyle(color: c.muted, fontSize: 19)),
+                ),
               ),
             ),
           ),
         ),
-        IconBtn('image', key: const ValueKey('compose-photo'), label: 'ფოტოს დამატება', color: c.vine, onTap: onPhoto),
-        IconBtn('poll', key: const ValueKey('compose-poll'), label: 'გამოკითხვა', color: c.gold, onTap: onPoll),
+        const SizedBox(width: 2),
+        icon('image', 'compose-photo', 'ფოტოს დამატება', c.vine, onPhoto),
+        icon('poll', 'compose-poll', 'გამოკითხვა', c.gold, onPoll),
       ]),
+    );
+  }
+}
+
+/// The round "+" over the feed: everything that can be made (a post, a photo, a clip, a poll, a story…)
+class _CreateButton extends StatelessWidget {
+  const _CreateButton({required this.onTap});
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.pc;
+    return Semantics(
+      button: true,
+      label: 'შექმნა',
+      excludeSemantics: true,
+      child: Material(
+        key: const ValueKey('create'),
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Ink(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color.lerp(c.accent, Colors.white, .15)!, c.accent],
+              ),
+              boxShadow: [BoxShadow(color: c.accent.withValues(alpha: .35), blurRadius: 16, offset: const Offset(0, 6))],
+            ),
+            child: const Center(child: PIcon('plus', size: 30, color: Colors.white, stroke: 2.6)),
+          ),
+        ),
+      ),
     );
   }
 }

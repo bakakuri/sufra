@@ -14,7 +14,7 @@ import 'package:peera/profile/profile.dart';
 import 'helpers.dart';
 
 Future<void> _open(WidgetTester t, String service) async {
-  await t.tap(find.byKey(const ValueKey('tab-me')));
+  await toProfile(t);
   await settle(t);
   openService(t.element(find.byType(PersonScreen).first), service);
   await settle(t);

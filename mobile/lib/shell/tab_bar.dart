@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../ui/icons.dart';
 import '../ui/theme.dart';
 
-/// The site's seven tabs, the same order and words; messages sit raised in the middle.
+/// The app's tabs. The feed and my profile have no button on the bar: the logo leads to the feed from every page and
+/// my picture on the feed opens my profile; the bar keeps the other five, messages raised in the middle.
 class PTab {
   const PTab(this.id, this.label, this.icon);
   final String id, label, icon;
@@ -19,6 +20,9 @@ const tabs = [
   PTab('me', 'პროფილი', 'user'),
 ];
 const tabMid = 3;
+
+/// the tabs with a button on the bar, in its order
+const barTabs = ['friends', 'date', 'chats', 'clips', 'joker'];
 
 class PeeraTabBar extends StatelessWidget {
   const PeeraTabBar({super.key, required this.index, required this.onTap, this.badges = const {}});
@@ -36,7 +40,13 @@ class PeeraTabBar extends StatelessWidget {
       child: SizedBox(
         height: 62,
         child: Row(children: [
-          for (var i = 0; i < tabs.length; i++) Expanded(child: KeyedSubtree(key: ValueKey('tab-${tabs[i].id}'), child: i == tabMid ? _mid(context, i) : _tab(context, i))),
+          for (final id in barTabs)
+            Expanded(
+              child: Builder(builder: (context) {
+                final i = tabs.indexWhere((t) => t.id == id);
+                return KeyedSubtree(key: ValueKey('tab-$id'), child: i == tabMid ? _mid(context, i) : _tab(context, i));
+              }),
+            ),
         ]),
       ),
     );

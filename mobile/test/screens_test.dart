@@ -201,7 +201,7 @@ void main() {
     testWidgets('my profile ($k)', (t) async {
       phone(t);
       await shell(t, mode: m);
-      await t.tap(find.byKey(const ValueKey('tab-me')));
+      await toProfile(t);
       await settle(t);
       await _shot(t, '13-profile-$k');
       final list = find.descendant(of: find.byType(PersonScreen).first, matching: find.byType(Scrollable)).first;
@@ -431,7 +431,7 @@ void main() {
     testWidgets('settings ($k)', (t) async {
       phone(t);
       await shell(t, mode: m);
-      await t.tap(find.byKey(const ValueKey('tab-me')));
+      await toProfile(t);
       await settle(t);
       await t.tap(find.byKey(const ValueKey('pro-settings')));
       await settle(t);
@@ -449,7 +449,7 @@ void main() {
     testWidgets('editing the profile ($k)', (t) async {
       phone(t);
       await shell(t, mode: m);
-      await t.tap(find.byKey(const ValueKey('tab-me')));
+      await toProfile(t);
       await settle(t);
       await t.tap(find.byKey(const ValueKey('edit-profile')));
       await settle(t);
@@ -471,7 +471,7 @@ void main() {
     Future<BuildContext> onMe(WidgetTester t) async {
       phone(t);
       await shell(t, mode: m);
-      await t.tap(find.byKey(const ValueKey('tab-me')));
+      await toProfile(t);
       await settle(t);
       return t.element(find.byType(PersonScreen).first);
     }
@@ -545,7 +545,7 @@ void main() {
       final api = FakeApi()..bdays.add({'id': mariam.id, 'name': mariam.name, 'hue': mariam.hue, 'avatar_url': null, 'month': DateTime.now().month, 'day': DateTime.now().day});
       phone(t);
       await shell(t, mode: m, api: api);
-      await t.tap(find.byKey(const ValueKey('tab-me')));
+      await toProfile(t);
       await settle(t);
       openPage(t.element(find.byType(PersonScreen).first), const CalendarScreen(), full: true);
       await settle(t);
