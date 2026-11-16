@@ -51,7 +51,9 @@ class FeedTab extends StatefulWidget {
   State<FeedTab> createState() => FeedTabState();
 }
 
-class FeedTabState extends State<FeedTab> {
+class FeedTabState extends State<FeedTab> with WidgetsBindingObserver {
+  /// the keyboard is up (the round "+" steps aside while something is typed)
+  bool keyboard = false;
   final items = <FeedItem>[];
   List<Post> get posts => [for (final i in items) if (i.post != null && i.ad == null) i.post!];
   bool loading = true, more = false, done = false;
@@ -76,6 +78,7 @@ class FeedTabState extends State<FeedTab> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     scroll.addListener(() {
       if (scroll.position.extentAfter < 900) load(false);
     });
@@ -99,6 +102,7 @@ class FeedTabState extends State<FeedTab> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     scroll.dispose();
     super.dispose();
   }
@@ -266,6 +270,14 @@ class FeedTabState extends State<FeedTab> {
   }
 
   @override
+  void didChangeMetrics() {
+    // the tabs do not see the keyboard (the shell makes room for it), so the phone's own view tells
+    if (!mounted) return;
+    final k = View.of(context).viewInsets.bottom > 0;
+    if (k != keyboard) setState(() => keyboard = k);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final c = context.pc;
     final empty = !loading && items.isEmpty;
@@ -273,17 +285,10 @@ class FeedTabState extends State<FeedTab> {
     return Scaffold(
       // making anything starts here: the round "+" stays in its place over the feed while it scrolls (only on the feed),
       // and steps aside while something is being typed
-      floatingActionButton: ListenableBuilder(
-        listenable: FocusManager.instance,
-        builder: (context, _) {
-          final f = FocusManager.instance.primaryFocus?.context;
-          final typing = f != null && f.mounted && f.findAncestorWidgetOfExactType<EditableText>() != null;
-          return AnimatedScale(
-            scale: typing ? 0 : 1,
-            duration: const Duration(milliseconds: 180),
-            child: _CreateButton(onTap: () => createMenu(context, write: ({bool photos = false, bool poll = false}) => _write(photos: photos, poll: poll))),
-          );
-        },
+      floatingActionButton: AnimatedScale(
+        scale: keyboard ? 0 : 1,
+        duration: const Duration(milliseconds: 180),
+        child: _CreateButton(onTap: () => createMenu(context, write: ({bool photos = false, bool poll = false}) => _write(photos: photos, poll: poll))),
       ),
       body: RefreshIndicator(
         onRefresh: _refresh,
