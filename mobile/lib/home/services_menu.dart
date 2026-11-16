@@ -392,7 +392,7 @@ class _FlowCard extends StatelessWidget {
     final g = group, a = Color(g.colors.$1), b = Color(g.colors.$2), art = g.art == null ? null : serviceArt[g.art];
     const white = Colors.white;
     final names = [for (final i in g.items) i.title];
-    final shownNames = names.take(3).toList();
+    final shownNames = names.take(2).toList();
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
@@ -404,18 +404,6 @@ class _FlowCard extends StatelessWidget {
           DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: const Alignment(-1, -1), end: const Alignment(1, 1), colors: [a, b]))),
           const DecoratedBox(
             decoration: BoxDecoration(gradient: RadialGradient(center: Alignment(-.9, -1.1), radius: 1.3, colors: [Color(0x47FFFFFF), Color(0x00FFFFFF)], stops: [0, .6])),
-          ),
-          // the picture of one of its pages, at the top
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 8,
-            height: 110,
-            child: IgnorePointer(
-              child: art != null
-                  ? Padding(padding: const EdgeInsets.symmetric(horizontal: 22), child: MiniSvg(art.$3))
-                  : Center(child: Transform.rotate(angle: -.18, child: PIcon(g.icon, size: 74, color: white.withValues(alpha: .28)))),
-            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
@@ -435,17 +423,28 @@ class _FlowCard extends StatelessWidget {
                   child: Text('${g.items.length} გვერდი', style: const TextStyle(color: white, fontSize: 11, fontWeight: FontWeight.w700)),
                 ),
               ]),
-              const Spacer(),
+              // the picture of one of its pages, in its own place above the words
+              Expanded(
+                flex: 5,
+                child: IgnorePointer(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(6, 8, 6, 6),
+                    child: art != null
+                        ? MiniSvg(art.$3)
+                        : Center(child: Transform.rotate(angle: -.18, child: PIcon(g.icon, size: 64, color: white.withValues(alpha: .3)))),
+                  ),
+                ),
+              ),
               Text(g.title,
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: white, fontSize: 19, fontWeight: FontWeight.w800, height: 1.15, shadows: [Shadow(color: Color(0x40000000), blurRadius: 8, offset: Offset(0, 1))])),
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               Text(g.about, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: white.withValues(alpha: .92), fontSize: 12, height: 1.3)),
-              const SizedBox(height: 8),
+              const SizedBox(height: 7),
               // the pages by name, as many as fit (the rest cut off, never spilling out of the card)
               Flexible(
-                flex: 4,
+                flex: 3,
                 child: ClipRect(
                   child: Wrap(spacing: 4, runSpacing: 4, children: [
                     for (final t in shownNames) _Pill(t),

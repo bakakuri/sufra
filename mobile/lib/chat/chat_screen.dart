@@ -1539,13 +1539,23 @@ class _ComposerState extends State<_Composer> {
   @override
   Widget build(BuildContext context) {
     final c = context.pc, w = widget;
-    Widget tool(String icon, String key, String label, VoidCallback onTap) => IconBtn(icon, key: ValueKey(key), label: label, size: 23, color: c.accent, onTap: onTap);
+    // small round buttons, as in Messenger, so the writing line keeps its room
+    Widget tool(String icon, String key, String label, VoidCallback onTap) => Semantics(
+          button: true,
+          label: label,
+          child: InkResponse(
+            key: ValueKey(key),
+            radius: 20,
+            onTap: onTap,
+            child: SizedBox(width: 36, height: 44, child: Center(child: PIcon(icon, size: 23, color: c.accent))),
+          ),
+        );
     return Container(
       decoration: BoxDecoration(color: c.surface, border: Border(top: BorderSide(color: c.line.withValues(alpha: .6)))),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(2, 6, 6, 6),
+          padding: const EdgeInsets.fromLTRB(4, 6, 6, 6),
           child: ListenableBuilder(
             listenable: w.field,
             builder: (context, _) {
@@ -1565,7 +1575,7 @@ class _ComposerState extends State<_Composer> {
                             tool('image', 'chat-gal', 'ფოტო', w.onGallery),
                             tool('mic', 'chat-mic', 'ხმოვანი შეტყობინება', w.onMic),
                           ])
-                        : IconBtn('chev', key: const ValueKey('chat-tools'), label: 'ხელსაწყოები', size: 23, color: c.accent, onTap: () => setState(() => tools = true)),
+                        : tool('chev', 'chat-tools', 'ხელსაწყოები', () => setState(() => tools = true)),
                   ),
                 Expanded(
                   child: TextField(
