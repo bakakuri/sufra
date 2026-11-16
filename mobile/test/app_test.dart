@@ -1612,14 +1612,23 @@ void main() {
     expect(find.text('დღევანდელი ბონუსი აღებულია'), findsOneWidget);
     await calm(t);
     // how to earn: today's pages paid green, every page a card; one opens its ways to earn above the cards
+    final list = find.descendant(of: find.byType(CoinsScreen), matching: find.byType(Scrollable)).first;
+    Future<void> to(String key, double dy) async {
+      await t.scrollUntilVisible(find.byKey(ValueKey(key)), dy, scrollable: list);
+      await settle(t);
+      await t.tap(find.byKey(ValueKey(key)));
+      await settle(t);
+    }
+
+    await t.scrollUntilVisible(find.byKey(const ValueKey('coins-paid-home')), 200, scrollable: list);
     expect(find.descendant(of: find.byKey(const ValueKey('coins-paid-home')), matching: find.text('+35 დღეს')), findsOneWidget);
-    await tapKey(t, 'crgrp-me');
+    await to('crgrp-me', 200);
     expect(find.byKey(const ValueKey('coins-open-me')), findsOneWidget);
     expect(find.descendant(of: find.byKey(const ValueKey('coins-open-me')), matching: find.text('ერთჯერადი')), findsOneWidget);
     // the photo is done already: no button, a tick
     expect(find.byKey(const ValueKey('coins-go-avatar')), findsNothing);
     // by kind: the study kind has no feed card
-    await tapKey(t, 'coins-kind-study');
+    await to('coins-kind-study', -200);
     expect(find.byKey(const ValueKey('crgrp-home')), findsNothing);
     expect(find.byKey(const ValueKey('crgrp-me')), findsOneWidget);
     // the rules behind their button
@@ -1627,7 +1636,7 @@ void main() {
     expect(find.text('დღის ლიმიტი: 150'), findsOneWidget);
     await _back(t);
     // the history
-    await tapKey(t, 'coins-part-1');
+    await to('coins-part-1', -200);
     expect(find.byKey(const ValueKey('coins-log-0')), findsOneWidget);
     expect(find.text('-300'), findsOneWidget);
     expect(find.byKey(const ValueKey('crgrp-me')), findsNothing);

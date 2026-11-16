@@ -495,7 +495,7 @@ void main() {
     testWidgets('the family tree ($k)', (t) async => page(t, TreeScreen(uid: nino.id), '52-tree'));
     testWidgets('coins ($k)', (t) async {
       await page(t, const CoinsScreen(), '53-coins');
-      await t.ensureVisible(find.byKey(const ValueKey('crgrp-me')));
+      await t.scrollUntilVisible(find.byKey(const ValueKey('crgrp-me')), 200, scrollable: find.descendant(of: find.byType(CoinsScreen), matching: find.byType(Scrollable)).first);
       await settle(t);
       await t.tap(find.byKey(const ValueKey('crgrp-me')));
       await settle(t);
