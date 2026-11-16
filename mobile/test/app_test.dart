@@ -1115,8 +1115,10 @@ void main() {
     expect(find.byType(PostScreen), findsNothing);
     expect(find.byType(PersonScreen), findsOneWidget);
 
-    // the tabs: albums, friends, CV
-    await proTo(t, find.byKey(const ValueKey('ptab-albums')));
+    // the tabs (back up above the posts): albums, friends, CV
+    await t.scrollUntilVisible(find.byKey(const ValueKey('ptab-albums')), -250, scrollable: pro());
+    await t.ensureVisible(find.byKey(const ValueKey('ptab-albums')));
+    await settle(t);
     await t.tap(find.byKey(const ValueKey('ptab-albums')));
     await settle(t);
     expect(find.text('სვანეთი 2026'), findsOneWidget);
