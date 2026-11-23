@@ -305,4 +305,8 @@ class _NardiScreenState extends State<NardiScreen> {
 }
 
 /// A table opened over everything: the screen with its back
-Future<void> openNardi(BuildContext context, NardiTable table, {String? title}) => openPage(context, NardiScreen(table: table, title: title), full: true);
+Future<void> openNardi(BuildContext context, NardiTable table, {String? title}) {
+  // a word left at the bottom would cover the dice button
+  ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+  return openPage(context, NardiScreen(table: table, title: title), full: true);
+}

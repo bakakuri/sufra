@@ -206,6 +206,8 @@ void main() {
     expect(table.g!.firstRoll, g.firstRoll);
     // goodbye: four seconds, then the win
     room.eventsIn.add(('bye', {'from': 'u3'}));
+    // (the event comes a moment later; the screen after it)
+    await t.pump();
     await t.pump();
     expect(find.textContaining('გავიდა'), findsWidgets);
     await t.pump(const Duration(seconds: 5));
@@ -264,6 +266,7 @@ void main() {
     expect(lobby.sent.where((e) => e.$1 == 'chal'), isEmpty);
     // nobody else in the lobby
     lobby.presenceIn.add({});
+    await t.pump();
     await t.pump();
     expect(find.byKey(const ValueKey('nd-nobody')), findsOneWidget);
   });

@@ -44,6 +44,7 @@ import 'package:peera/joker/joker_tab.dart';
 import 'package:peera/nardi/board.dart';
 import 'package:peera/nardi/engine.dart';
 import 'package:peera/nardi/nardi_screen.dart';
+import 'package:peera/nardi/nardi_tab.dart';
 import 'package:peera/nardi/session.dart';
 import 'package:peera/joker/online.dart';
 import 'package:peera/joker/online_screen.dart';
@@ -340,7 +341,7 @@ void main() {
       await t.tap(find.byKey(const ValueKey('games-nardi')));
       await settle(t);
       await _shot(t, '87-nardi-$k');
-      await t.ensureVisible(find.byKey(const ValueKey('nd-start')));
+      await t.scrollUntilVisible(find.byKey(const ValueKey('nd-start')), 200, scrollable: find.descendant(of: find.byType(NardiTab), matching: find.byType(Scrollable)).first);
       await settle(t);
       await t.tap(find.byKey(const ValueKey('nd-start')));
       await settle(t);

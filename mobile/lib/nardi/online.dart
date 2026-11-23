@@ -225,7 +225,9 @@ class OnlineNardi extends NardiTable {
     _pr = l.presence.listen(_presence);
     await l.join({'w': 0, 'lk': myLook.toJson()});
     if (_closed || _link != l) return;
-    api.matchMeet(gid, 'nardi', oppId, _side).catchError((_) {});
+    // the game counts for the ratings once it is surely one of short backgammon (the other's first state, when I
+    // did not make it)
+    if (me == 0) _meet();
     if (me == 0) {
       if (g == null) {
         g = NardiGame(rng: _rng)..open();
@@ -237,6 +239,13 @@ class OnlineNardi extends NardiTable {
     }
     _tick ??= Timer.periodic(const Duration(milliseconds: 500), (_) => _clockTick());
     _changed();
+  }
+
+  bool _met = false;
+  void _meet() {
+    if (_met) return;
+    _met = true;
+    api.matchMeet(gid, 'nardi', oppId, _side).catchError((_) {});
   }
 
   void _send({bool clock = true}) {
@@ -328,6 +337,7 @@ class OnlineNardi extends NardiTable {
     }
     final old = g;
     syncing = false;
+    _meet();
     if (old != null && !finished) {
       // a step of theirs: the board glides it
       if (n.turn == old.turn && old.turn == other) {
@@ -582,6 +592,7 @@ class OnlineNardi extends NardiTable {
       ..[1] = tc.$1 * 1000.0;
     _ckTurn = null;
     _ckN = 0;
+    _met = false;
     onRematch?.call(ng);
     _changed();
     await start();

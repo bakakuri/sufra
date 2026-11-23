@@ -32,7 +32,7 @@ Future<void> _page(WidgetTester t) async {
 /// a tap on something of backgammon's page, scrolled into sight first
 Future<void> _tapIn(WidgetTester t, String key) async {
   final f = find.byKey(ValueKey(key));
-  await t.ensureVisible(f);
+  await t.scrollUntilVisible(f, 200, scrollable: find.descendant(of: find.byType(NardiTab), matching: find.byType(Scrollable)).first);
   await settle(t);
   await t.tap(f);
 }

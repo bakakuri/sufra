@@ -277,7 +277,7 @@ class NardiNet extends ChangeNotifier {
   /// the finished game's table closed: out of its channel
   Future<void> closeGame({bool force = false}) async {
     final g = game;
-    if (g == null || (!g.finished && !force)) return;
+    if (g == null || (!g.finished && !g.longGame && !force)) return;
     game = null;
     g.removeListener(_gameChanged);
     await g.leave();
