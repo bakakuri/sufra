@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:peera/nardi/character.dart';
+import 'package:peera/nardi/nardi_screen.dart';
 import 'package:peera/ui/sparkles.dart';
 
 /// Runs before every test file: the stars that scatter from my picture on the tab bar come in bursts on a timer, and
@@ -9,5 +10,6 @@ import 'package:peera/ui/sparkles.dart';
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   sparklesOn = false;
   charactersMove = false;
+  clocksTick = false;
   await testMain();
 }

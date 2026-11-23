@@ -28,12 +28,13 @@ class CharacterLook {
     this.beard = false,
     this.hat = false,
     this.fem = false,
+    this.glasses = false,
   });
   final int skin, hair, shirt;
 
-  /// short · long · curly · bald
+  /// short · long · curly · pony · bald (as the site draws them)
   final String style;
-  final bool mus, beard, hat, fem;
+  final bool mus, beard, hat, fem, glasses;
 
   static int _c(Object? v, int d) {
     final t = '$v'.replaceAll('#', '');
@@ -46,12 +47,46 @@ class CharacterLook {
           skin: _c(j['skin'], 0xFFEBC0A0),
           hair: _c(j['hair'], 0xFF2E2219),
           shirt: _c(j['shirt'], shirt),
-          style: const ['short', 'long', 'curly', 'bald'].contains(j['style']) ? '${j['style']}' : 'short',
-          mus: j['mus'] == true || j['mus'] == 1,
-          beard: j['beard'] == true || j['beard'] == 1,
+          style: const ['short', 'long', 'curly', 'pony', 'bald'].contains(j['style']) ? '${j['style']}' : 'short',
+          mus: (j['mus'] == true || j['mus'] == 1) && !(j['fem'] == true || j['fem'] == 1),
+          beard: (j['beard'] == true || j['beard'] == 1) && !(j['fem'] == true || j['fem'] == 1),
           hat: j['hat'] == true || j['hat'] == 1,
           fem: j['fem'] == true || j['fem'] == 1,
+          glasses: j['glasses'] == true || j['glasses'] == 1,
         );
+
+  /// the look as the site keeps it (what the other player's screen draws)
+  Map<String, dynamic> toJson() {
+    String hex(int c) => '#${(c & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+    return {
+      'fem': fem ? 1 : 0,
+      'style': style,
+      'mus': mus ? 1 : 0,
+      'beard': beard ? 1 : 0,
+      'glasses': glasses ? 1 : 0,
+      'hat': hat ? 1 : 0,
+      'skin': hex(skin),
+      'hair': hex(hair),
+      'shirt': hex(shirt),
+    };
+  }
+
+  /// a person's look: the one they chose on the site, else the one the site gives them
+  factory CharacterLook.of(Profile p) => p.look != null ? CharacterLook.fromJson(p.look) : CharacterLook.ofPerson(p.id, fem: p.gender == 'f');
+
+  /// the look the site gives a person who chose none, from their id (so both screens draw them the same)
+  factory CharacterLook.ofPerson(String id, {bool fem = false}) {
+    var k = 0;
+    for (final ch in id.codeUnits) {
+      k = (k * 31 + ch) & 0xFFFFFFFF;
+    }
+    const skins = [0xFFF2CDB0, 0xFFEBC0A0, 0xFFE2AF8C, 0xFFD69C77, 0xFFC08261, 0xFF8D5A3B];
+    const hairs = [0xFF1A120D, 0xFF2E2219, 0xFF4E3220, 0xFF7A4A2A, 0xFFB8875A, 0xFF8A8580, 0xFFD9D4CB];
+    const shirts = [0xFF2F5D8A, 0xFF8E3047, 0xFF3E6B47, 0xFF2C2C34, 0xFFC9A227, 0xFF6A4C93, 0xFFD9D4C7];
+    // the site shifts a signed 32-bit number; a negative index there falls back to its default colours
+    final s32 = k.toSigned(32), hi = (s32 >> 3).remainder(3), si = (s32 >> 5).remainder(shirts.length);
+    return CharacterLook(skin: skins[k % 4], hair: hairs[hi < 0 ? 1 : hi], shirt: shirts[si < 0 ? 0 : si], fem: fem, style: fem ? 'long' : 'short');
+  }
 
   /// a look from a person's colour, when they have none of their own
   factory CharacterLook.ofHue(int hue, {bool fem = false}) =>
@@ -100,8 +135,14 @@ abstract class NardiTable extends ChangeNotifier {
   /// the coins a won game brought (the computer games), shown at the end
   int? get reward;
 
-  /// seconds left for the move now waited for, when there is a limit
-  int? get secondsLeft => null;
+  /// the time [pl] has left, when the game has a clock
+  Duration? clockOf(int pl) => null;
+
+  /// words over the board while the game waits (for the other phone, say)
+  String? get pause => null;
+
+  /// a step may be taken back before the turn is over
+  bool get canUndo => true;
 
   /// the other player's seat is being played for while they are away
   bool get otherAway => false;
@@ -115,6 +156,7 @@ abstract class NardiTable extends ChangeNotifier {
   bool get canAgain;
   Future<void> again();
   String get againNote => '';
+  String get againLabel => 'ახალი თამაში';
 
   /// what each character does now
   Mood moodOf(int pl) => Mood.idle;

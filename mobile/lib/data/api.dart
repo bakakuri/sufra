@@ -730,6 +730,21 @@ abstract class PeeraApi {
 
   /// a room's channel: who is in it and what they send
   RoomLink roomLink(int id);
+
+  /// a channel of the site's two-player games: the players' lobby ('lobby') or one game's own room ('game-<id>'),
+  /// with who is in it and these events of theirs
+  RoomLink gameLink(String channel, List<String> events);
+
+  /// of these people, the ones I may play or talk with one to one (an adult and a pupil under 18 who do not know each
+  /// other may not)
+  Future<Set<String>> reachable(List<String> ids);
+
+  /// a game with another person began (each player says so; the server rates it once both did)
+  Future<void> matchMeet(String gid, String game, String opp, int side);
+
+  /// a game with another person is over (1 the first player won, −1 the second): the rating's change for me, when
+  /// the server already knows it
+  Future<int?> matchReport(String gid, int res);
   // ---------- the team's panel (admin.js; without the games, the shop, payouts and the coin promotion) ----------
 
   /// the numbers: people, the last day, what is on the site, what waits (open_reports, pending_verifications, pending_ads)
@@ -3072,7 +3087,28 @@ class SupaApi implements PeeraApi {
   Future<int> liveGift(int room, String emoji) async => asInt(await sb.rpc('live_gift', params: {'p_room': room, 'p_emoji': emoji}));
 
   @override
-  RoomLink roomLink(int id) => _SupaRoomLink(sb, id, myId);
+  RoomLink roomLink(int id) => _SupaRoomLink(sb, 'room-$id', myId, _SupaRoomLink.roomEvents);
+
+  @override
+  RoomLink gameLink(String channel, List<String> events) => _SupaRoomLink(sb, channel, myId, events);
+
+  @override
+  Future<Set<String>> reachable(List<String> ids) async {
+    if (ids.isEmpty) return {};
+    final r = await sb.rpc('reachable_talk', params: {'p_ids': ids});
+    return r is List ? {for (final x in r) '$x'} : ids.toSet();
+  }
+
+  @override
+  Future<void> matchMeet(String gid, String game, String opp, int side) async {
+    await sb.rpc('match_meet', params: {'p_gid': gid, 'p_game': game, 'p_opp': opp, 'p_side': side});
+  }
+
+  @override
+  Future<int?> matchReport(String gid, int res) async {
+    final r = await sb.rpc('match_report', params: {'p_gid': gid, 'p_res': res});
+    return r is Map && r['pending'] != true && r['delta'] != null ? asInt(r['delta']) : null;
+  }
   // ---------- the team's panel ----------
   @override
   Future<Map<String, dynamic>> adminStats() async {
@@ -3258,14 +3294,15 @@ class SupaApi implements PeeraApi {
 }
 
 class _SupaRoomLink implements RoomLink {
-  _SupaRoomLink(this.sb, this.id, this.me);
+  _SupaRoomLink(this.sb, this.name, this.me, this._names);
   final SupabaseClient sb;
-  final int id;
+  final String name;
   final String me;
+  final List<String> _names;
   RealtimeChannel? _ch;
   final _presence = StreamController<Map<String, Map<String, dynamic>>>.broadcast();
   final _events = StreamController<(String, Map<String, dynamic>)>.broadcast();
-  static const _names = ['sig', 'state', 'hello', 'clink', 'cmt', 'heart', 'gift', 'hand', 'end'];
+  static const roomEvents = ['sig', 'state', 'hello', 'clink', 'cmt', 'heart', 'gift', 'hand', 'end'];
 
   @override
   Stream<Map<String, Map<String, dynamic>>> get presence => _presence.stream;
@@ -3274,7 +3311,7 @@ class _SupaRoomLink implements RoomLink {
 
   @override
   Future<void> join(Map<String, dynamic> meta) async {
-    final c = sb.channel('room-$id', opts: RealtimeChannelConfig(key: me, self: false));
+    final c = sb.channel(name, opts: RealtimeChannelConfig(key: me, self: false));
     _ch = c;
     for (final e in _names) {
       c.onBroadcast(
@@ -3299,10 +3336,15 @@ class _SupaRoomLink implements RoomLink {
     await track(meta);
   }
 
+  /// an empty one: not shown among those in the channel (still hearing it)
   @override
   Future<void> track(Map<String, dynamic> meta) async {
     try {
-      await _ch?.track(meta);
+      if (meta.isEmpty) {
+        await _ch?.untrack();
+      } else {
+        await _ch?.track(meta);
+      }
     } catch (_) {}
   }
 

@@ -11,15 +11,12 @@ import '../ui/widgets.dart';
 import 'character.dart';
 import 'engine.dart';
 import 'nardi_screen.dart';
+import 'net.dart';
 import 'session.dart';
 import 'table_model.dart';
 
-/// my character: the look I chose on the site, else one in my colour
-CharacterLook myLook(BuildContext context) {
-  final me = context.me;
-  final shirt = HSLColor.fromAHSL(1, (me.hue % 360).toDouble(), .55, .45).toColor().toARGB32();
-  return CharacterLook.fromJson(me.look, shirt: shirt);
-}
+/// my character: the look I chose on the site, else the one the site gives me
+CharacterLook myLook(BuildContext context) => CharacterLook.of(context.me);
 
 class NardiTab extends StatefulWidget {
   const NardiTab({super.key});
@@ -51,6 +48,101 @@ class _NardiTabState extends State<NardiTab> {
     if (mounted) setState(() {});
   }
 
+  /// the game with another person, again on screen
+  Future<void> _online(NardiNet net) async {
+    final g = net.game;
+    if (g == null) return;
+    await openNardi(context, g, title: 'ნარდი · ონლაინ');
+    await net.closeGame();
+  }
+
+  Future<void> _challenge(NardiNet net, NardiPeer p) async {
+    final err = await net.challenge(p.id, p.name);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(err ?? 'გამოწვევა გაიგზავნა. ველოდებით პასუხს')));
+  }
+
+  /// the people online to play with: a challenge to one of them, mine waiting for an answer, the game going on
+  List<Widget> _onlinePart(BuildContext context, NardiNet net) {
+    final c = context.pc, g = net.game, pend = net.pending;
+    final on = g != null && !g.finished;
+    final fr = context.app.friends.friends.toSet();
+    return [
+      const Text('ონლაინ', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 4),
+      Text('ითამაშე მათთან, ვინც ახლა აქაა (საიტზეც და აპშიც).', style: TextStyle(color: c.muted, fontSize: 13.5)),
+      const SizedBox(height: 10),
+      if (g != null && !g.finished)
+        PCard(
+          key: const ValueKey('nd-online-current'),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Row(children: [
+            if (g.oppPerson != null) Avatar(p: g.oppPerson!, size: 44) else CharacterView(look: g.seatOf(g.other).look, mood: Mood.idle, size: 52, still: true),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('თამაში ${g.oppName}-თან', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                Text(g.myTurn ? 'შენი სვლაა' : 'მისი სვლაა', style: TextStyle(color: c.muted, fontSize: 13)),
+              ]),
+            ),
+            FilledButton(
+              key: const ValueKey('nd-online-continue'),
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 16)),
+              onPressed: () => _online(net),
+              child: const Text('გაგრძელება'),
+            ),
+          ]),
+        ),
+      if (pend != null)
+        PCard(
+          key: const ValueKey('nd-pending'),
+          padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+          child: Row(children: [
+            PIcon('dice', size: 22, color: c.accent),
+            const SizedBox(width: 10),
+            Expanded(child: Text('${pend.name} — გამოწვევა გაიგზავნა. ველოდებით პასუხს…', style: const TextStyle(fontWeight: FontWeight.w600))),
+            TextButton(key: const ValueKey('nd-pending-cancel'), onPressed: net.cancelChallenge, child: const Text('გაუქმება')),
+          ]),
+        ),
+      if (on || pend != null) const SizedBox(height: 10),
+      if (net.hidden)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text('შენი ონლაინ სტატუსი დამალულია, ამიტომ სხვები აქ ვერ გხედავენ.', style: TextStyle(color: c.muted, fontSize: 13)),
+        ),
+      if (net.peers.isEmpty)
+        PCard(
+          key: const ValueKey('nd-nobody'),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: Text('ახლა სხვა ონლაინ არავინაა. როცა მეგობარი შემოვა, აქ გამოჩნდება.', style: TextStyle(color: c.muted, fontSize: 13.5)),
+        )
+      else
+        for (final p in net.peers.take(20))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(key: ValueKey('nd-peer-${p.id}'), children: [
+              Avatar(p: context.app.people[p.id] ?? p.person, size: 40),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${p.name}${fr.contains(p.id) ? ' · მეგობარი' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  Text(p.playing ? 'თამაშობს${p.game == 'nardi' ? ': ნარდი' : ''}' : 'თავისუფალია', style: TextStyle(color: c.muted, fontSize: 12.5)),
+                ]),
+              ),
+              OutlinedButton(
+                key: ValueKey('nd-chal-${p.id}'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 14)),
+                onPressed: p.playing || on || pend != null ? null : () => _challenge(net, p),
+                child: const Text('გამოწვევა'),
+              ),
+            ]),
+          ),
+      const SizedBox(height: 18),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.pc;
@@ -58,8 +150,11 @@ class _NardiTabState extends State<NardiTab> {
     return Scaffold(
       appBar: peeraBar(context, title: 'ნარდი'),
       body: ListenableBuilder(
-        listenable: s,
+        listenable: Listenable.merge([s, context.app.nardi]),
         builder: (context, _) => ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 32), children: [
+          ..._onlinePart(context, context.app.nardi),
+          const Text('კომპიუტერთან', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
           if (s.playing)
             PCard(
               key: const ValueKey('nd-current'),
@@ -83,8 +178,6 @@ class _NardiTabState extends State<NardiTab> {
               ]),
             ),
           if (s.playing) const SizedBox(height: 16),
-          Text(s.playing ? 'ახალი თამაში' : 'ვისთან ითამაშებ?', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
           Text('ოთხი მოთამაშე, სუსტიდან ძლიერამდე. აირჩიე და დაიწყე.', style: TextStyle(color: c.muted, fontSize: 13.5)),
           const SizedBox(height: 10),
           for (final b in bots) ...[

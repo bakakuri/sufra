@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../profile/profile.dart';
 import '../push/push.dart';
 import '../calls/call.dart';
+import '../nardi/net.dart';
 import 'api.dart';
 import 'models.dart';
 
@@ -323,6 +324,9 @@ class AppState {
   /// the call on now, if any (one at a time), and the calls coming in
   late final calls = CallCenter(api);
 
+  /// the games' lobby (who is online to play, challenges) and the backgammon game with another person
+  late final nardi = NardiNet(api)..friends = (() => friends.friends);
+
   /// the tab on screen (a playing clip stops when another tab opens)
   final tab = ValueNotifier<int>(0);
 
@@ -403,6 +407,7 @@ class AppState {
   void dispose() {
     _closed = true;
     calls.close();
+    nardi.stop();
     _notes?.cancel();
     _seen?.cancel();
     _life?.dispose();

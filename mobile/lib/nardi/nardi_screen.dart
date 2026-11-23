@@ -15,6 +15,11 @@ import 'character.dart';
 import 'engine.dart';
 import 'table_model.dart';
 
+/// the clocks count down on screen (off in the tests, where a screen that changes every second never settles)
+bool clocksTick = true;
+
+String _mmss(Duration d) => '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+
 class NardiScreen extends StatefulWidget {
   const NardiScreen({super.key, required this.table, this.title});
   final NardiTable table;
@@ -26,7 +31,7 @@ class NardiScreen extends StatefulWidget {
 class _NardiScreenState extends State<NardiScreen> {
   int? selected;
   bool rolling = false;
-  Timer? _rollT;
+  Timer? _rollT, _clockT;
   String _rollKey = '';
 
   NardiTable get t => widget.table;
@@ -40,6 +45,11 @@ class _NardiScreenState extends State<NardiScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) t.live = true;
     });
+    if (clocksTick) {
+      _clockT = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted && t.clockOf(t.me) != null && t.g?.phase != Phase.over) setState(() {});
+      });
+    }
   }
 
   @override
@@ -47,6 +57,7 @@ class _NardiScreenState extends State<NardiScreen> {
     t.removeListener(_changed);
     t.live = false;
     _rollT?.cancel();
+    _clockT?.cancel();
     super.dispose();
   }
 
@@ -145,7 +156,7 @@ class _NardiScreenState extends State<NardiScreen> {
           }),
       ]),
       body: g == null
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: Text(t.pause ?? '', key: const ValueKey('nd-pause'), style: TextStyle(color: c.muted, fontSize: 15)))
           : Column(children: [
               _player(context, t.other, top: true, still: still),
               Expanded(
@@ -154,7 +165,8 @@ class _NardiScreenState extends State<NardiScreen> {
                   child: Center(
                     child: AspectRatio(
                       aspectRatio: 1 / 1.08,
-                      child: NardiBoardView(
+                      child: Stack(fit: StackFit.expand, children: [
+                        NardiBoardView(
                         key: const ValueKey('nd-board'),
                         board: g.board,
                         me: t.me,
@@ -171,6 +183,17 @@ class _NardiScreenState extends State<NardiScreen> {
                         lastStep: t.lastStep,
                         still: still,
                       ),
+                        if (t.pause != null)
+                          Center(
+                            child: Container(
+                              key: const ValueKey('nd-pause'),
+                              margin: const EdgeInsets.all(24),
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                              decoration: BoxDecoration(color: c.surface.withValues(alpha: .94), borderRadius: BorderRadius.circular(16)),
+                              child: Text(t.pause!, textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, color: c.ink)),
+                            ),
+                          ),
+                      ]),
                     ),
                   ),
                 ),
@@ -186,7 +209,8 @@ class _NardiScreenState extends State<NardiScreen> {
     final on = g.phase != Phase.over && g.turn == pl;
     final mood = t.moodOf(pl);
     final who = CharacterView(key: ValueKey('nd-char-$pl'), look: seat.look, mood: mood, size: top ? 92 : 104, facingDown: top, still: still);
-    final secs = on && !mine ? t.secondsLeft : null;
+    final clk = t.clockOf(pl);
+    final short = on && clk != null && clk.inSeconds < 30;
     final words = Column(crossAxisAlignment: mine ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
       Row(mainAxisSize: MainAxisSize.min, children: [
         if (seat.person != null) ...[Avatar(p: seat.person!, size: 28, ring: false), const SizedBox(width: 6)],
@@ -194,7 +218,14 @@ class _NardiScreenState extends State<NardiScreen> {
         if (t.otherAway && !mine) ...[const SizedBox(width: 6), Text('გასულია', style: TextStyle(color: c.muted, fontSize: 12))],
       ]),
       const SizedBox(height: 2),
-      Text('${g.board.pips(pl)} პიპი${secs != null ? ' · $secsწმ' : ''}', style: TextStyle(color: c.muted, fontSize: 12.5)),
+      Text.rich(
+        TextSpan(children: [
+          TextSpan(text: '${g.board.pips(pl)} პიპი'),
+          if (clk != null) TextSpan(text: ' · ${_mmss(clk)}', style: TextStyle(fontWeight: on ? FontWeight.w800 : FontWeight.w500, color: short ? c.nope : (on ? c.ink : c.muted))),
+        ]),
+        key: ValueKey('nd-clock-$pl'),
+        style: TextStyle(color: c.muted, fontSize: 12.5),
+      ),
       if (top) ...[
         const SizedBox(height: 6),
         AnimatedSwitcher(
@@ -235,7 +266,7 @@ class _NardiScreenState extends State<NardiScreen> {
             Expanded(child: OutlinedButton(key: const ValueKey('nd-close'), onPressed: () => Navigator.of(context).maybePop(), child: const Text('დახურვა'))),
             if (t.canAgain) ...[
               const SizedBox(width: 10),
-              Expanded(child: FilledButton(key: const ValueKey('nd-again'), onPressed: () => t.again(), child: const Text('ახალი თამაში'))),
+              Expanded(child: FilledButton(key: const ValueKey('nd-again'), onPressed: () => t.again(), child: Text(t.againLabel))),
             ],
           ]),
         ]),
@@ -247,7 +278,7 @@ class _NardiScreenState extends State<NardiScreen> {
         height: 60,
         padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
         child: Row(children: [
-          if (t.canMove && g.done.isNotEmpty)
+          if (t.canMove && t.canUndo && g.done.isNotEmpty)
             OutlinedButton.icon(
               key: const ValueKey('nd-undo'),
               style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48), padding: const EdgeInsets.symmetric(horizontal: 16)),

@@ -340,6 +340,8 @@ void main() {
       await t.tap(find.byKey(const ValueKey('games-nardi')));
       await settle(t);
       await _shot(t, '87-nardi-$k');
+      await t.ensureVisible(find.byKey(const ValueKey('nd-start')));
+      await settle(t);
       await t.tap(find.byKey(const ValueKey('nd-start')));
       await settle(t);
       final s = t.widget<NardiScreen>(find.byType(NardiScreen)).table as NardiSession;

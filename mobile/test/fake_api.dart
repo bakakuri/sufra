@@ -2422,6 +2422,28 @@ class FakeApi implements PeeraApi {
   @override
   RoomLink roomLink(int id) => links[id] = FakeRoomLink(id);
 
+  /// the games' channels made, by name ('lobby', 'game-…')
+  final gameLinks = <String, FakeRoomLink>{};
+  @override
+  RoomLink gameLink(String channel, List<String> events) => gameLinks[channel] = FakeRoomLink(0, channel);
+
+  /// people an adult may not reach (a pupil they do not know)
+  final unreachable = <String>{};
+  @override
+  Future<Set<String>> reachable(List<String> ids) async {
+    calls.add('reachable ${ids.join(',')}');
+    return {for (final i in ids) if (!unreachable.contains(i)) i};
+  }
+
+  @override
+  Future<void> matchMeet(String gid, String game, String opp, int side) async => calls.add('meet $gid $game $opp $side');
+
+  @override
+  Future<int?> matchReport(String gid, int res) async {
+    calls.add('report $gid $res');
+    return 12;
+  }
+
   // ---------- the team's panel ----------
   final reportRows = <Map<String, dynamic>>[
     {'id': 1, 'reporter': 'u3', 'target_type': 'post', 'target_id': '105', 'reason': 'სპამი', 'details': 'იგივე რეკლამა ყველგან', 'status': 'open', 'created_at': DateTime.now().subtract(const Duration(hours: 3)).toIso8601String()},
@@ -2588,8 +2610,9 @@ class FakeApi implements PeeraApi {
 
 /// A room's channel in memory: what this phone sent, and the test playing the others.
 class FakeRoomLink implements RoomLink {
-  FakeRoomLink(this.id);
+  FakeRoomLink(this.id, [this.name = '']);
   final int id;
+  final String name;
   final sent = <(String, Map<String, dynamic>)>[];
   final tracked = <Map<String, dynamic>>[];
   final presenceIn = StreamController<Map<String, Map<String, dynamic>>>.broadcast();

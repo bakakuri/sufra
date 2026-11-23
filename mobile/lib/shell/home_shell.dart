@@ -16,6 +16,9 @@ import '../games/games_tab.dart';
 import '../joker/online_screen.dart';
 import '../map/live_map.dart';
 import '../map/loc_device.dart';
+import '../nardi/nardi_screen.dart';
+import '../nardi/online.dart';
+import '../nardi/table_model.dart';
 import '../people/friends_tab.dart';
 import '../profile/profile.dart';
 import '../profile/profile_tab.dart';
@@ -85,6 +88,12 @@ class HomeShellState extends State<HomeShell> {
     topBarOver = (page) => WithTopBar(child: page);
     app.banner.addListener(_showBanner);
     app.calls.addListener(_callChanged);
+    // the games' lobby: challenges come in anywhere in the app; a "yes" to mine opens the table
+    app.nardi
+      ..openTable = _openNardi
+      ..addListener(_nardiChanged)
+      ..start(widget.me, CharacterLook.of(widget.me));
+    app.nardi.note.addListener(_nardiNote);
     _push?.start(app.api, onOpen: _openFromPush, onForeground: _pushWhileOpen);
     // the live location's notification opens the map (the app may have been started by it, or brought back)
     _life = AppLifecycleListener(onResume: _takeOpen);
@@ -92,6 +101,51 @@ class HomeShellState extends State<HomeShell> {
   }
 
   AppLifecycleListener? _life;
+
+  /// the backgammon table with another person, over everything; out of its channel once it is over and closed
+  Future<void> _openNardi(OnlineNardi g) async {
+    final ctx = _scaffold.currentContext;
+    if (ctx == null || !mounted) return;
+    await openNardi(ctx, g, title: 'ნარდი · ონლაინ');
+    if (mounted) await app.nardi.closeGame();
+  }
+
+  bool _inviting = false;
+
+  /// a challenge to me: yes or no (back says no)
+  Future<void> _nardiChanged() async {
+    final v = app.nardi.invite, ctx = _scaffold.currentContext;
+    if (v == null || _inviting || ctx == null || !mounted) return;
+    _inviting = true;
+    final yes = await showDialog<bool>(
+      context: ctx,
+      builder: (d) => AlertDialog(
+        key: const ValueKey('nd-invite'),
+        title: const Text('ნარდი'),
+        content: Text('${v.name} გიწვევს ნარდის თამაშში.'),
+        actions: [
+          TextButton(key: const ValueKey('nd-inv-no'), onPressed: () => Navigator.pop(d, false), child: const Text('უარი')),
+          FilledButton(key: const ValueKey('nd-inv-yes'), onPressed: () => Navigator.pop(d, true), child: const Text('მიღება')),
+        ],
+      ),
+    );
+    _inviting = false;
+    if (!mounted || app.nardi.invite?.gid != v.gid) return;
+    if (yes == true) {
+      final g = app.nardi.accept();
+      if (g != null) await _openNardi(g);
+    } else {
+      app.nardi.decline();
+    }
+  }
+
+  void _nardiNote() {
+    final n = app.nardi.note.value;
+    if (n == null || !mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(n), duration: const Duration(seconds: 3)));
+  }
 
   /// a call coming in: its screen over everything
   void _callChanged() {
@@ -155,6 +209,8 @@ class HomeShellState extends State<HomeShell> {
     _push?.dispose();
     app.banner.removeListener(_showBanner);
     app.calls.removeListener(_callChanged);
+    app.nardi.removeListener(_nardiChanged);
+    app.nardi.note.removeListener(_nardiNote);
     app.dispose();
     super.dispose();
   }

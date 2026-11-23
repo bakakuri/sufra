@@ -2,6 +2,7 @@
 // a look of their own (hair, hat, moustache, shirt), and a body that moves — breathes, blinks, thinks with a hand at the
 // chin, shakes and throws the dice, reaches for a checker, cheers, sulks, fumes.
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -112,249 +113,360 @@ class _CharacterPainter extends CustomPainter {
   Color get hair => Color(look.hair);
   Color get shirt => Color(look.shirt);
 
-  /// the poses: head tilt, head drop, mouth curve (−1 frown … 1 smile), mouth open, brow lift (−1 angry … 1 raised),
-  /// brow inner lift (sad), eyes shut, left arm and right arm (angle from down, reach) and a blush
-  static const _poses = <Mood, List<double>>{
-    //            tilt  drop  mouth open brow  inner shut  larm lreach rarm rreach blush
-    Mood.idle: [0, 0, .35, 0, 0, 0, 0, .25, 0, -.25, 0, 0],
-    Mood.think: [.08, .02, .1, 0, .5, 0, 0, .25, 0, -1.9, .9, 0],
-    Mood.roll: [-.05, -.03, .5, .15, .3, 0, 0, .25, 0, -2.2, 1.0, 0],
-    Mood.reach: [0, .06, .3, 0, 0, 0, 0, .25, 0, -.7, 1.4, 0],
-    Mood.happy: [0, -.05, 1, .6, .8, 0, 1, 2.6, .6, -2.6, .6, .5],
-    Mood.sad: [.12, .12, -.9, 0, .2, 1, .2, .15, 0, -.15, 0, 0],
-    Mood.angry: [-.06, .03, -.5, .25, -1, 0, 0, .9, .3, -.9, .3, 1],
+  /// the faces: head tilt, head drop, mouth curve (−1 frown … 1 smile), mouth open, brow lift (−1 angry … 1 raised),
+  /// brow inner lift (sad), eyes shut, blush
+  static const _faces = <Mood, List<double>>{
+    //            tilt  drop  mouth open brow  inner shut blush
+    Mood.idle: [0, 0, .35, 0, 0, 0, 0, 0],
+    Mood.think: [.08, .02, .1, 0, .5, 0, 0, 0],
+    Mood.roll: [-.05, -.03, .5, .15, .3, 0, 0, 0],
+    Mood.reach: [0, .06, .3, 0, 0, 0, 0, 0],
+    Mood.happy: [0, -.05, 1, .6, .8, 0, 1, .5],
+    Mood.sad: [.12, .12, -.9, 0, .2, 1, .2, 0],
+    Mood.angry: [-.06, .03, -.5, .25, -1, 0, 0, 1],
   };
 
-  List<double> get _pose {
-    final a = _poses[from]!, b = _poses[mood]!;
-    final e = Curves.easeOutBack.transform(blend);
+  /// where the hands are (the left one, the right one; x of the right side, mirrored for the left), in the figure's
+  /// units: resting on the table, one at the chin, one by the head shaking the dice, one reaching for the board (up to
+  /// it from the bottom of the screen, down to it from the top), both up, both low, both fists down
+  Offset _hand(Mood m, bool right) => switch (m) {
+        Mood.idle => const Offset(34, -8),
+        Mood.think => right ? const Offset(9, -47) : const Offset(34, -8),
+        Mood.roll => right ? const Offset(46, -74) : const Offset(34, -8),
+        Mood.reach => right ? Offset(26, down ? -4 : -92) : const Offset(34, -8),
+        Mood.happy => const Offset(50, -100),
+        Mood.sad => const Offset(26, -6),
+        Mood.angry => const Offset(22, -16),
+      };
+
+  double get _e => Curves.easeOutBack.transform(blend);
+
+  List<double> get _face {
+    final a = _faces[from]!, b = _faces[mood]!, e = _e;
     return [for (var i = 0; i < a.length; i++) a[i] + (b[i] - a[i]) * e];
   }
 
+  static Color _mix(Color a, Color b, double t) => Color.lerp(a, b, t)!;
+  static Color _a(Color c, double a) => c.withValues(alpha: a);
+  static const _white = Color(0xFFFFFFFF), _black = Color(0xFF000000), _warm = Color(0xFF7A3B2A);
+
+  static void _oval(Canvas c, Offset o, double w, double h, Paint p) => c.drawOval(Rect.fromCenter(center: o, width: w, height: h), p);
+  static Paint _fill(Color c) => Paint()..color = c;
+  static Paint _stroke(double w, Color c) => Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = w
+    ..color = c
+    ..strokeCap = StrokeCap.round
+    ..strokeJoin = StrokeJoin.round;
+  static Paint _radial(Offset c, double r, List<Color> colors, List<double> stops, {Offset? focal}) =>
+      Paint()..shader = ui.Gradient.radial(c, r, colors, stops, TileMode.clamp, null, focal, 0);
+  static Paint _linear(Offset a, Offset b, List<Color> colors, [List<double>? stops]) => Paint()..shader = ui.Gradient.linear(a, b, colors, stops);
+
   @override
   void paint(Canvas canvas, Size size) {
-    final w = size.width, h = size.height, u = w / 120;
-    final p = _pose;
-    final breath = math.sin(t * 2 * math.pi / 3.2) * .8 * u;
-    var bounce = 0.0, shake = 0.0, wave = 0.0;
-    if (mood == Mood.happy) bounce = (math.sin(since * 9).abs()) * 5 * u * math.max(0, 1 - since / 2.5);
-    if (mood == Mood.angry) shake = math.sin(since * 40) * 1.6 * u * math.max(0, 1 - since / 1.2);
-    if (mood == Mood.roll) wave = math.sin(since * 24) * .5 * math.max(0, 1 - since / 1.1);
+    final w = size.width, h = size.height, u = w / 140;
+    final f = _face;
+    final breath = math.sin(t * 2 * math.pi / 3.2) * .9;
+    var bounce = 0.0, shake = 0.0;
+    if (mood == Mood.happy) bounce = (math.sin(since * 9).abs()) * 5 * math.max(0, 1 - since / 2.5);
+    if (mood == Mood.angry) shake = math.sin(since * 40) * 1.6 * math.max(0, 1 - since / 1.2);
+    final skinL = _mix(skin, _white, .35), skinD = _mix(skin, _warm, .28);
     canvas.save();
-    canvas.translate(w / 2 + shake, h - bounce);
-    // the figure is drawn 140 units tall (from the hat to the waist); this fits it into the box
-    canvas.scale(.78);
+    // the figure is drawn 140 units wide and 128 tall, from its waist (0) up
+    canvas.translate(w / 2 + shake * u, h - bounce * u);
+    canvas.scale(u);
 
     // ---- the body ----
     final torso = Path()
-      ..moveTo(-44 * u, 0)
-      ..cubicTo(-44 * u, -34 * u, -30 * u, -46 * u, -16 * u, -48 * u)
-      ..lineTo(16 * u, -48 * u)
-      ..cubicTo(30 * u, -46 * u, 44 * u, -34 * u, 44 * u, 0)
+      ..moveTo(-52, 0)
+      ..cubicTo(-52, -22, -48, -34, -34, -38)
+      ..lineTo(34, -38)
+      ..cubicTo(48, -34, 52, -22, 52, 0)
       ..close();
-    canvas.drawPath(torso.shift(Offset(0, 3 * u)), Paint()..color = Colors.black.withValues(alpha: .12));
+    canvas.drawPath(torso.shift(const Offset(0, 3)), _fill(_a(_black, .1)));
+    canvas.drawPath(torso, _linear(const Offset(-52, -38), const Offset(52, 0), [_mix(shirt, _white, .25), shirt, _mix(shirt, _black, .3)], const [0, .55, 1]));
+    canvas.drawPath(torso, _radial(const Offset(-14, -30), 40, [_a(_white, .18), _a(_white, 0)], const [0, 1]));
+    // the neckline and the neck
     canvas.drawPath(
-      torso,
-      Paint()
-        ..shader = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(shirt, Colors.white, .28)!, shirt, Color.lerp(shirt, Colors.black, .25)!])
-            .createShader(Rect.fromLTWH(-44 * u, -48 * u, 88 * u, 48 * u)),
-    );
-    // the collar
+        Path()
+          ..moveTo(-12, -38)
+          ..quadraticBezierTo(0, -24, 12, -38)
+          ..close(),
+        _fill(_mix(skin, _black, .12)));
     canvas.drawPath(
-      Path()
-        ..moveTo(-12 * u, -48 * u)
-        ..lineTo(0, -36 * u)
-        ..lineTo(12 * u, -48 * u),
-      Paint()
-        ..color = Color.lerp(skin, Colors.black, .18)!
-        ..style = PaintingStyle.fill,
-    );
-    // the neck
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(-9 * u, -62 * u, 18 * u, 20 * u), Radius.circular(6 * u)),
-        Paint()..color = Color.lerp(skin, Colors.black, .12)!);
+        Path()
+          ..moveTo(-13, -38.5)
+          ..quadraticBezierTo(0, -22, 13, -38.5),
+        _stroke(2.6, _mix(shirt, _black, .25)));
+    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-9, -56, 18, 22), const Radius.circular(6)),
+        _linear(const Offset(-9, 0), const Offset(9, 0), [_mix(skin, _black, .08), _mix(skin, _black, .2)]));
 
-    // ---- the arms (from the shoulders; a reach lengthens the forearm toward the board) ----
-    void arm(bool left, double angle, double reach) {
-      final sx = (left ? -38 : 38) * u, sy = -38 * u;
-      final a = (left ? 1 : -1) * angle + wave * (left ? 0 : 1);
-      // the arm hangs down (angle 0) and swings out and up with the angle; a reach stretches the hand toward the
-      // board, which is above me at the bottom of the screen and below the one at the top
-      final ex = sx + math.sin(a) * 26 * u, ey = sy + math.cos(a) * 26 * u;
-      final hx = ex + math.sin(a) * 14 * u * (1 - reach) - (left ? 1 : -1) * reach * 10 * u,
-          hy = ey + math.cos(a) * 14 * u * (1 - reach) + reach * (down ? 22 : -26) * u;
-      final sleeve = Paint()
-        ..color = Color.lerp(shirt, Colors.black, .1)!
-        ..strokeWidth = 15 * u
-        ..strokeCap = StrokeCap.round
-        ..style = PaintingStyle.stroke;
-      canvas.drawLine(Offset(sx, sy), Offset(ex, ey), sleeve);
-      canvas.drawLine(
-          Offset(ex, ey),
-          Offset(hx, hy),
-          Paint()
-            ..color = skin
-            ..strokeWidth = 11 * u
-            ..strokeCap = StrokeCap.round
-            ..style = PaintingStyle.stroke);
-      canvas.drawCircle(Offset(hx, hy), 7.5 * u, Paint()..shader = RadialGradient(center: const Alignment(-.4, -.4), colors: [Color.lerp(skin, Colors.white, .25)!, skin]).createShader(Rect.fromCircle(center: Offset(hx, hy), radius: 8 * u)));
-      if (mood == Mood.roll && !left) {
+    // ---- the arms: each hand goes where the pose puts it, the elbow bends outward ----
+    final e = _e;
+    void arm(bool right) {
+      final s = right ? 1.0 : -1.0;
+      final a = _hand(from, right), b = _hand(mood, right);
+      var hx = s * (a.dx + (b.dx - a.dx) * e), hy = a.dy + (b.dy - a.dy) * e;
+      if (right && mood == Mood.roll) {
+        hx += math.sin(since * 24) * 3;
+        hy += math.cos(since * 24) * 2;
+      }
+      const l1 = 21.0, l2 = 21.0;
+      final sx = s * 38, sy = -31.0;
+      var dx = hx - sx, dy = hy - sy, d = math.sqrt(dx * dx + dy * dy);
+      const most = l1 + l2 - .5;
+      if (d > most) {
+        hx = sx + dx / d * most;
+        hy = sy + dy / d * most;
+        dx = hx - sx;
+        dy = hy - sy;
+        d = most;
+      }
+      final base = math.atan2(dy, dx);
+      final k = math.acos(((l1 * l1 + d * d - l2 * l2) / (2 * l1 * math.max(d, .001))).clamp(-1.0, 1.0));
+      final ang = base + s * (dy < 0 ? k : -k);
+      final ex = sx + math.cos(ang) * l1, ey = sy + math.sin(ang) * l1;
+      canvas.drawLine(Offset(sx, sy), Offset(ex, ey), _stroke(15, _mix(shirt, _black, .12)));
+      canvas.drawLine(Offset(ex, ey), Offset(hx, hy), _stroke(12, _mix(shirt, _black, .06)));
+      canvas.drawLine(Offset(sx, sy), Offset(ex, ey), _stroke(6, _a(_white, .07)));
+      final hc = Offset(hx, hy);
+      _oval(canvas, hc, 15, 14, _radial(hc, 8, [skinL, skin, _mix(skin, _warm, .15)], const [0, .7, 1], focal: hc + const Offset(-2.5, -2.5)));
+      _oval(canvas, hc + Offset(-s * 5, -1.5), 6, 8, _fill(_mix(skin, _white, .12)));
+      if (right && mood == Mood.roll) {
         // two dice in the shaking hand
-        for (final o in [Offset(-4 * u, -3 * u), Offset(4 * u, 1 * u)]) {
-          final r = Rect.fromCenter(center: Offset(hx, hy) + o, width: 7 * u, height: 7 * u);
-          canvas.drawRRect(RRect.fromRectAndRadius(r, Radius.circular(1.6 * u)), Paint()..color = const Color(0xFFFFFDF5));
-          canvas.drawCircle(r.center, .9 * u, Paint()..color = const Color(0xFF1F1612));
+        for (final o in const [Offset(-5, -9), Offset(4, -7)]) {
+          canvas.save();
+          canvas.translate(hx + o.dx, hy + o.dy);
+          canvas.rotate(o.dx * .12);
+          final r = RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: 9, height: 9), const Radius.circular(2));
+          canvas.drawRRect(r, _fill(const Color(0xFFFFFDF5)));
+          canvas.drawRRect(r, _stroke(.8, const Color(0xFFCFC6B4)));
+          _oval(canvas, const Offset(-2, -2), 2, 2, _fill(const Color(0xFF1F1612)));
+          _oval(canvas, const Offset(2, 2), 2, 2, _fill(const Color(0xFF1F1612)));
+          canvas.restore();
         }
       }
     }
 
-    arm(true, p[7], p[8]);
-    arm(false, -p[9], p[10]);
+    arm(false);
+    arm(true);
 
     // ---- the head ----
     canvas.save();
-    canvas.translate(0, -62 * u + breath + p[1] * 10 * u);
-    canvas.rotate(p[0]);
-    final hr = 34 * u;
-    final headC = Offset(0, -hr);
-    canvas.drawOval(Rect.fromCenter(center: headC + Offset(0, 4 * u), width: hr * 2, height: hr * 2.1), Paint()..color = Colors.black.withValues(alpha: .1));
-    canvas.drawOval(
-      Rect.fromCenter(center: headC, width: hr * 2, height: hr * 2.1),
-      Paint()..shader = RadialGradient(center: const Alignment(-.35, -.4), radius: .95, colors: [Color.lerp(skin, Colors.white, .3)!, skin, Color.lerp(skin, const Color(0xFF7A3B2A), .22)!], stops: const [0, .6, 1]).createShader(Rect.fromCircle(center: headC, radius: hr)),
-    );
-    // the ears
-    for (final sgn in [-1, 1]) {
-      canvas.drawOval(Rect.fromCenter(center: headC + Offset(sgn * hr * .98, 2 * u), width: 11 * u, height: 15 * u), Paint()..color = Color.lerp(skin, Colors.black, .06)!);
-    }
-    // the hair behind (long) and the cap of hair
-    final hairPaint = Paint()..shader = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(hair, Colors.white, .22)!, hair]).createShader(Rect.fromCircle(center: headC, radius: hr * 1.2));
+    canvas.translate(0, -84 + f[1] * 8 + breath);
+    canvas.rotate(f[0]);
+    final hairD = _mix(hair, _black, .25);
     if (look.style == 'long') {
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: headC + Offset(0, hr * .45), width: hr * 2.25, height: hr * 2.2), Radius.circular(hr * .6)), hairPaint);
+      canvas.drawPath(
+          Path()
+            ..moveTo(-30, -26)
+            ..cubicTo(-44, -6, -42, 30, -36, 44)
+            ..quadraticBezierTo(0, 52, 36, 44)
+            ..cubicTo(42, 30, 44, -6, 30, -26)
+            ..close(),
+          _linear(const Offset(-40, -20), const Offset(40, 44), [_mix(hair, _white, .12), hairD]));
     }
-    if (look.style != 'bald') {
-      final cap = Path()
-        ..moveTo(-hr * 1.02, -hr * .1 - hr)
-        ..cubicTo(-hr * 1.02, -hr * 1.05 - hr, hr * 1.02, -hr * 1.05 - hr, hr * 1.02, -hr * .1 - hr)
-        ..cubicTo(hr * .7, -hr * .55 - hr, hr * .2, -hr * .35 - hr, -hr * .25, -hr * .6 - hr)
-        ..cubicTo(-hr * .6, -hr * .5 - hr, -hr * .9, -hr * .25 - hr, -hr * 1.02, -hr * .1 - hr)
+    if (look.style == 'pony') _oval(canvas, const Offset(30, -26), 22, 30, _fill(_mix(hair, _black, .1)));
+    // the ears
+    for (final s in const [-1.0, 1.0]) {
+      _oval(canvas, Offset(s * 31.5, 2), 11, 15, _fill(_mix(skin, _warm, .12)));
+      _oval(canvas, Offset(s * 31.5, 2), 5, 8, _fill(_mix(skin, _warm, .3)));
+    }
+    // the face: a round skull and full cheeks under one light
+    final face = _radial(Offset.zero, 40, [skinL, skin, skinD], const [0, .55, 1], focal: const Offset(-11, -12));
+    _oval(canvas, const Offset(0, -3), 64, 60, face);
+    _oval(canvas, const Offset(0, 9), 58, 46, face);
+    _oval(canvas, const Offset(-7, -17), 28, 16, _fill(_a(_white, .16)));
+    // the cheeks
+    final blush = .22 + f[7] * .5;
+    for (final s in const [-1.0, 1.0]) {
+      final c = Offset(s * 19, 13);
+      _oval(canvas, c, 15, 9, _radial(c, 9, [_a(const Color(0xFFE8757A), .55 * blush), _a(const Color(0xFFE8757A), 0)], const [0, 1]));
+    }
+    // the eyes
+    final shut = math.max(blink, f[6]);
+    final lash = _mix(hair, _black, .4);
+    for (final s in const [-1.0, 1.0]) {
+      final ex = s * 12.5;
+      const ey = -1.0;
+      if (shut > .85) {
+        final path = Path();
+        if (f[2] > .5) {
+          path.addArc(Rect.fromCircle(center: Offset(ex, ey + 3), radius: 7), math.pi * 1.15, math.pi * .7);
+        } else {
+          path
+            ..moveTo(ex - 7, ey + 1)
+            ..quadraticBezierTo(ex, ey + 4, ex + 7, ey + 1);
+        }
+        canvas.drawPath(path, _stroke(2.4, _mix(skin, _black, .6)));
+      } else {
+        final white = Rect.fromCenter(center: Offset(ex, ey), width: 17.2, height: 19.6);
+        canvas.save();
+        canvas.clipPath(Path()..addOval(white));
+        canvas.drawRect(white.inflate(1), _linear(Offset(0, ey - 10), Offset(0, ey + 10), const [Color(0xFFDCDFE8), Color(0xFFFFFFFF), Color(0xFFF4F4F8)], const [0, .35, 1]));
+        // the gaze: up and aside in a thought, to the board in a reach, wandering a little otherwise
+        final gaze = switch (mood) {
+          Mood.think => const Offset(-2.4, -3.2),
+          Mood.reach => Offset(0, down ? 3 : 2.6),
+          _ => Offset(math.sin(t * .7) * 1.2, .6),
+        };
+        final ic = Offset(ex, ey) + gaze;
+        _oval(canvas, ic, 14, 14, _radial(ic, 7, const [Color(0xFF8A5A32), Color(0xFF5A3518), Color(0xFF2A1608)], const [0, .65, 1]));
+        _oval(canvas, ic, 7.4, 7.4, _fill(const Color(0xFF120C10)));
+        _oval(canvas, ic + const Offset(-2.6, -2.8), 4.6, 4.6, _fill(_white));
+        _oval(canvas, ic + const Offset(2.6, 2.4), 1.8, 1.8, _fill(_a(_white, .85)));
+        // the lid coming down
+        if (shut > 0) canvas.drawRect(Rect.fromLTWH(ex - 10, ey - 11, 20, 22 * shut), _fill(skin));
+        canvas.restore();
+        canvas.drawPath(Path()..addArc(Rect.fromCenter(center: Offset(ex, ey), width: 17.6, height: 20), math.pi * 1.08, math.pi * .84), _stroke(look.fem ? 2.4 : 1.8, lash));
+        if (look.fem) canvas.drawLine(Offset(ex + s * 7.6, ey - 5), Offset(ex + s * 10.6, ey - 7.6), _stroke(1.8, lash));
+      }
+      // the brow: up when surprised or glad, its inner end up when sad and down when angry
+      final bl = f[4], inner = f[5];
+      final by = ey - 15 - math.max(0, bl) * 2.6;
+      final i0 = Offset(ex - s * 7, by - inner * 2.8 + (bl < 0 ? -bl * 4 : 0) + 2);
+      canvas.drawPath(
+          Path()
+            ..moveTo(i0.dx, i0.dy)
+            ..quadraticBezierTo(ex, by - 2.6, ex + s * 7.5, by + 1),
+          _stroke(look.fem ? 2.6 : 3.8, _mix(hair, _black, .1)));
+    }
+    if (look.glasses) {
+      final rim = _stroke(2, const Color(0xFF2A2A30));
+      for (final s in const [-1.0, 1.0]) {
+        canvas.drawCircle(Offset(s * 12.5, -1), 11, rim);
+      }
+      canvas.drawPath(
+          Path()
+            ..moveTo(-2, -2)
+            ..quadraticBezierTo(0, -4, 2, -2),
+          rim);
+    }
+    // the nose
+    _oval(canvas, const Offset(0, 9), 9, 7, _radial(const Offset(0, 9), 6, [_mix(skin, _warm, .18), _a(skin, 0)], const [0, 1]));
+    canvas.drawPath(
+        Path()
+          ..moveTo(-3.2, 10.5)
+          ..quadraticBezierTo(0, 13, 3.2, 10.5),
+        _stroke(1.8, _mix(skin, _warm, .4)));
+    _oval(canvas, const Offset(-1, 6), 3, 3, _fill(_a(_white, .35)));
+    // the beard
+    if (look.beard) {
+      canvas.drawPath(
+          Path()
+            ..moveTo(-31, 4)
+            ..cubicTo(-30, 30, -14, 40, 0, 40)
+            ..cubicTo(14, 40, 30, 30, 31, 4)
+            ..cubicTo(26, 22, 16, 24, 10, 20)
+            ..quadraticBezierTo(0, 16, -10, 20)
+            ..cubicTo(-16, 24, -26, 22, -31, 4)
+            ..close(),
+          _linear(const Offset(0, 4), const Offset(0, 40), [_mix(hair, _white, .08), _mix(hair, _black, .2)]));
+    }
+    // the mouth
+    const my = 21.0;
+    final curve = f[2], open = f[3], mw = 8.5 * (1 + open * .25);
+    if (open > .05) {
+      final m = Path()
+        ..moveTo(-mw, my - curve * 2)
+        ..quadraticBezierTo(0, my + curve * 6 + open * 12, mw, my - curve * 2)
+        ..quadraticBezierTo(0, my + curve * 1.5, -mw, my - curve * 2)
         ..close();
-      canvas.drawPath(cap, hairPaint);
+      canvas.drawPath(m, _fill(const Color(0xFF6E2430)));
+      canvas.save();
+      canvas.clipPath(m);
+      _oval(canvas, const Offset(0, my - 1), mw * 1.6, 5, _fill(_white));
+      _oval(canvas, Offset(0, my + curve * 6 + open * 10), mw, 6, _fill(const Color(0xFFD4636C)));
+      canvas.restore();
+    } else {
+      canvas.drawPath(
+          Path()
+            ..moveTo(-mw, my - curve * 2)
+            ..quadraticBezierTo(0, my + curve * 7, mw, my - curve * 2),
+          _stroke(2.4, _mix(skin, const Color(0xFF6B2B2B), .65)));
+    }
+    if (look.mus) {
+      for (final s in const [-1.0, 1.0]) {
+        canvas.drawPath(
+            Path()
+              ..moveTo(0, my - 6)
+              ..cubicTo(s * 6, my - 10, s * 12, my - 8, s * 14, my - 2)
+              ..cubicTo(s * 10, my - 4, s * 5, my - 3, 0, my - 3)
+              ..close(),
+            _fill(_mix(hair, _black, .05)));
+      }
+    }
+    // ---- the hair in front ----
+    final hg = _linear(const Offset(-30, -36), const Offset(30, 0), [_mix(hair, _white, .22), hair, hairD], const [0, .5, 1]);
+    if (look.style != 'bald') {
+      final cap = Path();
+      if (look.style == 'long' || look.style == 'pony') {
+        cap
+          ..moveTo(-33, 6)
+          ..cubicTo(-36, -30, -20, -38, 0, -37)
+          ..cubicTo(20, -38, 36, -30, 33, 6)
+          ..cubicTo(30, -6, 26, -14, 20, -20)
+          ..quadraticBezierTo(8, -16, 2, -25)
+          ..quadraticBezierTo(-8, -14, -20, -20)
+          ..cubicTo(-26, -14, -30, -6, -33, 6);
+      } else {
+        cap
+          ..moveTo(-32, -2)
+          ..cubicTo(-36, -30, -20, -39, 0, -38)
+          ..cubicTo(22, -39, 36, -28, 32, -2)
+          ..cubicTo(30, -12, 27, -17, 22, -20)
+          ..cubicTo(10, -14, -4, -22, -10, -20)
+          ..cubicTo(-18, -17, -24, -18, -27, -14)
+          ..cubicTo(-29, -10, -30, -6, -32, -2);
+      }
+      canvas.drawPath(cap..close(), hg);
+      canvas.drawPath(
+          Path()
+            ..moveTo(-18, -33)
+            ..quadraticBezierTo(-4, -37, 8, -34),
+          _stroke(3, _a(_white, .18)));
       if (look.style == 'curly') {
-        for (var i = 0; i < 7; i++) {
-          final a = math.pi * (0.1 + .8 * i / 6);
-          canvas.drawCircle(headC + Offset(math.cos(a) * hr * .95, -math.sin(a) * hr * .95 - hr * .08), hr * .22, hairPaint);
+        if (look.hat) {
+          for (final s in const [-1.0, 1.0]) {
+            _oval(canvas, Offset(s * 29, -6), 10, 10, hg);
+            _oval(canvas, Offset(s * 31, 2), 10, 10, hg);
+          }
+        } else {
+          for (var i = 0; i < 9; i++) {
+            final a = math.pi * (.05 + .9 * i / 8);
+            _oval(canvas, Offset(math.cos(a) * 30, -6 - math.sin(a) * 30), 15, 15, hg);
+          }
         }
       }
     } else {
-      canvas.drawOval(Rect.fromCenter(center: headC + Offset(-hr * .3, -hr * .55), width: hr * .5, height: hr * .25), Paint()..color = Colors.white.withValues(alpha: .35));
+      _oval(canvas, const Offset(-8, -26), 16, 7, _fill(_a(_white, .35)));
+      for (final s in const [-1.0, 1.0]) {
+        canvas.drawPath(
+            Path()
+              ..moveTo(s * 31, -12)
+              ..quadraticBezierTo(s * 34, -2, s * 30, 8),
+            _stroke(5, hair));
+      }
     }
     // the hat: a flat cap
     if (look.hat) {
-      final hc = Color.lerp(shirt, Colors.black, .35)!;
-      canvas.drawOval(Rect.fromCenter(center: headC + Offset(0, -hr * .78), width: hr * 2.25, height: hr * .9), Paint()..color = hc);
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: headC + Offset(hr * .25, -hr * .58), width: hr * 1.3, height: hr * .3), Radius.circular(hr * .15)), Paint()..color = Color.lerp(hc, Colors.black, .3)!);
-    }
-    // the eyes
-    final shut = math.max(blink, p[6]);
-    for (final sgn in [-1, 1]) {
-      final ec = headC + Offset(sgn * hr * .38, hr * .02);
-      final ew = hr * .3, eh = hr * .36 * (1 - shut);
-      if (shut > .85) {
-        // closed: a happy arc or a line
-        canvas.drawArc(Rect.fromCenter(center: ec, width: ew * 2, height: hr * .3), p[2] > .5 ? math.pi : 0, math.pi, false,
-            Paint()
-              ..color = Color.lerp(skin, Colors.black, .55)!
-              ..strokeWidth = 2.2 * u
-              ..strokeCap = StrokeCap.round
-              ..style = PaintingStyle.stroke);
-      } else {
-        canvas.drawOval(Rect.fromCenter(center: ec, width: ew * 2, height: math.max(eh * 2, 1)), Paint()..color = Colors.white);
-        // the gaze: up for a thought, down for a reach
-        final gaze = mood == Mood.think ? Offset(-ew * .3, -eh * .45) : (mood == Mood.reach ? Offset(0, eh * .4) : Offset(math.sin(t * .7) * ew * .12, 0));
-        final ic = ec + gaze;
-        canvas.drawCircle(ic, ew * .62, Paint()..shader = RadialGradient(colors: [const Color(0xFF6A9BD8), const Color(0xFF2C4F8A)]).createShader(Rect.fromCircle(center: ic, radius: ew * .62)));
-        canvas.drawCircle(ic, ew * .34, Paint()..color = const Color(0xFF14101C));
-        canvas.drawCircle(ic + Offset(-ew * .2, -ew * .22), ew * .14, Paint()..color = Colors.white);
-        // the lid
-        canvas.drawArc(Rect.fromCenter(center: ec, width: ew * 2.1, height: eh * 2.1), math.pi, math.pi, false,
-            Paint()
-              ..color = Color.lerp(skin, Colors.black, .35)!
-              ..strokeWidth = 1.6 * u
-              ..style = PaintingStyle.stroke);
-      }
-      // the brow
-      final bl = p[4], inner = p[5];
-      final by = ec.dy - hr * .36 - math.max(0, bl) * hr * .08;
-      // the inner end: up when sad, down when angry
-      final innerEnd = Offset(ec.dx - sgn * ew * .95, by - inner * hr * .08 + (bl < 0 ? -bl * hr * .12 : 0));
-      final outerEnd = Offset(ec.dx + sgn * ew * .95, by);
-      canvas.drawLine(
-          innerEnd,
-          outerEnd,
-          Paint()
-            ..color = hair
-            ..strokeWidth = 3 * u
-            ..strokeCap = StrokeCap.round);
-    }
-    // the nose
-    canvas.drawArc(Rect.fromCenter(center: headC + Offset(0, hr * .3), width: hr * .22, height: hr * .25), 0, math.pi, false,
-        Paint()
-          ..color = Color.lerp(skin, const Color(0xFF7A3B2A), .35)!
-          ..strokeWidth = 2 * u
-          ..strokeCap = StrokeCap.round
-          ..style = PaintingStyle.stroke);
-    // the cheeks
-    final blush = .25 + p[11] * .45;
-    for (final sgn in [-1, 1]) {
-      canvas.drawOval(Rect.fromCenter(center: headC + Offset(sgn * hr * .55, hr * .35), width: hr * .4, height: hr * .22), Paint()..color = const Color(0xFFE8757A).withValues(alpha: blush * .45));
-    }
-    // the mouth
-    final my = headC.dy + hr * .62, mw = hr * .42 * (1 + p[3] * .2), curve = p[2];
-    final mouth = Path()
-      ..moveTo(-mw, my - curve * hr * .06)
-      ..quadraticBezierTo(0, my + curve * hr * .3 + p[3] * hr * .1, mw, my - curve * hr * .06);
-    if (p[3] > .05) {
-      final open = Path.from(mouth)..quadraticBezierTo(0, my + curve * hr * .3 + p[3] * hr * .45, -mw, my - curve * hr * .06);
-      canvas.drawPath(open, Paint()..color = const Color(0xFF7A2A33));
-      canvas.drawPath(open, Paint()..color = Colors.white.withValues(alpha: .9 * math.min(1, p[3] * 1.5))..style = PaintingStyle.stroke..strokeWidth = 2.6 * u);
-    }
-    canvas.drawPath(
-        mouth,
-        Paint()
-          ..color = Color.lerp(skin, const Color(0xFF6B2B2B), .6)!
-          ..strokeWidth = 2.4 * u
-          ..strokeCap = StrokeCap.round
-          ..style = PaintingStyle.stroke);
-    // the moustache and the beard
-    if (look.beard) {
-      canvas.drawArc(Rect.fromCenter(center: headC + Offset(0, hr * .5), width: hr * 1.5, height: hr * 1.2), 0.15, math.pi - .3, false,
-          Paint()
-            ..color = hair.withValues(alpha: .85)
-            ..strokeWidth = 7 * u
-            ..strokeCap = StrokeCap.round
-            ..style = PaintingStyle.stroke);
-    }
-    if (look.mus) {
-      for (final sgn in [-1, 1]) {
-        final path = Path()
-          ..moveTo(0, my - hr * .1)
-          ..quadraticBezierTo(sgn * hr * .22, my - hr * .22, sgn * hr * .4, my - hr * .08);
-        canvas.drawPath(
-            path,
-            Paint()
-              ..color = hair
-              ..strokeWidth = 4.5 * u
-              ..strokeCap = StrokeCap.round
-              ..style = PaintingStyle.stroke);
-      }
-    }
-    // the fringe over the forehead (short hair)
-    if (look.style == 'short' && !look.hat) {
-      canvas.drawArc(Rect.fromCenter(center: headC + Offset(hr * .15, -hr * .62), width: hr * 1.1, height: hr * .5), math.pi, math.pi * .9, false,
-          Paint()
-            ..color = hair
-            ..strokeWidth = 5 * u
-            ..strokeCap = StrokeCap.round
-            ..style = PaintingStyle.stroke);
+      final hc = _mix(shirt, _black, .35);
+      canvas.drawPath(
+          Path()
+            ..moveTo(-35, -14)
+            ..cubicTo(-38, -40, -14, -46, 6, -44)
+            ..cubicTo(28, -42, 38, -30, 35, -14)
+            ..quadraticBezierTo(0, -20, -35, -14)
+            ..close(),
+          _linear(const Offset(-30, -44), const Offset(30, -14), [_mix(hc, _white, .18), _mix(hc, _black, .2)]));
+      canvas.drawPath(
+          Path()
+            ..moveTo(-30, -16)
+            ..quadraticBezierTo(0, -24, 30, -16)
+            ..quadraticBezierTo(10, -8, -30, -16)
+            ..close(),
+          _fill(_mix(hc, _black, .35)));
+      _oval(canvas, const Offset(4, -44), 6, 3, _fill(_mix(hc, _black, .2)));
     }
     canvas.restore();
     canvas.restore();

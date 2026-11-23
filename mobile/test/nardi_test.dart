@@ -29,6 +29,14 @@ Future<void> _page(WidgetTester t) async {
   expect(find.byType(NardiTab), findsOneWidget);
 }
 
+/// a tap on something of backgammon's page, scrolled into sight first
+Future<void> _tapIn(WidgetTester t, String key) async {
+  final f = find.byKey(ValueKey(key));
+  await t.ensureVisible(f);
+  await settle(t);
+  await t.tap(f);
+}
+
 NardiSession _table(WidgetTester t) => t.widget<NardiScreen>(find.byType(NardiScreen)).table as NardiSession;
 
 /// a tap on view point [v] of the board (0 the bar, -2 the tray); I play the light checkers, so the view is the real one
@@ -74,9 +82,9 @@ void main() {
     expect(find.text('ნიკა'), findsOneWidget);
     expect(find.text('ოსტატი გურამი'), findsOneWidget);
     // the weakest one, then the game
-    await t.tap(find.byKey(const ValueKey('nd-bot-1')));
+    await _tapIn(t, 'nd-bot-1');
     await settle(t);
-    await t.tap(find.byKey(const ValueKey('nd-start')));
+    await _tapIn(t, 'nd-start');
     await settle(t);
     expect(find.byType(NardiScreen), findsOneWidget);
     final s = _table(t);
@@ -104,7 +112,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await shell(t);
     await _page(t);
-    await t.tap(find.byKey(const ValueKey('nd-start')));
+    await _tapIn(t, 'nd-start');
     await settle(t);
     final s = _table(t);
     // a few turns, then out on my roll
@@ -124,7 +132,7 @@ void main() {
     await shell(t);
     await _page(t);
     expect(find.byKey(const ValueKey('nd-current')), findsOneWidget);
-    await t.tap(find.byKey(const ValueKey('nd-continue')));
+    await _tapIn(t, 'nd-continue');
     await settle(t);
     final s2 = _table(t);
     expect(jsonEncode(s2.g!.toJson()), saved);
@@ -137,7 +145,7 @@ void main() {
       final waiting = jsonEncode(s2.g!.toJson());
       await t.pump(const Duration(seconds: 10));
       expect(jsonEncode(s2.g!.toJson()), waiting, reason: 'the computer waits while the table is closed');
-      await t.tap(find.byKey(const ValueKey('nd-continue')));
+      await _tapIn(t, 'nd-continue');
       await settle(t);
       for (var i = 0; i < 40 && _table(t).g!.turn == 1; i++) {
         await t.pump(const Duration(milliseconds: 400));
@@ -151,7 +159,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await shell(t);
     await _page(t);
-    await t.tap(find.byKey(const ValueKey('nd-start')));
+    await _tapIn(t, 'nd-start');
     await settle(t);
     final s = _table(t);
     // on to a turn of mine with two different dice and nothing played yet
