@@ -21,7 +21,7 @@ class Step {
   factory Step.fromJson(Map j) => Step(_i(j['f']), _i(j['t']), _i(j['d']), hit: j['h'] == true);
 
   @override
-  bool operator ==(Object o) => o is Step && o.from == from && o.to == to && o.die == die;
+  bool operator ==(Object other) => other is Step && other.from == from && other.to == to && other.die == die;
   @override
   int get hashCode => Object.hash(from, to, die);
   @override
@@ -254,6 +254,9 @@ class NardiGame {
   /// the opening rolls that came out equal, for the story
   int ties = 0;
 
+  /// the opening roll (player 0's die, player 1's), until the first turn is over
+  List<int>? firstRoll;
+
   int _d() => rng.nextInt(6) + 1;
 
   /// the opening roll: one die each, the higher starts with both; equal dice are rolled again
@@ -265,6 +268,7 @@ class NardiGame {
       b = _d();
     }
     dice = [a, b];
+    firstRoll = [a, b];
     turn = a > b ? 0 : 1;
     _begin();
   }
@@ -273,6 +277,7 @@ class NardiGame {
   void roll() {
     if (phase != Phase.roll) return;
     dice = [_d(), _d()];
+    firstRoll = null;
     _begin();
   }
 
@@ -333,6 +338,7 @@ class NardiGame {
     last = List.of(done);
     done.clear();
     left = const [];
+    firstRoll = null;
     turn = 1 - turn;
     phase = Phase.roll;
   }
@@ -373,6 +379,7 @@ class NardiGame {
         'winner': winner,
         'pts': pts,
         'ties': ties,
+        if (firstRoll != null) 'open': firstRoll,
       };
 
   factory NardiGame.fromJson(Map j, {math.Random? rng}) {
@@ -387,6 +394,7 @@ class NardiGame {
     g.winner = j['winner'] == null ? null : _i(j['winner']);
     g.pts = _i(j['pts']);
     g.ties = _i(j['ties']);
+    g.firstRoll = j['open'] is List && (j['open'] as List).length == 2 ? [for (final x in j['open'] as List) _i(x)] : null;
     if (g.phase == Phase.move) {
       // the turns as they stood when the dice fell: the board before this turn's steps
       var b = g.board;

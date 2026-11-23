@@ -74,7 +74,12 @@ class _NardiTabState extends State<NardiTab> {
                     Text('${s.bot.name} · ${s.g!.turn == 0 ? 'შენი სვლაა' : 'მისი სვლაა'} · ${s.g!.board.pips(0)}:${s.g!.board.pips(1)} პიპი', style: TextStyle(color: c.muted, fontSize: 13)),
                   ]),
                 ),
-                FilledButton(key: const ValueKey('nd-continue'), onPressed: () => _play(), child: const Text('გაგრძელება')),
+                FilledButton(
+                  key: const ValueKey('nd-continue'),
+                  style: FilledButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 16)),
+                  onPressed: () => _play(),
+                  child: const Text('გაგრძელება'),
+                ),
               ]),
             ),
           if (s.playing) const SizedBox(height: 16),
@@ -100,7 +105,7 @@ class _NardiTabState extends State<NardiTab> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
-                        Text(b.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15.5)),
+                        Flexible(child: Text(b.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15.5))),
                         const SizedBox(width: 8),
                         Row(children: [for (var i = 0; i < 4; i++) PIcon('star', size: 12, color: i < b.level ? const Color(0xFFF5B300) : c.line)]),
                       ]),

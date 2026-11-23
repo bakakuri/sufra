@@ -109,7 +109,9 @@ class _NardiScreenState extends State<NardiScreen> {
   String _words() {
     final g = t.g;
     if (g == null) return '';
-    final other = t.seatOf(t.other).name.split(' ').last;
+    final seat = t.seatOf(t.other);
+    // a person by their first name, a computer player by all of it
+    final other = seat.person != null ? seat.name.split(' ').first : seat.name;
     switch (g.phase) {
       case Phase.opening:
         return 'კამათელი წყვეტს, ვინ იწყებს';
@@ -119,10 +121,11 @@ class _NardiScreenState extends State<NardiScreen> {
         }
         return g.turn == t.me ? 'შენი სვლაა: გააგორე კამათელი' : '$other აგორებს…';
       case Phase.move:
-        if (g.turn != t.me) return g.done.isEmpty && g.lastBy < 0 ? '$other იწყებს: ${g.dice[t.other]} და ${g.dice[t.me]}' : '$other დადის…';
+        final first = g.firstRoll;
+        if (g.turn != t.me) return first != null ? '$other იწყებს: ${first[t.other]} და ${first[t.me]}' : '$other დადის…';
         if (selected != null) return 'სად დავდგა?';
         if (g.board.bars[t.me] > 0) return 'ჯერ ბარიდან შემოიყვანე';
-        if (g.done.isEmpty && g.lastBy < 0) return 'შენ იწყებ: ${g.dice[t.me]} და ${g.dice[1 - t.me]}';
+        if (first != null && g.done.isEmpty) return 'შენ იწყებ: ${first[t.me]} და ${first[t.other]}';
         if (g.dice[0] == g.dice[1]) return 'წყვილი! ${g.left.length} სვლა დარჩა';
         return 'შენი სვლაა: ${g.left.join(' და ')}';
       case Phase.over:
@@ -191,7 +194,7 @@ class _NardiScreenState extends State<NardiScreen> {
         if (t.otherAway && !mine) ...[const SizedBox(width: 6), Text('გასულია', style: TextStyle(color: c.muted, fontSize: 12))],
       ]),
       const SizedBox(height: 2),
-      Text('${g.board.pips(pl)} პიპი${secs != null ? ' · ${secs}წმ' : ''}', style: TextStyle(color: c.muted, fontSize: 12.5)),
+      Text('${g.board.pips(pl)} პიპი${secs != null ? ' · $secsწმ' : ''}', style: TextStyle(color: c.muted, fontSize: 12.5)),
       if (top) ...[
         const SizedBox(height: 6),
         AnimatedSwitcher(
@@ -247,6 +250,7 @@ class _NardiScreenState extends State<NardiScreen> {
           if (t.canMove && g.done.isNotEmpty)
             OutlinedButton.icon(
               key: const ValueKey('nd-undo'),
+              style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48), padding: const EdgeInsets.symmetric(horizontal: 16)),
               onPressed: () {
                 selected = null;
                 t.undo();

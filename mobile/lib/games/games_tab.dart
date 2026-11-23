@@ -9,7 +9,6 @@ import '../joker/joker_tab.dart';
 import '../nardi/nardi_tab.dart';
 import '../ui/icons.dart';
 import '../ui/theme.dart';
-import '../ui/widgets.dart';
 
 class GamesTab extends StatelessWidget {
   const GamesTab({super.key});
