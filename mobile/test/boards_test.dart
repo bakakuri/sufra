@@ -269,6 +269,64 @@ void main() {
     expect(api.calls, contains('settle 3 2 0'));
   });
 
+  testWidgets('the match room: matches that came by themselves show their live score, under their day, by league; a finished one is under the finished', (t) async {
+    phone(t);
+    await shell(t);
+    await _open(t, 'sport');
+    // the one on now first, with its score; the one over (its result not yet confirmed) is not a coming one
+    expect(find.text('ახლა მიმდინარე'), findsOneWidget);
+    expect(find.text('1:0'), findsOneWidget);
+    expect(find.text('ხვალ'), findsOneWidget);
+    expect(find.byKey(const ValueKey('fx-5')), findsNothing);
+    // no staff line for everyone else
+    expect(find.byKey(const ValueKey('fx-sync')), findsNothing);
+    // one league
+    await _tap(t, 'fxlg-პრემიერ ლიგა');
+    expect(find.byKey(const ValueKey('fx-4')), findsOneWidget);
+    expect(find.byKey(const ValueKey('fx-1')), findsNothing);
+    await _tap(t, 'fxlg-all');
+    expect(find.byKey(const ValueKey('fx-1')), findsOneWidget);
+    // the live one: its score in the head of the page
+    await _tap(t, 'fx-4');
+    expect(t.widget<Text>(find.byKey(const ValueKey('fx-score'))).data, '1:0');
+    expect(find.text('ცოცხლად'), findsOneWidget);
+    await _back(t);
+    // the finished ones: the one waiting for staff, with the source's score
+    await t.tap(find.text('დასრულებული'));
+    await settle(t);
+    expect(find.byKey(const ValueKey('fx-5')), findsOneWidget);
+    expect(find.text('3:3'), findsOneWidget);
+  });
+
+  testWidgets('the match room for a moderator: a finished match confirmed in one tap, a team named right, how the automatic matches do', (t) async {
+    phone(t);
+    final api = await shell(t, me: _admin);
+    await _open(t, 'sport');
+    final list = find.descendant(of: find.byType(SportScreen), matching: find.byType(Scrollable)).first;
+    expect(find.text('შედეგი დასადასტურებელია · 1'), findsOneWidget);
+    await t.scrollUntilVisible(find.byKey(const ValueKey('fx-sync')), 300, scrollable: list);
+    expect(find.textContaining('ავტომატური მატჩები ჩართულია'), findsOneWidget);
+    await _tap(t, 'fxok-5');
+    expect(find.textContaining('რეალ მადრიდი 3:3 Unknownia'), findsOneWidget);
+    await t.tap(find.widgetWithText(TextButton, 'დადასტურება'));
+    await settle(t);
+    expect(api.calls, contains('settle 5 3 3'));
+    expect(find.text('შედეგი დასადასტურებელია · 1'), findsNothing);
+    // a name set right
+    await _tap(t, 'fx-4');
+    await _tap(t, 'fs-names');
+    expect(find.text('ეს სახელი ამ გუნდის შემდეგ მატჩებსაც გადაჰყვება.'), findsOneWidget);
+    await t.enterText(find.byKey(const ValueKey('fn-a')), 'ტოტენჰემ ჰოტსპური');
+    await _tap(t, 'fn-ok');
+    expect(api.calls, contains('fxnames 4 არსენალი ტოტენჰემ ჰოტსპური'));
+    expect(find.text('ტოტენჰემ ჰოტსპური'), findsWidgets);
+    // a look that went wrong is said (the list looks again on coming back)
+    api.syncState = {'on': true, 'error': 'http 403: restricted'};
+    await _back(t);
+    await t.scrollUntilVisible(find.byKey(const ValueKey('fx-sync')), 300, scrollable: list);
+    expect(find.textContaining('შეცდომა — http 403'), findsOneWidget);
+  });
+
   testWidgets('jobs: by category, one applied to; mine: a CV seen, a candidate invited, closed; a new vacancy; mine and applied', (t) async {
     phone(t);
     final api = await shell(t);

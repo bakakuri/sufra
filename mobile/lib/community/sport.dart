@@ -19,20 +19,45 @@ import 'rides.dart' show atText;
 
 const pickNames = {'1': 'მასპინძელი', 'X': 'ფრე', '2': 'სტუმარი'};
 
-bool fixtureLive(Map<String, dynamic> f) => f['status'] == 'upcoming' && !asTime(f['starts_at']).isAfter(DateTime.now());
+/// a match that came by itself carries the source's state and score (live_state, live_home/away); staff settle it
+bool fixtureLive(Map<String, dynamic> f) =>
+    f['status'] == 'upcoming' && !asTime(f['starts_at']).isAfter(DateTime.now()) && !const ['finished', 'postponed', 'cancelled', 'suspended'].contains(f['live_state']);
 
-Widget fixtureBadge(BuildContext context, Map<String, dynamic> f) {
+/// over by the source, its result not yet confirmed
+bool fixtureEnded(Map<String, dynamic> f) => f['status'] == 'upcoming' && f['live_state'] == 'finished';
+
+String fixtureScore(Map<String, dynamic> f) => f['status'] == 'finished'
+    ? '${f['home_score']}:${f['away_score']}'
+    : f['live_home'] != null && f['live_away'] != null
+        ? '${f['live_home']}:${f['live_away']}'
+        : 'vs';
+
+const _wdays = ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
+
+/// the day a match is on, over its group
+String fixtureDay(DateTime d, [DateTime? now]) {
+  final t = now ?? DateTime.now(), dd = DateTime(d.year, d.month, d.day).difference(DateTime(t.year, t.month, t.day)).inDays;
+  if (dd == 0) return 'დღეს';
+  if (dd == 1) return 'ხვალ';
+  if (dd == -1) return 'გუშინ';
+  return '${_wdays[d.weekday % 7]}, ${d.day} ${months[d.month - 1]}';
+}
+
+Widget fixtureBadge(BuildContext context, Map<String, dynamic> f, {bool timeOnly = false}) {
   final c = context.pc;
-  if (f['status'] == 'finished') return const PTag('დასრულდა');
-  if (f['status'] == 'cancelled') return const PTag('გაუქმდა', kind: 'warn');
+  if (f['status'] == 'finished' || fixtureEnded(f)) return const PTag('დასრულდა');
+  if (f['status'] == 'cancelled' || f['live_state'] == 'cancelled') return const PTag('გაუქმდა', kind: 'warn');
+  if (f['live_state'] == 'postponed') return const PTag('გადაიდო', kind: 'warn');
+  if (f['live_state'] == 'suspended') return const PTag('შეჩერდა', kind: 'warn');
   if (fixtureLive(f)) {
     return Row(mainAxisSize: MainAxisSize.min, children: [
       Container(width: 8, height: 8, decoration: BoxDecoration(color: c.nope, shape: BoxShape.circle)),
       const SizedBox(width: 5),
-      Text('ცოცხლად', style: TextStyle(color: c.nope, fontWeight: FontWeight.w800, fontSize: 12.5)),
+      Text(f['live_state'] == 'paused' ? 'შესვენება' : 'ცოცხლად', style: TextStyle(color: c.nope, fontWeight: FontWeight.w800, fontSize: 12.5)),
     ]);
   }
-  return PTag(atText(asTime(f['starts_at'])), kind: 'ad');
+  final at = asTime(f['starts_at']);
+  return PTag(timeOnly ? hhmm(at) : atText(at), kind: 'ad');
 }
 
 class _Teams extends StatelessWidget {
@@ -47,8 +72,9 @@ class _Teams extends StatelessWidget {
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Text(
-          f['status'] == 'finished' ? '${f['home_score']}:${f['away_score']}' : 'vs',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: big ? 28 : 18, color: f['status'] == 'finished' ? c.ink : c.muted),
+          fixtureScore(f),
+          key: big ? const ValueKey('fx-score') : null,
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: big ? 28 : 18, color: fixtureLive(f) ? c.nope : fixtureScore(f) != 'vs' ? c.ink : c.muted),
         ),
       ),
       Expanded(child: Text('${f['away']}', style: st, maxLines: 2, overflow: TextOverflow.ellipsis)),
@@ -70,6 +96,11 @@ class _SportScreenState extends State<SportScreen> {
   int _gen = 0;
   bool _started = false;
 
+  /// the league shown ('' for all); for staff the finished ones to confirm and how the automatic matches are doing
+  String league = '';
+  List<Map<String, dynamic>> pending = const [];
+  Map<String, dynamic>? sync;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -82,11 +113,17 @@ class _SportScreenState extends State<SportScreen> {
     final g = ++_gen;
     if (d != null) setState(() => d = null);
     try {
-      final r = await context.app.api.fixtures(tab);
+      final api = context.app.api, staff = tab == 'up' && isStaff(context);
+      final r = await api.fixtures(tab);
+      final p = staff ? await api.pendingFixtures().catchError((_) => <Map<String, dynamic>>[]) : const <Map<String, dynamic>>[];
+      final st = staff ? await api.fixtureSyncState() : null;
       if (mounted && g == _gen) {
         setState(() {
           d = r;
+          pending = p;
+          sync = st;
           error = null;
+          if (league.isNotEmpty && !r.$1.any((f) => _lg(f) == league)) league = '';
         });
       }
     } catch (e) {
@@ -97,6 +134,149 @@ class _SportScreenState extends State<SportScreen> {
         });
       }
     }
+  }
+
+  static String _lg(Map<String, dynamic> f) => '${f['league'] ?? ''}'.isEmpty ? 'მატჩი' : '${f['league']}';
+
+  /// a finished one's score confirmed as the source gave it: the winners are paid
+  Future<void> _confirm(Map<String, dynamic> f) async {
+    final a = asInt(f['live_home']), b = asInt(f['live_away']);
+    if (!await confirm(context, title: 'შედეგის დადასტურება', text: '${f['home']} $a:$b ${f['away']}. მოგებული მონეტები ავტომატურად დაირიცხება.', yes: 'დადასტურება') || !mounted) return;
+    if (await attempt(context, () => context.app.api.settleFixture(asInt(f['id']), a, b)) && mounted) {
+      toast(context, 'შედეგი შენახულია');
+      _load();
+    }
+  }
+
+  Future<void> _open(Map<String, dynamic> f) async {
+    await openPage(context, FixtureScreen(id: asInt(f['id'])), full: true);
+    _load();
+  }
+
+  Widget _card(BuildContext context, Map<String, dynamic> f, Map<int, Map<String, dynamic>> mine, {bool timeOnly = false}) {
+    final c = context.pc;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Material(
+        color: c.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: c.line)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: ValueKey('fx-${f['id']}'),
+          onTap: () => _open(f),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(child: Text(_lg(f).toUpperCase(), style: TextStyle(color: c.muted, fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .4))),
+                fixtureBadge(context, f, timeOnly: timeOnly),
+              ]),
+              const SizedBox(height: 10),
+              _Teams(f),
+              if (mine[asInt(f['id'])] case final m?)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'შენი: ${pickNames[m['pick']] ?? m['pick']}${m['payout'] != null ? ' · ${asInt(m['payout']) > asInt(m['stake']) ? 'მოგება +${m['payout']}' : asInt(m['payout']) == asInt(m['stake']) && asInt(m['stake']) > 0 ? 'დაბრუნდა' : 'წაგება'}' : ''}',
+                    style: TextStyle(color: c.accent, fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _rows(BuildContext context, (List<Map<String, dynamic>>, Map<int, Map<String, dynamic>>) x) {
+    final c = context.pc, rows = [for (final f in x.$1) if (league.isEmpty || _lg(f) == league) f], leagues = {for (final f in x.$1) _lg(f)};
+    final out = <Widget>[];
+    if (pending.isNotEmpty) {
+      out
+        ..add(SecHead('შედეგი დასადასტურებელია · ${pending.length}'))
+        ..add(Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text('მატჩი დასრულდა, ანგარიში თავისით ჩაიწერა. დადასტურების შემდეგ მოგებული მონეტები დაირიცხება.', style: TextStyle(color: c.muted, fontSize: 13)),
+        ));
+      for (final f in pending) {
+        out.add(Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+          decoration: BoxDecoration(
+            color: Color.alphaBlend(c.gold.withValues(alpha: .12), c.surface),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Color.alphaBlend(c.gold.withValues(alpha: .35), c.line)),
+          ),
+          child: Row(children: [
+            Expanded(
+              child: InkWell(
+                onTap: () => _open(f),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(_lg(f), style: TextStyle(color: c.muted, fontSize: 12, fontWeight: FontWeight.w700)),
+                  Text('${f['home']}  ${f['live_home']}:${f['live_away']}  ${f['away']}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                ]),
+              ),
+            ),
+            FilledButton(key: ValueKey('fxok-${f['id']}'), style: FilledButton.styleFrom(minimumSize: const Size(0, 38)), onPressed: () => _confirm(f), child: const Text('დადასტურება')),
+          ]),
+        ));
+      }
+      out.add(const SizedBox(height: 8));
+    }
+    if (leagues.length > 1) {
+      out.add(SizedBox(
+        height: 48,
+        child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.fromLTRB(12, 4, 12, 6), children: [
+          for (final l in ['', ...leagues])
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: ChoiceChip(
+                key: ValueKey('fxlg-${l.isEmpty ? 'all' : l}'),
+                label: Text(l.isEmpty ? 'ყველა' : l),
+                selected: league == l,
+                showCheckmark: false,
+                onSelected: (_) => setState(() => league = l),
+              ),
+            ),
+        ]),
+      ));
+    }
+    if (rows.isEmpty) {
+      out.add(Padding(padding: const EdgeInsets.all(24), child: Text('ამ ლიგაში მატჩი ჯერ არ არის', textAlign: TextAlign.center, style: TextStyle(color: c.muted))));
+    } else if (tab == 'up') {
+      String? day;
+      for (final f in rows) {
+        final dd = fixtureLive(f) ? 'ახლა მიმდინარე' : fixtureDay(asTime(f['starts_at']));
+        if (dd != day) {
+          day = dd;
+          out.add(Padding(
+            padding: const EdgeInsets.fromLTRB(18, 12, 16, 4),
+            child: Text(dd, key: ValueKey('fxday-$dd'), style: TextStyle(color: c.muted, fontWeight: FontWeight.w800, fontSize: 13)),
+          ));
+        }
+        out.add(_card(context, f, x.$2, timeOnly: !fixtureLive(f)));
+      }
+    } else {
+      for (final f in rows) {
+        out.add(_card(context, f, x.$2));
+      }
+    }
+    if (sync case final st?) {
+      final err = '${st['error'] ?? ''}';
+      out.add(Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Text(
+          st['on'] != true
+              ? 'ავტომატური მატჩები ჯერ არ არის ჩართული'
+              : err.isNotEmpty
+                  ? 'ავტომატური მატჩები: შეცდომა — $err'
+                  : 'ავტომატური მატჩები ჩართულია${st['took_at'] != null ? ' · განახლდა ${atText(asTime(st['took_at']))}' : ''}',
+          key: const ValueKey('fx-sync'),
+          style: TextStyle(color: err.isNotEmpty ? c.nope : c.muted, fontSize: 12),
+        ),
+      ));
+    }
+    return out;
   }
 
   Future<void> _new() async {
@@ -141,7 +321,7 @@ class _SportScreenState extends State<SportScreen> {
               ? const Center(child: CircularProgressIndicator())
               : error != null
                   ? Empty(icon: 'trophy', title: 'ვერ ჩაიტვირთა', text: errText(error!), action: 'ხელახლა ცდა', onAction: _load)
-                  : x.$1.isEmpty
+                  : x.$1.isEmpty && pending.isEmpty
                       ? Empty(
                           icon: 'trophy',
                           title: tab == 'mine' ? 'პროგნოზები ჯერ არ გაქვს' : 'მატჩები ჯერ არ არის',
@@ -156,43 +336,7 @@ class _SportScreenState extends State<SportScreen> {
                         )
                       : RefreshIndicator(
                           onRefresh: _load,
-                          child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
-                            for (final f in x.$1)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                child: Material(
-                                  color: c.surface,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: c.line)),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: InkWell(
-                                    key: ValueKey('fx-${f['id']}'),
-                                    onTap: () async {
-                                      await openPage(context, FixtureScreen(id: asInt(f['id'])), full: true);
-                                      _load();
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(14),
-                                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                        Row(children: [
-                                          Expanded(child: Text('${'${f['league'] ?? ''}'.isEmpty ? 'მატჩი' : f['league']}'.toUpperCase(), style: TextStyle(color: c.muted, fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .4))),
-                                          fixtureBadge(context, f),
-                                        ]),
-                                        const SizedBox(height: 10),
-                                        _Teams(f),
-                                        if (x.$2[asInt(f['id'])] case final m?)
-                                          Padding(
-                                            padding: const EdgeInsets.only(top: 8),
-                                            child: Text(
-                                              'შენი: ${pickNames[m['pick']] ?? m['pick']}${m['payout'] != null ? ' · ${asInt(m['payout']) > asInt(m['stake']) ? 'მოგება +${m['payout']}' : asInt(m['payout']) == asInt(m['stake']) && asInt(m['stake']) > 0 ? 'დაბრუნდა' : 'წაგება'}' : ''}',
-                                              style: TextStyle(color: c.accent, fontWeight: FontWeight.w700, fontSize: 13),
-                                            ),
-                                          ),
-                                      ]),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ]),
+                          child: ListView(padding: const EdgeInsets.only(bottom: 24), children: _rows(context, x)),
                         ),
         ),
       ]),
@@ -295,6 +439,9 @@ class _FixtureScreenState extends State<FixtureScreen> {
   StreamSubscription<Map<String, dynamic>>? _live;
   bool _started = false;
 
+  /// while the match is on its score is looked at every minute
+  Timer? _tick;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -307,6 +454,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
   @override
   void dispose() {
     _live?.cancel();
+    _tick?.cancel();
     say.dispose();
     hs.dispose();
     aws.dispose();
@@ -322,7 +470,20 @@ class _FixtureScreenState extends State<FixtureScreen> {
         d = x;
         loaded = true;
         error = null;
+        // a finished one from the source: its score ready to be confirmed
+        if (x != null && fixtureEnded(x.f) && hs.text.isEmpty && aws.text.isEmpty) {
+          hs.text = '${x.f['live_home']}';
+          aws.text = '${x.f['live_away']}';
+        }
       });
+      final f = x?.f;
+      final soon = f != null && f['ext_id'] != null && f['status'] == 'upcoming' && asTime(f['starts_at']).difference(DateTime.now()) < const Duration(minutes: 15);
+      if (f != null && (fixtureLive(f) || (soon && !fixtureEnded(f) && f['live_state'] != 'postponed'))) {
+        _tick ??= Timer.periodic(const Duration(minutes: 1), (_) => _load());
+      } else {
+        _tick?.cancel();
+        _tick = null;
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -396,6 +557,60 @@ class _FixtureScreenState extends State<FixtureScreen> {
     }
   }
 
+  /// the teams' names set right (a match that came by itself: its teams keep them for their next matches)
+  Future<void> _names(Map<String, dynamic> f) async {
+    final c = context.pc, h = TextEditingController(text: '${f['home']}'), a = TextEditingController(text: '${f['away']}');
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: c.surface,
+      builder: (s) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(s).bottom),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              const Text('გუნდების სახელები', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text(f['home_en'] != null ? 'ეს სახელი ამ გუნდის შემდეგ მატჩებსაც გადაჰყვება.' : 'მხოლოდ ამ მატჩისთვის.', style: TextStyle(color: c.muted, fontSize: 13)),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: TextField(key: const ValueKey('fn-h'), controller: h, maxLength: 60, decoration: const InputDecoration(labelText: 'მასპინძელი', counterText: ''))),
+                const SizedBox(width: 8),
+                Expanded(child: TextField(key: const ValueKey('fn-a'), controller: a, maxLength: 60, decoration: const InputDecoration(labelText: 'სტუმარი', counterText: ''))),
+              ]),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  key: const ValueKey('fn-ok'),
+                  style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
+                  onPressed: () {
+                    if (h.text.trim().length < 2 || a.text.trim().length < 2) {
+                      toast(s, 'შეავსე ორივე სახელი');
+                      return;
+                    }
+                    Navigator.of(s).pop(true);
+                  },
+                  child: const Text('შენახვა'),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+    // (the fields still close with the sheet: their controllers are left to go by themselves)
+    final hv = h.text.trim(), av = a.text.trim();
+    if (ok != true || !mounted) return;
+    if (await attempt(context, () => context.app.api.renameFixtureTeams(widget.id, hv, av)) && mounted) {
+      toast(context, 'სახელები შეიცვალა');
+      _load();
+    }
+  }
+
   Future<void> _cancel() async {
     if (!await confirm(context, title: 'მატჩის გაუქმება', text: 'მატჩი გაუქმდება. ძველი ფსონები, თუ იყო, დაბრუნდება.', yes: 'გაუქმება', danger: true) || !mounted) return;
     if (await attempt(context, () => context.app.api.cancelFixture(widget.id)) && mounted) _load();
@@ -433,6 +648,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
                 _Teams(f, big: true),
                 const SizedBox(height: 10),
                 fixtureBadge(context, f),
+                if (fixtureEnded(f)) Padding(padding: const EdgeInsets.only(top: 6), child: Text('შედეგი მალე დადასტურდება', style: TextStyle(color: c.muted, fontSize: 12.5))),
               ]),
             ),
             const SecHead('პროგნოზი'),
@@ -501,8 +717,15 @@ class _FixtureScreenState extends State<FixtureScreen> {
                   SizedBox(width: 56, child: TextField(key: const ValueKey('fs-h'), controller: hs, keyboardType: TextInputType.number, textAlign: TextAlign.center, decoration: InputDecoration(hintText: '${f['home']}', isDense: true))),
                   const Text(':'),
                   SizedBox(width: 56, child: TextField(key: const ValueKey('fs-a'), controller: aws, keyboardType: TextInputType.number, textAlign: TextAlign.center, decoration: InputDecoration(hintText: '${f['away']}', isDense: true))),
-                  FilledButton(key: const ValueKey('fs-ok'), style: FilledButton.styleFrom(minimumSize: const Size(0, 38)), onPressed: () => _settle(f), child: const Text('შედეგი')),
+                  FilledButton(key: const ValueKey('fs-ok'), style: FilledButton.styleFrom(minimumSize: const Size(0, 38)), onPressed: () => _settle(f), child: Text(fixtureEnded(f) ? 'დადასტურება' : 'შედეგი')),
                   OutlinedButton(key: const ValueKey('fs-x'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 38)), onPressed: _cancel, child: const Text('გაუქმება')),
+                  OutlinedButton.icon(
+                    key: const ValueKey('fs-names'),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size(0, 38)),
+                    onPressed: () => _names(f),
+                    icon: const PIcon('edit', size: 16),
+                    label: const Text('სახელები'),
+                  ),
                 ]),
               ),
             SecHead(fixtureLive(f) ? 'ცოცხალი ჩატი' : 'ჩატი'),

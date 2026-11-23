@@ -2234,6 +2234,15 @@ class FakeApi implements PeeraApi {
       'id': 2, 'league': 'შესარჩევი', 'home': 'საქართველო', 'away': 'ესპანეთი', 'status': 'finished', 'home_score': 2, 'away_score': 1, //
       'starts_at': DateTime.now().subtract(const Duration(days: 3)).toUtc().toIso8601String(),
     },
+    // two that came by themselves: one on now, one over and waiting for staff
+    {
+      'id': 4, 'league': 'პრემიერ ლიგა', 'home': 'არსენალი', 'away': 'ტოტენჰემი', 'status': 'upcoming', 'ext_id': 'fd:4', 'home_en': 'Arsenal FC', 'away_en': 'Tottenham Hotspur FC', //
+      'live_state': 'live', 'live_home': 1, 'live_away': 0, 'starts_at': DateTime.now().subtract(const Duration(minutes: 40)).toUtc().toIso8601String(),
+    },
+    {
+      'id': 5, 'league': 'ლა ლიგა', 'home': 'რეალ მადრიდი', 'away': 'Unknownia', 'status': 'upcoming', 'ext_id': 'fd:5', 'home_en': 'Real Madrid CF', 'away_en': 'CD Unknownia', //
+      'live_state': 'finished', 'live_home': 3, 'live_away': 3, 'starts_at': DateTime.now().subtract(const Duration(hours: 4)).toUtc().toIso8601String(),
+    },
   ];
   final predictionRows = <Map<String, dynamic>>[
     {'fixture_id': 2, 'user_id': 'u1', 'pick': '1', 'stake': 0, 'payout': 5},
@@ -2248,7 +2257,7 @@ class FakeApi implements PeeraApi {
     final mine = {for (final p in predictionRows) if (p['user_id'] == nino.id) asInt(p['fixture_id']): {...p}};
     final rows = [
       for (final f in fixtureRows)
-        if (tab == 'mine' ? mine.containsKey(f['id']) : (tab == 'up') == (f['status'] == 'upcoming')) {...f},
+        if (tab == 'mine' ? mine.containsKey(f['id']) : (tab == 'up') == (f['status'] == 'upcoming' && f['live_state'] != 'finished')) {...f},
     ];
     return (rows, tab == 'mine' ? mine : <int, Map<String, dynamic>>{});
   }
@@ -2289,6 +2298,30 @@ class FakeApi implements PeeraApi {
   Future<void> cancelFixture(int id) async {
     calls.add('fxcancel $id');
     fixtureRows.firstWhere((x) => x['id'] == id)['status'] = 'cancelled';
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> pendingFixtures() async => [
+        for (final f in fixtureRows)
+          if (f['status'] == 'upcoming' && f['live_state'] == 'finished') {...f},
+      ];
+
+  Map<String, dynamic>? syncState = {'on': true, 'took_at': DateTime.now().subtract(const Duration(minutes: 3)).toUtc().toIso8601String(), 'error': null, 'added': 4};
+
+  @override
+  Future<Map<String, dynamic>?> fixtureSyncState() async => syncState;
+
+  @override
+  Future<void> renameFixtureTeams(int id, String home, String away) async {
+    calls.add('fxnames $id $home $away');
+    final f = fixtureRows.firstWhere((x) => x['id'] == id);
+    final was = {'${f['home_en']}': home, '${f['away_en']}': away};
+    f.addAll({'home': home, 'away': away});
+    for (final g in fixtureRows) {
+      if (g['status'] != 'upcoming') continue;
+      if (was[g['home_en']] case final n?) g['home'] = n;
+      if (was[g['away_en']] case final n?) g['away'] = n;
+    }
   }
 
   @override

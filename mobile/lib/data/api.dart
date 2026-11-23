@@ -688,6 +688,15 @@ abstract class PeeraApi {
   Future<int> createFixture({required String league, required String home, required String away, required DateTime startsAt});
   Future<void> settleFixture(int id, int home, int away);
   Future<void> cancelFixture(int id);
+
+  /// staff: finished matches whose score came by itself and waits to be confirmed (the payout is a person's call)
+  Future<List<Map<String, dynamic>>> pendingFixtures();
+
+  /// staff: how the automatic matches are doing ({on, took_at, error, added}); null when it cannot be told
+  Future<Map<String, dynamic>?> fixtureSyncState();
+
+  /// staff: the teams' names of a match set right (for a match that came by itself, its teams keep them)
+  Future<void> renameFixtureTeams(int id, String home, String away);
   Future<List<Map<String, dynamic>>> fixtureChat(int id);
   Future<Map<String, dynamic>> sayInFixture(int id, String body);
   Stream<Map<String, dynamic>> liveFixtureChat(int id);
@@ -2889,9 +2898,11 @@ class SupaApi implements PeeraApi {
     }
     if (tab == 'up') {
       final since = DateTime.now().subtract(const Duration(hours: 3)).toUtc().toIso8601String();
-      return (await sb.from('fixtures').select().eq('status', 'upcoming').gt('starts_at', since).order('starts_at').limit(60), <int, Map<String, dynamic>>{});
+      final rows = await sb.from('fixtures').select().eq('status', 'upcoming').gt('starts_at', since).order('starts_at').limit(120);
+      // a finished one waiting for its confirmed result is not a coming one
+      return (rows.where((f) => f['live_state'] != 'finished').toList(), <int, Map<String, dynamic>>{});
     }
-    return (await sb.from('fixtures').select().neq('status', 'upcoming').order('starts_at', ascending: false).limit(40), <int, Map<String, dynamic>>{});
+    return (await sb.from('fixtures').select().or('status.neq.upcoming,live_state.eq.finished').order('starts_at', ascending: false).limit(60), <int, Map<String, dynamic>>{});
   }
 
   @override
@@ -2918,6 +2929,23 @@ class SupaApi implements PeeraApi {
 
   @override
   Future<void> cancelFixture(int id) => sb.rpc('admin_cancel_fixture', params: {'p_fixture': id});
+
+  @override
+  Future<List<Map<String, dynamic>>> pendingFixtures() async =>
+      await sb.from('fixtures').select().eq('status', 'upcoming').eq('live_state', 'finished').order('starts_at').limit(30);
+
+  @override
+  Future<Map<String, dynamic>?> fixtureSyncState() async {
+    try {
+      final r = await sb.rpc('fixture_sync_state');
+      return r is Map ? Map<String, dynamic>.from(r) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> renameFixtureTeams(int id, String home, String away) => sb.rpc('admin_team_names', params: {'p_fixture': id, 'p_home': home, 'p_away': away});
 
   @override
   Future<List<Map<String, dynamic>>> fixtureChat(int id) async =>
