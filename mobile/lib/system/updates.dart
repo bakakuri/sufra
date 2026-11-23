@@ -1,4 +1,4 @@
-// A new version of the app, from inside it: the release names its build, what changed and its files (one for each
+// A new version of the app, from inside it: version.json (config.dart updateFeed) names the newest build, what changed and its files (one for each
 // kind of phone processor) with their checksums. The app asks once for each new build; "განახლება" downloads it
 // with a bar, checks it is that very file, and hands it to the phone's installer (Android asks the person, and the
 // first time it asks to allow installs from Peera). The settings show the build and look again on a tap.

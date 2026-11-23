@@ -10,5 +10,6 @@ const siteUrl = 'https://www.peera.my';
 /// this build's number (the build machine's run, given with --dart-define=PEERA_BUILD=…); 0 on a developer's build
 const appBuild = int.fromEnvironment('PEERA_BUILD');
 
-/// where the app's newest version is announced: its number, what changed, the files and their checksums
-const updateFeed = 'https://github.com/bakakuri/sufra/releases/download/app/version.json';
+/// where the app's newest version is announced: its number, what changed, the files and their checksums (the
+/// repository's "app-dist" branch holds the newest signed files and this list, nothing else)
+const updateFeed = 'https://raw.githubusercontent.com/bakakuri/sufra/app-dist/version.json';
