@@ -302,7 +302,26 @@ class FakeApi implements PeeraApi {
   }
 
   @override
-  Future<Profile?> person(String uid) async => everyone.where((p) => p.id == uid).firstOrNull;
+  Future<Profile?> person(String uid) async {
+    final p = everyone.where((p) => p.id == uid).firstOrNull;
+    return p != null && uid == nino.id ? _withMyPics(p) : p;
+  }
+
+  /// my picture and cover as last set (once one was)
+  Profile _withMyPics(Profile p) => !(me.containsKey('avatar_url') || me.containsKey('cover_url'))
+      ? p
+      : Profile(
+          id: p.id,
+          name: p.name,
+          surname: p.surname,
+          username: p.username,
+          city: p.city,
+          hue: p.hue,
+          coins: p.coins,
+          onboarded: p.onboarded,
+          avatarUrl: me.containsKey('avatar_url') ? me['avatar_url'] as String? : p.avatarUrl,
+          coverUrl: me.containsKey('cover_url') ? me['cover_url'] as String? : p.coverUrl,
+        );
   @override
   Future<Counts> counts(String uid) async => Counts(uid == giorgi.id ? 248 : 87, _posts.where((p) => p.author == uid).length, likes: uid == giorgi.id ? 1240 : 312);
   @override
