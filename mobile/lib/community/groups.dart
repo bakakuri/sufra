@@ -1135,8 +1135,10 @@ class _GroupFormScreenState extends State<GroupFormScreen> {
         DropdownButtonFormField<String>(
           key: const ValueKey('gf-cat'),
           initialValue: category,
+          // as wide as the field, a long name cut (the widest would push past it)
+          isExpanded: true,
           decoration: const InputDecoration(labelText: 'კატეგორია'),
-          items: [for (final k in groupCats) DropdownMenuItem(value: k.$1, child: Text('${k.$2} ${k.$3}'))],
+          items: [for (final k in groupCats) DropdownMenuItem(value: k.$1, child: Text('${k.$2} ${k.$3}', maxLines: 1, overflow: TextOverflow.ellipsis))],
           onChanged: (v) => setState(() => category = v ?? 'other'),
         ),
         const SizedBox(height: 10),

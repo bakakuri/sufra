@@ -203,6 +203,7 @@ void main() {
     await shell(t);
     final list = find.descendant(of: find.byType(FeedTab), matching: find.byType(Scrollable)).first;
     await t.scrollUntilVisible(find.byKey(const ValueKey('mixm-4')), 400, scrollable: list);
+    Scrollable.ensureVisible(t.element(find.byKey(const ValueKey('mixm-4'))), alignment: .3);
     await settle(t);
     expect(find.text('ცოცხალი ჩატი'), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('mixm-4')));
@@ -210,6 +211,8 @@ void main() {
     expect(find.byType(FixtureScreen), findsOneWidget);
     await _back(t);
     await t.scrollUntilVisible(find.byKey(const ValueKey('mixa-1')), 400, scrollable: list);
+    // up from under the round "+" and the tab bar
+    Scrollable.ensureVisible(t.element(find.byKey(const ValueKey('mixa-1'))), alignment: .3);
     await settle(t);
     expect(find.text('სვანეთი 2026'), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('mixa-1')));
