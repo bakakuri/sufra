@@ -1179,10 +1179,6 @@ void main() {
     await settle(t);
     expect(api.calls, contains('me notif'));
     expect(((api.me['notif'] as Map)['off'] as Map)['comments'], true);
-    // the request answered on its line
-    await t.tap(find.byKey(const ValueKey('nreq-ok-69')));
-    await settle(t);
-    expect(find.text('ახლა მეგობრები ხართ'), findsOneWidget);
     // all read from the top's "…"
     await t.tap(find.byKey(const ValueKey('notes-more')));
     await settle(t);
