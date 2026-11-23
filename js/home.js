@@ -165,12 +165,25 @@ function welcomeGift(){try{if(!ME||ME.offline||store.get('welc',null)===ME.id)re
 async function loadReels(){const el=$('#reels');if(!el)return;
  try{let rows=await fetchPosts(b=>b.eq('is_clip',true).eq('hidden',false).order('created_at',{ascending:false}).limit(24));rows=rows.filter(p=>(p.media||[]).some(m=>m.type==='video'));
   if(!rows.length){el.remove();return}
-  /* a little shuffled, fresher ones first */
-  rows=rows.map((p,i)=>[p,i+Math.random()*4]).sort((a,b)=>a[1]-b[1]).map(x=>x[0]).slice(0,12);
-  const card=(p,i)=>{const v=p.media.find(m=>m.type==='video'),u=p.ap||prof(p.author),st=STAT.get(p.id)||blankStat(p.id),pic=mPoster(v);
-   return `<button class="reel" style="--i:${Math.min(i,8)}" data-a="reelopen" data-pid="${p.id}" aria-label="${esc(u.name)}: კლიპი">${pic?`<img src="${esc(pic)}" alt="" loading="lazy">`:`<video src="${esc(v.url)}#t=0.4" muted playsinline preload="metadata" tabindex="-1"></video>`}<span class="rshade"></span><span class="rav">${av(u,30)}</span><span class="rplay">${ic('play','currentColor')}</span><span class="rcap"><b>${esc(u.name)}</b>${p.body?`<em>${esc(String(p.body).slice(0,60))}</em>`:''}</span><span class="rstat">${ic('heart','currentColor')}${fmt(rTotal(st))}</span></button>`};
+  /* a little shuffled, fresher ones first; the ones already watched after the rest */
+  const seen=clipSeenSet();
+  rows=rows.map((p,i)=>[p,(seen.has(p.id)?100:0)+i+Math.random()*4]).sort((a,b)=>a[1]-b[1]).map(x=>x[0]).slice(0,12);
+  const card=(p,i)=>{const v=p.media.find(m=>m.type==='video'),u=p.ap||prof(p.author),st=STAT.get(p.id)||blankStat(p.id),pic=mPoster(v),w=seen.has(p.id);
+   return `<button class="reel${w?' seen':''}" style="--i:${Math.min(i,8)}" data-a="reelopen" data-pid="${p.id}" data-v="${esc(safeU(v.url))}" aria-label="${esc(u.name)}: კლიპი${w?' (ნანახი)':''}">${pic?`<img src="${esc(pic)}" alt="" loading="lazy">`:`<video src="${esc(v.url)}#t=0.4" muted playsinline preload="metadata" tabindex="-1"></video>`}<span class="rshade"></span><span class="rav">${av(u,30)}</span>${w?`<span class="rseen">${ic('eye','currentColor')}ნანახი</span>`:''}<span class="rplay">${ic('play','currentColor')}</span><span class="rcap"><b>${esc(u.name)}</b>${p.body?`<em>${esc(String(p.body).slice(0,60))}</em>`:''}</span><span class="rstat">${ic('heart','currentColor')}${fmt(rTotal(st))}</span></button>`};
   el.outerHTML=`<section class="reels" id="reelsx"><div class="shead"><h3>${ic('clips')} კლიპები</h3><button class="trb" data-a="page" data-p="clips">ყველა</button></div><div class="fbwrap"><button class="fbar prev" data-a="fbscroll" data-d="-1" aria-label="უკან">${ic('back')}</button><div class="fbrow reelrow" role="list"><button class="reel rnew" data-a="newclip" aria-label="კლიპის შექმნა"><span class="rme">${av(ME.id,46)}</span><span class="rplus">${ic('plus')}</span><b>კლიპის შექმნა</b></button>${rows.map(card).join('')}</div><button class="fbar next" data-a="fbscroll" data-d="1" aria-label="წინ">${ic('back')}</button></div></section>`;
-  S.reelIds=rows.map(p=>p.id);fbEdges($('#reelsx'))}catch(e){el.remove()}}
+  S.reelIds=rows.map(p=>p.id);fbEdges($('#reelsx'));reelPreview($('#reelsx'))}catch(e){el.remove()}}
+/* as on Facebook: the first card fully in view plays itself without sound, three seconds over and over; only while the
+   row is on screen, never in the economy mode, with less motion asked, or on a saving connection */
+function reelPreview(sec){if(!sec||ECO()||matchMedia('(prefers-reduced-motion: reduce)').matches||navigator.connection?.saveData)return;
+ const row=$('.reelrow',sec),ratio=new Map();let on=null,vis=false;
+ const stop=()=>{if(!on)return;const v=$('video.rprev',on);if(v){try{v.pause()}catch(e){}v.remove()}on.classList.remove('playing');on=null};
+ const play=c=>{if(on===c)return;stop();if(!c||!vis)return;const v=document.createElement('video');v.className='rprev';v.muted=true;v.defaultMuted=true;v.playsInline=true;v.setAttribute('playsinline','');v.setAttribute('aria-hidden','true');v.preload='auto';v.src=c.dataset.v;
+  v.ontimeupdate=()=>{if(v.currentTime>3.2)v.currentTime=0};v.onplaying=()=>c.classList.add('playing');c.insertBefore(v,$('.rshade',c));on=c;v.play().catch(()=>{})};
+ const pick=()=>{if(!sec.isConnected){stop();return}let best=null,bx=1e9;const left=row.getBoundingClientRect().left;
+  for(const[c,r]of ratio){if(r<.9)continue;const x=c.getBoundingClientRect().left-left;if(x<bx){bx=x;best=c}}play(best)};
+ const io=new IntersectionObserver(es=>{es.forEach(e=>ratio.set(e.target,e.intersectionRatio));pick()},{root:row,threshold:[0,.5,.9,1]});
+ $$('.reel[data-v]',row).forEach(c=>{if(c.dataset.v)io.observe(c)});
+ const vio=new IntersectionObserver(([e])=>{vis=e.intersectionRatio>.55;if(vis)pick();else stop()},{threshold:[0,.55,1]});vio.observe(sec)}
 A.reelopen=t=>{CLIP.start=+t.dataset.pid;openPage('clips')};
 async function loadSuggest(){const el=$('#sugg');if(!el)return;try{const hid=sugHidden();const s=(await rpc('friend_suggestions',{p_limit:12})).filter(p=>!hid.has(p.id));if(!s.length){el.remove();return}s.forEach(p=>PC.set(p.id,Object.assign(PC.get(p.id)||{},p)));
  el.outerHTML=`<section class="suggest" id="suggx"><div class="shead"><h3>შეიძლება იცნობდე</h3><button class="trb" data-a="page" data-p="friends">ყველა</button></div>${fbRow(s,'sug')}</section>`;fbEdges($('#suggx'))}catch(e){el.remove()}}
@@ -224,7 +237,34 @@ A.search=()=>openPage('search','');
 PG.tag={r(tag){view.innerHTML=pgHead('#'+esc(tag),`${tagFollowBtn(tag)}<button class="btn sm ghost" data-a="composetag" data-t="${esc(tag)}">${ic('plus')}პოსტი</button>`)+`<div id="tagb">${skel(3)}</div>`;
  fetchPosts(b=>b.contains('tags',[tag]).order('created_at',{ascending:false}).limit(40)).then(rows=>{const el=$('#tagb');if(el){el.innerHTML=`<p class="hint" style="padding:12px 16px 4px">${rows.length} პოსტი</p>`+(rows.map(postHTML).join('')||empty('ჯერ არავის დაუწერია','იყავი პირველი ამ ჰეშთეგით.'));staggerIn($$('.post',el).slice(0,6))}}).catch(e=>{const el=$('#tagb');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))})}};
 A.composetag=async t=>{await compose();const ta=$('#ct');if(ta){ta.value=' #'+t.dataset.t;ta.oninput&&ta.oninput();ta.focus();ta.setSelectionRange(0,0)}};
-PG.saved={r(){view.innerHTML=pgHead('შენახული')+`<div class="savwrap" id="savb"></div>`;savedView($('#savb'),false)}};
+PG.saved={r(){view.innerHTML=pgHead('შენახული')+`<div id="savb">${skel(3)}</div>`;svPage($('#savb'))}};
+PG.savedf={r(id){const f=(FOLDERS||[]).find(x=>String(x.id)===String(id));view.innerHTML=pgHead(esc(f?f.name:'კოლექცია'),`<button class="ibtn" data-a="savfmenu" data-f="${esc(id)}" aria-label="კოლექციის მართვა">${ic('more')}</button>`)+`<div id="savb">${skel(3)}</div>`;svPage($('#savb'),+id)}};
+/* saved things as Facebook keeps them: the collections as cards with their pictures and how many are in each (the
+   first one makes a new collection), then everything saved, each with its picture, what it is and whose, a button
+   to put it into a collection and "…" for the rest */
+async function svPage(el,folder){if(!el)return;
+ try{const fs=await loadFolders(true);let b=sb.from('saves').select('post_id,folder_id,created_at').eq('user_id',ME.id).order('created_at',{ascending:false}).limit(300);
+  const all=await q(b),list=folder?all.filter(x=>x.folder_id===folder):all,ids=list.slice(0,90).map(x=>x.post_id);
+  const cov=[...new Set([...ids,...fs.map(f=>(all.find(x=>x.folder_id===f.id)||{}).post_id).filter(Boolean)])];
+  const rows=cov.length?await fetchPosts(x=>x.in('id',cov)):[];const by=new Map(rows.map(p=>[p.id,p]));if(!el.isConnected)return;
+  const pic=p=>{const ms=p?pmedia(p):[],m=ms.find(x=>x.type==='image')||ms[0];return m?(m.type==='video'?mPoster(m):mSm(m)):''};
+  const fold=id=>fs.find(f=>f.id===id);
+  if(folder){const f=fold(folder),h=$('.pghead h2');if(f&&h)h.textContent=f.name}
+  const cols=folder?'':`<section class="svsec"><div class="shead"><h3>კოლექციები</h3></div><div class="fbwrap"><div class="fbrow svrow" role="list">
+   <button class="svc svnew" data-a="svnew"><span class="svcv">${ic('plus')}</span><b>ახალი კოლექცია</b></button>
+   ${fs.map((f,i)=>{const its=all.filter(x=>x.folder_id===f.id),u=pic(by.get((its[0]||{}).post_id));return `<button class="svc" style="--i:${Math.min(i+1,8)}" data-a="page" data-p="savedf" data-arg="${f.id}"><span class="svcv">${u?`<img src="${esc(u)}" alt="" loading="lazy">`:ic('bookmark')}</span><b>${esc(f.name)}</b><small>${its.length} ელემენტი</small></button>`}).join('')}</div></div></section>`;
+  const item=(x,i)=>{const p=by.get(x.post_id);if(!p)return '';const u=pic(p),a=p.ap||prof(p.author),f=fold(x.folder_id),ms=pmedia(p),kind=p.is_clip?'კლიპი':ms.some(m=>m.type==='video')?'ვიდეო':ms.length?'ფოტო':'პოსტი';
+   return `<div class="svi" style="--i:${Math.min(i,10)}"><button class="svmain" data-a="page" data-p="post" data-arg="${p.id}"><span class="svth">${u?`<img src="${esc(u)}" alt="" loading="lazy">`:av(a,56)}</span><span class="svtx"><b>${esc(String(p.body||'').split('\n')[0].slice(0,90)||kind)}</b><small>${kind} · ${esc(a.name||'')}</small>${f&&!folder?`<em>${ic('bookmark')}${esc(f.name)}</em>`:''}</span></button>
+    <span class="svact"><button class="btn sm ghost" data-a="svmove" data-pid="${p.id}">${ic('folder')}კოლექციაში</button><button class="ibtn" data-a="svmenu" data-pid="${p.id}" aria-label="მეტი">${ic('more')}</button></span></div>`};
+  const items=list.filter(x=>by.has(x.post_id));
+  el.innerHTML=cols+`<section class="svsec"><div class="shead"><h3>${folder?`${items.length} ელემენტი`:'ყველა'}</h3></div>${items.length?`<div class="svlist">${items.slice(0,90).map(item).join('')}</div>`:empty(folder?'ეს კოლექცია ცარიელია':'შენახული ჯერ არაფერია',folder?'შენახულ პოსტთან „კოლექციაში“ დააჭირე და აქ გადმოვა.':'პოსტთან სანიშნეს დააჭირე და აქ გამოჩნდება.')}</section>`;
+  fbEdges(el)}
+ catch(e){el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))}}
+A.svmove=t=>folderPick(+t.dataset.pid);
+A.svnew=()=>{sheet(head('ახალი კოლექცია')+`<form class="ph-body" id="svnf"><label class="fld">სახელი<input id="svnn" maxlength="40" placeholder="მაგ. რეცეპტები, მოგზაურობა" required></label><button class="btn">შექმნა</button></form>`,'short');
+ $('#svnf').onsubmit=async e=>{e.preventDefault();const name=$('#svnn').value.trim();if(!name)return;try{await q(sb.from('save_folders').insert({user_id:ME.id,name}));FOLDERS=null;closeSheet();toast(`კოლექცია „${name}“ შეიქმნა`);rp()}catch(x){toast(errMsg(x))}}};
+A.svmenu=t=>{const id=+t.dataset.pid;sheet(`<div class="ph-body ntsheet"><button class="ntopt" data-a="page" data-p="post" data-arg="${id}">${ic('eye')}<span><b>გახსნა</b></span></button><button class="ntopt" data-a="svmove" data-pid="${id}">${ic('folder')}<span><b>კოლექციაში გადატანა</b></span></button><button class="ntopt" data-a="svunsave" data-pid="${id}">${ic('x')}<span><b>შენახულიდან ამოშლა</b></span></button></div>`,'short')};
+A.svunsave=async t=>{const id=+t.dataset.pid;closeSheet();try{await q(sb.from('saves').delete().eq('user_id',ME.id).eq('post_id',id));const s=STAT.get(id);if(s)s.saved=false;toast('შენახულიდან ამოიშალა');rp()}catch(e){toast(errMsg(e))}};
 
 /* "on this day" memories */
 async function loadMemories(){const el=$('#memo');if(!el)return;try{const ids=await rpc('my_memories');if(!ids.length||!$('#memo'))return;const rows=await fetchPosts(b=>b.in('id',ids.slice(0,1)));if(!rows.length)return;const p=rows[0],yrs=new Date().getFullYear()-new Date(p.created_at).getFullYear();

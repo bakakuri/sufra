@@ -96,8 +96,8 @@ async function onNote(n){const r=n.ref||{};if(n.actor)try{await loadProfiles([n.
  const who=n.actor?`${av(n.actor,36)}<span class="grow"><b>${esc(pname(n.actor))}</b>`:kAv(36)+'<span class="grow">';
  if(n.kind==='message'){if(S.openConv===r.conv)return;S.unreadMsgs++;renderBadges();banner(`${who}<span>${esc(r.text||'ახალი შეტყობინება')}</span></span>`,()=>openChat(+r.conv));return}
  if(n.kind==='friend_req'&&n.actor){PENDING_IN.add(n.actor);if(S.page?.id==='friends')rp();else if(!S.page&&S.tab==='friends')R.friends()}else if(n.kind==='friend_ok'&&n.actor){FRIENDS.add(n.actor);PENDING_OUT.delete(n.actor)}else if(n.kind==='verified'){ME.verified=true}
- S.unreadNotes++;renderBadges();
- banner(`${who}<span>${esc((NOTE_TXT[n.kind]||(()=>'ახალი შეტყობინება'))(r))}</span></span>`,()=>{const t=document.createElement('button');t.dataset.k=n.kind;t.dataset.r=JSON.stringify(r);t.dataset.u=n.actor||'';A.note(t)})}
+ if(S.page?.id==='notes'&&n.kind!=='message'){NT.rows.unshift({...n,ref:r});ntDraw();store.set(ntSeenKey(),new Date().toISOString())}else{S.unreadNotes++;renderBadges()}
+ banner(`${who}<span>${esc((NOTE_TXT[n.kind]||(()=>'ახალი შეტყობინება'))(r))}</span></span>`,()=>{const t=document.createElement('button');t.dataset.k=n.kind;t.dataset.r=JSON.stringify(r);t.dataset.u=n.actor||'';t.dataset.g=String(n.id||'');A.note(t)})}
 
 /* presence: last seen */
 function touchSeen(){if(!ME||document.hidden||ME.privacy?.online===false)return;sb.from('profiles').update({last_seen:new Date().toISOString()}).eq('id',ME.id).then(()=>{})}

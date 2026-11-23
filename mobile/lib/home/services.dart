@@ -20,7 +20,6 @@ import '../community/sport.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
 import '../feed/post_actions.dart';
-import '../feed/post_card.dart';
 import '../map/live_map.dart';
 import '../people/albums.dart';
 import '../people/coins.dart';
@@ -39,6 +38,7 @@ import '../ui/mini_svg.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'calendar.dart';
+import 'saved.dart';
 import 'service_art.dart';
 import 'services_menu.dart';
 
@@ -501,86 +501,3 @@ Future<void> createMenu(BuildContext context, {required Future<void> Function({b
   );
 }
 
-/// What I saved, every folder together, newest first.
-class SavedScreen extends StatefulWidget {
-  const SavedScreen({super.key});
-  @override
-  State<SavedScreen> createState() => _SavedScreenState();
-}
-
-class _SavedScreenState extends State<SavedScreen> {
-  List<(int, String)> folders = const [];
-  int? folder;
-  List<Post>? posts;
-  Object? error;
-  bool _started = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_started) return;
-    _started = true;
-    _load();
-  }
-
-  Future<void> _load() async {
-    final app = context.app;
-    try {
-      final f = await app.api.saveFolders();
-      final p = await app.api.saved(folder: folder);
-      await app.posts.load(p);
-      if (mounted) {
-        setState(() {
-          folders = f;
-          posts = p;
-          error = null;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => error = e);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.pc, p = posts;
-    return Scaffold(
-      appBar: peeraBar(context, title: 'შენახული'),
-      body: p == null
-          ? (error != null ? Center(child: Empty(icon: 'bookmark', title: 'ვერ ჩაიტვირთა', action: 'თავიდან', onAction: _load)) : const Center(child: CircularProgressIndicator()))
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
-                if (folders.isNotEmpty)
-                  SizedBox(
-                    height: 52,
-                    child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.fromLTRB(12, 10, 12, 4), children: [
-                      for (final (id, name) in <(int?, String)>[(null, 'ყველა'), for (final f in folders) (f.$1, f.$2)])
-                        Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: ChoiceChip(
-                            label: Text(name),
-                            selected: folder == id,
-                            showCheckmark: false,
-                            selectedColor: c.ink,
-                            labelStyle: TextStyle(color: folder == id ? c.bg : c.ink, fontWeight: FontWeight.w600),
-                            onSelected: (_) {
-                              setState(() {
-                                folder = id;
-                                posts = null;
-                              });
-                              _load();
-                            },
-                          ),
-                        ),
-                    ]),
-                  ),
-                if (p.isEmpty)
-                  const Empty(icon: 'bookmark', title: 'ჯერ არაფერი შეგინახავს', text: 'პოსტის 🔖 ღილაკით შეინახე, რაც მოგეწონა.')
-                else
-                  for (final x in p) PostCard(key: ValueKey('post-${x.id}'), post: x),
-              ]),
-            ),
-    );
-  }
-}

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../profile/profile.dart';
 import '../push/push.dart';
@@ -358,9 +359,12 @@ class AppState {
   /// set by the feed: writing a post that lands at the top of the feed (the top bar's +)
   Future<void> Function({bool photos, bool poll})? write;
 
+  /// the notifications' page is open: what comes now is seen there, the bell stays empty
+  bool notesOpen = false;
+
   Future<void> countNotes() async {
     try {
-      final n = await api.unreadNotes();
+      final n = notesOpen ? 0 : await api.unreadNotes(since: await NotesSeen.get(api.myId));
       if (!_closed) unreadNotes.value = n;
     } catch (_) {}
   }
@@ -390,7 +394,7 @@ class AppState {
         }
       }
       if (k == 'friend_req' || k == 'friend_ok') friends.load().catchError((_) {});
-      if (k != 'message' && !_closed) unreadNotes.value++;
+      if (k != 'message' && !_closed && !notesOpen) unreadNotes.value++;
     }, onError: (_) {});
     countNotes();
     api.touchSeen().catchError((_) {});
@@ -490,5 +494,25 @@ class HomeState extends ChangeNotifier {
         _countsAt = now;
       } catch (_) {}
     }
+  }
+}
+
+/// When the notifications were last looked at (on this phone): the bell counts only what came after, and the list
+/// shows what came after as new — as Facebook does; each one stays unread until it is opened.
+class NotesSeen {
+  static String _key(String uid) => 'notes_seen_$uid';
+  static Future<DateTime?> get(String uid) async {
+    try {
+      final v = (await SharedPreferences.getInstance()).getString(_key(uid));
+      return v == null ? null : DateTime.tryParse(v)?.toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> set(String uid, DateTime t) async {
+    try {
+      await (await SharedPreferences.getInstance()).setString(_key(uid), t.toUtc().toIso8601String());
+    } catch (_) {}
   }
 }

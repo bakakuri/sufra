@@ -1103,7 +1103,7 @@ void main() {
     expect(find.textContaining('დადასტურების ბმული'), findsOneWidget);
   });
 
-  testWidgets('the bell: new ones counted and marked, each opens what it is about, back comes back', (t) async {
+  testWidgets('the bell: new ones counted, each opens what it is about and is read then, back comes back', (t) async {
     phone(t);
     final api = await shell(t);
     // three unread on the bell
@@ -1113,12 +1113,14 @@ void main() {
     expect(find.byType(NotesScreen), findsOneWidget);
     expect(find.textContaining('რა მაგარია! სად გადაიღე?'), findsOneWidget);
     expect(find.textContaining('გიგზავნის მეგობრობის მოთხოვნას'), findsOneWidget);
-    // seen as soon as the list opened; the badge is gone
-    expect(api.calls, contains('read 71,70,69'));
+    // as on Facebook: the bell's number goes, but each stays unread (tinted, a dot) until it is opened
+    expect(api.calls.where((c) => c.startsWith('read')), isEmpty);
+    expect(find.byKey(const ValueKey('note-dot-70')), findsOneWidget);
 
-    // a comment opens the post
+    // a comment opens the post, and is read now
     await t.tap(find.byKey(const ValueKey('note-70')));
     await settle(t);
+    expect(api.calls, contains('read 70'));
     expect(find.byType(CommentsPanel), findsOneWidget);
     expect(find.byKey(const ValueKey('cs-post-106')), findsOneWidget);
     await _back(t);
@@ -1134,6 +1136,56 @@ void main() {
     await _back(t);
     expect(find.byType(NotesScreen), findsNothing);
     expect(find.descendant(of: find.byKey(const ValueKey('bell')), matching: find.text('3')), findsNothing);
+  });
+
+  testWidgets('the notifications as Facebook has them: all or unread, "…" marks, removes, turns a kind off', (t) async {
+    phone(t);
+    final api = await shell(t);
+    await t.tap(find.byKey(const ValueKey('bell')));
+    await settle(t);
+    expect(find.text('ახალი'), findsOneWidget);
+    expect(find.text('ადრე'), findsOneWidget);
+    // only the unread: the three new ones, not ლუკა's older mention
+    await t.tap(find.byKey(const ValueKey('nf-un')));
+    await settle(t);
+    expect(find.byKey(const ValueKey('note-70')), findsOneWidget);
+    expect(find.byKey(const ValueKey('note-68')), findsNothing);
+    await t.tap(find.byKey(const ValueKey('nf-all')));
+    await settle(t);
+    // "…" on a read one: unread again, with its dot
+    await t.tap(find.byKey(const ValueKey('note-more-68')));
+    await settle(t);
+    expect(find.text('წაუკითხავად მონიშვნა'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('nm-read')));
+    await settle(t);
+    expect(api.calls, contains('unread 68'));
+    expect(find.byKey(const ValueKey('note-dot-68')), findsOneWidget);
+    // removed
+    await t.tap(find.byKey(const ValueKey('note-more-68')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('nm-del')));
+    await settle(t);
+    expect(api.calls, contains('note del 68'));
+    expect(find.byKey(const ValueKey('note-68')), findsNothing);
+    // the comments' kind turned off, as the settings' switch
+    await t.tap(find.byKey(const ValueKey('note-more-70')));
+    await settle(t);
+    expect(find.text('კომენტარები, პასუხები, ხსენებები'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('nm-off')));
+    await settle(t);
+    expect(api.calls, contains('me notif'));
+    expect(((api.me['notif'] as Map)['off'] as Map)['comments'], true);
+    // the request answered on its line
+    await t.tap(find.byKey(const ValueKey('nreq-ok-69')));
+    await settle(t);
+    expect(find.text('ახლა მეგობრები ხართ'), findsOneWidget);
+    // all read from the top's "…"
+    await t.tap(find.byKey(const ValueKey('notes-more')));
+    await settle(t);
+    await t.tap(find.text('ყველას წაკითხულად მონიშვნა'));
+    await settle(t);
+    expect(api.calls, contains('read all'));
+    expect(find.byKey(const ValueKey('note-dot-71')), findsNothing);
   });
 
   testWidgets('settings: privacy and notification switches are saved, unblocking, the look', (t) async {
@@ -1506,7 +1558,7 @@ void main() {
     await t.tap(find.byKey(const ValueKey('savf-1')));
     await settle(t);
     expect(api.calls, contains('saved 1'));
-    expect(find.text('ეს საქაღალდე ცარიელია'), findsOneWidget);
+    expect(find.text('ეს კოლექცია ცარიელია'), findsOneWidget);
     expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 6);
   });
 

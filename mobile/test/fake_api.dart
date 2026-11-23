@@ -736,13 +736,18 @@ class FakeApi implements PeeraApi {
   }();
 
   @override
-  Future<List<Notif>> notes() async => [...noteList];
+  Future<List<Notif>> notes({DateTime? before}) async => before == null ? [...noteList] : const [];
   @override
-  Future<void> notesRead(List<int> ids) async => calls.add('read ${ids.join(',')}');
+  Future<void> notesRead(List<int> ids, {bool read = true}) async => calls.add('${read ? 'read' : 'unread'} ${ids.join(',')}');
+  @override
+  Future<void> deleteNotes(List<int> ids) async {
+    calls.add('note del ${ids.join(',')}');
+    noteList.removeWhere((n) => ids.contains(n.id));
+  }
   @override
   Future<void> allNotesRead() async => calls.add('read all');
   @override
-  Future<int> unreadNotes() async => noteList.where((n) => !n.read).length;
+  Future<int> unreadNotes({DateTime? since}) async => noteList.where((n) => !n.read && (since == null || n.createdAt.isAfter(since))).length;
 
   /// my row as the server keeps it; the settings write into it
   final me = <String, dynamic>{
@@ -885,6 +890,8 @@ class FakeApi implements PeeraApi {
   }
 
   final folderList = <(int, String)>[(1, 'კონსპექტები')];
+  @override
+  Future<List<(int, int?)>> savedItems() async => [(101, null), (103, null)];
   @override
   Future<List<(int, String)>> saveFolders() async => [...folderList];
 

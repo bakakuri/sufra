@@ -128,14 +128,96 @@ const NOTE_TXT={lesson_soon:r=>`მალე იწყება: ${r.title||''}$
  event_invite:r=>`გეპატიჟება: ${r.title||''}${r.at?' · '+fdate(r.at):''}`,event_soon:r=>`მალე იწყება: ${r.title||''}${r.at?' · '+fdate(r.at):''}`,album_invite:r=>`დაგამატა ალბომში „${r.title||''}“`,album_photo:r=>`ფოტოები დაამატა ალბომში „${r.title||''}“`,
  group_request:r=>`ითხოვს გაწევრიანებას: ${r.name||''}`,group_ok:r=>`მიგიღეს ჯგუფში: ${r.name||''}`,group_pending:r=>`პოსტი ელოდება დამტკიცებას: ${r.name||''}`,group_post_ok:r=>`შენი პოსტი დამტკიცდა: ${r.name||''}`,group_post_no:r=>`შენი პოსტი არ დამტკიცდა: ${r.name||''}`,group_admin:r=>`ადმინი გაგხადა: ${r.name||''}`,page_post:r=>`ახალი პოსტი გვერდზე „${r.name||''}“`,page_pin:r=>`მთავარი სიახლე გვერდზე „${r.name||''}“ 📌`,
  react:r=>`${r.emoji||'👍'} შენს პოსტზე`,repost:r=>r.quote?'გააზიარა შენი პოსტი თავისი სიტყვით':'გააზიარა შენი პოსტი',comment_reply:r=>`გიპასუხა კომენტარზე: ${r.text||''}`,comment_like:r=>`მოიწონა შენი კომენტარი: ${r.text||''}`,comment:r=>`დაწერა კომენტარი: ${r.text||''}`,friend_req:()=>'გიგზავნის მეგობრობის მოთხოვნას',friend_ok:()=>'დაადასტურა მეგობრობა',shop_order:r=>`იყიდა „${r.title||''}“ · ${r.coins||0} მონეტა. გაგზავნე ნივთი`,shop_shipped:r=>`გამოგიგზავნა „${r.title||''}“${r.note?' · '+r.note:''}`,shop_done:r=>`„${r.title||''}“: გაყიდვა დასრულდა, +${r.coins||0} მონეტა`,shop_cancelled:r=>`შეკვეთა გაუქმდა: „${r.title||''}“`,shop_dispute:r=>`მყიდველმა პრობლემა მიუთითა: „${r.title||''}“`,shop_refunded:r=>`„${r.title||''}“: მონეტები მყიდველს დაუბრუნდა${r.note?' · '+r.note:''}`,shop_resolved:r=>`„${r.title||''}“: დავა დასრულდა${r.note?' · '+r.note:''}`,shop_seller_approved:()=>'Peera-ს მაღაზიაში ახლა გამყიდველი ხარ',shop_seller_rejected:r=>`გამყიდველობის განაცხადი არ დადასტურდა${r.note?': '+r.note:''}`,shop_seller_blocked:r=>`მაღაზიაში გაყიდვა შეგიჩერდა${r.note?': '+r.note:''}`,shop_item_ok:r=>`„${r.title||''}“ მაღაზიაში გამოჩნდა`,shop_item_rejected:r=>`„${r.title||''}“ არ დადასტურდა${r.note?': '+r.note:''}`,payout_paid:r=>`ლარად გატანა გადაირიცხა: ${Number(r.gel||0).toFixed(2)} ₾${r.note?' · '+r.note:''}`,payout_rejected:r=>`გატანაზე უარი: ${Number(r.gel||0).toFixed(2)} ₾${r.note?' · '+r.note:''}. მონეტები დაგიბრუნდა`,gift:r=>`${r.post?'შენს ფოტოს აჩუქა':'გიგზავნის საჩუქარს'} ${r.emoji||'🎁'}${r.coins?` · +${r.coins} მონეტა`:''}`,match:()=>'წყვილი ხართ! მიწერე პირველმა',super:()=>'სუპერ მოწონება გამოგიგზავნა ⭐',verified:()=>'შენი პროფილი ვერიფიცირდა ✓',verify_rejected:()=>'ვერიფიკაცია ვერ დადასტურდა. სცადე ახალი სელფით',ad_ok:()=>'შენი რეკლამა დამტკიცდა',ad_rejected:()=>'რეკლამა არ დამტკიცდა, მონეტები დაგიბრუნდა',room_invite:r=>`გეპატიჟება ${r.kind==='birja'?'დისკუსიაზე':r.kind==='live'?'ლაივზე':'სასწავლო ოთახში'}: ${r.title||''}`,bet_won:r=>`მოიგე ${r.coins||''} მონეტა · ${r.match||''} ${r.score||''}`,bet_lost:r=>`${r.match||''} ${r.score||''} · პროგნოზი არ გამართლდა`,bet_refund:r=>`${r.match||''} · მონეტები დაგიბრუნდა`,ride_req:r=>`ითხოვს ${r.seats||1} ადგილს · ${r.route||''}`,ride_ok:r=>`დაგიდასტურა ადგილი · ${r.route||''}`,ride_no:r=>`ადგილი ვერ დაგიდასტურა · ${r.route||''}`,ride_cancel:r=>`გააუქმა ჯავშანი · ${r.route||''}`,job_apply:r=>`გამოეხმაურა ვაკანსიას: ${r.title||''}`,job_invited:r=>`გასაუბრებაზე მიგიწვია: ${r.title||''}`,job_rejected:r=>`${r.title||''} · სხვა კანდიდატი შეირჩა`,nameday:r=>`· ${r.label||'ანგელოზის დღე'}${r.n>1?` · და კიდევ ${r.n-1} მეგობარი`:''}. მიულოცე!`,birthday:r=>`· დაბადების დღე${r.n>1?` · და კიდევ ${r.n-1} მეგობარი`:''}. მიულოცე! 🎉`,nameday_me:r=>`გილოცავ ანგელოზის დღეს! ${r.label||''}`,birthday_me:()=>'Peera გილოცავს დაბადების დღეს! 🎉',kin_req:()=>'გთავაზობს ოჯახის ხეში დაკავშირებას',kin_ok:()=>'დაადასტურა ნათესაობა',help_new:r=>`${r.kind==='blood'?'🩸 საჭიროა დონორი'+(r.blood?' '+r.blood:''):r.kind==='volunteer'?'🤝 საჭიროა მოხალისე':'🐾 '+(r.kind==='found_pet'?'ნაპოვნია ცხოველი':'დაიკარგა ცხოველი')}: ${r.title||''} · ${r.region||''}`,help_offer:r=>`გთავაზობს დახმარებას: ${r.title||''}`,help_done:r=>`${r.title||''} · მოგვარდა. მადლობა, რომ გამოეხმაურე`,live_start:r=>`ცოცხალ ეთერშია: ${r.title||''}`};
-async function openNotes(){navMark('notes',openNotes);sheet(head('შეტყობინებები',`<button class="btn sm ghost" data-a="readall">ყველა წაკითხულია</button><button class="ibtn" data-a="nset" aria-label="შეტყობინებების პარამეტრები">${ic('gear')}</button>`)+`<div class="ph-body" id="nb">${skel(4)}</div>`);
- try{const rows=await q(sb.from('notifications').select('id,actor,kind,ref,read,created_at').neq('kind','message').order('created_at',{ascending:false}).limit(60));await loadProfiles(rows.map(r=>r.actor));
-  const el=$('#nb');if(!el)return;el.innerHTML=rows.map(n=>`<button class="row note${n.read?'':' unread'}" data-a="note" data-id="${n.id}" data-k="${n.kind}" data-r='${esc(JSON.stringify(n.ref||{}))}' data-u="${n.actor||''}">${n.actor?av(n.actor,44):kAv(44)}<span class="grow"><span>${n.actor?`<b>${esc(pname(n.actor))}</b> `:''}${esc((NOTE_TXT[n.kind]||(()=>'ახალი შეტყობინება'))(n.ref||{}))}</span><span class="sub">${ago(n.created_at)}</span></span></button>`).join('')||empty('შეტყობინებები ჯერ არ არის');
-  const unread=rows.filter(r=>!r.read).map(r=>r.id);if(unread.length){await sb.from('notifications').update({read:true}).in('id',unread);S.unreadNotes=0;renderBadges()}}catch(e){const el=$('#nb');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))}}
+/* notifications, as Facebook shows them: all or unread; new (since the last look), today, earlier; many people on one
+   thing as one line ("ა, ბ და კიდევ 3"), one person on many things too; each face with its kind's sign; the unread
+   tinted with a dot until opened; "…" on each marks it read or unread, removes it or turns that kind off; a friend
+   request answered in place; older ones on request. Opening the page only clears the bell's number. */
+const NT={rows:[],f:'all',prev:null,more:true,busy:false,at:0};
+const ntSeenKey=()=>'nseen_'+ME.id;
+function ntTarget(n){const r=n.ref||{},v=x=>r[x]==null?'':String(r[x]);
+ switch(n.kind){case 'react':case 'comment':case 'grade_plus':case 'repost':return v('post')?'p'+v('post'):null;case 'comment_like':return 'c'+(v('comment')||v('post'));case 'story_react':return 's'+v('story');case 'album_photo':return v('album')?'a'+v('album'):null;case 'msg_react':return v('conv')?'v'+v('conv'):null;case 'friend_ok':return 'f'}return null}
+const NT_MANY=new Set(['react','comment_like','grade_plus','story_react']),NT_EMO=new Set(['react','story_react','msg_react']);
+const ntActors=g=>[...new Set(g.items.map(n=>n.actor).filter(Boolean))];
+const ntAt=n=>Date.parse(n.created_at);
+function ntGroups(list){const d0=new Date();d0.setHours(0,0,0,0);const prev=NT.prev?Date.parse(NT.prev):0,secs=[[],[],[]];
+ for(const n of list)secs[ntAt(n)>prev?0:ntAt(n)>=d0.getTime()?1:2].push(n);
+ return secs.map((l,s)=>{if(!l.length)return null;const keyed=new Map();
+  for(const n of l){const t=ntTarget(n),key=t==null?'#'+n.id:n.kind+'|'+t,g=keyed.get(key);if(g)g.items.push(n);else keyed.set(key,{kind:n.kind,items:[n],many:false})}
+  const out=[],byA=new Map();
+  for(const g of keyed.values()){const a=ntActors(g);if(NT_MANY.has(g.kind)&&a.length===1){const k=g.kind+'|'+a[0],into=byA.get(k);if(into){into.items.push(...g.items);into.items.sort((x,y)=>ntAt(y)-ntAt(x));into.many=true;continue}byA.set(k,g)}out.push(g)}
+  out.sort((a,b)=>ntAt(b.items[0])-ntAt(a.items[0]));return[['ახალი','დღეს','ადრე'][s],out]}).filter(Boolean)}
+function ntEmojis(g){const c={};for(const n of g.items){const e=(n.ref||{}).emoji||(g.kind==='react'?'👍':'❤️');c[e]=(c[e]||0)+1}return Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>x[0]).join('')}
+function ntNames(a){const b=id=>`<b>${esc(pname(id))}</b>`;return !a.length?'':a.length===1?b(a[0]):a.length===2?`${b(a[0])} და ${b(a[1])}`:`${b(a[0])}, ${b(a[1])} და კიდევ ${a.length-2}`}
+function ntText(g){const n=g.items[0],r=n.ref||{},many=ntActors(g).length>1,one=()=>(NOTE_TXT[n.kind]||(()=>'ახალი შეტყობინება'))(r);
+ if(g.many){const k=new Set(g.items.map(ntTarget)).size;return{react:`${ntEmojis(g)} შენს ${k} პოსტზე`,comment_like:`მოიწონა შენი ${k} კომენტარი`,grade_plus:`შენს ${k} ფოტოს „5+“ დაუწერა`,story_react:`${ntEmojis(g)} შენს ${k} ისტორიაზე`}[g.kind]||one()}
+ if(!many)return one();
+ return{react:`${ntEmojis(g)} შენს პოსტზე`,comment:`დაწერეს კომენტარები შენს პოსტზე: ${r.text||''}`,comment_like:`მოიწონეს შენი კომენტარი: ${r.text||''}`,grade_plus:'შენს ფოტოს „5+“ დაუწერეს',repost:'გააზიარეს შენი პოსტი',friend_ok:'დაადასტურეს მეგობრობა',story_react:`${ntEmojis(g)} შენს ისტორიაზე`,album_photo:`ფოტოები დაამატეს ალბომში „${r.title||''}“`,msg_react:`${ntEmojis(g)} შენს მესიჯებზე`}[g.kind]||one()}
+/* the small sign on the face: the reaction itself, or the kind's icon on its colour */
+function ntSign(k){const s=(i,c1,c2)=>[i,c1,c2];
+ if(['react','story_react','msg_react','comment_like','match','super'].includes(k))return s('heart','#f43f5e','#ec4899');
+ if(['comment','comment_reply','mention','story_mention'].includes(k))return s('comment','#10b981','#0ea5e9');
+ if(['friend_req','friend_ok','kin_req','kin_ok'].includes(k))return s('user','#3b82f6','#6366f1');
+ if(['grade_plus','admin_coins','gift','bet_won','shop_done'].includes(k))return s('star','#f59e0b','#f97316');
+ if(k==='jk_invite')return s('cards','#8b5cf6','#6d28d9');if(k==='repost')return s('repost','#14b8a6','#0d9488');
+ if(['birthday','nameday','birthday_me','nameday_me'].includes(k))return s('gift','#ec4899','#f97316');
+ if(k==='weekly')return s('chart','#0ea5e9','#6366f1');
+ if(k.startsWith('group_'))return s('users','#6366f1','#4f46e5');if(k.startsWith('page_'))return s(k==='page_pin'?'pin':'mega','#0ea5e9','#6366f1');
+ if(k.startsWith('event_')||['lesson_soon','deadline_soon','study_deadline'].includes(k))return s('cal','#f59e0b','#eab308');
+ if(k.startsWith('album_'))return s('image','#a855f7','#ec4899');if(k==='verified'||k==='verify_rejected')return s('shield','#4f46e5','#3b82f6');
+ if(k.startsWith('ride_'))return s('route','#3b82f6','#0ea5e9');if(k.startsWith('job_'))return s('work','#334155','#64748b');if(k.startsWith('help_'))return s('help','#f43f5e','#fb7185');
+ if(k==='live_start'||k==='room_invite')return s('live','#e11d48','#f43f5e');if(k.startsWith('shop_'))return s('store','#eab308','#f97316');return s('bell','#6366f1','#8b5cf6')}
+/* the same kinds the server turns off together (notif_category) */
+function ntCat(k){if(['react','comment_like','repost','msg_react','story_react','grade_plus','recipe_cook'].includes(k))return 'reactions';if(['comment','comment_reply','mention','story_mention'].includes(k))return 'comments';
+ if(['friend_req','friend_ok','kin_req','kin_ok'].includes(k))return 'friends';if(['nameday','birthday','nameday_me','birthday_me'].includes(k))return 'celebrations';if(k==='live_start')return 'live';if(k==='room_invite'||k==='jk_invite')return 'rooms';
+ if(k==='help_new')return 'help';if(k==='match'||k==='super')return 'dating';if(k==='gift')return 'gifts';if(k==='promo')return 'promo';if(['lesson_soon','deadline_soon','study_deadline'].includes(k))return 'study';if(k==='weekly')return 'weekly';
+ if(k.startsWith('bet_'))return 'sport';if(k.startsWith('ride_')||k.startsWith('job_'))return 'deals';if(k.startsWith('group_'))return 'groups';if(k.startsWith('page_'))return 'pages';if(k.startsWith('event_')||k.startsWith('album_'))return 'events';return 'system'}
+function ntFaces(g){const a=ntActors(g),n=g.items[0],[i,c1,c2]=ntSign(g.kind),emo=NT_EMO.has(g.kind)?ntEmojis(g).slice(0,2):'';
+ const f=!n.actor?kAv(56):a.length<2?av(a[0],56):`<span class="ntpair">${av(a[1],40)}${av(a[0],40)}</span>`;
+ return `<span class="ntav">${f}<span class="ntsg${emo?' emo':''}" style="--c1:${c1};--c2:${c2}">${emo||ic(i,'currentColor')}</span></span>`}
+function ntLine(g,i){const n=g.items[0],un=g.items.some(x=>!x.read),ids=g.items.map(x=>x.id).join(','),req=n.kind==='friend_req'&&n.actor&&PENDING_IN.has(n.actor);
+ return `<div class="nt${un?' un':''}" style="--i:${Math.min(i,10)}" data-g="${ids}"><button class="ntmain" data-a="note" data-id="${n.id}" data-g="${ids}" data-k="${esc(n.kind)}" data-r='${esc(JSON.stringify(n.ref||{}))}' data-u="${n.actor||''}">${ntFaces(g)}<span class="nttx"><span class="ntl">${ntNames(ntActors(g))}${n.actor?' ':''}${esc(ntText(g))}</span><span class="ntt">${ago(n.created_at)}</span></span></button>
+  <button class="ntmore" data-a="ntmenu" data-g="${ids}" aria-label="მეტი">${ic('more')}</button>${un?'<i class="ntdot" aria-label="წაუკითხავი"></i>':''}
+  ${req?`<div class="ntreq"><button class="btn sm" data-a="acceptfriend" data-u="${n.actor}">დადასტურება</button><button class="btn sm ghost" data-a="declinefriend" data-u="${n.actor}">წაშლა</button></div>`:n.kind==='friend_req'&&n.actor&&FRIENDS.has(n.actor)?'<div class="ntreq ok">ახლა მეგობრები ხართ</div>':''}</div>`}
+function ntDraw(){const el=$('#nb');if(!el)return;$$('.ntpills button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.f===NT.f)));
+ const list=NT.f==='un'?NT.rows.filter(n=>!n.read):NT.rows;let i=0;
+ el.innerHTML=(list.length?ntGroups(list).map(([t,gs])=>`<section class="ntsec"><h3>${t}</h3>${gs.map(g=>ntLine(g,i++)).join('')}</section>`).join('')
+  :NT.f==='un'?empty('წაუკითხავი არაფერია','ყველაფერი ნანახი გაქვს.'):empty('შეტყობინებები ჯერ არ არის','მოწონებები, კომენტარები და მოთხოვნები აქ გამოჩნდება.'))
+  +(NT.more&&NT.rows.length?`<button class="ntolder" data-a="ntolder">ძველი შეტყობინებების ნახვა</button>`:'')}
+async function ntLoad(older){if(NT.busy)return;NT.busy=true;
+ try{let b=sb.from('notifications').select('id,actor,kind,ref,read,created_at').neq('kind','message').order('created_at',{ascending:false}).limit(40);
+  if(older&&NT.rows.length)b=b.lt('created_at',NT.rows[NT.rows.length-1].created_at);
+  const rows=await q(b);await loadProfiles(rows.map(r=>r.actor));NT.rows=older?[...NT.rows,...rows.filter(r=>!NT.rows.some(x=>x.id===r.id))]:rows;NT.more=rows.length===40;ntDraw()}
+ catch(e){const el=$('#nb');if(el&&!NT.rows.length)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e),'<button class="btn" data-a="ntretry">ხელახლა</button>');else toast(errMsg(e))}
+ finally{NT.busy=false}}
+PG.notes={r(){view.innerHTML=pgHead('შეტყობინებები',`<button class="ibtn" data-a="ntopts" aria-label="მეტი">${ic('more')}</button>`)
+  +`<div class="ntpills" role="group" aria-label="რომელი"><button data-a="ntf" data-f="all" aria-pressed="${NT.f==='all'}">ყველა</button><button data-a="ntf" data-f="un" aria-pressed="${NT.f==='un'}">წაუკითხავი</button></div><div id="nb" class="ntlist">${skel(5)}</div>`;
+  /* what is new is what came since the last look; the bell's number goes */
+  /* back from what one of them opened: the same list, the same "new" */
+  if(NT.rows.length&&Date.now()-NT.at<6e5){ntDraw();return}
+  NT.prev=store.get(ntSeenKey(),null)||new Date(Date.now()-864e5).toISOString();store.set(ntSeenKey(),new Date().toISOString());S.unreadNotes=0;renderBadges();
+  NT.rows=[];NT.more=true;NT.at=Date.now();ntLoad(false)}};
+function openNotes(){openPage('notes')}
+A.ntf=t=>{NT.f=t.dataset.f;ntDraw()};
+A.ntretry=()=>ntLoad(false);
+A.ntolder=t=>{t.disabled=true;t.textContent='იტვირთება…';ntLoad(true)};
+const ntIds=t=>String(t.dataset.g||'').split(',').filter(Boolean).map(Number);
+async function ntMark(ids,read){if(!ids.length)return;NT.rows.forEach(n=>{if(ids.includes(n.id))n.read=read});ntDraw();
+ try{await q(sb.from('notifications').update({read}).in('id',ids))}catch(e){toast(errMsg(e))}}
+A.ntmenu=t=>{const ids=ntIds(t),rows=NT.rows.filter(n=>ids.includes(n.id));if(!rows.length)return;const un=rows.some(n=>!n.read),k=rows[0].kind,cat=ntCat(k),c=(typeof NCATS!=='undefined'?NCATS:[]).find(x=>x[0]===cat);
+ sheet(`<div class="ph-body ntsheet">${rows[0].actor?`<div class="ntsh">${av(rows[0].actor,40)}<span>${ntNames(ntActors({items:rows}))} ${esc(ntText({kind:k,items:rows,many:false}))}</span></div>`:''}
+  <button class="ntopt" data-a="ntread" data-g="${ids}" data-v="${un?1:0}">${ic(un?'check':'eye')}<span><b>${un?'წაკითხულად მონიშვნა':'წაუკითხავად მონიშვნა'}</b></span></button>
+  <button class="ntopt" data-a="ntdel" data-g="${ids}">${ic('x')}<span><b>ამ შეტყობინების წაშლა</b></span></button>
+  ${c?`<button class="ntopt" data-a="ntoff" data-k="${cat}">${ic('mute')}<span><b>ასეთი შეტყობინებების გამორთვა</b><small>${esc(c[2])}</small></span></button>`:''}
+  <button class="ntopt" data-a="nset">${ic('gear')}<span><b>შეტყობინებების პარამეტრები</b></span></button></div>`,'short')};
+A.ntread=t=>{closeSheet();ntMark(ntIds(t),t.dataset.v==='1')};
+A.ntdel=async t=>{const ids=ntIds(t);closeSheet();NT.rows=NT.rows.filter(n=>!ids.includes(n.id));ntDraw();
+ try{await q(sb.from('notifications').delete().in('id',ids));toast('შეტყობინება წაიშალა')}catch(e){toast(errMsg(e));ntLoad(false)}};
+A.ntoff=async t=>{const k=t.dataset.k,c=notifCfg();c.off[k]=true;closeSheet();try{await saveNotif(c);const x=NCATS.find(y=>y[0]===k);toast(`გამოირთო: ${x?x[2]:''} · ჩართვა პარამეტრებიდან შეიძლება`)}catch(e){toast(errMsg(e))}};
+A.ntopts=()=>sheet(`<div class="ph-body ntsheet"><button class="ntopt" data-a="readall">${ic('check')}<span><b>ყველას წაკითხულად მონიშვნა</b></span></button><button class="ntopt" data-a="nset">${ic('gear')}<span><b>შეტყობინებების პარამეტრები</b></span></button></div>`,'short');
 A.notifs=()=>openNotes();
-A.nset=()=>{closeSheet();openPage('notifset')};
-A.readall=async()=>{await sb.from('notifications').update({read:true}).eq('user_id',ME.id).eq('read',false);$$('.note.unread').forEach(e=>e.classList.remove('unread'));S.unreadNotes=0;renderBadges()};
-A.note=t=>{const k=t.dataset.k,r=JSON.parse(t.dataset.r||'{}'),u=t.dataset.u;closeSheet(true);
+A.nset=()=>{closeSheet(true);openPage('notifset')};
+A.readall=async()=>{closeSheet();NT.rows.forEach(n=>n.read=true);ntDraw();await sb.from('notifications').update({read:true}).eq('user_id',ME.id).eq('read',false);S.unreadNotes=0;renderBadges()};
+A.note=t=>{const k=t.dataset.k,r=JSON.parse(t.dataset.r||'{}'),u=t.dataset.u;closeSheet(true);{const ids=ntIds(t).filter(id=>NT.rows.some(n=>n.id===id&&!n.read));if(ids.length)ntMark(ids,true)}
  if((k==='room_invite'||k==='live_start')&&r.room)return openPage('room',r.room,['rooms']);if(k==='nameday'||k==='birthday')return openPage('calendar');if(k==='nameday_me'||k==='birthday_me')return openPage('namedays');if(k==='kin_req')return openPage('tree');if(k==='kin_ok')return openPage('tree',r.owner&&r.owner!==ME.id?r.owner:undefined);if(k.startsWith('help_')&&r.help)return openPage('helpreq',r.help,['help']);if(k.startsWith('bet_')&&r.fixture)return openPage('fixture',r.fixture,['sport']);if(k.startsWith('ride_')&&r.ride)return openPage('ride',r.ride,['rides']);if(k.startsWith('job_')&&r.job)return openPage('job',r.job,['jobs']);
  if(k==='lesson_soon')return openPage('schedule');if(k==='deadline_soon'||k==='study_deadline')return openPage('exams');
  if(k==='repost'&&r.post)return openPage('post',r.quote&&r.by?r.by:r.post);
@@ -173,7 +255,7 @@ async function countGuests(force){if(!ME||(!force&&Date.now()-GUESTS_AT<60000))r
  try{const{count}=await sb.from('profile_visits').select('visitor',{count:'exact',head:true}).eq('visited',ME.id).gt('visited_at',since);S.newGuests=count||0;renderBadges()}catch(e){}}
 function guestsSeen(){store.set(gseenKey(),new Date().toISOString());S.newGuests=0;renderBadges()}
 A.guests=()=>A.ptsheet({dataset:{k:'guests'}});
-async function countUnread(){countGuests();try{const{count}=await sb.from('notifications').select('id',{count:'exact',head:true}).eq('read',false).neq('kind','message');S.unreadNotes=count||0;const c=await myChats();S.unreadMsgs=c.filter(x=>!mutedNow(x)).reduce((a,x)=>a+(x.unread||0),0);renderBadges()}catch(e){}}
+async function countUnread(){countGuests();try{let b=sb.from('notifications').select('id',{count:'exact',head:true}).eq('read',false).neq('kind','message');const seen=store.get(ntSeenKey(),null);if(seen)b=b.gt('created_at',seen);const{count}=await b;S.unreadNotes=S.page?.id==='notes'?0:count||0;const c=await myChats();S.unreadMsgs=c.filter(x=>!mutedNow(x)).reduce((a,x)=>a+(x.unread||0),0);renderBadges()}catch(e){}}
 
 /* gifts, block, report */
 /* the same prices as the server's gift_cost; whoever receives a gift gets half */
@@ -307,6 +389,10 @@ A.storyviews=async t=>{clearTimeout(SV?.t);const sid=+t.dataset.id,st=SVL()[SV?.
 
 /* clips: a vertical feed, one clip to a screen; the one on screen plays by itself, a tap pauses it, two taps like it */
 const CLIP={io:null,cur:null,raf:0,start:0};
+/* the clips watched on this device, for the feed's row: a mark, and the unwatched first */
+const clipSeenKey=()=>'clipseen_'+(ME?.id||'');
+function clipSeenSet(){try{return new Set(store.get(clipSeenKey(),[]))}catch(e){return new Set()}}
+function clipSeen(id){if(!id||!ME)return;const l=store.get(clipSeenKey(),[]).filter(x=>x!==id);l.push(id);store.set(clipSeenKey(),l.slice(-400))}
 R.clips=()=>{view.innerHTML=`<div class="clip-top"><span class="on">კლიპები</span><button class="cliptop-add" data-a="newclip" aria-label="კლიპის ატვირთვა">${ic('plus')}</button></div><div id="clipb"><section class="clip clipload"><span class="spin"></span></section></div>`;
  fetchPosts(b=>b.eq('is_clip',true).eq('hidden',false).order('created_at',{ascending:false}).limit(30)).then(rows=>{const el=$('#clipb');if(!el)return;rows=rows.filter(p=>(p.media||[]).some(m=>m.type==='video'));
   /* opened from the feed's row: that clip first */
@@ -334,7 +420,7 @@ function clipWire(el){if(CLIP.io)CLIP.io.disconnect();CLIP.cur=null;
 /* a clip that plays its sound but never shows a picture (an upload that lost its frames) says so instead of staying black */
 function clipFrames(c,v){if(c._fchk||!v.requestVideoFrameCallback)return;c._fchk=1;let seen=false;v.requestVideoFrameCallback(()=>{seen=true});const t0=v.currentTime;
  setTimeout(()=>{if(seen||!c.isConnected||v.paused||v.currentTime-t0<1.2)return;c.classList.add('bad');try{v.pause()}catch(e){}const m=$('.cerr',c);if(m){m.hidden=false;$('b',m).textContent='ამ კლიპს გამოსახულება არ აქვს';$('small',m).textContent='ვიდეო სურათის გარეშე აიტვირთა. ავტორმა თავიდან უნდა ატვირთოს'}},2600)}
-function clipOn(c){if(CLIP.cur&&CLIP.cur!==c)clipOff(CLIP.cur);CLIP.cur=c;const v=$('video',c);if(!v)return;
+function clipOn(c){if(CLIP.cur&&CLIP.cur!==c)clipOff(CLIP.cur);CLIP.cur=c;clipSeen(+c.dataset.pid);const v=$('video',c);if(!v)return;
  /* this one and the next start loading, so a swipe lands on a clip that is ready */
  if(!ECO()){if(v.preload==='none')v.preload='auto';const n=c.nextElementSibling&&$('video',c.nextElementSibling);if(n&&n.preload==='none')n.preload='auto'}
  if(ECO()&&!c._go)return;if(c._held)return;clipPlay(c)}

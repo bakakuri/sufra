@@ -460,7 +460,7 @@ Future<void> storyFromPost(BuildContext context, Post p) async {
   }
 }
 
-/// A saved post into a folder: "without one", my folders, or a new one.
+/// A saved post into a collection: "without one", my folders, or a new one.
 Future<void> folderPick(BuildContext context, int postId) async {
   final app = context.app;
   List<(int, String)> folders = const [];
@@ -475,15 +475,15 @@ Future<void> folderPick(BuildContext context, int postId) async {
       try {
         await app.api.saveToFolder(postId, f);
         if (s.mounted) Navigator.of(s).pop();
-        if (context.mounted) toast(context, f == null ? 'შენახულია საქაღალდის გარეშე' : 'ჩაიდო საქაღალდეში „$label“');
+        if (context.mounted) toast(context, f == null ? 'შენახულია კოლექციის გარეშე' : 'ჩაიდო კოლექციაში „$label“');
       } catch (e) {
         if (s.mounted) toast(s, errText(e));
       }
     }
 
     return ListView(shrinkWrap: true, padding: EdgeInsets.only(bottom: 12 + MediaQuery.viewInsetsOf(s).bottom), children: [
-      _title(s, 'საქაღალდეში შენახვა'),
-      ListTile(key: const ValueKey('fold-none'), leading: PIcon('grid', color: c.muted), title: const Text('საქაღალდის გარეშე'), onTap: () => put(null, '')),
+      _title(s, 'კოლექციაში შენახვა'),
+      ListTile(key: const ValueKey('fold-none'), leading: PIcon('grid', color: c.muted), title: const Text('კოლექციის გარეშე'), onTap: () => put(null, '')),
       for (final (id, n) in folders) ListTile(key: ValueKey('fold-$id'), leading: PIcon('folder', color: c.accent), title: Text(n), onTap: () => put(id, n)),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
@@ -493,7 +493,7 @@ Future<void> folderPick(BuildContext context, int postId) async {
               key: const ValueKey('fold-name'),
               controller: name,
               maxLength: 40,
-              decoration: const InputDecoration(hintText: 'ახალი საქაღალდე, მაგ. კონსპექტები', counterText: ''),
+              decoration: const InputDecoration(hintText: 'ახალი კოლექცია, მაგ. რეცეპტები', counterText: ''),
             ),
           ),
           const SizedBox(width: 8),
@@ -525,7 +525,7 @@ void savedNotice(BuildContext context, int postId) {
     ..showSnackBar(SnackBar(
       content: const Text('შენახულია'),
       duration: const Duration(seconds: 4),
-      action: SnackBarAction(label: 'საქაღალდეში', onPressed: () => folderPick(context, postId)),
+      action: SnackBarAction(label: 'კოლექციაში', onPressed: () => folderPick(context, postId)),
     ));
 }
 

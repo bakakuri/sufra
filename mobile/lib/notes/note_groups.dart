@@ -69,16 +69,13 @@ String? noteTarget(Notif n) {
 /// the kinds one person may do to many things at once ("გიორგი ❤️ შენს 5 პოსტზე")
 const _onManyThings = {'react', 'comment_like', 'grade_plus', 'story_react'};
 
-/// The parts of time, in order.
-const noteSections = ['ახალი', 'დღეს', 'გუშინ', 'ამ კვირაში', 'ადრე'];
+/// The parts of time, in order, as Facebook has them: what came since the last look, the rest of today, earlier.
+const noteSections = ['ახალი', 'დღეს', 'ადრე'];
 
 String noteSection(Notif n, bool isNew, DateTime now) {
   if (isNew) return noteSections[0];
-  final d0 = DateTime(now.year, now.month, now.day), t = n.createdAt;
-  if (!t.isBefore(d0)) return noteSections[1];
-  if (!t.isBefore(d0.subtract(const Duration(days: 1)))) return noteSections[2];
-  if (!t.isBefore(d0.subtract(const Duration(days: 6)))) return noteSections[3];
-  return noteSections[4];
+  final d0 = DateTime(now.year, now.month, now.day);
+  return n.createdAt.isBefore(d0) ? noteSections[2] : noteSections[1];
 }
 
 /// The notifications, in their parts of time, each part's lines put together.
@@ -202,13 +199,27 @@ String groupText(NoteGroup g) {
   return ('bell', 0xFF6366F1, 0xFF8B5CF6);
 }
 
-/// the filters at the top: what each shows
-const noteFilters = [('all', 'ყველა'), ('new', 'ახალი'), ('reacts', 'რეაქციები'), ('comments', 'კომენტარები'), ('people', 'ხალხი')];
+/// the two at the top, as Facebook's: all of them, or only those not opened yet
+const noteFilters = [('all', 'ყველა'), ('un', 'წაუკითხავი')];
 
-bool noteInFilter(Notif n, String f, Set<int> fresh) => switch (f) {
-      'new' => fresh.contains(n.id),
-      'reacts' => const {'react', 'story_react', 'msg_react', 'comment_like', 'grade_plus', 'repost'}.contains(n.kind),
-      'comments' => const {'comment', 'comment_reply', 'mention', 'story_mention'}.contains(n.kind),
-      'people' => const {'friend_req', 'friend_ok', 'kin_req', 'kin_ok', 'birthday', 'nameday', 'match', 'super'}.contains(n.kind),
-      _ => true,
-    };
+/// the kinds the server turns off together (notif_category), for "turn these off" on a line
+String noteCategory(String k) {
+  if (const {'react', 'comment_like', 'repost', 'msg_react', 'story_react', 'grade_plus', 'recipe_cook'}.contains(k)) return 'reactions';
+  if (const {'comment', 'comment_reply', 'mention', 'story_mention'}.contains(k)) return 'comments';
+  if (const {'friend_req', 'friend_ok', 'kin_req', 'kin_ok'}.contains(k)) return 'friends';
+  if (const {'nameday', 'birthday', 'nameday_me', 'birthday_me'}.contains(k)) return 'celebrations';
+  if (k == 'live_start') return 'live';
+  if (k == 'room_invite' || k == 'jk_invite') return 'rooms';
+  if (k == 'help_new') return 'help';
+  if (k == 'match' || k == 'super') return 'dating';
+  if (k == 'gift') return 'gifts';
+  if (k == 'promo') return 'promo';
+  if (const {'lesson_soon', 'deadline_soon', 'study_deadline'}.contains(k)) return 'study';
+  if (k == 'weekly') return 'weekly';
+  if (k.startsWith('bet_')) return 'sport';
+  if (k.startsWith('ride_') || k.startsWith('job_')) return 'deals';
+  if (k.startsWith('group_')) return 'groups';
+  if (k.startsWith('page_')) return 'pages';
+  if (k.startsWith('event_') || k.startsWith('album_')) return 'events';
+  return 'system';
+}

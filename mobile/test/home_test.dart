@@ -4,8 +4,10 @@ import 'package:peera/clips/clip_feed.dart';
 import 'package:peera/community/sport.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/feed_tab.dart';
+import 'package:peera/data/stores.dart';
 import 'package:peera/home/calendar.dart';
 import 'package:peera/home/home_cards.dart';
+import 'package:peera/home/saved.dart';
 import 'package:peera/people/albums.dart';
 import 'package:peera/people/cards.dart';
 import 'package:peera/people/family.dart';
@@ -381,6 +383,10 @@ void main() {
     final g = find.byKey(const ValueKey('reel-301'));
     expect(find.descendant(of: g, matching: find.text('132')), findsOneWidget);
     expect(find.descendant(of: g, matching: find.textContaining('გუდაურში')), findsOneWidget);
+    // the first card fully in view plays by itself, without sound
+    await t.pump(const Duration(seconds: 1));
+    await settle(t);
+    expect(find.byKey(const ValueKey('reel-play-301')), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('reel-302')));
     await settle(t);
     expect(find.byType(ClipViewer), findsOneWidget);
@@ -388,9 +394,48 @@ void main() {
     await _back(t);
     expect(find.byType(ClipViewer), findsNothing);
     expect(find.byKey(const ValueKey('reels')), findsOneWidget);
+    // watched now: marked
+    expect(find.byKey(const ValueKey('reel-seen-302')), findsOneWidget);
+    expect(find.byKey(const ValueKey('reel-seen-301')), findsNothing);
     await t.tap(find.byKey(const ValueKey('reels-all')));
     await settle(t);
     expect(find.byType(ClipFeed), findsOneWidget);
+  });
+
+  testWidgets('saved, as Facebook keeps it: collections as cards, a new one, each saved thing on a line', (t) async {
+    phone(t);
+    final api = await shell(t);
+    openPage(t.element(find.byType(FeedTab)), const SavedScreen(), full: true);
+    await settle(t);
+    expect(find.byKey(const ValueKey('svc-new')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('svc-1')), matching: find.text('კონსპექტები')), findsOneWidget);
+    expect(find.byKey(const ValueKey('svi-101')), findsOneWidget);
+    // a new collection
+    await t.tap(find.byKey(const ValueKey('svc-new')));
+    await settle(t);
+    await t.enterText(find.byKey(const ValueKey('sv-name')), 'რეცეპტები');
+    await t.tap(find.byKey(const ValueKey('sv-ok')));
+    await settle(t);
+    expect(api.calls, contains('newfolder რეცეპტები'));
+    // a saved thing into a collection
+    await t.tap(find.byKey(const ValueKey('svmove-101')));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('fold-1')));
+    await settle(t);
+    expect(api.calls, contains('folder 101 1'));
+    // out of saved
+    await t.tap(find.byKey(const ValueKey('svmenu-103')));
+    await settle(t);
+    await t.tap(find.text('შენახულიდან ამოშლა'));
+    await settle(t);
+    expect(api.calls, contains('save 103 false'));
+    expect(find.byKey(const ValueKey('svi-103')), findsNothing);
+    // a collection on its own page; back comes back
+    await t.tap(find.byKey(const ValueKey('svc-1')));
+    await settle(t);
+    expect(find.text('ეს კოლექცია ცარიელია'), findsOneWidget);
+    await _back(t);
+    expect(find.byKey(const ValueKey('svc-new')), findsOneWidget);
   });
 
   testWidgets('the welcome gift is said once; inviting friends from it tells the coins and who came', (t) async {

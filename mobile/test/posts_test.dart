@@ -137,19 +137,19 @@ void main() {
     expect(find.byType(EditPostScreen), findsOneWidget);
   });
 
-  testWidgets('saved, then put into a new folder', (t) async {
+  testWidgets('saved, then put into a new collection', (t) async {
     phone(t);
     final api = await shell(t);
     await _tap(t, 'save-101');
     expect(api.calls, contains('save 101 true'));
-    expect(find.text('საქაღალდეში'), findsOneWidget);
-    await t.tap(find.text('საქაღალდეში'));
+    expect(find.text('კოლექციაში'), findsOneWidget);
+    await t.tap(find.text('კოლექციაში'));
     await settle(t);
     await t.enterText(find.byKey(const ValueKey('fold-name')), 'რეცეპტები');
     await t.tap(find.byKey(const ValueKey('fold-new')));
     await settle(t);
     expect(api.calls, containsAll(['newfolder რეცეპტები', 'folder 101 77']));
-    expect(find.text('ჩაიდო საქაღალდეში „რეცეპტები“'), findsOneWidget);
+    expect(find.text('ჩაიდო კოლექციაში „რეცეპტები“'), findsOneWidget);
   });
 
   testWidgets('comments: translated, liked, a sticker and a photo sent, one deleted', (t) async {

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config.dart';
 import '../data/models.dart';
@@ -13,6 +14,33 @@ import '../ui/format.dart';
 import '../ui/icons.dart';
 import '../ui/look.dart';
 import '../ui/widgets.dart';
+
+/// The clips watched on this phone (the feed's row marks them and puts them after the rest), the newest last.
+class ClipsSeen {
+  static const _key = 'clips_seen';
+  static List<int>? _ids;
+  static Future<Set<int>> load() async {
+    if (_ids == null) {
+      try {
+        _ids = [for (final x in (await SharedPreferences.getInstance()).getStringList(_key) ?? const <String>[]) int.tryParse(x) ?? 0];
+      } catch (_) {
+        _ids = [];
+      }
+    }
+    return {..._ids!};
+  }
+
+  static Future<void> add(int id) async {
+    await load();
+    final l = _ids!
+      ..remove(id)
+      ..add(id);
+    if (l.length > 400) l.removeRange(0, l.length - 400);
+    try {
+      await (await SharedPreferences.getInstance()).setStringList(_key, [for (final x in l) '$x']);
+    } catch (_) {}
+  }
+}
 
 /// Clips sound on or off, the same for every clip (off at first, as on the site).
 final clipSound = ValueNotifier<bool>(false);
@@ -50,6 +78,7 @@ class ClipFeedState extends State<ClipFeed> with WidgetsBindingObserver {
     widget.visible?.addListener(_sync);
     clipSound.addListener(_sync);
     WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
+    if (widget.posts.isNotEmpty) ClipsSeen.add((widget.posts[at].original ?? widget.posts[at]).id);
   }
 
   @override
@@ -149,6 +178,7 @@ class ClipFeedState extends State<ClipFeed> with WidgetsBindingObserver {
   void _changed(int i) {
     final old = at;
     at = i;
+    ClipsSeen.add((widget.posts[i].original ?? widget.posts[i]).id);
     _held.remove(widget.posts[old].id);
     _sync();
     if (widget.onMore != null && i >= widget.posts.length - 3) widget.onMore!();

@@ -190,10 +190,16 @@ abstract class PeeraApi {
   // notifications, my profile and settings
 
   /// the latest notifications (not the messages: those are in the conversations)
-  Future<List<Notif>> notes();
-  Future<void> notesRead(List<int> ids);
+  /// the newest forty, or the forty before [before]
+  Future<List<Notif>> notes({DateTime? before});
+
+  /// marks them read (or, with [read] false, unread again)
+  Future<void> notesRead(List<int> ids, {bool read = true});
   Future<void> allNotesRead();
-  Future<int> unreadNotes();
+  Future<void> deleteNotes(List<int> ids);
+
+  /// unread ones, only those that came after [since] (the last look at the list) when given
+  Future<int> unreadNotes({DateTime? since});
 
   /// my whole profile row as the site has it (what the settings and the editor need)
   Future<Map<String, dynamic>> mySettings();
@@ -243,6 +249,9 @@ abstract class PeeraApi {
   /// what I saved, newest first, from one folder or all; and the folders
   Future<List<Post>> saved({int? folder});
   Future<List<(int, String)>> saveFolders();
+
+  /// everything saved, newest first: the post and its collection (null: none)
+  Future<List<(int, int?)>> savedItems();
 
   /// who came by my profile, newest first; how many since [since]
   Future<List<Visit>> guests();
@@ -1405,22 +1414,34 @@ class SupaApi implements PeeraApi {
   }
 
   @override
-  Future<List<Notif>> notes() async {
-    final r = await sb.from('notifications').select('id,actor,kind,ref,read,created_at').neq('kind', 'message').order('created_at', ascending: false).limit(60);
+  Future<List<Notif>> notes({DateTime? before}) async {
+    var q = sb.from('notifications').select('id,actor,kind,ref,read,created_at').neq('kind', 'message');
+    if (before != null) q = q.lt('created_at', before.toUtc().toIso8601String());
+    final r = await q.order('created_at', ascending: false).limit(40);
     return [for (final x in r) Notif.fromJson(x)];
   }
 
   @override
-  Future<void> notesRead(List<int> ids) async {
+  Future<void> notesRead(List<int> ids, {bool read = true}) async {
     if (ids.isEmpty) return;
-    await sb.from('notifications').update({'read': true}).inFilter('id', ids);
+    await sb.from('notifications').update({'read': read}).inFilter('id', ids);
+  }
+
+  @override
+  Future<void> deleteNotes(List<int> ids) async {
+    if (ids.isEmpty) return;
+    await sb.from('notifications').delete().inFilter('id', ids);
   }
 
   @override
   Future<void> allNotesRead() => sb.from('notifications').update({'read': true}).eq('user_id', myId).eq('read', false);
 
   @override
-  Future<int> unreadNotes() async => await sb.from('notifications').count(CountOption.exact).eq('read', false).neq('kind', 'message');
+  Future<int> unreadNotes({DateTime? since}) async {
+    var q = sb.from('notifications').count(CountOption.exact).eq('read', false).neq('kind', 'message');
+    if (since != null) q = q.gt('created_at', since.toUtc().toIso8601String());
+    return await q;
+  }
 
   @override
   Future<Map<String, dynamic>> mySettings() async {
@@ -1541,6 +1562,12 @@ class SupaApi implements PeeraApi {
     list.sort((a, b) => ids.indexOf(a.id).compareTo(ids.indexOf(b.id)));
     return list;
   }
+
+  @override
+  Future<List<(int, int?)>> savedItems() async => [
+        for (final r in await sb.from('saves').select('post_id,folder_id').eq('user_id', myId).order('created_at', ascending: false).limit(300))
+          (asInt(r['post_id']), r['folder_id'] == null ? null : asInt(r['folder_id'])),
+      ];
 
   @override
   Future<List<(int, String)>> saveFolders() async =>

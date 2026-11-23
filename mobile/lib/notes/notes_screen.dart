@@ -37,52 +37,199 @@ class NotesScreen extends StatefulWidget {
 class _NotesScreenState extends State<NotesScreen> {
   List<Notif>? list;
   Object? error;
-  Set<int> fresh = {};
-  bool _started = false;
+  bool _started = false, more = false, older = false;
+  late final AppState app;
 
-  /// the filter on top, and the lines of one person's many things that are open
+  /// the last look before this one: what came after it is "new"
+  DateTime? prev;
+
+  /// read or unread as changed here (a line stays unread until it is opened, as on Facebook)
+  final marks = <int, bool>{};
+
+  /// all of them or only the unread, and the lines of one person's many things that are open
   String filter = 'all';
   final expanded = <int>{};
+
+  bool isRead(Notif n) => marks[n.id] ?? n.read;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
+    app = context.app;
+    app.notesOpen = true;
+    app.unreadNotes.value = 0;
+    final uid = app.api.myId, now = DateTime.now();
+    NotesSeen.get(uid).then((t) {
+      if (mounted) setState(() => prev = t ?? now.subtract(const Duration(days: 1)));
+      NotesSeen.set(uid, now);
+    });
     _load();
   }
 
+  @override
+  void dispose() {
+    app.notesOpen = false;
+    NotesSeen.set(app.api.myId, DateTime.now());
+    super.dispose();
+  }
+
   Future<void> _load() async {
-    final app = context.app;
     try {
       final r = await app.api.notes();
       await app.people.ensure([for (final n in r) if (n.actor != null) n.actor!]);
       if (!mounted) return;
-      final unread = [for (final n in r) if (!n.read) n.id];
       setState(() {
         list = r;
         error = null;
-        fresh = {...fresh, ...unread};
+        more = r.length >= 40;
+        marks.clear();
       });
-      if (unread.isNotEmpty) {
-        await app.api.notesRead(unread);
-        app.unreadNotes.value = 0;
-      }
     } catch (e) {
       if (mounted) setState(() => error = e);
     }
   }
 
-  Future<void> _allRead() async {
-    final app = context.app;
-    await attempt(context, app.api.allNotesRead);
-    app.unreadNotes.value = 0;
-    if (mounted) setState(() => fresh = {});
+  /// "ძველი შეტყობინებების ნახვა": the forty before the last one shown
+  Future<void> _older() async {
+    final l = list;
+    if (l == null || l.isEmpty || older) return;
+    setState(() => older = true);
+    try {
+      final r = await app.api.notes(before: l.last.createdAt);
+      await app.people.ensure([for (final n in r) if (n.actor != null) n.actor!]);
+      if (!mounted) return;
+      setState(() {
+        final have = {for (final n in l) n.id};
+        l.addAll(r.where((n) => have.add(n.id)));
+        more = r.length >= 40;
+      });
+    } catch (e) {
+      if (mounted) toast(context, errText(e));
+    }
+    if (mounted) setState(() => older = false);
   }
 
+  Future<void> _mark(List<Notif> items, bool read) async {
+    final ids = [for (final n in items) if (isRead(n) != read) n.id];
+    if (ids.isEmpty) return;
+    setState(() {
+      for (final id in ids) {
+        marks[id] = read;
+      }
+    });
+    try {
+      await app.api.notesRead(ids, read: read);
+    } catch (e) {
+      if (mounted) toast(context, errText(e));
+    }
+  }
+
+  Future<void> _allRead() async {
+    final l = list ?? const <Notif>[];
+    setState(() {
+      for (final n in l) {
+        marks[n.id] = true;
+      }
+    });
+    await attempt(context, app.api.allNotesRead);
+  }
+
+  Future<void> _remove(NoteGroup g) async {
+    final ids = [for (final n in g.items) n.id];
+    setState(() => list?.removeWhere((n) => ids.contains(n.id)));
+    try {
+      await app.api.deleteNotes(ids);
+      if (mounted) toast(context, 'შეტყობინება წაიშალა');
+    } catch (e) {
+      if (mounted) toast(context, errText(e));
+      _load();
+    }
+  }
+
+  /// "turn these off": the same switch as in the settings, for this kind's group
+  Future<void> _turnOff(String cat, String title) async {
+    try {
+      final m = await app.api.mySettings();
+      final n = m['notif'] is Map ? Map<String, dynamic>.from(m['notif'] as Map) : <String, dynamic>{};
+      final off = n['off'] is Map ? Map<String, dynamic>.from(n['off'] as Map) : <String, dynamic>{};
+      off[cat] = true;
+      await app.api.updateMe({'notif': {...n, 'off': off}});
+      if (mounted) toast(context, 'გამოირთო: $title · ჩართვა პარამეტრებიდან შეიძლება');
+    } catch (e) {
+      if (mounted) toast(context, errText(e));
+    }
+  }
+
+  void _settings() => openPage(context, const NotifSettingsScreen(), full: true);
+
+  /// the "…" on a line, as Facebook's: read or unread, remove, turn these off, the settings
+  Future<void> _menu(NoteGroup g) {
+    final c = context.pc, unread = g.items.any((n) => !isRead(n)), cat = noteCategory(g.kind);
+    final kind = [for (final k in notifKinds) if (k.$1 == cat) k];
+    final names = [for (final a in g.actors) app.people[a]?.fullName ?? '…'];
+    late BuildContext sheet;
+    Widget opt(String key, String icon, String title, VoidCallback onTap, {String? sub}) => ListTile(
+          key: ValueKey(key),
+          leading: PIcon(icon, size: 22, color: c.ink),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: sub == null ? null : Text(sub, style: TextStyle(color: c.muted, fontSize: 12.5)),
+          onTap: () {
+            Navigator.pop(sheet);
+            onTap();
+          },
+        );
+    return showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: c.surface,
+      builder: (s) {
+        sheet = s;
+        return SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Row(children: [
+              _Faces(g: g, size: 44),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(children: [
+                    if (names.isNotEmpty) TextSpan(text: '${namesLine(names)} ', style: const TextStyle(fontWeight: FontWeight.w800)),
+                    TextSpan(text: groupText(g)),
+                  ]),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 14, height: 1.35),
+                ),
+              ),
+            ]),
+          ),
+          Divider(height: 1, color: c.line),
+          const SizedBox(height: 4),
+          opt('nm-read', unread ? 'check' : 'eye', unread ? 'წაკითხულად მონიშვნა' : 'წაუკითხავად მონიშვნა', () => _mark(g.items, unread)),
+          opt('nm-del', 'x', 'ამ შეტყობინების წაშლა', () => _remove(g)),
+          if (kind.isNotEmpty) opt('nm-off', 'mute', 'ასეთი შეტყობინებების გამორთვა', () => _turnOff(cat, kind.first.$3), sub: kind.first.$3),
+          opt('nm-set', 'gear', 'შეტყობინებების პარამეტრები', _settings),
+          const SizedBox(height: 8),
+        ]),
+      );
+      },
+    );
+  }
+
+  /// the "…" at the top
+  Future<void> _top() => showChoices(context, [
+        SheetItem('check', 'ყველას წაკითხულად მონიშვნა', _allRead),
+        SheetItem('gear', 'შეტყობინებების პარამეტრები', _settings),
+      ]);
+
   /// what a notification opens: a post, a conversation, a person, a tab, a Joker table; the rest on the site
-  Future<void> _open(Notif n) async {
-    final app = context.app, r = n.ref, k = n.kind;
+  Future<void> _open(Notif n, [List<Notif>? line]) async {
+    _mark(line ?? [n], true);
+    final r = n.ref, k = n.kind;
     int id(String key) => asInt(r[key]);
     Future<void> post(int p) async {
       try {
@@ -149,11 +296,10 @@ class _NotesScreenState extends State<NotesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.pc, app = context.app, l = list;
+    final c = context.pc, l = list;
     return Scaffold(
       appBar: peeraBar(context, title: 'შეტყობინებები', actions: [
-        IconBtn('check', label: 'ყველა წაკითხულია', onTap: _allRead),
-        IconBtn('gear', label: 'შეტყობინებების პარამეტრები', onTap: () => openPage(context, const NotifSettingsScreen(), full: true)),
+        IconBtn('more', key: const ValueKey('notes-more'), label: 'მეტი', onTap: _top),
       ]),
       body: l == null
           ? (error != null
@@ -161,139 +307,152 @@ class _NotesScreenState extends State<NotesScreen> {
               : const Center(child: CircularProgressIndicator()))
           : RefreshIndicator(
               onRefresh: _load,
-              child: l.isEmpty
-                  ? ListView(children: const [Empty(icon: 'bell', title: 'შეტყობინებები ჯერ არ არის', text: 'მოწონებები, კომენტარები და მოთხოვნები აქ გამოჩნდება.')])
-                  : ListenableBuilder(
-                      listenable: Listenable.merge([app.people, app.friends]),
-                      builder: (context, _) {
-                        final shown = [for (final n in l) if (noteInFilter(n, filter, fresh)) n];
-                        final parts = groupNotes(shown, fresh);
-                        var order = 0;
-                        return ListView(padding: const EdgeInsets.only(bottom: 28), children: [
-                          SizedBox(
-                            height: 52,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
-                              itemCount: noteFilters.length,
-                              separatorBuilder: (_, __) => const SizedBox(width: 7),
-                              itemBuilder: (_, i) {
-                                final (k, t) = noteFilters[i];
-                                final on = filter == k;
-                                final cnt = k == 'new' ? fresh.length : 0;
-                                return GestureDetector(
-                                  key: ValueKey('nf-$k'),
-                                  onTap: () => setState(() => filter = k),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 220),
-                                    curve: Curves.easeOutCubic,
-                                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      color: on ? c.accent : c.surface,
-                                      borderRadius: BorderRadius.circular(99),
-                                      border: Border.all(color: on ? c.accent : c.line),
-                                      boxShadow: on ? [BoxShadow(color: c.accent.withValues(alpha: .3), blurRadius: 10, offset: const Offset(0, 3))] : null,
-                                    ),
-                                    child: Text(cnt > 0 ? '$t · $cnt' : t, style: TextStyle(color: on ? c.onAccent : c.ink, fontWeight: FontWeight.w700, fontSize: 13.5)),
-                                  ),
-                                );
-                              },
+              child: ListenableBuilder(
+                listenable: Listenable.merge([app.people, app.friends]),
+                builder: (context, _) {
+                  final p = prev ?? DateTime.now();
+                  final shown = [for (final n in l) if (filter == 'all' || !isRead(n)) n];
+                  final parts = groupNotes(shown, {for (final n in shown) if (n.createdAt.isAfter(p)) n.id});
+                  var order = 0;
+                  return ListView(padding: const EdgeInsets.only(bottom: 28), children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                      child: Row(children: [
+                        for (final (k, t) in noteFilters)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: Material(
+                              color: filter == k ? Color.alphaBlend(c.accent.withValues(alpha: .14), c.surface) : Colors.transparent,
+                              shape: const StadiumBorder(),
+                              child: InkWell(
+                                key: ValueKey('nf-$k'),
+                                customBorder: const StadiumBorder(),
+                                onTap: () => setState(() => filter = k),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  child: Text(t, style: TextStyle(color: filter == k ? c.accent : c.ink, fontWeight: FontWeight.w700, fontSize: 14.5)),
+                                ),
+                              ),
                             ),
                           ),
-                          if (parts.isEmpty)
-                            Padding(padding: const EdgeInsets.all(36), child: Center(child: Text('აქ ჯერ არაფერია', style: TextStyle(color: c.muted)))),
-                          for (final (sec, groups) in parts) ...[
-                            SectionHead(sec, count: sec == noteSections[0] ? groups.length : null, padding: const EdgeInsets.fromLTRB(16, 14, 12, 6)),
-                            for (final g in groups) Rise(key: ValueKey('ng-${g.latest.id}'), order: order++, child: _line(g)),
-                          ],
-                        ]);
-                      },
+                      ]),
                     ),
+                    if (parts.isEmpty)
+                      filter == 'un'
+                          ? const Empty(icon: 'check', title: 'წაუკითხავი არაფერია', text: 'ყველაფერი ნანახი გაქვს.')
+                          : const Empty(icon: 'bell', title: 'შეტყობინებები ჯერ არ არის', text: 'მოწონებები, კომენტარები და მოთხოვნები აქ გამოჩნდება.'),
+                    for (final (sec, groups) in parts) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+                        child: Text(sec, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                      ),
+                      for (final g in groups) Rise(key: ValueKey('ng-${g.latest.id}'), order: order++, dy: 10, child: _line(g)),
+                    ],
+                    if (more && l.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                        child: FilledButton(
+                          key: const ValueKey('notes-older'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: c.sunk,
+                            foregroundColor: c.ink,
+                            minimumSize: const Size.fromHeight(44),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          onPressed: older ? null : _older,
+                          child: Text(older ? 'იტვირთება…' : 'ძველი შეტყობინებების ნახვა', style: const TextStyle(fontWeight: FontWeight.w700)),
+                        ),
+                      ),
+                  ]);
+                },
+              ),
             ),
     );
   }
 
-  /// One line: the faces with the kind's sign, the names and what they did, when; a request answered right here; a
-  /// person on many things opens to show them one by one.
+  /// One line, as Facebook's: the face with the kind's sign, the names and what they did, when; tinted with a dot
+  /// until opened; "…" for the rest; a request answered right here; a person on many things opens to show them.
   Widget _line(NoteGroup g) {
-    final c = context.pc, app = context.app, people = app.people, n = g.latest;
-    final isNew = g.items.any((x) => fresh.contains(x.id));
+    final c = context.pc, people = app.people, n = g.latest;
+    final unread = g.items.any((x) => !isRead(x));
     final names = [for (final a in g.actors) people[a]?.fullName ?? '…'];
     final open = expanded.contains(n.id);
     final req = n.kind == 'friend_req' && n.actor != null ? app.friends.stateWith(n.actor!) : null;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Pressable(
-        key: ValueKey('note-${n.id}'),
-        scale: .985,
-        onTap: () {
-          if (g.manyThings) {
-            setState(() => open ? expanded.remove(n.id) : expanded.add(n.id));
-          } else {
-            _open(n);
-          }
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          margin: const EdgeInsets.fromLTRB(10, 0, 10, 6),
-          padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
-          decoration: isNew
-              ? cardLook(context, radius: 16, raised: true, color: Color.alphaBlend(c.accent.withValues(alpha: .08), c.surface))
-              : BoxDecoration(borderRadius: BorderRadius.circular(16)),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            _Faces(g: g),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text.rich(
-                  TextSpan(children: [
-                    if (names.isNotEmpty) TextSpan(text: '${namesLine(names)} ', style: const TextStyle(fontWeight: FontWeight.w800)),
-                    TextSpan(text: groupText(g)),
-                  ]),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 14.5, height: 1.35, color: c.ink),
-                ),
-                const SizedBox(height: 3),
-                Row(children: [
-                  Text(ago(n.createdAt), style: TextStyle(color: isNew ? c.accent : c.muted, fontSize: 12.5, fontWeight: isNew ? FontWeight.w700 : FontWeight.w500)),
-                  if (g.manyThings) ...[
-                    const SizedBox(width: 6),
-                    AnimatedRotation(turns: open ? .75 : .25, duration: const Duration(milliseconds: 260), child: PIcon('chev', size: 14, color: c.muted)),
-                  ],
-                ]),
-                if (req == Friendship.received)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(children: [
-                      Expanded(
-                        child: FilledButton(
-                          key: ValueKey('nreq-ok-${n.id}'),
-                          style: FilledButton.styleFrom(minimumSize: const Size(0, 36), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))),
-                          onPressed: () => attempt(context, () => app.friends.accept(n.actor!)),
-                          child: const FittedBox(fit: BoxFit.scaleDown, child: Text('დადასტურება')),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton(
-                          key: ValueKey('nreq-no-${n.id}'),
-                          style: OutlinedButton.styleFrom(minimumSize: const Size(0, 36), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))),
-                          onPressed: () => attempt(context, () => app.friends.remove(n.actor!)),
-                          child: const FittedBox(fit: BoxFit.scaleDown, child: Text('წაშლა')),
-                        ),
-                      ),
-                    ]),
-                  )
-                else if (n.kind == 'friend_req' && req == Friendship.friends)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text('ახლა მეგობრები ხართ', style: TextStyle(color: c.vine, fontWeight: FontWeight.w700, fontSize: 13)),
-                  ),
-              ]),
+    Widget btn(String key, String t, bool main, VoidCallback onTap) => Expanded(
+          child: FilledButton(
+            key: ValueKey(key),
+            style: FilledButton.styleFrom(
+              backgroundColor: main ? c.accent : c.sunk,
+              foregroundColor: main ? c.onAccent : c.ink,
+              minimumSize: const Size(0, 36),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            if (isNew) Padding(padding: const EdgeInsets.only(top: 6, left: 8), child: Container(width: 9, height: 9, decoration: BoxDecoration(color: c.accent, shape: BoxShape.circle))),
-          ]),
+            onPressed: onTap,
+            child: FittedBox(fit: BoxFit.scaleDown, child: Text(t, style: const TextStyle(fontWeight: FontWeight.w700))),
+          ),
+        );
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Material(
+        color: unread ? Color.alphaBlend(c.accent.withValues(alpha: .08), c.bg) : Colors.transparent,
+        child: InkWell(
+          key: ValueKey('note-${n.id}'),
+          onTap: () {
+            if (g.manyThings) {
+              _mark(g.items, true);
+              setState(() => open ? expanded.remove(n.id) : expanded.add(n.id));
+            } else {
+              _open(n, g.items);
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Row(children: [
+                _Faces(g: g),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text.rich(
+                      TextSpan(children: [
+                        if (names.isNotEmpty) TextSpan(text: '${namesLine(names)} ', style: const TextStyle(fontWeight: FontWeight.w800)),
+                        TextSpan(text: groupText(g)),
+                      ]),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 15, height: 1.34, color: c.ink),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(children: [
+                      Text(ago(n.createdAt), style: TextStyle(color: unread ? c.accent : c.muted, fontSize: 13, fontWeight: unread ? FontWeight.w800 : FontWeight.w500)),
+                      if (g.manyThings) ...[
+                        const SizedBox(width: 6),
+                        AnimatedRotation(turns: open ? .75 : .25, duration: const Duration(milliseconds: 260), child: PIcon('chev', size: 14, color: c.muted)),
+                      ],
+                    ]),
+                  ]),
+                ),
+                IconBtn('more', key: ValueKey('note-more-${n.id}'), label: 'მეტი', size: 20, color: c.muted, onTap: () => _menu(g)),
+                SizedBox(
+                  width: 18,
+                  child: unread ? Center(child: Container(key: ValueKey('note-dot-${n.id}'), width: 12, height: 12, decoration: BoxDecoration(color: c.accent, shape: BoxShape.circle))) : null,
+                ),
+              ]),
+              if (req == Friendship.received)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(68, 6, 12, 2),
+                  child: Row(children: [
+                    btn('nreq-ok-${n.id}', 'დადასტურება', true, () => attempt(context, () => app.friends.accept(n.actor!))),
+                    const SizedBox(width: 8),
+                    btn('nreq-no-${n.id}', 'წაშლა', false, () => attempt(context, () => app.friends.remove(n.actor!))),
+                  ]),
+                )
+              else if (n.kind == 'friend_req' && req == Friendship.friends)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(68, 4, 12, 0),
+                  child: Text('ახლა მეგობრები ხართ', style: TextStyle(color: c.vine, fontWeight: FontWeight.w700, fontSize: 13)),
+                ),
+            ]),
+          ),
         ),
       ),
       // one person's many things, one under another
@@ -304,7 +463,7 @@ class _NotesScreenState extends State<NotesScreen> {
         child: !open
             ? const SizedBox(width: double.infinity)
             : Padding(
-                padding: const EdgeInsets.fromLTRB(62, 0, 12, 8),
+                padding: const EdgeInsets.fromLTRB(78, 0, 12, 8),
                 child: Column(children: [
                   for (final (i, x) in g.items.indexed)
                     Rise(
@@ -334,53 +493,60 @@ class _NotesScreenState extends State<NotesScreen> {
 
 /// The faces on a line: one large, or two overlapping (the newest in front); the kind's small sign at the corner.
 class _Faces extends StatelessWidget {
-  const _Faces({required this.g});
+  const _Faces({required this.g, this.size = 56});
   final NoteGroup g;
+  final double size;
   @override
   Widget build(BuildContext context) {
     final c = context.pc, people = context.app.people, a = g.actors, n = g.latest;
     final (icon, c1, c2) = noteSign(g.kind);
+    // a reaction shows itself (as Facebook's ❤️ and 😂 on the face)
+    final emo = const {'react', 'story_react', 'msg_react'}.contains(g.kind) ? g.emojis.characters.take(1).toString() : '';
+    final k = size / 56, f = size - 4 * k;
     Profile who(String id) => people[id] ?? Profile(id: id, name: '…');
     Widget ring(Widget w) => Container(padding: const EdgeInsets.all(2), decoration: BoxDecoration(color: c.surface, shape: BoxShape.circle), child: w);
     final Widget faces = n.actor == null
         ? Container(
-            width: 52,
-            height: 52,
+            width: f,
+            height: f,
             decoration: BoxDecoration(color: c.accentSoft, shape: BoxShape.circle),
             alignment: Alignment.center,
-            child: const PeeraMark(size: 30),
+            child: PeeraMark(size: 30 * k),
           )
         : a.length < 2
-            ? Avatar(p: who(a.first), size: 52)
+            ? Avatar(p: who(a.first), size: f)
             : SizedBox.square(
-                dimension: 52,
+                dimension: f,
                 child: Stack(children: [
-                  Positioned(left: 0, top: 0, child: Avatar(p: who(a[1]), size: 36)),
-                  Positioned(right: -2, bottom: -2, child: ring(Avatar(p: who(a[0]), size: 36))),
+                  Positioned(left: 0, top: 0, child: Avatar(p: who(a[1]), size: 38 * k)),
+                  Positioned(right: -2, bottom: -2, child: ring(Avatar(p: who(a[0]), size: 38 * k))),
                 ]),
               );
+    final sign = 26 * k;
     return SizedBox.square(
-      dimension: 56,
+      dimension: size,
       child: Stack(clipBehavior: Clip.none, children: [
         faces,
         Positioned(
-          right: 0,
-          bottom: 0,
+          right: -2,
+          bottom: -2,
           child: TweenAnimationBuilder<double>(
             tween: Tween(begin: .3, end: 1),
             duration: const Duration(milliseconds: 520),
             curve: Curves.elasticOut,
             builder: (_, v, ch) => Transform.scale(scale: v, child: ch),
             child: Container(
-              width: 24,
-              height: 24,
+              width: sign,
+              height: sign,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(c1), Color(c2)]),
+                color: emo.isEmpty ? null : c.surface,
+                gradient: emo.isEmpty ? LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(c1), Color(c2)]) : null,
                 shape: BoxShape.circle,
                 border: Border.all(color: c.surface, width: 2),
+                boxShadow: emo.isEmpty ? null : const [BoxShadow(color: Color(0x2E000000), blurRadius: 4, offset: Offset(0, 1))],
               ),
-              child: PIcon(icon, size: 12, color: Colors.white),
+              child: emo.isEmpty ? PIcon(icon, size: 13 * k, color: Colors.white) : Text(emo, style: TextStyle(fontSize: 13 * k, height: 1)),
             ),
           ),
         ),

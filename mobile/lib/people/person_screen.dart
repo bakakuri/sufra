@@ -324,7 +324,7 @@ class _PersonScreenState extends State<PersonScreen> {
                       if (s.mounted) toast(s, errText(e));
                     }
                   },
-                  child: const Text('საქაღალდის წაშლა'),
+                  child: const Text('კოლექციის წაშლა'),
                 ),
               ),
             ]),
@@ -1353,7 +1353,7 @@ class _PersonScreenState extends State<PersonScreen> {
                   ),
                 ),
               if (folder != null)
-                IconBtn('more', key: const ValueKey('savf-menu'), label: 'საქაღალდის მართვა', size: 22, onTap: () {
+                IconBtn('more', key: const ValueKey('savf-menu'), label: 'კოლექციის მართვა', size: 22, onTap: () {
                   final f = folders.where((x) => x.$1 == folder).firstOrNull;
                   if (f != null) _folderMenu(f.$1, f.$2);
                 }),
@@ -1364,8 +1364,8 @@ class _PersonScreenState extends State<PersonScreen> {
           else if (s.isEmpty)
             Empty(
               icon: 'bookmark',
-              title: folder != null ? 'ეს საქაღალდე ცარიელია' : 'შენახული ჯერ არაფერია',
-              text: folder != null ? 'პოსტის შენახვისას ზემოთ ამოვა ღილაკი „საქაღალდეში“.' : 'პოსტთან სანიშნეს დააჭირე და აქ გამოჩნდება.',
+              title: folder != null ? 'ეს კოლექცია ცარიელია' : 'შენახული ჯერ არაფერია',
+              text: folder != null ? 'პოსტის შენახვისას ქვემოთ ამოვა ღილაკი „კოლექციაში“.' : 'პოსტთან სანიშნეს დააჭირე და აქ გამოჩნდება.',
             )
           else
             PostGrid(posts: s, onGone: (x) => setState(() => saved!.removeWhere((y) => y.id == x.id))),
