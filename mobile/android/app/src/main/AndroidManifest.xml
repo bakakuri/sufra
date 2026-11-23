@@ -53,7 +53,9 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="https" android:host="www.peera.my"/>
             </intent-filter>
-            <intent-filter android:autoVerify="true">
+            <!-- the address without www moves to www, so Android cannot check it: offered, not taken for granted
+                 (a failed check here would undo the www one on older Androids) -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
