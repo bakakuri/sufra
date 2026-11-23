@@ -1787,7 +1787,8 @@ void main() {
     await t.tap(find.byKey(const ValueKey('edu-ok')));
     await settle(t);
     expect(api.calls, contains('me edu'));
-    expect(api.calls, contains('edu groups'));
+    // no group is made or joined by itself: a person makes one when they want it
+    expect(api.calls, isNot(contains('edu groups')));
     expect((api.me['edu'] as List).single['key'], 'ქუთაისი-41');
     expect(find.text('ქუთაისი · 2017 წლის გამოშვება · კლასი „ა“'), findsOneWidget);
     await calm(t);
