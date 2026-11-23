@@ -1105,6 +1105,8 @@ void main() {
 
   testWidgets('the bell: new ones counted, each opens what it is about and is read then, back comes back', (t) async {
     phone(t);
+    // the last look at the list is kept on the phone; this one starts from none
+    SharedPreferences.setMockInitialValues({});
     final api = await shell(t);
     // three unread on the bell
     expect(find.descendant(of: find.byKey(const ValueKey('bell')), matching: find.text('3')), findsOneWidget);
@@ -1140,6 +1142,8 @@ void main() {
 
   testWidgets('the notifications as Facebook has them: all or unread, "…" marks, removes, turns a kind off', (t) async {
     phone(t);
+    // the last look at the list is kept on the phone; this one starts from none
+    SharedPreferences.setMockInitialValues({});
     final api = await shell(t);
     await t.tap(find.byKey(const ValueKey('bell')));
     await settle(t);

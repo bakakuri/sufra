@@ -32,6 +32,7 @@ class ClipsSeen {
 
   static Future<void> add(int id) async {
     await load();
+    if (_ids!.isNotEmpty && _ids!.last == id) return;
     final l = _ids!
       ..remove(id)
       ..add(id);
@@ -78,7 +79,6 @@ class ClipFeedState extends State<ClipFeed> with WidgetsBindingObserver {
     widget.visible?.addListener(_sync);
     clipSound.addListener(_sync);
     WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
-    if (widget.posts.isNotEmpty) ClipsSeen.add((widget.posts[at].original ?? widget.posts[at]).id);
   }
 
   @override
@@ -133,6 +133,8 @@ class ClipFeedState extends State<ClipFeed> with WidgetsBindingObserver {
       if (i == at && _live && !_held.contains(widget.posts[i].id) && (!ecoMode.value || _asked.contains(widget.posts[i].id))) {
         p.mute(!clipSound.value);
         p.play();
+        // watched: only one that really plays on screen (not the clips tab waiting in the background)
+        ClipsSeen.add((widget.posts[i].original ?? widget.posts[i]).id);
       } else if (i == at) {
         p.pause();
       } else if (p.playing) {
@@ -178,7 +180,6 @@ class ClipFeedState extends State<ClipFeed> with WidgetsBindingObserver {
   void _changed(int i) {
     final old = at;
     at = i;
-    ClipsSeen.add((widget.posts[i].original ?? widget.posts[i]).id);
     _held.remove(widget.posts[old].id);
     _sync();
     if (widget.onMore != null && i >= widget.posts.length - 3) widget.onMore!();

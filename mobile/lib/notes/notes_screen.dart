@@ -59,7 +59,8 @@ class _NotesScreenState extends State<NotesScreen> {
     _started = true;
     app = context.app;
     app.notesOpen = true;
-    app.unreadNotes.value = 0;
+    // the bell's number goes (after this frame: the bell is being built right now)
+    WidgetsBinding.instance.addPostFrameCallback((_) => app.unreadNotes.value = 0);
     final uid = app.api.myId, now = DateTime.now();
     NotesSeen.get(uid).then((t) {
       if (mounted) setState(() => prev = t ?? now.subtract(const Duration(days: 1)));
