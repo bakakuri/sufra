@@ -1,0 +1,17 @@
+{
+ "build": 143,
+ "name": "143",
+ "notes": "პირად შეტყობინებებში რეაქციები (❤️ და სმაილები) ახლა ინახება; რეაქციების ზოლში 😍 და 😡",
+ "apks": {
+  "arm64-v8a": {
+   "url": "https://raw.githubusercontent.com/bakakuri/sufra/app-dist/Peera-arm64.apk",
+   "sha256": "dd6acdda33ea6d24122eed90aa6a0645a5c2cd3767adca5e01befb87c1daea9c",
+   "size": 41503280
+  },
+  "armeabi-v7a": {
+   "url": "https://raw.githubusercontent.com/bakakuri/sufra/app-dist/Peera-arm32.apk",
+   "sha256": "ba53eb0bca108a236d5ff0f5276060e22f9a2cddc042e86614447874cfeab9e2",
+   "size": 34998842
+  }
+ }
+}
