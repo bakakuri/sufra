@@ -342,26 +342,58 @@ class _PersonScreenState extends State<PersonScreen> {
   }
 
   /// my picture or cover, changed right from the page (framed, uploaded, saved)
+  /// my picture or cover, new: shown at once while it uploads
+  Uint8List? _newAv, _newCover;
+
+  /// a tap on my picture or cover: a new one from the gallery or the camera, the one there seen big, or taken away
   Future<void> _myPic({required bool cover}) async {
+    final me = p ?? context.me;
+    final url = cover ? me.coverUrl : me.avatarUrl;
+    final has = (url ?? '').isNotEmpty;
+    await showChoices(context, [
+      SheetItem('image', cover ? 'ფონის ატვირთვა გალერეიდან' : 'ფოტოს ატვირთვა გალერეიდან', () => _setPic(cover: cover, camera: false)),
+      SheetItem('camera', 'გადაღება კამერით', () => _setPic(cover: cover, camera: true)),
+      if (has) SheetItem('eye', cover ? 'ფონის ნახვა' : 'ფოტოს ნახვა', () => openPhotos(context, [Media(url: url!)])),
+      if (has) SheetItem('trash', cover ? 'ფონის წაშლა' : 'ფოტოს წაშლა', () => _dropPic(cover: cover), danger: true),
+    ]);
+  }
+
+  Future<void> _setPic({required bool cover, required bool camera}) async {
     final app = context.app;
     List<Uint8List> got;
     try {
-      got = await photoSource(false);
+      got = await photoSource(camera);
     } catch (_) {
+      if (mounted) toast(context, 'ფოტოს არჩევა ვერ მოხერხდა');
       return;
     }
     if (got.isEmpty || !mounted) return;
     final f = await photoFrame(context, got.first, aspect: cover ? 16 / 9 : 1, max: cover ? 1400 : 640, title: cover ? 'ფონის ფოტო' : 'პროფილის ფოტო');
     if (f == null || !mounted) return;
-    toast(context, 'იტვირთება…');
+    setState(() => cover ? _newCover = f.bytes : _newAv = f.bytes);
     final ok = await attempt(context, () async {
       final m = await app.api.uploadPhoto(PreparedPhoto(f.bytes, f.w, f.h));
       await app.api.updateMe({cover ? 'cover_url' : 'avatar_url': m.url});
       await app.refreshMe?.call();
     });
+    if (!mounted) return;
+    if (ok) {
+      toast(context, cover ? 'ფონი შეიცვალა' : 'ფოტო შეიცვალა');
+      await _load();
+    }
+    if (mounted) setState(() => cover ? _newCover = null : _newAv = null);
+  }
+
+  Future<void> _dropPic({required bool cover}) async {
+    final app = context.app;
+    if (!await confirm(context, title: cover ? 'ფონის წაშლა?' : 'ფოტოს წაშლა?', yes: 'წაშლა', danger: true) || !mounted) return;
+    final ok = await attempt(context, () async {
+      await app.api.updateMe({cover ? 'cover_url' : 'avatar_url': null});
+      await app.refreshMe?.call();
+    });
     if (!ok || !mounted) return;
-    toast(context, cover ? 'ფონი შეიცვალა' : 'ფოტო შეიცვალა');
-    _load();
+    toast(context, cover ? 'ფონი წაიშალა' : 'ფოტო წაიშალა');
+    await _load();
   }
 
   Future<void> _message() async {
@@ -515,7 +547,12 @@ class _PersonScreenState extends State<PersonScreen> {
 
   Widget _cover(BuildContext context, Profile who, bool isMe) {
     final c = context.pc;
-    final pic = (who.coverUrl ?? '').isNotEmpty ? PImage(who.coverUrl!) : CustomPaint(painter: MountainArt(who.hue + 11));
+    final fresh = isMe ? _newCover : null;
+    final pic = fresh != null
+        ? Image.memory(fresh, fit: BoxFit.cover, gaplessPlayback: true)
+        : (who.coverUrl ?? '').isNotEmpty
+            ? PImage(who.coverUrl!)
+            : CustomPaint(painter: MountainArt(who.hue + 11));
     // the picture sits over the cover's lower edge (54 of its 112 points), as on the site; beside it, the thought
     // (the bio) in a cloud coming out of it, as tall as its words need
     final thought = (who.bio ?? '').trim();
@@ -558,14 +595,20 @@ class _PersonScreenState extends State<PersonScreen> {
                     decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment(0, .2), end: Alignment.bottomCenter, colors: [Color(0x00000000), Color(0x40000000)])),
                   ),
                 ),
+                if (fresh != null) const Center(child: SizedBox.square(dimension: 30, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))),
                 if (isMe)
                   Positioned(
                     right: 12,
                     bottom: 12,
                     child: Container(
-                      padding: const EdgeInsets.all(7),
+                      key: const ValueKey('pro-cover-edit'),
+                      padding: const EdgeInsets.fromLTRB(10, 7, 12, 7),
                       decoration: BoxDecoration(color: const Color(0x8C0A060E), borderRadius: BorderRadius.circular(999)),
-                      child: const PIcon('camera', size: 16, color: Colors.white),
+                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                        PIcon('camera', size: 16, color: Colors.white),
+                        SizedBox(width: 6),
+                        Text('ფონის შეცვლა', style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                      ]),
                     ),
                   ),
               ]),
@@ -619,7 +662,15 @@ class _PersonScreenState extends State<PersonScreen> {
                         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c.surface, Color.alphaBlend(c.accent.withValues(alpha: .25), c.surface)]),
                         boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 18, offset: Offset(0, 6))],
                       ),
-                      child: Avatar(p: who, size: 104),
+                      child: isMe && _newAv != null
+                          ? SizedBox.square(
+                              dimension: 104,
+                              child: Stack(fit: StackFit.expand, children: [
+                                ClipOval(child: Image.memory(_newAv!, fit: BoxFit.cover, gaplessPlayback: true)),
+                                const Center(child: SizedBox.square(dimension: 28, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))),
+                              ]),
+                            )
+                          : Avatar(p: who, size: 104),
                     ),
                   ),
                   if (isMe)

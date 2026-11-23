@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 
@@ -14,9 +16,37 @@ class PreparedPhoto {
   final int w, h;
 }
 
+/// A photo in a form the picture library reads: as it is when it can, else (HEIC, the way many phones' cameras keep
+/// photos, and the like) drawn by the phone's own decoder, upright, about [max] px at most, as PNG.
+Future<Uint8List> readablePhoto(Uint8List src, {int max = 2048}) async {
+  if (img.findDecoderForData(src) != null) return src;
+  final buf = await ui.ImmutableBuffer.fromUint8List(src);
+  final desc = await ui.ImageDescriptor.encoded(buf);
+  final wide = desc.width >= desc.height;
+  // one side only, so the shape stays whichever way the photo is turned
+  final codec = await desc.instantiateCodec(
+    targetWidth: wide && desc.width > max ? max : null,
+    targetHeight: !wide && desc.height > max ? max : null,
+  );
+  try {
+    final f = await codec.getNextFrame();
+    final png = await f.image.toByteData(format: ui.ImageByteFormat.png);
+    f.image.dispose();
+    if (png == null) throw const FormatException('photo');
+    return png.buffer.asUint8List(png.offsetInBytes, png.lengthInBytes);
+  } finally {
+    codec.dispose();
+    desc.dispose();
+    buf.dispose();
+  }
+}
+
 /// Turned upright (the camera's orientation tag), resized and saved as JPEG, away from the screen's thread.
 /// In the economy mode the full one is at most 1080 px.
-Future<PreparedPhoto> preparePhoto(Uint8List src) => ecoMode.value ? compute(_prepareEco, src) : compute(preparePhotoNow, src);
+Future<PreparedPhoto> preparePhoto(Uint8List src) async {
+  final s = await readablePhoto(src);
+  return ecoMode.value ? compute(_prepareEco, s) : compute(preparePhotoNow, s);
+}
 
 PreparedPhoto _prepareEco(Uint8List src) => preparePhotoNow(src, max: 1080);
 
@@ -46,8 +76,8 @@ PreparedPhoto preparePhotoNow(Uint8List src, {int max = 2048}) {
 /// A picture cut to [aspect] (width / height: 1 for the profile picture, 16/9 for the cover), at most [max] px
 /// wide, as JPEG, away from the screen's thread. [area] is the part chosen in the frame (left, top, width, height,
 /// as parts of the upright picture); without it, the middle.
-Future<({Uint8List bytes, int w, int h})> cropPhoto(Uint8List src, double aspect, int max, [(double, double, double, double)? area]) =>
-    compute(cropPhotoNow, (src, aspect, max, area));
+Future<({Uint8List bytes, int w, int h})> cropPhoto(Uint8List src, double aspect, int max, [(double, double, double, double)? area]) async =>
+    compute(cropPhotoNow, (await readablePhoto(src), aspect, max, area));
 
 ({Uint8List bytes, int w, int h}) cropPhotoNow((Uint8List, double, int, (double, double, double, double)?) a) {
   final (src, aspect, max, area) = a;
