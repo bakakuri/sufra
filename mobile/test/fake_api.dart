@@ -1536,6 +1536,38 @@ class FakeApi implements PeeraApi {
   final groupMuted = <int, Map<String, DateTime>>{};
   @override
   Future<(Set<int>, List<Map<String, dynamic>>)> groups() async => ({...groupIn}, [for (final g in groupRows) {...g}]);
+
+  /// the groups page in one look: members, life, friends in it, mine, popular, fitting
+  @override
+  Future<List<Map<String, dynamic>>> groupCards() async {
+    calls.add('group cards');
+    return [
+      for (final g in groupRows)
+        {
+          ...g,
+          'category': g['category'] ?? (const ['school', 'class', 'uni', 'course'].contains(g['kind']) ? 'edu' : g['id'] == 5 ? 'travel' : 'other'),
+          'members': 12 + (groupIn.contains(g['id']) ? 1 : 0),
+          'posts14': g['id'] == 5 ? 8 : 0,
+          'friends': g['id'] == 5 ? 2 : 0,
+          'friend_ids': g['id'] == 5 ? ['u2', 'u3'] : <String>[],
+          'mine': groupIn.contains(g['id']) || g['owner'] == nino.id,
+          'pop': g['id'] == 5 ? 5.0 : 2.0,
+          'fit': g['id'] == 5 ? 9.0 : 3.0,
+        },
+    ];
+  }
+
+  /// "for you": every post not yet seen, newest last (a fixed "random" order), one album and the live match once
+  @override
+  Future<({List<int> posts, List<int> albums, List<int> matches})> feedMix(List<String> seen, {int limit = 15}) async {
+    calls.add('mix ${seen.length}');
+    final left = [for (final p in _posts.reversed) if (p.repostOf == null && !seen.contains('p:${p.id}')) p.id];
+    return (
+      posts: left,
+      albums: [for (final a in albumRows.values) if (!seen.contains('a:${a['id']}') && a['owner'] != nino.id) asInt(a['id'])].take(1).toList(),
+      matches: [for (final f in fixtureRows) if (!seen.contains('m:${f['id']}') && f['live_state'] == 'live') asInt(f['id'])].take(1).toList(),
+    );
+  }
   @override
   Future<({Map<String, dynamic> g, int count, String? role, String? request})?> group(int id) async {
     final g = groupRows.where((x) => x['id'] == id).firstOrNull;
@@ -1550,9 +1582,9 @@ class FakeApi implements PeeraApi {
     return id == 5 && topic == null ? [_posts.firstWhere((p) => p.id == 107)] : [];
   }
   @override
-  Future<int> createGroup({required String name, String description = '', bool private = false, String? avatarUrl}) async {
-    calls.add('newgroup $name $private');
-    groupRows.add({'id': 40, 'name': name, 'hue': 10, 'is_private': private, 'description': description, 'owner': nino.id, 'join_mode': 'open'});
+  Future<int> createGroup({required String name, String description = '', bool private = false, String? avatarUrl, String category = 'other'}) async {
+    calls.add('newgroup $name $private${category == 'other' ? '' : ' $category'}');
+    groupRows.add({'id': 40, 'name': name, 'hue': 10, 'is_private': private, 'description': description, 'owner': nino.id, 'join_mode': 'open', 'category': category});
     groupIn.add(40);
     return 40;
   }

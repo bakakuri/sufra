@@ -159,6 +159,44 @@ void main() {
     expect(api.calls.any((c) => c.startsWith('gupdate 7') && c.contains('topics') && c.contains('questions') && c.contains('blocked_words')), isTrue);
   });
 
+  testWidgets('groups as cards: mine, suggested with friends in them, joined from the card; a category and a search as a grid; a new one with its category', (t) async {
+    phone(t);
+    final api = await shell(t);
+    await _open(t, 'groups');
+    expect(api.calls, contains('group cards'));
+    expect(find.text('ჩემი ჯგუფები'), findsOneWidget);
+    expect(find.text('შემოთავაზებული შენთვის'), findsOneWidget);
+    // the suggested one: friends in it, joined right from its card
+    expect(find.text('2 მეგობარი წევრია'), findsOneWidget);
+    await _tap(t, 'grpj-5');
+    expect(api.calls, contains('gjoin 5'));
+    // now it is among mine
+    expect(find.byKey(const ValueKey('grpj-5')), findsNothing);
+    expect(find.byKey(const ValueKey('grp-5')), findsOneWidget);
+    // a closed one is looked at, not joined
+    expect(find.byKey(const ValueKey('grpv-6')), findsOneWidget);
+    // a category: its groups only
+    await _tap(t, 'gcat-travel');
+    expect(find.byKey(const ValueKey('grp-5')), findsOneWidget);
+    expect(find.byKey(const ValueKey('grp-6')), findsNothing);
+    await _tap(t, 'gcat-all');
+    // a search
+    await t.enterText(find.byKey(const ValueKey('groups-q')), 'თსუ');
+    await settle(t);
+    expect(find.byKey(const ValueKey('grp-6')), findsOneWidget);
+    expect(find.byKey(const ValueKey('grp-5')), findsNothing);
+    await t.enterText(find.byKey(const ValueKey('groups-q')), '');
+    await settle(t);
+    // a new one: its category chosen
+    await _tap(t, 'groups-new');
+    await t.enterText(find.byKey(const ValueKey('gf-name')), 'ჭადრაკის კლუბი');
+    await _tap(t, 'gf-cat');
+    await t.tap(find.text('🎨 ჰობი').last);
+    await settle(t);
+    await _tap(t, 'gf-ok');
+    expect(api.calls, contains('newgroup ჭადრაკის კლუბი false hobby'));
+  });
+
   testWidgets('a new group from the list', (t) async {
     phone(t);
     final api = await shell(t);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:peera/community/sport.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/feed_tab.dart';
 import 'package:peera/home/calendar.dart';
@@ -158,6 +159,10 @@ void main() {
     final feed = t.state<FeedTabState>(find.byType(FeedTab));
     expect(feed.mode, 'for');
     expect(feed.posts, isNotEmpty);
+    // for you is the mix from everywhere: posts, the live match and a shared album among them
+    expect(api.calls, contains('mix 0'));
+    expect(feed.items.any((i) => i.match == 4), isTrue);
+    expect(feed.items.any((i) => i.album == 1), isTrue);
     // friends: only my friends' posts and mine
     await _tap(t, 'feed-friends');
     expect(feed.posts.map((p) => p.author).toSet().difference({nino.id, giorgi.id, mariam.id, luka.id}), isEmpty);
@@ -184,9 +189,35 @@ void main() {
     expect(api.calls, contains('tags -სვანეთი'));
     await _back(t);
     expect(find.text('ჩემი თემები'), findsNothing);
-    // for you with a topic followed: the post on მთა comes in, the friend's posts lean up
+    // for you again: a new mix
+    final n = api.calls.where((c) => c.startsWith('mix ')).length;
     await _tap(t, 'feed-for');
+    expect(api.calls.where((c) => c.startsWith('mix ')).length, greaterThan(n));
     expect(feed.posts.any((p) => p.id == 107), isTrue);
+  });
+
+  testWidgets('for you: the match among the posts opens the match, the shared album opens the album', (t) async {
+    phone(t);
+    feedStartMode = 'for';
+    addTearDown(() => feedStartMode = 'new');
+    await shell(t);
+    final list = find.descendant(of: find.byType(FeedTab), matching: find.byType(Scrollable)).first;
+    await t.scrollUntilVisible(find.byKey(const ValueKey('mixm-4')), 400, scrollable: list);
+    Scrollable.ensureVisible(t.element(find.byKey(const ValueKey('mixm-4'))), alignment: .3);
+    await settle(t);
+    expect(find.text('ცოცხალი ჩატი'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('mixm-4')));
+    await settle(t);
+    expect(find.byType(FixtureScreen), findsOneWidget);
+    await _back(t);
+    await t.scrollUntilVisible(find.byKey(const ValueKey('mixa-1')), 400, scrollable: list);
+    // up from under the round "+" and the tab bar
+    Scrollable.ensureVisible(t.element(find.byKey(const ValueKey('mixa-1'))), alignment: .3);
+    await settle(t);
+    expect(find.text('სვანეთი 2026'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('mixa-1')));
+    await settle(t);
+    expect(find.byType(AlbumScreen), findsOneWidget);
   });
 
   testWidgets('first steps: the card, a photo, where I am from, a person added, a first post from an idea', (t) async {

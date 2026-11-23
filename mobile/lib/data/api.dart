@@ -484,7 +484,7 @@ abstract class PeeraApi {
 
   // ---------- groups, channels and business pages (community.js) ----------
 
-  static const groupSel = 'id,name,hue,is_private,description,owner,created_at,rules,join_mode,post_approval,avatar_url,kind';
+  static const groupSel = 'id,name,hue,is_private,description,owner,created_at,rules,join_mode,post_approval,avatar_url,kind,category';
   static const pageSel = 'id,name,kind,hue,verified,category,owner,description,avatar_url,rating,reviews';
 
   /// a group's or a page's own screen: also its cover, the pinned post and (groups) topics, questions, filter words,
@@ -498,7 +498,15 @@ abstract class PeeraApi {
   /// one group with its members' count, my role ('owner', 'admin', 'member' or null) and my request ('pending' or null)
   Future<({Map<String, dynamic> g, int count, String? role, String? request})?> group(int id);
   Future<List<Post>> groupPosts(int id, {String? topic});
-  Future<int> createGroup({required String name, String description = '', bool private = false, String? avatarUrl});
+  Future<int> createGroup({required String name, String description = '', bool private = false, String? avatarUrl, String category = 'other'});
+
+  /// the groups page in one look (group_cards): every group with members, last fortnight's posts, my friends in it,
+  /// whether it is mine, how popular it is and how well it fits me
+  Future<List<Map<String, dynamic>>> groupCards();
+
+  /// "for you" (feed_mix): the next part of a random mix from everywhere, leaving out what [seen] holds ('p:12',
+  /// 'a:3', 'm:9'): posts, up to one shared album, up to one coming or live match
+  Future<({List<int> posts, List<int> albums, List<int> matches})> feedMix(List<String> seen, {int limit = 15});
   Future<void> updateGroup(int id, Map<String, dynamic> changes);
   Future<void> deleteGroup(int id);
   Future<void> joinGroup(int id);
@@ -2325,6 +2333,20 @@ class SupaApi implements PeeraApi {
   }
 
   @override
+  Future<List<Map<String, dynamic>>> groupCards() async {
+    final r = await sb.rpc('group_cards');
+    return [for (final g in (r is List ? r : const [])) if (g is Map) Map<String, dynamic>.from(g)];
+  }
+
+  @override
+  Future<({List<int> posts, List<int> albums, List<int> matches})> feedMix(List<String> seen, {int limit = 15}) async {
+    final r = await sb.rpc('feed_mix', params: {'p_seen': seen, 'p_limit': limit});
+    List<int> ids(Object? v) => [for (final x in (v is List ? v : const [])) asInt(x)];
+    final m = r is Map ? r : const {};
+    return (posts: ids(m['p']), albums: ids(m['a']), matches: ids(m['m']));
+  }
+
+  @override
   Future<({Map<String, dynamic> g, int count, String? role, String? request})?> group(int id) async {
     final g = await sb.from('groups').select(PeeraApi.groupFull).eq('id', id).maybeSingle();
     if (g == null) return null;
@@ -2346,10 +2368,10 @@ class SupaApi implements PeeraApi {
   }
 
   @override
-  Future<int> createGroup({required String name, String description = '', bool private = false, String? avatarUrl}) async {
+  Future<int> createGroup({required String name, String description = '', bool private = false, String? avatarUrl, String category = 'other'}) async {
     final g = await sb
         .from('groups')
-        .insert({'owner': myId, 'name': name, 'description': description, 'is_private': private, 'hue': DateTime.now().microsecond % 360, 'avatar_url': avatarUrl})
+        .insert({'owner': myId, 'name': name, 'category': category, 'description': description, 'is_private': private, 'hue': DateTime.now().microsecond % 360, 'avatar_url': avatarUrl})
         .select('id')
         .single();
     final id = asInt(g['id']);

@@ -189,6 +189,40 @@ button.ptag{cursor:pointer}
  .fbar svg{width:20px;height:20px}.fbar.prev{left:6px}.fbar.next{right:6px}.fbar.next svg{transform:scaleX(-1)}
  .fbwrap:hover .fbar{opacity:1}.fbar:hover{transform:scale(1.08)}
  .fbwrap.at-start .fbar.prev,.fbwrap.at-end .fbar.next{opacity:0!important;pointer-events:none}}
+/* "for you" mix: a shared album and a match among the posts */
+.mixcard{padding:14px;display:flex;flex-direction:column;gap:10px}
+.mixhd{display:flex;align-items:center;gap:10px}.mixhd .grow{display:flex;flex-direction:column;min-width:0}
+.mixhd .sub svg{width:13px;height:13px;vertical-align:-2px}
+.mixgrid{display:grid;gap:3px;border-radius:14px;overflow:hidden;width:100%;aspect-ratio:16/10}
+.mixgrid img{width:100%;height:100%;object-fit:cover;display:block}
+.mixgrid.n1{grid-template-columns:1fr}.mixgrid.n2{grid-template-columns:1fr 1fr}
+.mixgrid.n3{grid-template-columns:2fr 1fr;grid-template-rows:1fr 1fr}.mixgrid.n3 img:first-child{grid-row:span 2}
+.mixgrid.n4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.mixft{display:flex;align-items:center;justify-content:space-between;gap:10px}.mixft b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mixfxin{display:flex;flex-direction:column;gap:10px;width:100%;padding:4px 2px;text-align:center}
+.mixfx{background:radial-gradient(130% 120% at 0% 0%,color-mix(in srgb,var(--wine) 14%,var(--surface)),var(--surface))}
+.mixfx .eyebrow svg{width:13px;height:13px;vertical-align:-2px}
+.mixcta{align-self:center;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;background:var(--wine-soft);color:var(--wine);font-weight:700;font-size:13px}
+.mixcta svg{width:14px;height:14px}
+/* groups as cards: a wide picture with the category on it, members and life, friends in it */
+.grpq{padding:10px 16px 4px}.grpq .field{width:100%}
+.grpcats{padding-top:8px}
+.grpsec{margin-top:6px}
+.grpsec .shead{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 0}
+.grpsec .shead h3{margin:0;font-size:17px}
+.fbc.grpc{width:236px}
+.fbc.grpc.sm{width:168px}
+.grpc .fbph{aspect-ratio:16/10}
+.grpc.sm .fbph{aspect-ratio:4/3}
+.grpc .fbi{font-size:54px}
+.grpcat{position:absolute;left:8px;bottom:8px;z-index:1;display:inline-flex;align-items:center;gap:4px;max-width:calc(100% - 16px);padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:700;color:#fff;background:rgb(0 0 0/.42);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grpc .fbn{min-height:0}
+.grpfr{display:flex;align-items:center;gap:0;font-size:12px;color:var(--muted)}
+.grpfr .av{margin-right:-6px;box-shadow:0 0 0 2px var(--surface)}
+.grpfr span{margin-left:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grpgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;padding:10px 16px 22px}
+.grpgrid .fbc.grpc{width:auto}
+.grpnone{padding:8px 0 16px}
 @media (prefers-reduced-motion:reduce){.fbc{animation:none;transition:none}.fbc:hover,.fbc:active{transform:none}.fbph img{transition:none}.fbc.out{animation:none;display:none}}
 .list .row{padding:8px 4px}
 .row.note.unread{background:color-mix(in srgb,var(--wine-soft) 55%,transparent);padding-inline:8px}
