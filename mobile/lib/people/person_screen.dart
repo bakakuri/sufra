@@ -350,6 +350,8 @@ class _PersonScreenState extends State<PersonScreen> {
     final me = p ?? context.me;
     final url = cover ? me.coverUrl : me.avatarUrl;
     final has = (url ?? '').isNotEmpty;
+    // a word left at the bottom ("ფოტო შეიცვალა") would cover the sheet's last rows
+    ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
     await showChoices(context, [
       SheetItem('image', cover ? 'ფონის ატვირთვა გალერეიდან' : 'ფოტოს ატვირთვა გალერეიდან', () => _setPic(cover: cover, camera: false)),
       SheetItem('camera', 'გადაღება კამერით', () => _setPic(cover: cover, camera: true)),
