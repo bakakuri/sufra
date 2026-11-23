@@ -66,6 +66,7 @@ class _ReelsRowState extends State<ReelsRow> {
       final r = [for (final p in await app.api.clips(limit: 12)) if (p.media.any((m) => m.isVideo)) p];
       await app.posts.load(r);
       await app.people.ensure({for (final p in r) if (p.ap == null) p.author});
+      loadClipViews(app.api, [for (final p in r) p.id]);
       final s = await ClipsSeen.load();
       // the ones not watched yet first, each part in its own order
       final l = [...r.where((p) => !s.contains(p.id)), ...r.where((p) => s.contains(p.id))];
@@ -359,7 +360,21 @@ class _ReelCard extends StatelessWidget {
             Row(children: [
               const PIcon('heart', size: 13, color: Colors.white, stroke: 2.2),
               const SizedBox(width: 4),
-              Text(grouped(likes), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12, shadows: shadow)),
+              Text(compact(likes), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12, shadows: shadow)),
+              // how many watched
+              ValueListenableBuilder<Map<int, int>>(
+                valueListenable: clipViews,
+                builder: (_, v, __) => v[p.id] == null
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        padding: const EdgeInsets.only(left: 9),
+                        child: Row(key: ValueKey('reel-views-${p.id}'), mainAxisSize: MainAxisSize.min, children: [
+                          const PIcon('play', size: 11, color: Colors.white),
+                          const SizedBox(width: 3),
+                          Text(compact(v[p.id]!), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12, shadows: shadow)),
+                        ]),
+                      ),
+              ),
             ]),
           ]),
         ),

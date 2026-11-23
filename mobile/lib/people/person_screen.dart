@@ -13,6 +13,7 @@ import '../data/photos.dart';
 import '../data/stores.dart';
 import '../feed/compose_screen.dart';
 import '../feed/photo_viewer.dart';
+import '../feed/post_actions.dart';
 import '../feed/post_card.dart';
 import '../profile/profile.dart';
 import '../settings/edit_profile.dart';
@@ -140,6 +141,12 @@ class _PersonScreenState extends State<PersonScreen> {
         app.api.postsBy(uid, limit: 60),
       ]);
       final list = r[2] as List<Post>;
+      final pin = (r[0] as Profile?)?.pinnedPost;
+      if (pin != null && !list.any((x) => x.id == pin)) {
+        try {
+          list.addAll(await app.api.postsByIds([pin]));
+        } catch (_) {}
+      }
       await app.posts.load(list);
       if (!mounted) return;
       setState(() {
@@ -147,6 +154,10 @@ class _PersonScreenState extends State<PersonScreen> {
         if (got != null) {
           p = widget.ownTab ? _mergeMine(got) : got;
           app.people.put(got);
+          if (isMe) {
+            myPinnedKnown = true;
+            myPinned.value = got.pinnedPost;
+          }
         }
         counts = r[1] as Counts?;
         posts = list;
@@ -202,6 +213,7 @@ class _PersonScreenState extends State<PersonScreen> {
       guest: m.guest,
       gender: x.gender ?? m.gender,
       lastBonus: m.lastBonus,
+      pinnedPost: x.pinnedPost,
     );
   }
 
@@ -1390,16 +1402,38 @@ class _PersonScreenState extends State<PersonScreen> {
                 : null,
           );
         }
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (isMe) _writeLine(context),
-          const SizedBox(height: 8),
-          for (final (i, x) in l.indexed)
-            Rise(
-              key: ValueKey('ppost-${x.id}'),
-              order: i,
-              child: PostCard(post: x, onDeleted: () => setState(() => posts!.removeWhere((y) => y.id == x.id))),
-            ),
-        ]);
+        // one post pinned on top, as on Facebook
+        return ValueListenableBuilder<int?>(
+          valueListenable: myPinned,
+          builder: (context, _, __) {
+            final pinId = isMe ? myPin(context) : p?.pinnedPost;
+            final pin = pinId == null ? null : l.where((x) => x.id == pinId).firstOrNull;
+            final rest = [for (final x in l) if (x.id != pin?.id) x]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            final c = context.pc;
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              if (isMe) _writeLine(context),
+              const SizedBox(height: 8),
+              if (pin != null) ...[
+                Padding(
+                  key: const ValueKey('ppin-head'),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                  child: Row(children: [
+                    PIcon('pin', size: 16, color: c.accent),
+                    const SizedBox(width: 6),
+                    Text('მიმაგრებული პოსტი', style: TextStyle(color: c.muted, fontWeight: FontWeight.w800, fontSize: 14)),
+                  ]),
+                ),
+                PostCard(key: ValueKey('ppin-${pin.id}'), post: pin, onDeleted: () => setState(() => posts!.removeWhere((y) => y.id == pin.id))),
+              ],
+              for (final (i, x) in rest.indexed)
+                Rise(
+                  key: ValueKey('ppost-${x.id}'),
+                  order: i,
+                  child: PostCard(post: x, onDeleted: () => setState(() => posts!.removeWhere((y) => y.id == x.id))),
+                ),
+            ]);
+          },
+        );
     }
   }
 }

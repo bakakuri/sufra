@@ -67,3 +67,11 @@ const _months = ['იანვარი', 'თებერვალი', 'მა
 
 /// a day and time in full, as the site writes it (core.js fdate): "ორშაბათი, 16 ნოემბერი, 14:30"
 String fullDate(DateTime t) => '${_wdays[t.weekday % 7]}, ${t.day} ${_months[t.month - 1]}, ${hhmm(t)}';
+
+/// a count as the site shows it: 950, 1.2K, 34K, 1.5M
+String compact(int n) {
+  String one(double v, String s) => '${v >= 10 ? v.round() : (v * 10).round() / 10}'.replaceAll(RegExp(r'\.0$'), '') + s;
+  if (n >= 1000000) return one(n / 1000000, 'M');
+  if (n >= 1000) return one(n / 1000, 'K');
+  return '$n';
+}

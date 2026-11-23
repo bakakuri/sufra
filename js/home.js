@@ -169,9 +169,9 @@ async function loadReels(){const el=$('#reels');if(!el)return;
   const seen=clipSeenSet();
   rows=rows.map((p,i)=>[p,(seen.has(p.id)?100:0)+i+Math.random()*4]).sort((a,b)=>a[1]-b[1]).map(x=>x[0]).slice(0,12);
   const card=(p,i)=>{const v=p.media.find(m=>m.type==='video'),u=p.ap||prof(p.author),st=STAT.get(p.id)||blankStat(p.id),pic=mPoster(v),w=seen.has(p.id);
-   return `<button class="reel${w?' seen':''}" style="--i:${Math.min(i,8)}" data-a="reelopen" data-pid="${p.id}" data-v="${esc(safeU(v.url))}" aria-label="${esc(u.name)}: კლიპი${w?' (ნანახი)':''}">${pic?`<img src="${esc(pic)}" alt="" loading="lazy">`:`<video src="${esc(v.url)}#t=0.4" muted playsinline preload="metadata" tabindex="-1"></video>`}<span class="rshade"></span><span class="rav">${av(u,30)}</span>${w?`<span class="rseen">${ic('eye','currentColor')}ნანახი</span>`:''}<span class="rplay">${ic('play','currentColor')}</span><span class="rcap"><b>${esc(u.name)}</b>${p.body?`<em>${esc(String(p.body).slice(0,60))}</em>`:''}</span><span class="rstat">${ic('heart','currentColor')}${fmt(rTotal(st))}</span></button>`};
+   return `<button class="reel${w?' seen':''}" style="--i:${Math.min(i,8)}" data-a="reelopen" data-pid="${p.id}" data-v="${esc(safeU(v.url))}" aria-label="${esc(u.name)}: კლიპი${w?' (ნანახი)':''}">${pic?`<img src="${esc(pic)}" alt="" loading="lazy">`:`<video src="${esc(v.url)}#t=0.4" muted playsinline preload="metadata" tabindex="-1"></video>`}<span class="rshade"></span><span class="rav">${av(u,30)}</span>${w?`<span class="rseen">${ic('eye','currentColor')}ნანახი</span>`:''}<span class="rplay">${ic('play','currentColor')}</span><span class="rcap"><b>${esc(u.name)}</b>${p.body?`<em>${esc(String(p.body).slice(0,60))}</em>`:''}</span><span class="rstat">${ic('heart','currentColor')}${fmt(rTotal(st))}<i class="rviews" data-views="${p.id}"></i></span></button>`};
   el.outerHTML=`<section class="reels" id="reelsx"><div class="shead"><h3>${ic('clips')} კლიპები</h3><button class="trb" data-a="tabgo" data-p="clips">ყველა</button></div><div class="fbwrap"><button class="fbar prev" data-a="fbscroll" data-d="-1" aria-label="უკან">${ic('back')}</button><div class="fbrow reelrow" role="list"><button class="reel rnew" data-a="newclip" aria-label="კლიპის შექმნა"><span class="rme">${av(ME.id,46)}</span><span class="rplus">${ic('plus')}</span><b>კლიპის შექმნა</b></button>${rows.map(card).join('')}</div><button class="fbar next" data-a="fbscroll" data-d="1" aria-label="წინ">${ic('back')}</button></div></section>`;
-  S.reelIds=rows.map(p=>p.id);fbEdges($('#reelsx'));reelPreview($('#reelsx'))}catch(e){el.remove()}}
+  S.reelIds=rows.map(p=>p.id);fbEdges($('#reelsx'));reelPreview($('#reelsx'));clipViews(S.reelIds)}catch(e){el.remove()}}
 /* as on Facebook: the first card fully in view plays itself without sound, three seconds over and over; only while the
    row is on screen, never in the economy mode, with less motion asked, or on a saving connection */
 function reelPreview(sec){if(!sec||ECO()||matchMedia('(prefers-reduced-motion: reduce)').matches||navigator.connection?.saveData)return;
@@ -184,7 +184,8 @@ function reelPreview(sec){if(!sec||ECO()||matchMedia('(prefers-reduced-motion: r
  const io=new IntersectionObserver(es=>{es.forEach(e=>ratio.set(e.target,e.intersectionRatio));pick()},{root:row,threshold:[0,.5,.9,1]});
  $$('.reel[data-v]',row).forEach(c=>{if(c.dataset.v)io.observe(c)});
  const vio=new IntersectionObserver(([e])=>{vis=e.intersectionRatio>.55;if(vis)pick();else stop()},{threshold:[0,.55,1]});vio.observe(sec)}
-A.reelopen=t=>{CLIP.start=+t.dataset.pid;go('clips')};
+A.reelopen=t=>{CLIP.start=+t.dataset.pid;CLIP.tab='for';go('clips')};
+A.cliptab=t=>{CLIP.tab=t.dataset.t;R.clips()};
 async function loadSuggest(){const el=$('#sugg');if(!el)return;try{const hid=sugHidden();const s=(await rpc('friend_suggestions',{p_limit:12})).filter(p=>!hid.has(p.id));if(!s.length){el.remove();return}s.forEach(p=>PC.set(p.id,Object.assign(PC.get(p.id)||{},p)));
  el.outerHTML=`<section class="suggest" id="suggx"><div class="shead"><h3>შეიძლება იცნობდე</h3><button class="trb" data-a="page" data-p="friends">ყველა</button></div>${fbRow(s,'sug')}</section>`;fbEdges($('#suggx'))}catch(e){el.remove()}}
 /* trending tags are shown only in search (not on the feed) */

@@ -223,6 +223,8 @@ class _Head extends StatelessWidget {
       }),
       if (mine && !(post.plainRepost))
         SheetItem('edit', 'რედაქტირება', () => openPage<Post>(context, EditPostScreen(post: post), full: true)),
+      if (mine && !post.plainRepost && post.groupId == null && post.pageId == null)
+        SheetItem('pin', myPin(context) == post.id ? 'მიმაგრების მოხსნა' : 'პროფილზე მიმაგრება', () => pinPost(context, post)),
       if (!mine) ...[
         SheetItem('eyeoff', 'დამალვა ჩემს ფიდში', () {
           postOverrides.hide(post.id);

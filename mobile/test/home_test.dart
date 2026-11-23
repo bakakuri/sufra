@@ -382,6 +382,7 @@ void main() {
     // who made it, the words, the likes (❤️ 128 and 😮 4)
     final g = find.byKey(const ValueKey('reel-301'));
     expect(find.descendant(of: g, matching: find.text('132')), findsOneWidget);
+    expect(find.descendant(of: g, matching: find.text('1.2K')), findsOneWidget);
     expect(find.descendant(of: g, matching: find.textContaining('გუდაურში')), findsOneWidget);
     // the first card fully in view plays by itself, without sound
     await t.pump(const Duration(seconds: 1));

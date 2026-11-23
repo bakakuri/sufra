@@ -269,6 +269,7 @@ class _NotesScreenState extends State<NotesScreen> {
       }
       return;
     }
+    if (k == 'weekly') return weekSheet(context, r);
     if (k == 'admin_msg' || k == 'verified') return;
     // the parts the app has itself; the rest still opens on the site
     final Widget? here = k.startsWith('album_') && id('album') > 0
@@ -557,4 +558,63 @@ class _Faces extends StatelessWidget {
       ]),
     );
   }
+}
+
+/// The week in numbers: what others gave, who came, who watched.
+Future<void> weekSheet(BuildContext context, Map r) {
+  final c = context.pc;
+  int n(String k) => int.tryParse('${r[k] ?? 0}') ?? 0;
+  Widget box(String icon, String k, String label, int color) => Container(
+        key: ValueKey('wk-$k'),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Color.alphaBlend(Color(color).withValues(alpha: .09), c.surface),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Color(color).withValues(alpha: .22)),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: Color(color), shape: BoxShape.circle),
+            child: PIcon(icon, size: 16, color: Colors.white),
+          ),
+          const SizedBox(height: 6),
+          Text(compact(n(k)), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, height: 1.1)),
+          Text(label, maxLines: 2, style: TextStyle(color: c.muted, fontSize: 12, height: 1.25)),
+        ]),
+      );
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    backgroundColor: c.surface,
+    builder: (s) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Text('შენი კვირა', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          Text('ბოლო 7 დღე', style: TextStyle(color: c.muted)),
+          const SizedBox(height: 12),
+          GridView.count(
+            crossAxisCount: 3,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: .92,
+            children: [
+              box('heart', 'likes', 'მოწონება', 0xFFF43F5E),
+              box('comment', 'comments', 'კომენტარი', 0xFF10B981),
+              box('users', 'friends', 'ახალი მეგობარი', 0xFF3B82F6),
+              box('eye', 'visits', 'პროფილის ნახვა', 0xFF8B5CF6),
+              box('play', 'views', 'კლიპის ნახვა', 0xFFF97316),
+              box('edit', 'posts', 'შენი პოსტი', 0xFF0EA5E9),
+            ],
+          ),
+        ]),
+      ),
+    ),
+  );
 }

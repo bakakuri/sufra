@@ -183,6 +183,7 @@ String groupText(NoteGroup g) {
   if (const {'comment', 'comment_reply', 'mention', 'story_mention'}.contains(kind)) return ('comment', 0xFF10B981, 0xFF0EA5E9);
   if (const {'friend_req', 'friend_ok', 'kin_req', 'kin_ok'}.contains(kind)) return ('uadd', 0xFF3B82F6, 0xFF6366F1);
   if (const {'grade_plus', 'admin_coins', 'gift', 'bet_won', 'shop_done'}.contains(kind)) return ('star', 0xFFF59E0B, 0xFFF97316);
+  if (kind == 'weekly') return ('star', 0xFF0EA5E9, 0xFF6366F1);
   if (kind == 'jk_invite') return ('cards', 0xFF8B5CF6, 0xFF6D28D9);
   if (kind == 'repost') return ('repost', 0xFF14B8A6, 0xFF0D9488);
   if (const {'birthday', 'nameday', 'birthday_me', 'nameday_me'}.contains(kind)) return ('gift', 0xFFEC4899, 0xFFF97316);

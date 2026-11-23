@@ -27,6 +27,9 @@ class _ClipsTabState extends State<ClipsTab> {
   final _feed = GlobalKey<ClipFeedState>();
   int _gen = 0;
 
+  /// 'for' (the newest) or 'top' (the most watched this week)
+  String mode = 'for';
+
   static final _index = tabs.indexWhere((t) => t.id == 'clips');
 
   @override
@@ -56,7 +59,14 @@ class _ClipsTabState extends State<ClipsTab> {
       error = null;
     });
     try {
-      final r = await app.api.clips();
+      final List<Post> r;
+      if (mode == 'top') {
+        final ids = await app.api.trendingClips();
+        final got = ids.isEmpty ? <Post>[] : await app.api.postsByIds(ids);
+        r = [for (final id in ids) ...got.where((p) => p.id == id && p.media.any((m) => m.isVideo))];
+      } else {
+        r = await app.api.clips();
+      }
       await app.posts.load(r);
       if (!mounted || g != _gen) return;
       setState(() {
@@ -64,7 +74,7 @@ class _ClipsTabState extends State<ClipsTab> {
           ..clear()
           ..addAll(r);
         loading = false;
-        done = r.length < 12;
+        done = mode == 'top' || r.length < 12;
       });
     } catch (e) {
       if (mounted && g == _gen) {
@@ -76,8 +86,19 @@ class _ClipsTabState extends State<ClipsTab> {
     }
   }
 
+  void _mode(String m) {
+    if (m == mode) return;
+    setState(() {
+      mode = m;
+      posts.clear();
+      loading = true;
+      done = false;
+    });
+    _load();
+  }
+
   Future<void> _more() async {
-    if (more || done || posts.isEmpty) return;
+    if (more || done || posts.isEmpty || mode == 'top') return;
     more = true;
     try {
       final r = await app.api.clips(before: posts.last.cursor);
@@ -108,8 +129,26 @@ class _ClipsTabState extends State<ClipsTab> {
       child: SizedBox(
         height: 52,
         child: Row(children: [
-          const SizedBox(width: 16),
-          const Text('კლიპები', style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800, shadows: [Shadow(blurRadius: 6, color: Colors.black45)])),
+          const SizedBox(width: 10),
+          for (final (k, t) in const [('for', 'შენთვის'), ('top', 'ტრენდული')])
+            InkWell(
+              key: ValueKey('clips-$k'),
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => _mode(k),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 200),
+                  style: TextStyle(
+                    color: mode == k ? Colors.white : Colors.white60,
+                    fontSize: mode == k ? 18 : 16,
+                    fontWeight: FontWeight.w800,
+                    shadows: const [Shadow(blurRadius: 6, color: Colors.black45)],
+                  ),
+                  child: Text(t),
+                ),
+              ),
+            ),
           const Spacer(),
           IconBtn('plus', label: 'კლიპის ატვირთვა', color: Colors.white, onTap: _upload),
           const SizedBox(width: 4),
@@ -126,7 +165,7 @@ class _ClipsTabState extends State<ClipsTab> {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             const PIcon('clips', size: 48, color: Colors.white70),
             const SizedBox(height: 14),
-            Text(error != null ? 'ვერ ჩაიტვირთა' : 'კლიპები ჯერ არ არის',
+            Text(error != null ? 'ვერ ჩაიტვირთა' : (mode == 'top' ? 'ამ კვირაში ჯერ არაფერია ნანახი' : 'კლიპები ჯერ არ არის'),
                 style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             Text(error != null ? errText(error!) : 'ატვირთე პირველი მოკლე ვიდეო და აქ გამოჩნდება.',

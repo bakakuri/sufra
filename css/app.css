@@ -269,6 +269,19 @@ button.ptag{cursor:pointer}
 .svtx small{color:var(--muted);font-size:13px}.svtx em{display:flex;align-items:center;gap:4px;font-style:normal;color:var(--wine);font-size:12.5px;font-weight:700}.svtx em svg{width:13px;height:13px}
 .svact{display:flex;align-items:center;gap:6px;padding-left:96px}.svact .btn{gap:6px}.svact .btn svg{width:16px;height:16px}
 @media (prefers-reduced-motion:reduce){.svc,.svi{animation:none}}
+/* clips: for you or trending; how many watched */
+.clip-top .cliptab{margin-top:12px;height:max-content;padding:0 0 2px;color:rgb(255 255 255/.7);font-weight:600;text-shadow:0 1px 3px rgb(0 0 0/.5);border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
+.clip-top .cliptab.on{color:#fff;border-bottom-color:#fff}
+.cviews{display:flex;align-items:center;gap:4px;margin-top:5px;font-size:12.5px;font-weight:600;opacity:.88}.cviews:empty{display:none}.cviews svg{width:12px;height:12px}
+.rviews{display:inline-flex;align-items:center;gap:3px;margin-left:8px;font-style:normal}.rviews:empty{display:none}.rstat .rviews svg{width:11px;height:11px}
+/* the pinned post on a profile */
+.ppin{padding-top:6px}.ppinh{display:flex;align-items:center;gap:6px;margin:0;padding:8px 16px 2px;font-size:14px;font-weight:800;color:var(--muted)}.ppinh svg{width:16px;height:16px;color:var(--wine)}
+/* the week in numbers */
+.wkgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.wkb{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px;border-radius:14px;background:color-mix(in srgb,var(--c) 9%,var(--surface));border:1px solid color-mix(in srgb,var(--c) 22%,transparent);animation:fbin .45s cubic-bezier(.2,.8,.2,1) both}
+.wki{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--c);color:#fff;margin-bottom:4px}.wki svg{width:16px;height:16px}
+.wkb b{font-size:22px;font-weight:800;line-height:1.1}.wkb small{color:var(--muted);font-size:12px;line-height:1.25}
+@media (prefers-reduced-motion:reduce){.wkb{animation:none}}
 /* notifications as Facebook shows them */
 .ntpills{display:flex;gap:6px;padding:6px 16px 4px}
 .ntpills button{padding:8px 14px;border-radius:999px;font-weight:700;font-size:14.5px;color:var(--ink);transition:background .2s,color .2s}

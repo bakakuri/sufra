@@ -74,6 +74,20 @@ class PostOverrides extends ChangeNotifier {
 
 final postOverrides = PostOverrides();
 
+/// my pinned post as changed here (null: none); until then what my profile said
+final myPinned = ValueNotifier<int?>(null);
+bool myPinnedKnown = false;
+int? myPin(BuildContext context) => myPinnedKnown ? myPinned.value : context.me.pinnedPost;
+
+/// one of my posts on top of my profile, or taken down
+Future<void> pinPost(BuildContext context, Post post) async {
+  final off = myPin(context) == post.id;
+  if (!await attempt(context, () => context.app.api.pinPost(off ? null : post.id)) || !context.mounted) return;
+  myPinnedKnown = true;
+  myPinned.value = off ? null : post.id;
+  toast(context, off ? 'მიმაგრება მოიხსნა' : 'მიმაგრდა შენი პროფილის თავში');
+}
+
 String postLink(int id) => '$siteUrl/#post-$id';
 
 bool isStaff(BuildContext context) => context.me.role == 'admin' || context.me.role == 'moderator';

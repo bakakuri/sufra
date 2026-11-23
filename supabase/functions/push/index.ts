@@ -147,6 +147,11 @@ function text(kind: string, name: string, ref: Record<string, string>): string {
     case "help_offer": return `${name} გთავაზობს დახმარებას: ${ref.title ?? ""}`;
     case "help_done": return `${ref.title ?? ""} · მოგვარდა. მადლობა, რომ გამოეხმაურე`;
     case "live_start": return `${name} ცოცხალ ეთერშია: ${ref.title ?? ""}`;
+    case "weekly": {
+      const parts = [[ref.likes, "მოწონება"], [ref.comments, "კომენტარი"], [ref.friends, "ახალი მეგობარი"], [ref.visits, "პროფილის ნახვა"], [ref.views, "კლიპის ნახვა"]]
+        .filter(([n]) => Number(n) > 0).map(([n, l]) => `${n} ${l}`);
+      return `შენი კვირა: ${parts.join(" · ") || "ახალი კვირა დაიწყო"}`;
+    }
     default: return `${name} · ახალი შეტყობინება`;
   }
 }
@@ -174,6 +179,7 @@ function route(kind: string, ref: Record<string, string>): string {
   if (kind.startsWith("bet_") && ref.fixture) return `/#fixture-${ref.fixture}`;
   if (kind.startsWith("ride_") && ref.ride) return `/#ride-${ref.ride}`;
   if (kind.startsWith("job_") && ref.job) return `/#job-${ref.job}`;
+  if (kind === "weekly") return "/#notifications";
   if (kind === "nameday" || kind === "birthday") return "/#calendar";
   if (kind === "nameday_me") return "/#namedays";
   if (kind.startsWith("kin_")) return kind === "kin_req" ? "/#tree" : `/#tree-${ref.owner ?? ""}`;

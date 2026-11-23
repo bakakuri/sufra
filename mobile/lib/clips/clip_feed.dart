@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config.dart';
+import '../data/api.dart';
 import '../data/models.dart';
 import '../data/stores.dart';
 import '../feed/post_card.dart';
@@ -43,6 +46,21 @@ class ClipsSeen {
   }
 }
 
+/// How many people watched each clip (one view a person), as far as asked.
+final clipViews = ValueNotifier<Map<int, int>>({});
+
+Future<void> loadClipViews(PeeraApi api, Iterable<int> ids) async {
+  final want = {...ids};
+  if (want.isEmpty) return;
+  try {
+    final r = await api.clipCounts(want.toList());
+    clipViews.value = {...clipViews.value, for (final id in want) id: r[id] ?? 0};
+  } catch (_) {}
+}
+
+/// the clips counted from this phone in this run (the server counts one a person anyway)
+final clipsCounted = <int>{};
+
 /// Clips sound on or off, the same for every clip (off at first, as on the site).
 final clipSound = ValueNotifier<bool>(false);
 
@@ -79,6 +97,10 @@ class ClipFeedState extends State<ClipFeed> with WidgetsBindingObserver {
     widget.visible?.addListener(_sync);
     clipSound.addListener(_sync);
     WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      loadClipViews(context.app.api, [for (final p in widget.posts) (p.original ?? p).id]);
+    });
   }
 
   @override
@@ -93,6 +115,7 @@ class ClipFeedState extends State<ClipFeed> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _viewT?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     widget.visible?.removeListener(_sync);
     clipSound.removeListener(_sync);
@@ -143,6 +166,7 @@ class ClipFeedState extends State<ClipFeed> with WidgetsBindingObserver {
         p.prepare();
       }
     }
+    if (_live && (_viewT == null || !_viewT!.isActive)) _watch();
     setState(() {});
   }
 
@@ -177,9 +201,26 @@ class ClipFeedState extends State<ClipFeed> with WidgetsBindingObserver {
     }
   }
 
+  Timer? _viewT;
+
+  /// two seconds on screen and playing: one view
+  void _watch() {
+    _viewT?.cancel();
+    if (widget.posts.isEmpty) return;
+    final id = (widget.posts[at].original ?? widget.posts[at]).id, i = at;
+    if (clipsCounted.contains(id)) return;
+    _viewT = Timer(const Duration(seconds: 2), () {
+      if (!mounted || at != i || !_live || clipsCounted.contains(id)) return;
+      if (!(player(i)?.playing ?? false)) return;
+      clipsCounted.add(id);
+      context.app.api.clipView(id).catchError((_) {});
+    });
+  }
+
   void _changed(int i) {
     final old = at;
     at = i;
+    _watch();
     _held.remove(widget.posts[old].id);
     _sync();
     if (widget.onMore != null && i >= widget.posts.length - 3) widget.onMore!();
@@ -385,7 +426,14 @@ class _ClipPageState extends State<ClipPage> with SingleTickerProviderStateMixin
                 ),
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(ago(p.createdAt), style: const TextStyle(color: Colors.white70, fontSize: 12.5)),
+                child: ValueListenableBuilder<Map<int, int>>(
+                  valueListenable: clipViews,
+                  builder: (_, v, __) => Text(
+                    [ago(p.createdAt), if (v[p.id] != null) '▶ ${compact(v[p.id]!)} ნახვა'].join(' · '),
+                    key: ValueKey('clip-views-${p.id}'),
+                    style: const TextStyle(color: Colors.white70, fontSize: 12.5),
+                  ),
+                ),
               ),
             ]),
           ),

@@ -667,6 +667,19 @@ class FakeApi implements PeeraApi {
   final storyList = <Story>[];
 
   @override
+  Future<void> clipView(int postId) async => calls.add('clipview $postId');
+  @override
+  Future<Map<int, int>> clipCounts(List<int> ids) async => {for (final id in ids) if (id == 301) id: 1200 else if (id == 302) id: 15};
+  @override
+  Future<List<int>> trendingClips() async => [302, 301];
+  int? pinned;
+  @override
+  Future<void> pinPost(int? postId) async {
+    calls.add('pin ${postId ?? 'off'}');
+    pinned = postId;
+  }
+
+  @override
   Future<List<Post>> clips({String? before, int limit = 12}) async => before == null ? [...clipPosts] : const [];
   @override
   Future<String> uploadVoice(String path) async {
@@ -732,6 +745,7 @@ class FakeApi implements PeeraApi {
       n(67, null, 'verified', {}, 60 * 26),
       n(66, ana.id, 'birthday', {}, 60 * 30),
       n(65, dato.id, 'jk_invite', {'table': 7}, 60 * 50),
+      n(64, null, 'weekly', {'likes': 48, 'comments': 5, 'friends': 3, 'visits': 12, 'views': 0, 'posts': 2}, 60 * 70),
     ];
   }();
 

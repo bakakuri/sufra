@@ -87,6 +87,14 @@ abstract class PeeraApi {
   /// short videos (posts marked as clips), newest first
   Future<List<Post>> clips({String? before, int limit = 12});
 
+  /// a clip watched (one view a person); how many watched each; the most watched of the week, most first
+  Future<void> clipView(int postId);
+  Future<Map<int, int>> clipCounts(List<int> ids);
+  Future<List<int>> trendingClips();
+
+  /// one of my posts on top of my profile (null takes it down)
+  Future<void> pinPost(int? postId);
+
   /// a video and its poster, uploaded
   Future<Media> uploadVideo(VideoReady v);
 
@@ -857,7 +865,7 @@ class SupaApi implements PeeraApi {
       'ap:profiles!posts_author_fkey($_who),page:pages!posts_page_id_fkey(id,name,hue,avatar_url,verified,kind),'
       'grp:groups!posts_group_id_fkey(id,name),pl:places!posts_place_id_fkey(id,name,kind,city)';
   static const commentSel = 'id,post_id,body,media,created_at,author,parent_id,reply_to,likes,profiles!comments_author_fkey($_who)';
-  static const personSel = 'id,username,name,surname,bio,city,hue,avatar_url,cover_url,verified,last_seen,role,banned,rating,nameday,nameday_label,home_place,home_region,edu,gender,abroad,created_at';
+  static const personSel = 'id,username,name,surname,bio,city,hue,avatar_url,cover_url,verified,last_seen,role,banned,rating,nameday,nameday_label,home_place,home_region,edu,gender,abroad,created_at,pinned_post';
   static const msgSel = 'id,conv_id,sender,body,media,kind,created_at,reply_to,edited_at,deleted,expires_at';
 
   String _id(int n) => List.generate(n, (_) => 'abcdefghijklmnopqrstuvwxyz0123456789'[_rnd.nextInt(36)]).join();
@@ -1811,6 +1819,25 @@ class SupaApi implements PeeraApi {
     final m = r is Map ? r : const {};
     return (coins: asInt(m['coins']), reward: asInt(m['reward']));
   }
+
+  @override
+  Future<void> clipView(int postId) => sb.rpc('clip_view', params: {'p_post': postId});
+
+  @override
+  Future<Map<int, int>> clipCounts(List<int> ids) async {
+    if (ids.isEmpty) return {};
+    final r = await sb.rpc('clip_counts', params: {'p_ids': ids});
+    return r is Map ? {for (final e in r.entries) asInt(e.key): asInt(e.value)} : {};
+  }
+
+  @override
+  Future<List<int>> trendingClips() async {
+    final r = await sb.rpc('trending_clips', params: {'p_limit': 30});
+    return r is List ? [for (final x in r) asInt(x)] : [];
+  }
+
+  @override
+  Future<void> pinPost(int? postId) => sb.rpc('pin_post', params: {'p_post': postId});
 
   @override
   Future<List<Post>> clips({String? before, int limit = 12}) async {

@@ -9,8 +9,17 @@ String _plus(Map r) => asInt(r['n']) > 1 ? ' · და კიდევ ${asInt(r
 const _studyKinds = {'exam': '🎓 გამოცდა', 'midterm': '📝 შუალედური', 'quiz': '❓ ქვიზი', 'task': '✏️ დავალება', 'project': '📁 პროექტი'};
 String _dk(Map r) => _studyKinds[_s(r, 'kind')] ?? '✏️ დავალება';
 
+/// the week's numbers, as words: "48 მოწონება · 3 ახალი მეგობარი"
+List<String> weekParts(Map r) => [
+      for (final (k, l) in const [('likes', 'მოწონება'), ('comments', 'კომენტარი'), ('friends', 'ახალი მეგობარი'), ('visits', 'პროფილის ნახვა'), ('views', 'კლიპის ნახვა')])
+        if ((int.tryParse('${r[k] ?? 0}') ?? 0) > 0) '${r[k]} $l',
+    ];
+
 String noteText(String kind, Map r) {
   switch (kind) {
+    case 'weekly':
+      final w = weekParts(r);
+      return 'შენი კვირა: ${w.isEmpty ? 'ახალი კვირა დაიწყო' : w.join(' · ')}';
     case 'lesson_soon':
       return 'მალე იწყება: ${_s(r, 'title')}${_s(r, 'starts').isEmpty ? '' : ' · ${_s(r, 'starts')}'}${_s(r, 'place').isEmpty ? '' : ' · ${_s(r, 'place')}'}';
     case 'deadline_soon':

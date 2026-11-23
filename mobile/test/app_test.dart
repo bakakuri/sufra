@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:peera/feed/post_actions.dart';
 import 'package:peera/auth/auth_screen.dart';
 import 'package:peera/chat/chat_screen.dart';
 import 'package:peera/clips/clip_composer.dart';
@@ -514,6 +515,21 @@ void main() {
     expect(find.textContaining('ბათუმის'), findsOneWidget);
     await _back(t);
     expect(t.state<HomeShellState>(find.byType(HomeShell)).index, 0);
+  });
+
+  testWidgets('clips: a view counted after two seconds of playing; trending, the most watched first', (t) async {
+    phone(t);
+    clipsCounted.clear();
+    final api = await shell(t);
+    await _tab(t, 'clips');
+    expect(find.textContaining('1.2K ნახვა'), findsOneWidget);
+    await t.pump(const Duration(seconds: 3));
+    await settle(t);
+    expect(api.calls, contains('clipview 301'));
+    await t.tap(find.byKey(const ValueKey('clips-top')));
+    await settle(t);
+    expect(find.textContaining('ბათუმის'), findsOneWidget);
+    expect(find.textContaining('15 ნახვა'), findsOneWidget);
   });
 
   testWidgets('a new clip: chosen, made ready, published at the top', (t) async {
@@ -1186,6 +1202,14 @@ void main() {
     await settle(t);
     expect(api.calls, contains('read all'));
     expect(find.byKey(const ValueKey('note-dot-71')), findsNothing);
+    // the week in numbers
+    await t.ensureVisible(find.byKey(const ValueKey('note-64')));
+    await settle(t);
+    expect(find.textContaining('შენი კვირა: 48 მოწონება'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('note-64')));
+    await settle(t);
+    expect(find.descendant(of: find.byKey(const ValueKey('wk-likes')), matching: find.text('48')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('wk-friends')), matching: find.text('3')), findsOneWidget);
   });
 
   testWidgets('settings: privacy and notification switches are saved, unblocking, the look', (t) async {
@@ -1675,6 +1699,26 @@ void main() {
     await tapPro(t, 'pro-more');
     expect(find.text('მოდერაცია: შეზღუდვა'), findsNothing);
     expect(find.text('ოჯახის ხე'), findsOneWidget);
+  });
+
+  testWidgets('a post pinned on top of my profile, and taken down', (t) async {
+    myPinnedKnown = false;
+    myPinned.value = null;
+    final api = await meTab(t);
+    await proTo(t, find.byKey(const ValueKey('more-106')));
+    await t.tap(find.byKey(const ValueKey('more-106')));
+    await settle(t);
+    await t.tap(find.text('პროფილზე მიმაგრება'));
+    await settle(t);
+    expect(api.calls, contains('pin 106'));
+    await proTo(t, find.byKey(const ValueKey('ppin-head')));
+    expect(find.byKey(const ValueKey('ppin-106')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('more-106')));
+    await settle(t);
+    await t.tap(find.text('მიმაგრების მოხსნა'));
+    await settle(t);
+    expect(api.calls, contains('pin off'));
+    expect(find.byKey(const ValueKey('ppin-head')), findsNothing);
   });
 
   testWidgets('coins: the bonus waits on the wallet, is taken on the coins page; back returns to the profile', (t) async {
