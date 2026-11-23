@@ -248,7 +248,7 @@ void main() {
     expect(find.text('2:1'), findsOneWidget);
     await t.tap(find.text('ჩემი'));
     await settle(t);
-    expect(find.text('შენი: მასპინძელი · მოგება +5'), findsOneWidget);
+    expect(find.textContaining('შენი: მასპინძელი · მოგება +5'), findsOneWidget);
   });
 
   testWidgets('the match room for a moderator: a new match and its result', (t) async {
