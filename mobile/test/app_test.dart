@@ -630,6 +630,8 @@ void main() {
     await t.tap(find.byKey(const ValueKey('pro-settings')));
     await settle(t);
     await t.scrollUntilVisible(find.byKey(const ValueKey('set-out')), 300, scrollable: find.descendant(of: find.byType(SettingsScreen), matching: find.byType(Scrollable)).first);
+    await t.ensureVisible(find.byKey(const ValueKey('set-out')));
+    await settle(t);
     await t.tap(find.byKey(const ValueKey('set-out')));
     await settle(t);
     await t.tap(find.widgetWithText(TextButton, 'გასვლა'));
