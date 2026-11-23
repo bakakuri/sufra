@@ -126,7 +126,8 @@ void main() {
     await settle(t);
     // the board is the same on both phones
     final mine = gameOfSite(_sent(room)['s'] as Map);
-    expect(table.g!.board.pips(0) + table.g!.board.pips(1), lessThan(334));
+    // (a hit can put pips back, so only the two boards are compared)
+    expect([mine.board.pips(0), mine.board.pips(1)], [table.g!.board.pips(0), table.g!.board.pips(1)]);
     expect(mine.board.offs, table.g!.board.offs);
 
     // given up: the state says so, the result goes to the ratings

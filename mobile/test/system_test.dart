@@ -60,6 +60,9 @@ void main() {
     phoneBridge = FakePhone();
     final api = await shell(t, api: FakeApi()..personFail = Exception('permission denied for table profiles'));
     await toProfile(t);
+    // the posts stand below the head of the page
+    await t.scrollUntilVisible(find.text('პოსტები ვერ ჩაიტვირთა'), 300, scrollable: find.descendant(of: find.byType(PersonScreen), matching: find.byType(Scrollable)).first);
+    await settle(t);
     expect(find.text('პოსტები ვერ ჩაიტვირთა'), findsOneWidget);
     expect(api.errors.map((e) => '${e['msg']}'), contains(contains('permission denied')));
     // the server answers again: the retry brings the posts
