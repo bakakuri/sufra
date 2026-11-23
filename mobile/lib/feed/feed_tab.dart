@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../data/models.dart';
@@ -15,6 +13,7 @@ import '../ui/icons.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'compose_screen.dart';
+import 'mix_cards.dart';
 import 'post_actions.dart';
 import 'post_card.dart';
 
@@ -25,20 +24,41 @@ String feedStartMode = 'for';
 class FeedItem {
   const FeedItem.post(Post this.post, {this.ad})
       : promo = null,
-        suggest = false;
+        suggest = false,
+        album = null,
+        match = null;
   const FeedItem.promo(Promo this.promo)
       : post = null,
         ad = null,
-        suggest = false;
+        suggest = false,
+        album = null,
+        match = null;
   const FeedItem.suggest()
       : post = null,
         promo = null,
         ad = null,
-        suggest = true;
+        suggest = true,
+        album = null,
+        match = null;
+
+  /// "for you" brings a shared album and a coming or live match among the posts
+  const FeedItem.album(int this.album)
+      : post = null,
+        promo = null,
+        ad = null,
+        suggest = false,
+        match = null;
+  const FeedItem.match(int this.match)
+      : post = null,
+        promo = null,
+        ad = null,
+        suggest = false,
+        album = null;
   final Post? post;
   final Promo? promo;
   final int? ad;
   final bool suggest;
+  final int? album, match;
 }
 
 /// The main tab, as the site's home page (home.js): the admin's banner, the stories (with friends' days coming up and
@@ -64,8 +84,9 @@ class FeedTabState extends State<FeedTab> with WidgetsBindingObserver {
   bool _started = false;
   final scroll = ScrollController();
   final _seen = <int>{};
-  Set<String> _tags = {};
-  bool _tagsRead = false;
+
+  /// what "for you" already showed in this scroll ('p:12', 'a:3', 'm:9'), sent back for the next part
+  final _mixSeen = <String>[];
   List<Promo> _promoQ = [];
   List<(int, Post)> _adQ = [];
 
@@ -138,14 +159,6 @@ class FeedTabState extends State<FeedTab> with WidgetsBindingObserver {
   /// a post and its plain reposts show once
   int _key(Post p) => p.plainRepost && p.repostOf != null ? p.repostOf! : p.id;
 
-  double _score(Post p) {
-    final app = context.app, s = app.posts.of(p.id);
-    final h = DateTime.now().difference(p.createdAt).inMinutes / 60;
-    final topic = _tags.isNotEmpty && p.tags.any((t) => _tags.contains(t.toLowerCase())) ? 4 : 0;
-    final friend = app.friends.friends.contains(p.author) ? 3 : 0, mine = p.author == app.api.myId ? 1 : 0;
-    return (1 + s.total + s.comments * 2 + s.gradeN + topic + friend + mine) / math.pow(h + 2, 1.3);
-  }
-
   Future<void> load(bool reset) async {
     if (!reset && (more || done || loading)) return;
     final app = context.app, me = context.me, m = mode;
@@ -159,27 +172,32 @@ class FeedTabState extends State<FeedTab> with WidgetsBindingObserver {
       }
     });
     try {
-      if (m == 'for' && !_tagsRead) {
-        _tagsRead = true;
-        try {
-          _tags = await app.api.tagFollows();
-        } catch (_) {}
-      }
       List<String>? authors;
       if (m == 'friends') {
         if (!app.friends.loaded) await app.friends.load();
         authors = [me.id, ...app.friends.friends];
       }
       if (reset) app.stories.load();
-      var rows = await app.api.feed(authors: authors, before: reset ? null : _cursor, limit: widget.pageSize);
-      final last = rows.lastOrNull?.cursor;
-      final end = rows.length < widget.pageSize;
-      // posts on the topics I follow come in even when they are older than the newest ones
-      if (m == 'for' && reset && _tags.isNotEmpty) {
-        try {
-          final have = rows.map((p) => p.id).toSet();
-          rows = [...rows, ...(await app.api.feedTagged(_tags.toList())).where((p) => !have.contains(p.id))];
-        } catch (_) {}
+      List<Post> rows;
+      String? last;
+      bool end;
+      int? album, match;
+      if (m == 'for') {
+        // "for you": a random mix from everywhere (friends, groups, pages, everyone), a shared album, a match
+        final seenNow = reset ? <String>[] : [..._mixSeen];
+        final mix = await app.api.feedMix(seenNow, limit: widget.pageSize);
+        if (reset) _mixSeen.clear();
+        _mixSeen.addAll([for (final id in mix.posts) 'p:$id', for (final id in mix.albums) 'a:$id', for (final id in mix.matches) 'm:$id']);
+        final got = await app.api.postsByIds(mix.posts);
+        final at = {for (var i = 0; i < mix.posts.length; i++) mix.posts[i]: i};
+        rows = [...got]..sort((a, b) => (at[a.id] ?? 0).compareTo(at[b.id] ?? 0));
+        end = mix.posts.isEmpty;
+        album = mix.albums.firstOrNull;
+        match = mix.matches.firstOrNull;
+      } else {
+        rows = await app.api.feed(authors: authors, before: reset ? null : _cursor, limit: widget.pageSize);
+        last = rows.lastOrNull?.cursor;
+        end = rows.length < widget.pageSize;
       }
       var promoQ = _promoQ, adQ = _adQ;
       if (reset) {
@@ -190,7 +208,6 @@ class FeedTabState extends State<FeedTab> with WidgetsBindingObserver {
       if (!mounted || g != _gen) return;
       final seen = reset ? <int>{} : _seen;
       rows = rows.where((p) => seen.add(_key(p))).toList();
-      if (m == 'for') rows.sort((a, b) => _score(b).compareTo(_score(a)));
       setState(() {
         if (reset) {
           items.clear();
@@ -202,9 +219,21 @@ class FeedTabState extends State<FeedTab> with WidgetsBindingObserver {
           _promoQ = [...promoQ];
           _adQ = [...adQ];
         }
+        var n = 0;
+        int? mt = match, al = album;
         for (final p in rows) {
           _count++;
           items.add(FeedItem.post(p));
+          // the match after the third post of this part, the album after the sixth
+          n++;
+          if (n == 3 && mt != null) {
+            items.add(FeedItem.match(mt));
+            mt = null;
+          }
+          if (n == 6 && al != null) {
+            items.add(FeedItem.album(al));
+            al = null;
+          }
           if (_promoQ.isNotEmpty && _count >= _nextPromo) {
             final pr = _promoQ.removeAt(0);
             items.add(FeedItem.promo(pr));
@@ -218,6 +247,8 @@ class FeedTabState extends State<FeedTab> with WidgetsBindingObserver {
           }
           if (reset && _count == 2) items.add(const FeedItem.suggest());
         }
+        if (mt != null) items.add(FeedItem.match(mt));
+        if (al != null) items.add(FeedItem.album(al));
         _cursor = last ?? _cursor;
         done = end;
         loading = false;
@@ -261,7 +292,6 @@ class FeedTabState extends State<FeedTab> with WidgetsBindingObserver {
 
   Future<void> _topics() async {
     if (await topicsSheet(context) && mounted) {
-      _tagsRead = false;
       if (mode == 'for') {
         setState(() => items.clear());
         load(true);
@@ -383,6 +413,8 @@ class FeedTabState extends State<FeedTab> with WidgetsBindingObserver {
                 }
                 final it = items[i];
                 if (it.suggest) return const SuggestRow();
+                if (it.match != null) return MixMatchCard(key: ValueKey('mix-m-${it.match}'), id: it.match!);
+                if (it.album != null) return MixAlbumCard(key: ValueKey('mix-a-${it.album}'), id: it.album!);
                 if (it.promo != null) {
                   final pr = it.promo!;
                   return PromoCard(p: pr, onHidden: () => setState(() => items.removeWhere((x) => x.promo?.id == pr.id)));

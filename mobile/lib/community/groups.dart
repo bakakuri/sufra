@@ -85,6 +85,164 @@ class GroupRow extends StatelessWidget {
   }
 }
 
+/// what a group is about (community.js GRCATS)
+const groupCats = [
+  ('edu', '🎓', 'განათლება'),
+  ('place', '📍', 'კუთხე და დიასპორა'),
+  ('hobby', '🎨', 'ჰობი'),
+  ('sport', '⚽', 'სპორტი'),
+  ('food', '🍲', 'კულინარია'),
+  ('travel', '✈️', 'მოგზაურობა'),
+  ('tech', '💻', 'ტექნოლოგია'),
+  ('family', '👨‍👩‍👧', 'ოჯახი და ბავშვები'),
+  ('work', '💼', 'სამსახური და ბიზნესი'),
+  ('market', '🛒', 'ყიდვა-გაყიდვა'),
+  ('fun', '🎉', 'გართობა'),
+  ('health', '🩺', 'ჯანმრთელობა'),
+  ('faith', '⛪', 'რწმენა'),
+  ('other', '💬', 'სხვა'),
+];
+
+(String, String, String) groupCat(Object? k) => groupCats.firstWhere((c) => c.$1 == '$k', orElse: () => groupCats.last);
+
+String _num(int n) => n >= 1000 ? '${(n / 1000).toStringAsFixed(n >= 10000 ? 0 : 1).replaceAll('.0', '')}ათ.' : '$n';
+
+/// One group as a raised card (community.js gCard): a wide picture with its category on it, the name, members and
+/// life, friends in it, and a button (join an open one, look at a closed one, open mine). It gives under a finger.
+class GroupCard extends StatefulWidget {
+  const GroupCard({super.key, required this.g, this.small = false, this.width, required this.onOpen, required this.onJoin});
+  final Map<String, dynamic> g;
+  final bool small;
+  final double? width;
+  final VoidCallback onOpen, onJoin;
+  @override
+  State<GroupCard> createState() => _GroupCardState();
+}
+
+class _GroupCardState extends State<GroupCard> {
+  bool down = false;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.pc, g = widget.g, id = asInt(g['id']), dark = Theme.of(context).brightness == Brightness.dark;
+    final cat = groupCat(g['category']), name = '${g['name'] ?? ''}', pic = '${g['cover_url'] ?? g['avatar_url'] ?? ''}';
+    final mine = g['mine'] == true, open = g['is_private'] != true && g['join_mode'] != 'request';
+    final members = asInt(g['members']), posts = asInt(g['posts14']), friends = asInt(g['friends']);
+    final meta = ['${_num(members)} წევრი', if (posts > 0) '$posts პოსტი 2 კვირაში' else if (g['is_private'] == true) 'დახურული'].join(' · ');
+    final hue = (asInt(g['hue'], 200) % 360).toDouble();
+    return AnimatedScale(
+      scale: down ? .97 : 1,
+      duration: const Duration(milliseconds: 120),
+      child: Container(
+        width: widget.width ?? (widget.small ? 168 : 236),
+        margin: const EdgeInsets.fromLTRB(6, 6, 6, 16),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: c.line.withValues(alpha: .6)),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: dark ? .4 : .06), blurRadius: 2, offset: const Offset(0, 1)),
+            BoxShadow(color: Colors.black.withValues(alpha: dark ? .5 : .12), blurRadius: 22, spreadRadius: -6, offset: const Offset(0, 12)),
+          ],
+        ),
+        child: Listener(
+          onPointerDown: (_) => setState(() => down = true),
+          onPointerUp: (_) => setState(() => down = false),
+          onPointerCancel: (_) => setState(() => down = false),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+            InkWell(
+              key: ValueKey('grp-$id'),
+              onTap: widget.onOpen,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                AspectRatio(
+                  aspectRatio: widget.small ? 4 / 3 : 16 / 10,
+                  child: Stack(fit: StackFit.expand, children: [
+                    if (pic.startsWith('http'))
+                      PImage(pic, fit: BoxFit.cover)
+                    else
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: RadialGradient(center: const Alignment(-.5, -.7), radius: 1.3, colors: [
+                            HSLColor.fromAHSL(1, hue, .8, .66).toColor(),
+                            HSLColor.fromAHSL(1, (hue + 38) % 360, .64, .38).toColor(),
+                          ]),
+                        ),
+                        child: Center(child: Text(name.isEmpty ? '?' : name.characters.first, style: const TextStyle(color: Colors.white, fontSize: 54, fontWeight: FontWeight.w800))),
+                      ),
+                    Positioned(
+                      left: 8,
+                      bottom: 8,
+                      right: 8,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                          decoration: BoxDecoration(color: Colors.black.withValues(alpha: .45), borderRadius: BorderRadius.circular(999)),
+                          child: Text('${cat.$2} ${cat.$3}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                        ),
+                      ),
+                    ),
+                  ]),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 9, 10, 0),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, height: 1.25)),
+                    const SizedBox(height: 3),
+                    Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 12.5)),
+                  ]),
+                ),
+              ]),
+            ),
+            if (!widget.small && friends > 0)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+                child: Row(children: [
+                  for (final (i, u) in [for (final x in (g['friend_ids'] as List? ?? const [])) '$x'].take(3).indexed)
+                    Transform.translate(
+                      offset: Offset(-6.0 * i, 0),
+                      child: Builder(builder: (context) {
+                        final p = context.app.people[u] ?? Profile(id: u, name: '…');
+                        return Container(decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: c.surface, width: 2)), child: Avatar(p: p, size: 22));
+                      }),
+                    ),
+                  Expanded(child: Text('$friends მეგობარი წევრია', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 12))),
+                ]),
+              ),
+            if (!widget.small)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+                child: mine
+                    ? OutlinedButton(key: ValueKey('grpo-$id'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 38)), onPressed: widget.onOpen, child: const Text('გახსნა'))
+                    : open
+                        ? FilledButton.icon(
+                            key: ValueKey('grpj-$id'),
+                            style: FilledButton.styleFrom(minimumSize: const Size(0, 38)),
+                            onPressed: widget.onJoin,
+                            icon: PIcon('plus', size: 16, color: c.onAccent),
+                            label: const Text('შესვლა'),
+                          )
+                        : OutlinedButton.icon(
+                            key: ValueKey('grpv-$id'),
+                            style: OutlinedButton.styleFrom(minimumSize: const Size(0, 38)),
+                            onPressed: widget.onOpen,
+                            icon: const PIcon('lock', size: 15),
+                            label: const Text('ნახვა'),
+                          ),
+              )
+            else
+              const SizedBox(height: 12),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// Groups (community.js PG.groups), laid out as Facebook does: a search, the categories in a sideways row; mine,
+/// the ones suggested for me (friends in them, my groups' kinds, their life, my town), the popular ones and each
+/// category as sideways rows of raised cards. A category or a search shows its groups as a grid. No group is made
+/// for anyone by itself.
 class GroupsScreen extends StatefulWidget {
   const GroupsScreen({super.key});
   @override
@@ -92,9 +250,11 @@ class GroupsScreen extends StatefulWidget {
 }
 
 class _GroupsScreenState extends State<GroupsScreen> {
-  (Set<int>, List<Map<String, dynamic>>)? d;
+  List<Map<String, dynamic>>? all;
   Object? error;
   bool _started = false;
+  String cat = '', q = '';
+  final search = TextEditingController();
 
   @override
   void didChangeDependencies() {
@@ -104,12 +264,20 @@ class _GroupsScreenState extends State<GroupsScreen> {
     _load();
   }
 
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
+    final app = context.app;
     try {
-      final r = await context.app.api.groups();
+      final r = await app.api.groupCards();
+      await app.people.ensure({for (final g in r) for (final u in (g['friend_ids'] as List? ?? const [])) '$u'});
       if (mounted) {
         setState(() {
-          d = r;
+          all = r;
           error = null;
         });
       }
@@ -127,10 +295,45 @@ class _GroupsScreenState extends State<GroupsScreen> {
     }
   }
 
+  Future<void> _open(Map<String, dynamic> g) async {
+    await openPage(context, GroupScreen(id: asInt(g['id'])), full: true);
+    if (mounted) _load();
+  }
+
+  Future<void> _join(Map<String, dynamic> g) async {
+    if (await attempt(context, () => context.app.api.joinGroup(asInt(g['id']))) && mounted) {
+      toast(context, 'შეუერთდი ჯგუფს: ${g['name']}');
+      setState(() {
+        g['mine'] = true;
+        g['members'] = asInt(g['members']) + 1;
+      });
+    }
+  }
+
+  Widget _card(Map<String, dynamic> g, {bool small = false, double? width}) =>
+      GroupCard(key: ValueKey('gc-${g['id']}'), g: g, small: small, width: width, onOpen: () => _open(g), onJoin: () => _join(g));
+
+  Widget _row(String title, List<Map<String, dynamic>> list, {bool small = false, String? more}) {
+    if (list.isEmpty) return const SizedBox.shrink();
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 8, 0),
+        child: Row(children: [
+          Expanded(child: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
+          if (more != null) TextButton(onPressed: () => setState(() => cat = more), child: const Text('ყველა')),
+        ]),
+      ),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(10, 2, 10, 0),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [for (final g in list) _card(g, small: small)]),
+      ),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final c = context.pc, me = context.me.id, x = d;
-    Widget sec(String t) => Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 4), child: Text(t, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)));
+    final c = context.pc, x = all;
     return Scaffold(
       appBar: peeraBar(context, title: 'ჯგუფები', actions: [
         Padding(
@@ -151,16 +354,84 @@ class _GroupsScreenState extends State<GroupsScreen> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: Builder(builder: (context) {
-                    final mine = [for (final g in x.$2) if (x.$1.contains(asInt(g['id'])) || g['owner'] == me) g];
-                    final other = [for (final g in x.$2) if (!x.$1.contains(asInt(g['id'])) && g['owner'] != me) g];
-                    return ListView(padding: const EdgeInsets.only(bottom: 24), children: [
-                      if (mine.isNotEmpty) ...[sec('ჩემი ჯგუფები'), for (final g in mine) GroupRow(g: g)],
-                      sec('აღმოაჩინე'),
-                      if (other.isEmpty)
-                        const Empty(icon: 'users', title: 'სხვა ჯგუფები ჯერ არ არის', text: 'შექმენი პირველი და მოიწვიე მეგობრები.')
-                      else
-                        for (final g in other) GroupRow(g: g),
-                    ]);
+                    double fit(Map<String, dynamic> g) => (g['fit'] as num?)?.toDouble() ?? 0;
+                    double pop(Map<String, dynamic> g) => (g['pop'] as num?)?.toDouble() ?? 0;
+                    final cats = [for (final k in groupCats) if (x.any((g) => groupCat(g['category']).$1 == k.$1)) k];
+                    final low = q.toLowerCase();
+                    final filtered = cat.isNotEmpty || q.isNotEmpty;
+                    final children = <Widget>[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+                        child: TextField(
+                          key: const ValueKey('groups-q'),
+                          controller: search,
+                          onChanged: (v) => setState(() => q = v.trim()),
+                          decoration: InputDecoration(hintText: 'ჯგუფის ძებნა', isDense: true, prefixIcon: Padding(padding: const EdgeInsets.all(10), child: PIcon('search', size: 18, color: c.muted))),
+                        ),
+                      ),
+                      if (cats.length > 1)
+                        SizedBox(
+                          height: 50,
+                          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.fromLTRB(12, 6, 12, 4), children: [
+                            for (final k in [('', '', 'ყველა'), ...cats])
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 3),
+                                child: ChoiceChip(
+                                  key: ValueKey('gcat-${k.$1.isEmpty ? 'all' : k.$1}'),
+                                  label: Text(k.$2.isEmpty ? k.$3 : '${k.$2} ${k.$3}'),
+                                  selected: cat == k.$1,
+                                  showCheckmark: false,
+                                  onSelected: (_) => setState(() => cat = k.$1),
+                                ),
+                              ),
+                          ]),
+                        ),
+                    ];
+                    if (filtered) {
+                      final list = [
+                        for (final g in x)
+                          if ((cat.isEmpty || groupCat(g['category']).$1 == cat) &&
+                              (low.isEmpty || '${g['name'] ?? ''}'.toLowerCase().contains(low) || '${g['description'] ?? ''}'.toLowerCase().contains(low)))
+                            g,
+                      ]..sort((a, b) => fit(b).compareTo(fit(a)));
+                      children.add(list.isEmpty
+                          ? Empty(
+                              icon: 'users',
+                              title: q.isNotEmpty ? 'ასეთი ჯგუფი ვერ ვიპოვე' : 'ამ კატეგორიაში ჯგუფი ჯერ არ არის',
+                              text: 'შექმენი პირველი და მოიწვიე მეგობრები.',
+                              action: 'ჯგუფის შექმნა',
+                              onAction: _new,
+                            )
+                          : LayoutBuilder(builder: (context, box) {
+                              final w = (box.maxWidth - 20) / 2 - 12;
+                              return Padding(
+                                padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
+                                child: Wrap(children: [for (final g in list) _card(g, width: w)]),
+                              );
+                            }));
+                    } else {
+                      final mine = [for (final g in x) if (g['mine'] == true) g]
+                        ..sort((a, b) => '${b['last_post'] ?? ''}'.compareTo('${a['last_post'] ?? ''}'));
+                      final rest = [for (final g in x) if (g['mine'] != true) g];
+                      final sug = ([...rest]..sort((a, b) => fit(b).compareTo(fit(a)))).take(10).toList();
+                      final shown = {for (final g in sug) g['id']};
+                      final popular = rest.length > 6 ? ([for (final g in rest) if (!shown.contains(g['id'])) g]..sort((a, b) => pop(b).compareTo(pop(a)))).take(10).toList() : <Map<String, dynamic>>[];
+                      shown.addAll(popular.map((g) => g['id']));
+                      children
+                        ..add(_row('ჩემი ჯგუფები', mine, small: true))
+                        ..add(_row('შემოთავაზებული შენთვის', sug))
+                        ..add(_row('პოპულარული', popular));
+                      if (rest.length > 6) {
+                        for (final k in cats) {
+                          final l = [for (final g in rest) if (!shown.contains(g['id']) && groupCat(g['category']).$1 == k.$1) g];
+                          if (l.length >= 2) children.add(_row('${k.$2} ${k.$3}', l, more: k.$1));
+                        }
+                      }
+                      if (rest.isEmpty) {
+                        children.add(Empty(icon: 'users', title: 'ახალი ჯგუფები ჯერ არ არის', text: 'შექმენი ჯგუფი შენი ინტერესით და მოიწვიე მეგობრები.', action: 'ჯგუფის შექმნა', onAction: _new));
+                      }
+                    }
+                    return ListView(padding: const EdgeInsets.only(bottom: 24), children: children);
                   }),
                 ),
     );
@@ -742,6 +1013,7 @@ class _GroupFormScreenState extends State<GroupFormScreen> {
   late final rules = TextEditingController(text: '${widget.g?['rules'] ?? ''}');
   late String? pic = widget.g?['avatar_url'] as String?;
   late bool private = widget.g?['is_private'] == true, byRequest = widget.g?['join_mode'] == 'request', approval = widget.g?['post_approval'] == true;
+  late String category = groupCat(widget.g?['category']).$1;
   late final topics = [for (final t in (widget.g?['topics'] as List? ?? const [])) '$t'];
   late final newTopic = TextEditingController();
   late final questions = [
@@ -804,6 +1076,7 @@ class _GroupFormScreenState extends State<GroupFormScreen> {
         await api.updateGroup(asInt(widget.g!['id']), {
           'avatar_url': pic,
           'name': n,
+          'category': category,
           'description': desc.text.trim(),
           'rules': rules.text.trim().isEmpty ? null : rules.text.trim(),
           'is_private': private,
@@ -817,7 +1090,7 @@ class _GroupFormScreenState extends State<GroupFormScreen> {
         toast(context, 'შენახულია');
         Navigator.of(context).pop(asInt(widget.g!['id']));
       } else {
-        final id = await api.createGroup(name: n, description: desc.text.trim(), private: private, avatarUrl: pic);
+        final id = await api.createGroup(name: n, description: desc.text.trim(), private: private, avatarUrl: pic, category: category);
         if (!mounted) return;
         toast(context, 'ჯგუფი შეიქმნა');
         Navigator.of(context).pop(id);
@@ -858,6 +1131,14 @@ class _GroupFormScreenState extends State<GroupFormScreen> {
         ]),
         const SizedBox(height: 14),
         TextField(key: const ValueKey('gf-name'), controller: name, maxLength: 80, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'სახელი', counterText: '')),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          key: const ValueKey('gf-cat'),
+          initialValue: category,
+          decoration: const InputDecoration(labelText: 'კატეგორია'),
+          items: [for (final k in groupCats) DropdownMenuItem(value: k.$1, child: Text('${k.$2} ${k.$3}'))],
+          onChanged: (v) => setState(() => category = v ?? 'other'),
+        ),
         const SizedBox(height: 10),
         TextField(
           key: const ValueKey('gf-desc'),

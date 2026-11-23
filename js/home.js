@@ -104,18 +104,33 @@ const FEED_N=10,FEED_AT=8;
 function feedWatch(el){if(!el)return;FEED.w8&&FEED.w8.disconnect();FEED.w8=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)){FEED.w8.disconnect();FEED.w8=null;loadFeed(false)}},{root:view,threshold:0});FEED.w8.observe(el)}
 A.feed=t=>{S.feed=t.dataset.f;$$('.feedsw button').forEach(b=>b.setAttribute('aria-pressed',String(b===t)));$('#feed').innerHTML=skel(3);loadFeed(true)};
 async function loadAds(){try{const ads=await q(sb.from('ads').select('id,post_id').eq('status','active').limit(6));if(!ads.length)return [];const rows=await fetchPosts(b=>b.in('id',ads.map(a=>a.post_id)));return rows.map(p=>Object.assign(p,{ad:ads.find(a=>a.post_id===p.id).id}))}catch(e){return []}}
-async function loadFeed(reset){if(reset){FEED.done=false;FEED.cursor=null;FEED.count=0;FEED.seen=new Set()}if(!reset&&(FEED.loading||FEED.done))return;FEED.loading=true;const mode=S.feed,lim=FEED_N,my=++FEED.tok;if(reset&&FEED.w8){FEED.w8.disconnect();FEED.w8=null}
+/* "for you": a random mix from everywhere (feed_mix): posts of friends, groups, pages and everyone, a shared album with
+   new photos, a coming or live match; what was shown is sent back so the next part brings others */
+async function feedMixPart(lim){const mix=await rpc('feed_mix',{p_seen:FEED.keys,p_limit:lim}),ids=mix.p||[];
+ ids.forEach(id=>FEED.keys.push('p:'+id));(mix.a||[]).forEach(id=>FEED.keys.push('a:'+id));(mix.m||[]).forEach(id=>FEED.keys.push('m:'+id));
+ let rows=ids.length?await fetchPosts(b=>b.in('id',ids)):[];const pos=new Map(ids.map((id,i)=>[id,i]));rows.sort((a,b)=>pos.get(a.id)-pos.get(b.id));
+ const [al,mt]=await Promise.all([(mix.a||[]).length?mixAlbum(mix.a[0]).catch(()=>''):'',(mix.m||[]).length?q(sb.from('fixtures').select('*').eq('id',mix.m[0]).maybeSingle()).catch(()=>null):null]);
+ return {rows,done:!ids.length,album:al,match:mt}}
+async function mixAlbum(id){const a=await q(sb.from('albums').select('id,title,owner,photos,updated_at,cover_url').eq('id',id).maybeSingle());if(!a)return '';
+ const ph=await q(sb.from('album_photos').select('sm,md,url').eq('album_id',id).order('created_at',{ascending:false}).limit(4));await loadProfiles([a.owner]);
+ return `<article class="post mixcard mixalb"><div class="mixhd">${av(a.owner,38)}<span class="grow"><b>${esc(pname(a.owner))}</b><span class="sub">${ic('image')} საერთო ალბომი · ${a.photos} ფოტო · ${ago(a.updated_at)}</span></span></div><button class="mixgrid n${Math.min(ph.length,4)}" data-a="page" data-p="album" data-arg="${a.id}" aria-label="${esc(a.title)}">${ph.map(x=>`<img src="${esc(x.sm||x.md||x.url)}" alt="" loading="lazy">`).join('')}</button><div class="mixft"><b>${esc(a.title)}</b><button class="btn sm ghost" data-a="page" data-p="album" data-arg="${a.id}">ალბომის ნახვა</button></div></article>`}
+function mixMatch(f){if(!f)return '';const live=typeof fxLive==='function'&&fxLive(f);
+ return `<article class="post mixcard mixfx"><button class="mixfxin" data-a="page" data-p="fixture" data-arg="${f.id}"><div class="fxtop"><span class="eyebrow">${ic('trophy')} ${esc(f.league||'მატჩი')}</span><span class="sp"></span>${typeof fxBadge==='function'?fxBadge(f):''}</div><div class="fxteams big"><b>${esc(f.home)}</b><span class="fxscore${live?' on':''}">${typeof fxScore==='function'?fxScore(f):'vs'}</span><b>${esc(f.away)}</b></div><span class="mixcta">${live?'ცოცხალი ჩატი':'გააკეთე პროგნოზი · უფასოა'} ${ic('fwd')}</span></button></article>`}
+async function loadFeed(reset){if(reset){FEED.done=false;FEED.cursor=null;FEED.count=0;FEED.seen=new Set();FEED.keys=[]}if(!reset&&(FEED.loading||FEED.done))return;FEED.loading=true;const mode=S.feed,lim=FEED_N,my=++FEED.tok;if(reset&&FEED.w8){FEED.w8.disconnect();FEED.w8=null}
  const more=$('#more');if(more&&!reset)more.innerHTML='<span class="spin" aria-label="იტვირთება"></span>';
- try{if(mode==='for')await loadTagFollows();let rows=await fetchPosts(b=>{b=b.is('group_id',null).eq('hidden',false).order('created_at',{ascending:false}).limit(lim);if(FEED.cursor)b=b.lt('created_at',FEED.cursor);if(mode==='friends')b=b.in('author',[ME.id,...FRIENDS]);return b});
-  if(my!==FEED.tok)return;
-  if(rows.length)FEED.cursor=rows[rows.length-1].created_at;if(rows.length<lim)FEED.done=true;
-  /* posts on the topics you follow come in even when they are older than the newest ones */
-  if(mode==='for'&&reset&&TAGF.size){try{const have=new Set(rows.map(p=>p.id)),extra=await fetchPosts(b=>b.is('group_id',null).eq('hidden',false).overlaps('tags',[...TAGF].slice(0,40)).order('created_at',{ascending:false}).limit(5));extra.forEach(p=>{if(!have.has(p.id))rows.push(p)})}catch(e){}}
-  rows=rows.filter(p=>!LOCALHIDE[p.id]&&!LOCALHIDE[feedKey(p)]&&!(p.repost_of&&!p.body&&!POSTS.has(p.repost_of))).filter(p=>{const k=feedKey(p);if(FEED.seen.has(k))return false;FEED.seen.add(k);return true});if(mode==='for')rows.sort((a,b)=>score(b)-score(a));
+ try{let rows,mixed=null;
+  if(mode==='for'){mixed=await feedMixPart(lim);rows=mixed.rows;if(my!==FEED.tok)return;if(mixed.done)FEED.done=true}
+  else{rows=await fetchPosts(b=>{b=b.is('group_id',null).eq('hidden',false).order('created_at',{ascending:false}).limit(lim);if(FEED.cursor)b=b.lt('created_at',FEED.cursor);if(mode==='friends')b=b.in('author',[ME.id,...FRIENDS]);return b});
+   if(my!==FEED.tok)return;
+   if(rows.length)FEED.cursor=rows[rows.length-1].created_at;if(rows.length<lim)FEED.done=true}
+  rows=rows.filter(p=>!LOCALHIDE[p.id]&&!LOCALHIDE[feedKey(p)]&&!(p.repost_of&&!p.body&&!POSTS.has(p.repost_of))).filter(p=>{const k=feedKey(p);if(FEED.seen.has(k))return false;FEED.seen.add(k);return true});
   if(reset&&mode!=='friends')FEED.ads=await loadAds();
   if(reset){FEED.pq=mode==='friends'?[]:(await loadPromos(true)).post.slice();FEED.np=3}
   const feed=$('#feed');if(!feed)return;let html='';const before=reset?0:$$('#feed > .post').length;
-  rows.forEach(p=>{FEED.count++;html+=postHTML(p);if(FEED.pq&&FEED.pq.length&&FEED.count>=FEED.np){const pr=FEED.pq.shift();html+=promoHTML(pr);FEED.np=FEED.count+pr.every;promoSeen(pr.id)}if(FEED.count%6===0&&FEED.ads.length){const ad=FEED.ads.shift();html+=postHTML(ad);if(!FEED.adsShown.has(ad.ad)){FEED.adsShown.add(ad.ad);sb.rpc('ad_impression',{p_ad:ad.ad}).then(()=>{})}}if(reset&&FEED.count===2)html+='<div id="sugg"></div>'});
+  /* the match and the album ride among the posts (or at the end of a short part) */
+  const ins=[];if(mixed){if(mixed.match)ins.push([2,mixMatch(mixed.match)]);if(mixed.album)ins.push([5,mixed.album])}
+  rows.forEach((p,i)=>{FEED.count++;html+=postHTML(p);for(const x of ins)if(x[0]===i&&x[1]){html+=x[1];x[1]=''}if(FEED.pq&&FEED.pq.length&&FEED.count>=FEED.np){const pr=FEED.pq.shift();html+=promoHTML(pr);FEED.np=FEED.count+pr.every;promoSeen(pr.id)}if(FEED.count%6===0&&FEED.ads.length){const ad=FEED.ads.shift();html+=postHTML(ad);if(!FEED.adsShown.has(ad.ad)){FEED.adsShown.add(ad.ad);sb.rpc('ad_impression',{p_ad:ad.ad}).then(()=>{})}}if(reset&&FEED.count===2)html+='<div id="sugg"></div>'});
+  for(const x of ins)if(x[1])html+=x[1];
   if(reset){feed.innerHTML=html||empty(mode==='friends'?'მეგობრების პოსტები ჯერ არ არის':'აქ ჯერ ცარიელია',mode==='friends'?'დაამატე მეგობრები და მათი პოსტები აქ გამოჩნდება.':'დაწერე პირველი პოსტი ან მოიწვიე მეგობრები.',`<div class="row2"><button class="btn" data-a="compose">პოსტის დაწერა</button><button class="btn ghost" data-a="invite">მეგობრის მოწვევა</button></div>`);staggerIn($$('.post',feed).slice(0,6));loadSuggest()}
   else feed.insertAdjacentHTML('beforeend',html);
   if(!FEED.done){const ps=$$('#feed > .post');feedWatch(ps[Math.min(ps.length-1,before+FEED_AT-1)])}
