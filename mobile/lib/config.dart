@@ -6,3 +6,9 @@ const supaAnonKey =
 
 /// Where the parts the app does not have yet open: the site.
 const siteUrl = 'https://www.peera.my';
+
+/// this build's number (the build machine's run, given with --dart-define=PEERA_BUILD=…); 0 on a developer's build
+const appBuild = int.fromEnvironment('PEERA_BUILD');
+
+/// where the app's newest version is announced: its number, what changed, the files and their checksums
+const updateFeed = 'https://github.com/bakakuri/sufra/releases/download/app/version.json';

@@ -7,11 +7,14 @@ import 'auth/auth_gate.dart';
 import 'config.dart';
 import 'data/api.dart';
 import 'push/push.dart';
+import 'system/errors.dart';
 import 'ui/look.dart';
 import 'ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // what breaks reaches the admin panel (once someone is signed in)
+  ErrorReporter.install();
   await Supabase.initialize(url: supaUrl, anonKey: supaAnonKey);
   await loadLook();
   runApp(PeeraApp(home: AuthGate(api: SupaAuthApi(), data: SupaApi.new, push: FcmPush.new)));

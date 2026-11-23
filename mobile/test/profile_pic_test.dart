@@ -21,13 +21,20 @@ void main() {
     expect(api.calls, contains('upload 640x640'));
     expect(api.calls, contains('me avatar_url'));
     expect(api.me['avatar_url'], isNotNull);
-    expect(find.text('ფოტო შეიცვალა'), findsOneWidget);
+    // told in the feed too (the switch is on at first): a post whose photo is marked as the new picture
+    expect(api.calls, contains('post  1'));
+    expect(api.lastPostMedia.single.pic, 'avatar');
+    expect(find.text('ფოტო შეიცვალა · ფიდშიც გამოჩნდა'), findsOneWidget);
     // the cover: from the camera
     expect(find.byKey(const ValueKey('pro-cover-edit')), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('pro-cover')));
     await settle(t);
+    // this time not in the feed
+    await t.tap(find.byKey(const ValueKey('pic-feed')));
+    await settle(t);
     await t.tap(find.text('გადაღება კამერით'));
     await settle(t);
+    expect(api.calls.where((c) => c.startsWith('post ')), hasLength(1));
     expect(api.calls, contains('upload 1400x788'));
     expect(api.calls, contains('me cover_url'));
     expect(find.text('ფონი შეიცვალა'), findsOneWidget);

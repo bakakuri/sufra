@@ -28,15 +28,19 @@ class MainActivity : FlutterActivity() {
     private var permWait: MethodChannel.Result? = null
     private var micWait: MethodChannel.Result? = null
     private var voice: VoiceRec? = null
+    private val phone = PhoneBridge(this)
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         intent.getStringExtra("open")?.let { openAsked = it }
+        phone.offer(intent, true)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         intent?.getStringExtra("open")?.let { openAsked = it }
+        // a link or a share that started the app (not one brought back from the recent apps)
+        phone.offer(intent, savedInstanceState == null)
         // the channel Peera's notifications arrive on: with sound and a banner; its name shows in the phone's settings
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel("peera", "შეტყობინებები", NotificationManager.IMPORTANCE_HIGH)
@@ -47,6 +51,10 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // the phone itself: its model, links and shares that opened the app, installing an update
+        val system = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "peera/system")
+        phone.channel = system
+        system.setMethodCallHandler { call, result -> phone.handle(call, result) }
         // videos before upload: size, poster frame, a lighter copy
         val video = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "peera/video")
         val tools = VideoTools(this, video)

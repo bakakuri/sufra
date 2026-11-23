@@ -182,7 +182,7 @@ class _PostViewState extends State<_PostView> with SingleTickerProviderStateMixi
                 child: TranslatableBody(post.body.trim(), maxLines: inPostScreen || whole ? null : (hasMedia ? 3 : 6)),
               ),
             ),
-          if (hasMedia) _Gallery(post: post),
+          if (hasMedia && post.media.first.pic == 'avatar') _NewAvatar(post: post) else if (hasMedia) _Gallery(post: post),
           if (post.media.any((m) => !m.isVideo)) _Grades(post: post),
           if (post.poll != null) Padding(padding: const EdgeInsets.fromLTRB(14, 10, 14, 4), child: _PollView(post: post)),
           if (quote)
@@ -245,7 +245,7 @@ class _Head extends StatelessWidget {
             if (await attempt(context, () => app.api.banUser(post.author)) && context.mounted) toast(context, 'შეიზღუდა');
           }, danger: true),
       ],
-      SheetItem('globe', 'საიტზე გახსნა', () => launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication)),
+      SheetItem('globe', 'საიტზე გახსნა', () => launchUrl(Uri.parse(link), mode: LaunchMode.inAppBrowserView)),
       if (mine)
         SheetItem('trash', 'პოსტის წაშლა', () async {
           final yes = await confirm(context, title: 'წაიშალოს პოსტი?', text: 'აღარ გამოჩნდება არც შენთან, არც სხვებთან.', yes: 'წაშლა', danger: true);
@@ -291,13 +291,47 @@ class _Head extends StatelessWidget {
                 for (final t in tags) Padding(padding: const EdgeInsets.only(left: 6), child: t),
               ]),
               const SizedBox(height: 2),
-              Text('${ago(post.createdAt)}${post.edited ? ' · რედაქტირებული' : ''}${post.topic != null ? ' · # ${post.topic}' : ''}',
+              Text('${_picWords(post)}${ago(post.createdAt)}${post.edited ? ' · რედაქტირებული' : ''}${post.topic != null ? ' · # ${post.topic}' : ''}',
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 12.5)),
             ]),
           ),
         ),
         IconBtn('more', key: ValueKey('more-${post.id}'), label: 'მეტი მოქმედება', size: 22, color: c.muted, onTap: () => _more(context)),
       ]),
+    );
+  }
+}
+
+/// a post that tells of a new profile picture or cover says so beside the time
+String _picWords(Post p) => switch (p.media.isEmpty ? null : p.media.first.pic) {
+      'avatar' => 'განაახლა პროფილის ფოტო · ',
+      'cover' => 'განაახლა ფონის ფოტო · ',
+      _ => '',
+    };
+
+/// a new profile picture: big and round on the person's own colour, as Facebook shows it; a tap opens it
+class _NewAvatar extends StatelessWidget {
+  const _NewAvatar({required this.post});
+  final Post post;
+  @override
+  Widget build(BuildContext context) {
+    final m = post.media.first, hue = (post.ap?.hue ?? 200).toDouble();
+    final a = HSLColor.fromAHSL(1, hue % 360, .55, .62).toColor(), b = HSLColor.fromAHSL(1, (hue + 40) % 360, .6, .45).toColor();
+    return GestureDetector(
+      key: ValueKey('newav-${post.id}'),
+      onTap: () => openPhotos(context, [m]),
+      child: Container(
+        height: 280,
+        decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [a, b])),
+        alignment: Alignment.center,
+        child: Container(
+          width: 216,
+          height: 216,
+          padding: const EdgeInsets.all(5),
+          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Color(0x40000000), blurRadius: 24, offset: Offset(0, 10))]),
+          child: ClipOval(child: PImage(m.mid, fit: BoxFit.cover)),
+        ),
+      ),
     );
   }
 }

@@ -22,7 +22,8 @@ import 'coins.dart';
 
 Future<void> openSite(String path) async {
   try {
-    await launchUrl(Uri.parse('$siteUrl/$path'), mode: LaunchMode.externalApplication);
+    // in a browser tab over the app: an outside browser would hand the site's link straight back to the app
+    await launchUrl(Uri.parse('$siteUrl/$path'), mode: LaunchMode.inAppBrowserView);
   } catch (_) {}
 }
 

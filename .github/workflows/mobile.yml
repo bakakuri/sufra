@@ -64,7 +64,7 @@ jobs:
           PEERA_KS_PASS: ${{ secrets.PEERA_KEYSTORE_PASSWORD }}
         run: |
           set -o pipefail
-          flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --build-number=${{ github.run_number }} 2>&1 | tee ../out/build.txt
+          flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --build-number=${{ github.run_number }} --dart-define=PEERA_BUILD=${{ github.run_number }} 2>&1 | tee ../out/build.txt
       - name: Publish
         if: always()
         working-directory: .

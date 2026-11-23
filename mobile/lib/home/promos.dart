@@ -13,6 +13,7 @@ import '../data/models.dart';
 import '../media/player.dart';
 import '../people/person_screen.dart';
 import '../profile/profile.dart';
+import '../system/incoming.dart';
 import '../ui/icons.dart';
 import '../ui/net_image.dart';
 import '../ui/theme.dart';
@@ -23,6 +24,10 @@ import 'services.dart';
 /// the site; a web address opens in the browser.
 Future<void> openLink(BuildContext context, String link) async {
   final l = link.trim();
+  if (isSiteLink(l)) {
+    final f = Uri.parse(l).fragment;
+    if (f.isNotEmpty) return openLink(context, '#$f');
+  }
   if (l.startsWith('https://')) {
     try {
       await launchUrl(Uri.parse(l), mode: LaunchMode.externalApplication);

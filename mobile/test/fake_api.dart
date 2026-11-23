@@ -290,12 +290,16 @@ class FakeApi implements PeeraApi {
     return img('hills', p.w, p.h);
   }
 
+  /// the photos and videos of the last post written
+  List<Media> lastPostMedia = const [];
+
   @override
   Future<Post> createPost(String body, List<Media> media,
       {Poll? poll, int? placeId, bool draft = false, DateTime? publishAt, int? repostOf, int? groupId, int? pageId, String? topic}) async {
     calls.add('post $body ${media.length}${poll != null ? ' poll ${poll.q} ${poll.opts.join('/')}' : ''}'
         '${placeId != null ? ' place $placeId' : ''}${draft ? ' draft' : ''}${publishAt != null ? ' at' : ''}${repostOf != null ? ' quote $repostOf' : ''}'
         '${groupId != null ? ' group $groupId' : ''}${pageId != null ? ' page $pageId' : ''}${topic != null ? ' topic $topic' : ''}');
+    lastPostMedia = media;
     final p = _p(_id++, nino, DateTime.now(), body, media, poll: poll, repostOf: repostOf);
     if (!draft && publishAt == null) _posts.insert(0, p);
     return p;
@@ -2440,6 +2444,11 @@ class FakeApi implements PeeraApi {
 
   @override
   RoomLink roomLink(int id) => links[id] = FakeRoomLink(id);
+
+  /// the error reports sent
+  final errors = <Map<String, dynamic>>[];
+  @override
+  Future<void> reportError(Map<String, dynamic> row) async => errors.add(row);
 
   /// the games' channels made, by name ('lobby', 'game-…')
   final gameLinks = <String, FakeRoomLink>{};

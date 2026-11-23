@@ -23,6 +23,9 @@ import '../people/friends_tab.dart';
 import '../profile/profile.dart';
 import '../profile/profile_tab.dart';
 import '../push/push.dart';
+import '../system/errors.dart';
+import '../system/incoming.dart';
+import '../system/phone.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'soon_screen.dart';
@@ -95,9 +98,35 @@ class HomeShellState extends State<HomeShell> {
       ..start(widget.me, CharacterLook.of(widget.me));
     app.nardi.note.addListener(_nardiNote);
     _push?.start(app.api, onOpen: _openFromPush, onForeground: _pushWhileOpen);
+    // what breaks here reaches the admin panel, with the phone it happened on
+    ErrorReporter.send = app.api.reportError;
+    ErrorReporter.page = () => 'tab ${index < tabs.length ? tabs[index].id : index}';
+    phoneBridge.device().then((d) {
+      if (d != null) ErrorReporter.ua = 'Peera app b${app.updates.build} · Android ${d.android} (${d.sdk}) · ${d.model}';
+    });
+    // a link to the site or a share from another app (that opened the app, or came while it runs)
+    phoneBridge.onArrived = _takeIncoming;
     // the live location's notification opens the map (the app may have been started by it, or brought back)
-    _life = AppLifecycleListener(onResume: _takeOpen);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _takeOpen());
+    _life = AppLifecycleListener(onResume: () {
+      _takeOpen();
+      _takeIncoming();
+      _offerUpdate();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _takeOpen();
+      _takeIncoming();
+      // a new version, a moment after the start
+      _updateT = Timer(const Duration(seconds: 3), _offerUpdate);
+    });
+  }
+
+  Timer? _updateT;
+
+  void _takeIncoming() => takeIncoming(() => mounted ? _scaffold.currentContext : null);
+
+  void _offerUpdate() {
+    final ctx = _scaffold.currentContext;
+    if (ctx != null && mounted) app.updates.offer(ctx);
   }
 
   AppLifecycleListener? _life;
@@ -204,6 +233,8 @@ class HomeShellState extends State<HomeShell> {
 
   @override
   void dispose() {
+    _updateT?.cancel();
+    ErrorReporter.send = null;
     _life?.dispose();
     _hideBanner();
     _push?.dispose();

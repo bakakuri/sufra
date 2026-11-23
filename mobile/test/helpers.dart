@@ -19,6 +19,9 @@ import 'package:peera/joker/scene.dart';
 import 'package:peera/joker/session.dart';
 import 'package:peera/map/live_map.dart';
 import 'package:peera/nardi/session.dart';
+import 'package:peera/system/errors.dart';
+import 'package:peera/system/phone.dart';
+import 'package:peera/system/updates.dart';
 import 'package:peera/map/loc_device.dart';
 import 'package:peera/media/photo_edit.dart';
 import 'package:peera/media/player.dart';
@@ -38,6 +41,7 @@ import 'package:peera/ui/net_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_api.dart';
+import 'fake_phone.dart';
 
 /// The app's own fonts, so the screenshots show real Georgian letters (and Latin from Noto Sans, emoji when the
 /// build has fetched Noto Color Emoji).
@@ -97,6 +101,10 @@ void useTestImages() {
   textZoom.value = 1;
   makePlayer = (u, {bool loop = true}) => FakePlayer();
   SharedPreferences.setMockInitialValues({});
+  // a pretend phone; no new version on offer
+  phoneBridge = FakePhone();
+  fetchRelease = () async => null;
+  currentBuild = () => 0;
   // the first steps card stays away unless a test asks for it; the feed starts with the newest, the services stand still
   firstStepsOn = false;
   feedStartMode = 'new';
@@ -228,6 +236,7 @@ final openedLinks = <String>[];
 Future<FakeApi> shell(WidgetTester t, {ThemeMode mode = ThemeMode.light, VoidCallback? exit, FakeApi? api, PushService? push, Profile? me}) async {
   final a = api ?? FakeApi();
   postOverrides.reset();
+  ErrorReporter.reset();
   await t.pumpWidget(PeeraApp(mode: mode, home: HomeShell(me: me ?? nino, api: a, push: push, onSignOut: () async {}, exit: exit)));
   await settle(t);
   return a;

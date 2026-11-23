@@ -23,7 +23,7 @@ class SoonScreen extends StatelessWidget {
   final Profile me;
 
   Future<void> _open(BuildContext context) async {
-    final ok = await launchUrl(Uri.parse('$siteUrl/#${tab.id}'), mode: LaunchMode.externalApplication);
+    final ok = await launchUrl(Uri.parse('$siteUrl/#${tab.id}'), mode: LaunchMode.inAppBrowserView);
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('საიტი ვერ გაიხსნა')));
     }

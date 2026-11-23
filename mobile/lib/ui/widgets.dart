@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../profile/profile.dart';
+import '../system/errors.dart';
 import 'format.dart';
 import 'icons.dart';
 import 'net_image.dart';
@@ -280,7 +281,8 @@ Future<bool> attempt(BuildContext context, Future<void> Function() f) async {
   try {
     await f();
     return true;
-  } catch (e) {
+  } catch (e, st) {
+    ErrorReporter.report(e, st, where: 'attempt');
     if (context.mounted) toast(context, errText(e));
     return false;
   }

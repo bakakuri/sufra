@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/stores.dart';
 import '../feed/tag_screen.dart';
 import '../people/person_screen.dart';
+import '../system/incoming.dart';
 import 'format.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -67,7 +68,9 @@ class _RichBodyState extends State<RichBody> {
       if (m.group(1) != null) {
         final url = s.replaceFirst(RegExp(r'[.,;:!?)»"]+$'), '');
         final tail = s.substring(url.length);
-        final tap = TapGestureRecognizer()..onTap = () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        // a link to the site opens its place here; any other in its own app
+        final tap = TapGestureRecognizer()
+          ..onTap = () => isSiteLink(url) ? openSiteLink(context, url) : launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
         _taps.add(tap);
         out.add(TextSpan(text: url, style: TextStyle(color: accent, decoration: TextDecoration.underline, decorationColor: accent.withValues(alpha: .5)), recognizer: tap));
         if (tail.isNotEmpty) out.add(TextSpan(text: tail));

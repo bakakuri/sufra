@@ -80,4 +80,6 @@ dependencies {
     implementation("androidx.media3:media3-transformer:1.9.2")
     implementation("androidx.media3:media3-effect:1.9.2")
     implementation("androidx.media3:media3-common:1.9.2")
+    // handing a downloaded update to the phone's installer
+    implementation("androidx.core:core-ktx:1.13.1")
 }

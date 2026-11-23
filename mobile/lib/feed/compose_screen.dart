@@ -41,8 +41,23 @@ const maxPhotos = 10;
 /// post comes back to the feed; the clock button keeps it as a draft or plans it for later.
 class ComposeScreen extends StatefulWidget {
   const ComposeScreen(
-      {super.key, this.startWithPhotos = false, this.startWithPoll = false, this.text = '', this.groupId, this.pageId, this.where, this.place, this.topics = const [], this.topic});
+      {super.key,
+      this.startWithPhotos = false,
+      this.startWithPoll = false,
+      this.text = '',
+      this.groupId,
+      this.pageId,
+      this.where,
+      this.place,
+      this.topics = const [],
+      this.topic,
+      this.photos = const [],
+      this.videoPath});
   final bool startWithPhotos, startWithPoll;
+
+  /// photos and a video to begin with (shared from another app)
+  final List<Uint8List> photos;
+  final String? videoPath;
 
   /// a post into a group or as a page, and its name for the title
   final int? groupId, pageId;
@@ -85,6 +100,9 @@ class _ComposeScreenState extends State<ComposeScreen> {
     field.addListener(() => setState(() {}));
     if (widget.startWithPoll) _pollOn();
     if (widget.startWithPhotos) WidgetsBinding.instance.addPostFrameCallback((_) => _add(false));
+    photos.addAll(widget.photos.take(maxPhotos));
+    final vp = widget.videoPath;
+    if (vp != null) WidgetsBinding.instance.addPostFrameCallback((_) => _prepVideo(vp));
   }
 
   @override
@@ -120,7 +138,14 @@ class _ComposeScreenState extends State<ComposeScreen> {
   bool get _empty => field.text.trim().isEmpty && photos.isEmpty && pollQ == null && video == null && place == null;
 
   /// nothing of mine would be lost on leaving: empty, or only the words it began with (a library's tags)
-  bool get _untouched => (field.text.trim().isEmpty || field.text == widget.text) && photos.isEmpty && pollQ == null && video == null && place == widget.place;
+  bool get _untouched =>
+      (field.text.trim().isEmpty || field.text == widget.text) &&
+      photos.isEmpty &&
+      widget.photos.isEmpty &&
+      widget.videoPath == null &&
+      pollQ == null &&
+      video == null &&
+      place == widget.place;
 
   Future<void> _add(bool camera) async {
     if (photos.length >= maxPhotos) {
@@ -147,6 +172,11 @@ class _ComposeScreenState extends State<ComposeScreen> {
       path = await videoPicker();
     } catch (_) {}
     if (path == null || !mounted) return;
+    await _prepVideo(path);
+  }
+
+  Future<void> _prepVideo(String path) async {
+    if (!mounted) return;
     setState(() => preparing = 0);
     try {
       final v = await videoPrep(path, (x) {

@@ -1300,7 +1300,7 @@ class _Bubble extends StatelessWidget {
       );
     } else if (other != null) {
       inner = GestureDetector(
-        onTap: () => launchUrl(Uri.parse('$siteUrl/#chats'), mode: LaunchMode.externalApplication),
+        onTap: () => launchUrl(Uri.parse('$siteUrl/#chats'), mode: LaunchMode.inAppBrowserView),
         child: _box(
           context,
           shape,

@@ -8,10 +8,15 @@ Map<String, dynamic>? _map(Object? v) => v is Map ? Map<String, dynamic>.from(v)
 
 /// A photo or a video of a post or a message, as the site stores it: the full file, a ~1080 copy (md) and a ~480 one (sm).
 class Media {
-  const Media({required this.url, this.type = 'image', this.w = 0, this.h = 0, this.md, this.sm, this.poster, this.dur});
+  const Media({required this.url, this.type = 'image', this.w = 0, this.h = 0, this.md, this.sm, this.poster, this.dur, this.pic});
   final String url, type;
   final int w, h;
   final String? md, sm, poster;
+
+  /// a new profile picture ('avatar') or cover ('cover'), when the post tells of one
+  final String? pic;
+
+  Media withPic(String p) => Media(url: url, type: type, w: w, h: h, md: md, sm: sm, poster: poster, dur: dur, pic: p);
 
   /// a video's length in seconds, when known
   final double? dur;
@@ -38,6 +43,7 @@ class Media {
       sm: _web(j['sm']),
       poster: _web(j['poster']),
       dur: asNum(j['dur']),
+      pic: j['pic'] == 'avatar' || j['pic'] == 'cover' ? '${j['pic']}' : null,
     );
   }
 
@@ -52,6 +58,7 @@ class Media {
         if (sm != null) 'sm': sm,
         if (poster != null) 'poster': poster,
         if (dur != null) 'dur': dur,
+        if (pic != null) 'pic': pic,
       };
 }
 

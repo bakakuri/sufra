@@ -26,7 +26,7 @@ import 'edit_profile.dart';
 import 'texts.dart';
 
 Future<void> openSettings(BuildContext context) => openPage(context, const SettingsScreen(), full: true);
-Future<void> _site(String path) => launchUrl(Uri.parse('$siteUrl/$path'), mode: LaunchMode.externalApplication);
+Future<void> _site(String path) => launchUrl(Uri.parse('$siteUrl/$path'), mode: LaunchMode.inAppBrowserView);
 
 int? ageOf(Object? birthday) {
   final b = DateTime.tryParse('${birthday ?? ''}');
@@ -263,6 +263,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await out?.call();
   }
 
+  /// looks for a new version now: offers it, or says this one is the newest
+  Future<void> _update(BuildContext context) async {
+    final u = context.app.updates;
+    final r = await u.check(force: true);
+    if (!context.mounted) return;
+    if (r == null) {
+      toast(context, u.latest == null ? 'განახლების შემოწმება ვერ მოხერხდა' : 'უახლესი ვერსია გაქვს');
+      return;
+    }
+    if (await confirm(context, title: 'ახალი ვერსია ${r.build}', text: r.notes.isEmpty ? null : r.notes, yes: 'განახლება') && context.mounted) {
+      await u.install(context, r);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.pc, m = s ?? const {};
@@ -340,6 +354,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
               sub: '${const {ThemeMode.system: 'როგორც ტელეფონში', ThemeMode.light: 'ღია', ThemeMode.dark: 'მუქი'}[themeChoice.value]} · ტექსტი: ${_zoomName(textZoom.value)}${ecoMode.value ? ' · ეკონომიური რეჟიმი' : ''}',
               onTap: () => _go(const LookScreen()),
             ),
+          ),
+        ]),
+        SGroup(title: 'აპი', children: [
+          ListenableBuilder(
+            listenable: context.app.updates,
+            builder: (context, _) {
+              final u = context.app.updates;
+              return SRow(
+                key: const ValueKey('set-update'),
+                icon: 'download',
+                color: c.accent,
+                title: 'განახლება',
+                sub: [
+                  u.build > 0 ? 'ვერსია ${u.build}' : 'სატესტო ვერსია',
+                  if (u.checking) 'მოწმდება…' else if (u.newer) 'ხელმისაწვდომია ${u.latest!.build}',
+                ].join(' · '),
+                onTap: () => _update(context),
+              );
+            },
           ),
         ]),
         SGroup(title: 'წესები და მონაცემები', children: [

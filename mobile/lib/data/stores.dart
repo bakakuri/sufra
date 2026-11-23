@@ -6,6 +6,7 @@ import '../profile/profile.dart';
 import '../push/push.dart';
 import '../calls/call.dart';
 import '../nardi/net.dart';
+import '../system/updates.dart';
 import 'api.dart';
 import 'models.dart';
 
@@ -326,6 +327,9 @@ class AppState {
 
   /// the games' lobby (who is online to play, challenges) and the backgammon game with another person
   late final nardi = NardiNet(api)..friends = (() => friends.friends);
+
+  /// a newer version of the app, when there is one
+  late final updates = Updates();
 
   /// the tab on screen (a playing clip stops when another tab opens)
   final tab = ValueNotifier<int>(0);

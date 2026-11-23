@@ -4,6 +4,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../chat/chat_screen.dart';
@@ -345,22 +346,68 @@ class _PersonScreenState extends State<PersonScreen> {
   /// my picture or cover, new: shown at once while it uploads
   Uint8List? _newAv, _newCover;
 
-  /// a tap on my picture or cover: a new one from the gallery or the camera, the one there seen big, or taken away
+  /// a tap on my picture or cover: a new one from the gallery or the camera, the one there seen big, or taken away;
+  /// whether a new one is told in the feed too (remembered)
   Future<void> _myPic({required bool cover}) async {
     final me = p ?? context.me;
     final url = cover ? me.coverUrl : me.avatarUrl;
     final has = (url ?? '').isNotEmpty;
     // a word left at the bottom ("ფოტო შეიცვალა") would cover the sheet's last rows
     ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
-    await showChoices(context, [
-      SheetItem('image', cover ? 'ფონის ატვირთვა გალერეიდან' : 'ფოტოს ატვირთვა გალერეიდან', () => _setPic(cover: cover, camera: false)),
-      SheetItem('camera', 'გადაღება კამერით', () => _setPic(cover: cover, camera: true)),
-      if (has) SheetItem('eye', cover ? 'ფონის ნახვა' : 'ფოტოს ნახვა', () => openPhotos(context, [Media(url: url!)])),
-      if (has) SheetItem('trash', cover ? 'ფონის წაშლა' : 'ფოტოს წაშლა', () => _dropPic(cover: cover), danger: true),
-    ]);
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    var toFeed = prefs.getBool(_feedKey) ?? true;
+    final c = context.pc;
+    final pick = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: c.surface,
+      builder: (s) => SafeArea(
+        child: StatefulBuilder(
+          builder: (s, set) => Column(mainAxisSize: MainAxisSize.min, children: [
+            for (final (k, icon, label, danger) in [
+              ('gallery', 'image', cover ? 'ფონის ატვირთვა გალერეიდან' : 'ფოტოს ატვირთვა გალერეიდან', false),
+              ('camera', 'camera', 'გადაღება კამერით', false),
+              if (has) ('view', 'eye', cover ? 'ფონის ნახვა' : 'ფოტოს ნახვა', false),
+              if (has) ('drop', 'trash', cover ? 'ფონის წაშლა' : 'ფოტოს წაშლა', true),
+            ])
+              ListTile(
+                key: ValueKey('pic-$k'),
+                leading: PIcon(icon, size: 22, color: danger ? c.nope : c.ink),
+                title: Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: danger ? c.nope : c.ink)),
+                onTap: () => Navigator.pop(s, k),
+              ),
+            const Divider(height: 1),
+            SwitchListTile(
+              key: const ValueKey('pic-feed'),
+              value: toFeed,
+              onChanged: (v) {
+                set(() => toFeed = v);
+                prefs.setBool(_feedKey, v);
+              },
+              title: const Text('ახალი ფოტო ფიდშიც გამოჩნდეს', style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text('მეგობრები დაინახავენ, რომ ${cover ? 'ფონი' : 'ფოტო'} შეიცვალე', style: TextStyle(color: c.muted, fontSize: 12.5)),
+            ),
+            const SizedBox(height: 6),
+          ]),
+        ),
+      ),
+    );
+    if (!mounted || pick == null) return;
+    switch (pick) {
+      case 'gallery':
+      case 'camera':
+        await _setPic(cover: cover, camera: pick == 'camera', toFeed: toFeed);
+      case 'view':
+        await openPhotos(context, [Media(url: url!)]);
+      case 'drop':
+        await _dropPic(cover: cover);
+    }
   }
 
-  Future<void> _setPic({required bool cover, required bool camera}) async {
+  static const _feedKey = 'pic.post';
+
+  Future<void> _setPic({required bool cover, required bool camera, bool toFeed = false}) async {
     final app = context.app;
     List<Uint8List> got;
     try {
@@ -373,14 +420,22 @@ class _PersonScreenState extends State<PersonScreen> {
     final f = await photoFrame(context, got.first, aspect: cover ? 16 / 9 : 1, max: cover ? 1400 : 640, title: cover ? 'ფონის ფოტო' : 'პროფილის ფოტო');
     if (f == null || !mounted) return;
     setState(() => cover ? _newCover = f.bytes : _newAv = f.bytes);
+    var told = false;
     final ok = await attempt(context, () async {
       final m = await app.api.uploadPhoto(PreparedPhoto(f.bytes, f.w, f.h));
       await app.api.updateMe({cover ? 'cover_url' : 'avatar_url': m.url});
       await app.refreshMe?.call();
+      // told in the feed: the picture marked as the new one, so it shows as such here and on the site
+      if (toFeed) {
+        try {
+          await app.api.createPost('', [m.withPic(cover ? 'cover' : 'avatar')]);
+          told = true;
+        } catch (_) {}
+      }
     });
     if (!mounted) return;
     if (ok) {
-      toast(context, cover ? 'ფონი შეიცვალა' : 'ფოტო შეიცვალა');
+      toast(context, '${cover ? 'ფონი შეიცვალა' : 'ფოტო შეიცვალა'}${told ? ' · ფიდშიც გამოჩნდა' : ''}');
       await _load();
     }
     if (mounted) setState(() => cover ? _newCover = null : _newAv = null);

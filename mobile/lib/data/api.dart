@@ -119,6 +119,9 @@ abstract class PeeraApi {
   /// a game against the computer is over (as on the site): a win may bring the day's coins; the server decides how many
   Future<({int coins, int reward})> gameResult(String game, bool win);
 
+  /// something that broke on this phone, for the admin panel (the site's client_errors)
+  Future<void> reportError(Map<String, dynamic> row);
+
   // dating (js/dating.js): adults only, opt-in
 
   Future<DatingMe> datingMe();
@@ -1747,6 +1750,12 @@ class SupaApi implements PeeraApi {
     final path = '$myId/${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}-${_id(6)}.jpg';
     await sb.storage.from('verify').uploadBinary(path, selfie, fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: false));
     await sb.from('verification_requests').insert({'user_id': myId, 'selfie_url': path});
+  }
+
+  @override
+  Future<void> reportError(Map<String, dynamic> row) async {
+    if (myId.isEmpty) return;
+    await sb.from('client_errors').insert(row);
   }
 
   @override
