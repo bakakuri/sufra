@@ -1278,7 +1278,7 @@ class FakeApi implements PeeraApi {
   @override
   Future<List<Post>> postsByIds(List<int> ids) async => [
         for (final id in ids)
-          if (_posts.where((p) => p.id == id).firstOrNull ?? oldPosts[id] ?? _orig[id] case final p?) p,
+          if (_posts.where((p) => p.id == id).firstOrNull ?? clipPosts.where((p) => p.id == id).firstOrNull ?? oldPosts[id] ?? _orig[id] case final p?) p,
       ];
 
   final promoRows = <Map<String, dynamic>>[];

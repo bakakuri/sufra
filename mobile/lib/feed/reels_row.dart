@@ -357,7 +357,10 @@ class _ReelCard extends StatelessWidget {
             if (p.body.trim().isNotEmpty)
               Text(p.body.trim(), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xE6FFFFFF), fontSize: 11.5, height: 1.25, shadows: shadow)),
             const SizedBox(height: 4),
-            Row(children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
               const PIcon('heart', size: 13, color: Colors.white, stroke: 2.2),
               const SizedBox(width: 4),
               Text(compact(likes), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12, shadows: shadow)),
@@ -375,7 +378,8 @@ class _ReelCard extends StatelessWidget {
                         ]),
                       ),
               ),
-            ]),
+              ]),
+            ),
           ]),
         ),
       ]),

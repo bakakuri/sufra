@@ -1202,8 +1202,9 @@ void main() {
     await settle(t);
     expect(api.calls, contains('read all'));
     expect(find.byKey(const ValueKey('note-dot-71')), findsNothing);
-    // the week in numbers
-    await t.ensureVisible(find.byKey(const ValueKey('note-64')));
+    // the week in numbers (once the last toast has gone, in the middle of the screen)
+    await t.pump(const Duration(seconds: 5));
+    Scrollable.ensureVisible(t.element(find.byKey(const ValueKey('note-64'))), alignment: .3);
     await settle(t);
     expect(find.textContaining('შენი კვირა: 48 მოწონება'), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('note-64')));
