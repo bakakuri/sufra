@@ -2207,8 +2207,10 @@ class SupaApi implements PeeraApi {
   Future<void> reactMessage(int id, String? emoji, {bool had = false}) async {
     Future<void> upd() => sb.from('message_reactions').update({'emoji': emoji}).eq('message_id', id).eq('user_id', myId);
     if (had || emoji == null) return upd();
+    // the first reaction is a new row, a later one changes it (an upsert needs the right to change the whole row, which
+    // a member does not have: that is why reactions did not stay before)
     try {
-      await sb.from('message_reactions').upsert({'message_id': id, 'user_id': myId, 'emoji': emoji}, onConflict: 'message_id,user_id');
+      await sb.from('message_reactions').insert({'message_id': id, 'user_id': myId, 'emoji': emoji});
     } on PostgrestException catch (e) {
       if (RegExp('duplicate|conflict', caseSensitive: false).hasMatch(e.message)) return upd();
       rethrow;

@@ -50,7 +50,7 @@ Future<void> chatWith(BuildContext context, String uid, {String? draft}) async {
 }
 
 /// the reactions offered first under a message (chat.js MREACT)
-const messageReactions = ['❤️', '😂', '😮', '😢', '👍', '🍷', '🔥', '🙏'];
+const messageReactions = ['❤️', '😂', '😍', '😮', '😢', '😡', '👍', '🔥'];
 
 /// A message in one line (chat.js snip): for replies, the pinned bar and search.
 String snip(Message? m) {

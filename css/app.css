@@ -782,6 +782,10 @@ body.wide .panel::before{display:none}
 .mact svg{width:16px;height:16px}
 .mrow:hover .mact,.mact:focus-visible{opacity:1}
 .mrow.me .mact{order:-1}
+.macts{display:flex;align-items:center;gap:0;align-self:center;flex:none}.mrow.me .macts{order:-1;flex-direction:row-reverse}
+.macts .mact{align-self:auto}.mrow:hover .macts .mact,.macts .mact:focus-visible{opacity:1}
+.mqr.big{justify-content:center;flex-wrap:wrap;gap:8px;padding:6px 4px 10px}.mqr.big button{width:52px;height:52px;font-size:30px;animation:fbin .35s cubic-bezier(.3,1.5,.5,1) both;animation-delay:calc(var(--i,0)*30ms)}
+@media (prefers-reduced-motion:reduce){.mqr.big button{animation:none}}
 @media (hover:none){.mact{opacity:.45}}
 .mrow.flash .mcol>*{animation:flashmsg 1.2s ease}
 @keyframes flashmsg{0%,40%{box-shadow:0 0 0 3px color-mix(in srgb,var(--gold) 70%,transparent)}100%{box-shadow:0 0 0 0 transparent}}

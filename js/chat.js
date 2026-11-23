@@ -45,7 +45,7 @@ function locCard(l){const lat=+l.lat,lng=+l.lng;if(!isFinite(lat)||!isFinite(lng
 const postMsg=(p,me)=>`<button class="mpost${me?' me':''}" data-a="chpost" data-pid="${+p.id||0}">${safeU(p.img)?`<img src="${esc(p.img)}" alt="" loading="lazy">`:`<span class="mpi">${ic('image')}</span>`}<span class="mpt"><b>${esc(p.by||'პოსტი')}</b><small>${esc(String(p.t||'').slice(0,120))||'პოსტის ნახვა'}</small></span></button>`;
 A.chpost=t=>{const id=+t.dataset.pid;if(!id)return;closeSheet();openPage('post',id)};
 /* reactions under a message: the three most used, the total, and mine highlighted */
-const MREACT=['❤️','😂','😮','😢','👍','🍷','🔥','🙏'];
+const MREACT=['❤️','😂','😍','😮','😢','😡','👍','🔥'];
 function reactPill(id){const r=CHAT?.reacts?.get(id);if(!r||!r.size)return '';const cnt={};r.forEach(e=>{cnt[e]=(cnt[e]||0)+1});const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>rg(x[0])).join('');
  return `<button class="mreact${r.has(ME.id)?' mine':''}" data-a="mreacts" data-mid="${id}" aria-label="რეაქციები: ${r.size}">${top}${r.size>1?`<b>${r.size}</b>`:''}</button>`}
 /* an answer or an emoji on a story: the story's picture with what happened */
@@ -71,7 +71,7 @@ function msgHTML(m){const me=m.sender===ME.id,u=prof(m.sender);let body;
  const rq=m.reply_to&&!m.deleted?`<button class="rquote" data-a="jumpmsg" data-mid="${m.reply_to}"><b>${r?esc(String(pname(r.sender)).split(' ')[0]):'პასუხი'}</b><span>${esc(snip(r))}</span></button>`:'';
  const fw=m.media?.fwd&&!m.deleted?`<span class="fwdl">${ic('fwd')}გადმოგზავნილი · ${esc(m.media.fwd)}</span>`:'';
  const rx=m.deleted?'':reactPill(m.id);
- return `<div class="mrow${me?' me':''}" data-mid="${m.id}">${!me&&S.chatGroup?`<button class="mav" data-a="user" data-u="${m.sender}" aria-label="${esc(u.name)}">${av(u,26)}</button>`:''}<div class="mcol">${!me&&S.chatGroup?`<span class="mname">${esc(String(u.name).split(' ')[0])}</span>`:''}${fw}${rq}${body}${rx}<span class="mtime">${hhmm(m.created_at)}${m.edited_at&&!m.deleted?' · რედაქტირებული':''}${m.expires_at?` <i class="mttl" title="ქრება ${fdate(m.expires_at)}">${ic('timer')}</i>`:''}</span></div>${m.deleted?'':`<button class="mact" data-a="msgact" data-mid="${m.id}" aria-label="მოქმედებები">${ic('more')}</button>`}</div>`}
+ return `<div class="mrow${me?' me':''}" data-mid="${m.id}">${!me&&S.chatGroup?`<button class="mav" data-a="user" data-u="${m.sender}" aria-label="${esc(u.name)}">${av(u,26)}</button>`:''}<div class="mcol">${!me&&S.chatGroup?`<span class="mname">${esc(String(u.name).split(' ')[0])}</span>`:''}${fw}${rq}${body}${rx}<span class="mtime">${hhmm(m.created_at)}${m.edited_at&&!m.deleted?' · რედაქტირებული':''}${m.expires_at?` <i class="mttl" title="ქრება ${fdate(m.expires_at)}">${ic('timer')}</i>`:''}</span></div>${m.deleted||m.kind==='system'?'':`<span class="macts"><button class="mact mreactb" data-a="mreactbar" data-mid="${m.id}" aria-label="რეაქცია">${ic('smile')}</button><button class="mact" data-a="msgact" data-mid="${m.id}" aria-label="მოქმედებები">${ic('more')}</button></span>`}</div>`}
 function redrawMsg(id){const m=CHAT&&CHAT.msgs.get(id),el=$(`#cb [data-mid="${id}"]`);if(!m||!el)return;el.outerHTML=msgHTML(m);$$(`#cb .rquote[data-mid="${id}"]`).forEach(q=>{const row=q.closest('[data-mid]');if(row)redrawMsg(+row.dataset.mid)})}
 
 async function openChat(cid,draft=''){let conv=CONVS.find(c=>c.conv_id===cid);
@@ -224,10 +224,15 @@ async function loadReacts(st,ids){if(!ids.length)return;try{const rows=await q(s
  const touched=new Set();rows.forEach(r=>{if(!st.reacts.has(r.message_id))st.reacts.set(r.message_id,new Map());st.reacts.get(r.message_id).set(r.user_id,r.emoji);touched.add(r.message_id)});await loadProfiles(rows.map(r=>r.user_id));touched.forEach(id=>redrawMsg(id))}catch(e){}}
 function setReact(st,mid,uid,emoji){if(!st.reacts.has(mid))st.reacts.set(mid,new Map());const r=st.reacts.get(mid);if(emoji)r.set(uid,emoji);else r.delete(uid);if(CHAT===st){redrawMsg(mid);if(emoji&&uid!==ME.id){const b=$(`#cb [data-mid="${mid}"] .mreact`);if(b)pop(b)}}}
 async function reactTo(mid,emoji){const st=CHAT,m=st&&st.msgs.get(mid);if(!m||m.deleted)return;const cur=st.reacts.get(mid)?.get(ME.id)||null,next=cur===emoji?null:emoji;setReact(st,mid,ME.id,next);
- try{if(!cur&&next)await q(sb.from('message_reactions').upsert({message_id:mid,user_id:ME.id,emoji:next},{onConflict:'message_id,user_id'}));else await q(sb.from('message_reactions').update({emoji:next}).eq('message_id',mid).eq('user_id',ME.id))}
+ /* the first reaction is a new row, a later one (or taking it back) changes it; an upsert would need the right to change
+    the whole row, which a member does not have (that is why reactions did not stay before) */
+ try{if(!cur&&next)await q(sb.from('message_reactions').insert({message_id:mid,user_id:ME.id,emoji:next}));else await q(sb.from('message_reactions').update({emoji:next}).eq('message_id',mid).eq('user_id',ME.id))}
  catch(e){if(/duplicate|conflict/i.test(e.message||'')){try{await q(sb.from('message_reactions').update({emoji:next}).eq('message_id',mid).eq('user_id',ME.id))}catch(x){setReact(st,mid,ME.id,cur);toast(errMsg(x))}}else{setReact(st,mid,ME.id,cur);toast(errMsg(e))}}}
 A.mreact=t=>{closeLayer();reactTo(+t.dataset.mid,t.dataset.e)};
 A.mreactx=t=>{const mid=+t.dataset.mid;closeLayer();emoPick(e=>reactTo(mid,e))};
+/* the smiley beside a message: only the reactions, large (the "…" has the rest) */
+A.mreactbar=t=>{const st=CHAT,m=st&&st.msgs.get(+t.dataset.mid);if(!m||m.deleted)return;const myR=st.reacts.get(m.id)?.get(ME.id);
+ layer(lhead('რეაქცია')+`<div class="mqr big" role="group" aria-label="რეაქცია">${(myR&&!MREACT.includes(myR)?[myR,...MREACT]:MREACT).map((e,i)=>`<button data-a="mreact" data-mid="${m.id}" data-e="${e}" class="${myR===e?'on':''}" style="--i:${i}" aria-label="${e}">${rg(e)}</button>`).join('')}<button class="mqx" data-a="mreactx" data-mid="${m.id}" aria-label="სხვა სმაილი">${ic('plus')}</button></div>${myR?`<p class="hint" style="text-align:center;margin:6px 0 2px">შენი რეაქცია: ${rg(myR)} · ისევ შეეხე, რომ მოხსნა</p>`:''}`)};
 A.mreacts=t=>{const st=CHAT,r=st?.reacts.get(+t.dataset.mid);if(!r||!r.size)return;
  layer(lhead('რეაქციები')+`<div class="ph-body" style="padding-top:6px"><div class="list">${[...r.entries()].map(([u,e])=>`<button class="row" data-a="user" data-u="${u}">${av(u,40)}<span class="grow"><b>${esc(u===ME.id?'შენ':pname(u))}</b>${u===ME.id?'<span class="sub">შეეხე მოსაშორებლად</span>':''}</span><span class="rxe">${rg(e)}</span></button>`).join('')}</div></div>`);
  $$('#layer .row').forEach(b=>{if(b.dataset.u===ME.id){b.dataset.a='';b.onclick=()=>{closeLayer();reactTo(+t.dataset.mid,r.get(ME.id))}}})};
