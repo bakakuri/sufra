@@ -4,12 +4,14 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:peera/data/api.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/people/person_screen.dart';
 import 'package:peera/settings/settings_screens.dart';
 import 'package:peera/system/phone.dart';
 import 'package:peera/system/updates.dart';
 
+import 'fake_api.dart';
 import 'fake_phone.dart';
 import 'helpers.dart';
 
@@ -47,6 +49,26 @@ void main() {
     await tryPic();
     expect(api.errors, hasLength(1));
     api.updateFail = null;
+  });
+
+  test('people are read only with columns anyone signed in may read (the chosen look is not one of them)', () {
+    expect(SupaApi.personSel.split(','), isNot(contains('look')));
+  });
+
+  testWidgets('a profile the server will not read: said so with a retry and reported, not an endless spinner', (t) async {
+    phone(t);
+    phoneBridge = FakePhone();
+    final api = await shell(t, api: FakeApi()..personFail = Exception('permission denied for table profiles'));
+    await toProfile(t);
+    expect(find.text('პოსტები ვერ ჩაიტვირთა'), findsOneWidget);
+    expect(api.errors.map((e) => '${e['msg']}'), contains(contains('permission denied')));
+    // the server answers again: the retry brings the posts
+    api.personFail = null;
+    await t.ensureVisible(find.text('ხელახლა ცდა'));
+    await settle(t);
+    await t.tap(find.text('ხელახლა ცდა'));
+    await settle(t);
+    expect(find.text('პოსტები ვერ ჩაიტვირთა'), findsNothing);
   });
 
   testWidgets('a new version: offered a moment after the start, downloaded with a bar, checked and handed to the installer; the settings show it', (t) async {

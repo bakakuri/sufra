@@ -145,8 +145,8 @@ function welcomeGift(){try{if(!ME||ME.offline||store.get('welc',null)===ME.id)re
  q(sb.from('coin_log').select('amount').eq('user_id',ME.id).eq('action','welcome').limit(1)).then(rows=>{if(!rows||!rows.length)return;store.set('welc',ME.id);
   sheet(head('მოგესალმებით Peera-ზე!')+`<div class="ph-body inv"><div class="invhero" aria-hidden="true">🎁</div><p class="invt"><b>${rows[0].amount} მონეტა</b> საჩუქრად, რეგისტრაციისთვის. მონეტებით თამაშობ, ჩუქნი და მაღაზიაში ყიდულობ.</p>
    <div class="row2"><button class="btn" data-a="close">მადლობა!</button><button class="btn ghost" data-a="invite">მეგობრების მოწვევა</button></div></div>`,'short');try{confetti()}catch(e){}}).catch(()=>{})}catch(e){}}
-async function loadSuggest(){const el=$('#sugg');if(!el)return;try{const s=await rpc('friend_suggestions',{p_limit:10});if(!s.length){el.remove();return}s.forEach(p=>PC.set(p.id,Object.assign(PC.get(p.id)||{},p)));
- el.outerHTML=`<section class="suggest"><div class="shead"><h3>შეიძლება იცნობდე</h3><button class="trb" data-a="page" data-p="friends">ყველა</button></div><div class="hscroll">${s.map(p=>`<div class="pcard2"><button data-a="user" data-u="${p.id}" class="pc2">${av(p,64)}<b>${esc(p.name)}${vb(p)}</b><span>${p.mutual?p.mutual+' საერთო მეგობარი':esc(p.city||'Peera-ზეა')}</span></button><button class="btn sm" data-a="addfriend" data-u="${p.id}">დამატება</button></div>`).join('')}</div></section>`}catch(e){el.remove()}}
+async function loadSuggest(){const el=$('#sugg');if(!el)return;try{const hid=sugHidden();const s=(await rpc('friend_suggestions',{p_limit:12})).filter(p=>!hid.has(p.id));if(!s.length){el.remove();return}s.forEach(p=>PC.set(p.id,Object.assign(PC.get(p.id)||{},p)));
+ el.outerHTML=`<section class="suggest" id="suggx"><div class="shead"><h3>შეიძლება იცნობდე</h3><button class="trb" data-a="page" data-p="friends">ყველა</button></div>${fbRow(s,'sug')}</section>`;fbEdges($('#suggx'))}catch(e){el.remove()}}
 /* trending tags are shown only in search (not on the feed) */
 
 /* friends' birthdays and name days */

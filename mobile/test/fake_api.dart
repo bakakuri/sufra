@@ -305,8 +305,12 @@ class FakeApi implements PeeraApi {
     return p;
   }
 
+  /// a profile read the server refuses (as when the app asked for a column it may not read)
+  Object? personFail;
+
   @override
   Future<Profile?> person(String uid) async {
+    if (personFail != null) throw personFail!;
     final p = everyone.where((p) => p.id == uid).firstOrNull;
     return p != null && uid == nino.id ? _withMyPics(p) : p;
   }

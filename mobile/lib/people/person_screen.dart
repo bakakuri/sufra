@@ -18,6 +18,7 @@ import '../profile/profile.dart';
 import '../settings/edit_profile.dart';
 import '../settings/frame_photo.dart';
 import '../settings/settings_screens.dart';
+import '../system/errors.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
 import '../ui/motion.dart';
@@ -151,7 +152,9 @@ class _PersonScreenState extends State<PersonScreen> {
         posts = list;
         error = got == null && p == null ? 'not found' : null;
       });
-    } catch (e) {
+    } catch (e, st) {
+      // told to the admin panel too: a page that does not open is worth knowing about
+      ErrorReporter.report(e, st, where: 'profile');
       if (mounted) setState(() => error = e);
     }
     if (tab != 'posts') _loadTab(tab, force: true);
@@ -1369,6 +1372,9 @@ class _PersonScreenState extends State<PersonScreen> {
         ]);
       default:
         final l = posts;
+        if (l == null && error != null && error is! String) {
+          return Empty(icon: 'edit', title: 'პოსტები ვერ ჩაიტვირთა', text: errText(error!), action: 'ხელახლა ცდა', onAction: _load);
+        }
         if (l == null) return wait;
         if (l.isEmpty) {
           return Empty(

@@ -828,7 +828,7 @@ class SupaApi implements PeeraApi {
       'ap:profiles!posts_author_fkey($_who),page:pages!posts_page_id_fkey(id,name,hue,avatar_url,verified,kind),'
       'grp:groups!posts_group_id_fkey(id,name),pl:places!posts_place_id_fkey(id,name,kind,city)';
   static const commentSel = 'id,post_id,body,media,created_at,author,parent_id,reply_to,likes,profiles!comments_author_fkey($_who)';
-  static const personSel = 'id,username,name,surname,bio,city,hue,avatar_url,cover_url,verified,last_seen,role,banned,rating,nameday,nameday_label,home_place,home_region,edu,gender,abroad,created_at,look';
+  static const personSel = 'id,username,name,surname,bio,city,hue,avatar_url,cover_url,verified,last_seen,role,banned,rating,nameday,nameday_label,home_place,home_region,edu,gender,abroad,created_at';
   static const msgSel = 'id,conv_id,sender,body,media,kind,created_at,reply_to,edited_at,deleted,expires_at';
 
   String _id(int n) => List.generate(n, (_) => 'abcdefghijklmnopqrstuvwxyz0123456789'[_rnd.nextInt(36)]).join();
