@@ -170,6 +170,8 @@ class _MixAlbumCardState extends State<MixAlbumCard> {
           const SizedBox(height: 10),
           GestureDetector(
             key: ValueKey('mixa-${widget.id}'),
+            // the whole picture takes the tap, also where a photo is still loading
+            behavior: HitTestBehavior.opaque,
             onTap: open,
             child: ClipRRect(borderRadius: BorderRadius.circular(14), child: AspectRatio(aspectRatio: 16 / 10, child: grid)),
           ),
