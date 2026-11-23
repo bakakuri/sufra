@@ -697,6 +697,9 @@ abstract class PeeraApi {
   Future<void> settleFixture(int id, int home, int away);
   Future<void> cancelFixture(int id);
 
+  /// how people predicted many matches at once (fixture_pools): id → {n, c1, cX, c2}; empty when it cannot be told
+  Future<Map<int, Map<String, dynamic>>> fixturePools(List<int> ids);
+
   /// staff: finished matches whose score came by itself and waits to be confirmed (the payout is a person's call)
   Future<List<Map<String, dynamic>>> pendingFixtures();
 
@@ -2951,6 +2954,18 @@ class SupaApi implements PeeraApi {
 
   @override
   Future<void> cancelFixture(int id) => sb.rpc('admin_cancel_fixture', params: {'p_fixture': id});
+
+  @override
+  Future<Map<int, Map<String, dynamic>>> fixturePools(List<int> ids) async {
+    if (ids.isEmpty) return const {};
+    try {
+      final r = await sb.rpc('fixture_pools', params: {'p_ids': ids.take(200).toList()});
+      if (r is! Map) return const {};
+      return {for (final e in r.entries) if (e.value is Map) asInt(e.key): Map<String, dynamic>.from(e.value as Map)};
+    } catch (_) {
+      return const {};
+    }
+  }
 
   @override
   Future<List<Map<String, dynamic>>> pendingFixtures() async =>

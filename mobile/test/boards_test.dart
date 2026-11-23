@@ -271,7 +271,7 @@ void main() {
 
   testWidgets('the match room: matches that came by themselves show their live score, under their day, by league; a finished one is under the finished', (t) async {
     phone(t);
-    await shell(t);
+    final api = await shell(t);
     await _open(t, 'sport');
     // the one on now first, with its score; the one over (its result not yet confirmed) is not a coming one
     expect(find.text('ახლა მიმდინარე'), findsOneWidget);
@@ -280,6 +280,10 @@ void main() {
     expect(find.byKey(const ValueKey('fx-5')), findsNothing);
     // no staff line for everyone else
     expect(find.byKey(const ValueKey('fx-sync')), findsNothing);
+    // how people predicted, as three green bars with their shares
+    expect(api.calls, contains('pools 2'));
+    expect(find.descendant(of: find.byKey(const ValueKey('fxsplit-4')), matching: find.textContaining('%')), findsNWidgets(3));
+    expect(find.descendant(of: find.byKey(const ValueKey('fxsplit-4')), matching: find.text('67%')), findsOneWidget);
     // one league
     await _tap(t, 'fxlg-პრემიერ ლიგა');
     expect(find.byKey(const ValueKey('fx-4')), findsOneWidget);

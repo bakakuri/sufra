@@ -2333,6 +2333,21 @@ class FakeApi implements PeeraApi {
   }
 
   @override
+  Future<Map<int, Map<String, dynamic>>> fixturePools(List<int> ids) async {
+    calls.add('pools ${ids.length}');
+    return {
+      for (final id in ids)
+        if (id == 1 || id == 4)
+          id: {
+            'n': 9 + predictionRows.where((p) => p['fixture_id'] == id).length,
+            'c1': 6 + predictionRows.where((p) => p['fixture_id'] == id && p['pick'] == '1').length,
+            'cX': 1,
+            'c2': 2,
+          },
+    };
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> pendingFixtures() async => [
         for (final f in fixtureRows)
           if (f['status'] == 'upcoming' && f['live_state'] == 'finished') {...f},

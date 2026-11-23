@@ -236,6 +236,25 @@ class _FriendsTabState extends State<FriendsTab> {
         SectionHead(q.isEmpty ? 'ყველა მეგობარი' : 'ნაპოვნი', count: shown.length),
         if (shown.isEmpty)
           Padding(padding: const EdgeInsets.all(24), child: Center(child: Text('ასეთი მეგობარი ვერ ვიპოვე', style: TextStyle(color: c.muted))))
+        else if (q.isEmpty)
+          // all of them as a sideways row of raised photo cards, as on Facebook (a search lists the found ones)
+          SingleChildScrollView(
+            key: const ValueKey('fr-row'),
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              for (final (i, p) in shown.indexed)
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Rise(
+                    key: ValueKey('frr-${p.id}'),
+                    order: i,
+                    dy: 10,
+                    child: Pressable(onTap: () => _open(p), child: FriendPhotoCard(p: p, onOpen: () => _open(p), onWrite: () => chatWith(context, p.id))),
+                  ),
+                ),
+            ]),
+          )
         else
           for (final (i, p) in shown.indexed)
             Rise(
