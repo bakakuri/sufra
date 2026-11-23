@@ -616,8 +616,17 @@ class _FixtureScreenState extends State<FixtureScreen> {
 
   Future<void> _add(Map<String, dynamic> m) async {
     if (!seen.add(m['id'])) return;
-    await context.app.people.ensure(['${m['user_id']}']);
-    if (mounted) setState(() => msgs.add(m));
+    final app = context.app;
+    await app.people.ensure(['${m['user_id']}']);
+    if (!mounted) return;
+    // mine always, someone else's when I am already near the end: the chat follows to the newest
+    final follow = m['user_id'] == app.api.myId || !scroll.hasClients || scroll.position.extentAfter < 320;
+    setState(() => msgs.add(m));
+    if (follow) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && scroll.hasClients) scroll.animateTo(scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic);
+      });
+    }
   }
 
   Future<void> _chat() async {
