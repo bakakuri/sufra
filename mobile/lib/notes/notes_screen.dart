@@ -193,7 +193,7 @@ class _NotesScreenState extends State<NotesScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: Row(children: [
-              _Faces(g: g, size: 44),
+              _Faces(g: g, size: 44, people: app.people),
               const SizedBox(width: 12),
               Expanded(
                 child: Text.rich(
@@ -494,12 +494,15 @@ class _NotesScreenState extends State<NotesScreen> {
 
 /// The faces on a line: one large, or two overlapping (the newest in front); the kind's small sign at the corner.
 class _Faces extends StatelessWidget {
-  const _Faces({required this.g, this.size = 56});
+  const _Faces({required this.g, this.size = 56, this.people});
   final NoteGroup g;
   final double size;
+
+  /// given where the app's scope is not above (a sheet over everything)
+  final People? people;
   @override
   Widget build(BuildContext context) {
-    final c = context.pc, people = context.app.people, a = g.actors, n = g.latest;
+    final c = context.pc, people = this.people ?? context.app.people, a = g.actors, n = g.latest;
     final (icon, c1, c2) = noteSign(g.kind);
     // a reaction shows itself (as Facebook's ❤️ and 😂 on the face)
     final emo = const {'react', 'story_react', 'msg_react'}.contains(g.kind) ? g.emojis.characters.take(1).toString() : '';
