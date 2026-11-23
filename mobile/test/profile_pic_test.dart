@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'helpers.dart';
 
 void main() {
+  setUpAll(useTestImages);
+
   testWidgets('my picture and cover from my profile: a choice of gallery or camera, uploaded and set; one seen, one taken away', (t) async {
     phone(t);
     final api = await shell(t);
