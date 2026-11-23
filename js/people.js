@@ -306,9 +306,11 @@ A.storyviews=async t=>{clearTimeout(SV?.t);const sid=+t.dataset.id,st=SVL()[SV?.
   sheet(head(`ნახვები · ${ids.length}`)+`<div class="ph-body">${st?.poll&&poll?`<div class="svpoll inline">${pollStoryHTML(st,poll,true)}</div>`:''}${R.size?`<p class="note">${R.size} რეაქცია</p>`:''}<div class="list">${ids.sort((a,b)=>(R.has(b)?1:0)-(R.has(a)?1:0)).map(u=>`<button class="row" data-a="user" data-u="${u}">${av(u,42)}<span class="grow"><b>${esc(pname(u))}${vb(u)}</b>${V.has(u)&&st?.poll?`<span class="sub">ხმა: ${esc(st.poll.opts[V.get(u)]||'')}</span>`:''}</span>${R.has(u)?`<span class="rxe">${rg(R.get(u))}</span>`:''}</button>`).join('')||'<p class="muted">ჯერ არავის უნახავს</p>'}</div></div>`)}catch(e){toast(errMsg(e))}};
 
 /* clips: a vertical feed, one clip to a screen; the one on screen plays by itself, a tap pauses it, two taps like it */
-const CLIP={io:null,cur:null,raf:0};
+const CLIP={io:null,cur:null,raf:0,start:0};
 R.clips=()=>{view.innerHTML=`<div class="clip-top"><span class="on">კლიპები</span><button class="cliptop-add" data-a="newclip" aria-label="კლიპის ატვირთვა">${ic('plus')}</button></div><div id="clipb"><section class="clip clipload"><span class="spin"></span></section></div>`;
  fetchPosts(b=>b.eq('is_clip',true).eq('hidden',false).order('created_at',{ascending:false}).limit(30)).then(rows=>{const el=$('#clipb');if(!el)return;rows=rows.filter(p=>(p.media||[]).some(m=>m.type==='video'));
+  /* opened from the feed's row: that clip first */
+  if(CLIP.start){const i=rows.findIndex(p=>p.id===CLIP.start);if(i>0)rows.unshift(rows.splice(i,1)[0]);CLIP.start=0}
   if(!rows.length){el.innerHTML=`<section class="clip clipempty"><div><h3>კლიპები ჯერ არ არის</h3><p>ატვირთე პირველი მოკლე ვიდეო და აქ გამოჩნდება.</p><button class="btn" data-a="newclip">${ic('plus')}კლიპის ატვირთვა</button></div></section>`;return}
   el.innerHTML=rows.map(clipHTML).join('');clipWire(el)}).catch(e=>{const el=$('#clipb');if(el)el.innerHTML=`<section class="clip clipempty"><div><h3>ვერ ჩაიტვირთა</h3><p>${errMsg(e)}</p></div></section>`})};
 function clipHTML(p){const v=p.media.find(m=>m.type==='video'),s=STAT.get(p.id)||blankStat(p.id),u=p.ap||prof(p.author),on=s.my_reaction==='❤️',snd=!!S.clipSound,eco=ECO();

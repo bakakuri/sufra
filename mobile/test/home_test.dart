@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:peera/clips/clip_feed.dart';
 import 'package:peera/community/sport.dart';
 import 'package:peera/feed/compose_screen.dart';
 import 'package:peera/feed/feed_tab.dart';
@@ -367,6 +368,29 @@ void main() {
     await t.tap(find.byKey(const ValueKey('sug-all')));
     await settle(t);
     expect(find.byKey(ValueKey('sgg-${tamar.id}')), findsOneWidget);
+  });
+
+  testWidgets('the clips inside the feed, as reels: a card opens that clip, back comes back; "ყველა" goes to the clips tab', (t) async {
+    phone(t);
+    await shell(t);
+    await _to(t, 'reels');
+    Scrollable.ensureVisible(t.element(find.byKey(const ValueKey('reels'))), alignment: .3);
+    await settle(t);
+    expect(find.text('კლიპის შექმნა'), findsOneWidget);
+    // who made it, the words, the likes (❤️ 128 and 😮 4)
+    final g = find.byKey(const ValueKey('reel-301'));
+    expect(find.descendant(of: g, matching: find.text('132')), findsOneWidget);
+    expect(find.descendant(of: g, matching: find.textContaining('გუდაურში')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('reel-302')));
+    await settle(t);
+    expect(find.byType(ClipViewer), findsOneWidget);
+    expect(find.textContaining('ბათუმის'), findsOneWidget);
+    await _back(t);
+    expect(find.byType(ClipViewer), findsNothing);
+    expect(find.byKey(const ValueKey('reels')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('reels-all')));
+    await settle(t);
+    expect(find.byType(ClipFeed), findsOneWidget);
   });
 
   testWidgets('the welcome gift is said once; inviting friends from it tells the coins and who came', (t) async {

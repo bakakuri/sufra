@@ -16,30 +16,44 @@ import 'compose_screen.dart';
 import 'mix_cards.dart';
 import 'post_actions.dart';
 import 'post_card.dart';
+import 'reels_row.dart';
 
 /// how the feed starts: 'for' (you), 'friends' or 'new' (the tests start with the newest first)
 String feedStartMode = 'for';
 
-/// one thing in the feed: a post, a paid post, a sponsored post of the admin's, or people you may know
+/// one thing in the feed: a post, a paid post, a sponsored post of the admin's, people you may know, or the clips
 class FeedItem {
   const FeedItem.post(Post this.post, {this.ad})
       : promo = null,
         suggest = false,
         album = null,
-        match = null;
+        match = null,
+        reels = false;
   const FeedItem.promo(Promo this.promo)
       : post = null,
         ad = null,
         suggest = false,
         album = null,
-        match = null;
+        match = null,
+        reels = false;
   const FeedItem.suggest()
       : post = null,
         promo = null,
         ad = null,
         suggest = true,
         album = null,
-        match = null;
+        match = null,
+        reels = false;
+
+  /// the clips, sideways, as Facebook's reels
+  const FeedItem.reels()
+      : post = null,
+        promo = null,
+        ad = null,
+        suggest = false,
+        album = null,
+        match = null,
+        reels = true;
 
   /// "for you" brings a shared album and a coming or live match among the posts
   const FeedItem.album(int this.album)
@@ -47,17 +61,19 @@ class FeedItem {
         promo = null,
         ad = null,
         suggest = false,
-        match = null;
+        match = null,
+        reels = false;
   const FeedItem.match(int this.match)
       : post = null,
         promo = null,
         ad = null,
         suggest = false,
-        album = null;
+        album = null,
+        reels = false;
   final Post? post;
   final Promo? promo;
   final int? ad;
-  final bool suggest;
+  final bool suggest, reels;
   final int? album, match;
 }
 
@@ -246,6 +262,7 @@ class FeedTabState extends State<FeedTab> with WidgetsBindingObserver {
             adSeen(context, ad.$1);
           }
           if (reset && _count == 2) items.add(const FeedItem.suggest());
+          if (reset && _count == 4) items.add(const FeedItem.reels());
         }
         if (mt != null) items.add(FeedItem.match(mt));
         if (al != null) items.add(FeedItem.album(al));
@@ -413,6 +430,7 @@ class FeedTabState extends State<FeedTab> with WidgetsBindingObserver {
                 }
                 final it = items[i];
                 if (it.suggest) return const SuggestRow();
+                if (it.reels) return const ReelsRow();
                 if (it.match != null) return MixMatchCard(key: ValueKey('mix-m-${it.match}'), id: it.match!);
                 if (it.album != null) return MixAlbumCard(key: ValueKey('mix-a-${it.album}'), id: it.album!);
                 if (it.promo != null) {

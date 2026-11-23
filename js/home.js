@@ -129,9 +129,9 @@ async function loadFeed(reset){if(reset){FEED.done=false;FEED.cursor=null;FEED.c
   const feed=$('#feed');if(!feed)return;let html='';const before=reset?0:$$('#feed > .post').length;
   /* the match and the album ride among the posts (or at the end of a short part) */
   const ins=[];if(mixed){if(mixed.match)ins.push([2,mixMatch(mixed.match)]);if(mixed.album)ins.push([5,mixed.album])}
-  rows.forEach((p,i)=>{FEED.count++;html+=postHTML(p);for(const x of ins)if(x[0]===i&&x[1]){html+=x[1];x[1]=''}if(FEED.pq&&FEED.pq.length&&FEED.count>=FEED.np){const pr=FEED.pq.shift();html+=promoHTML(pr);FEED.np=FEED.count+pr.every;promoSeen(pr.id)}if(FEED.count%6===0&&FEED.ads.length){const ad=FEED.ads.shift();html+=postHTML(ad);if(!FEED.adsShown.has(ad.ad)){FEED.adsShown.add(ad.ad);sb.rpc('ad_impression',{p_ad:ad.ad}).then(()=>{})}}if(reset&&FEED.count===2)html+='<div id="sugg"></div>'});
+  rows.forEach((p,i)=>{FEED.count++;html+=postHTML(p);for(const x of ins)if(x[0]===i&&x[1]){html+=x[1];x[1]=''}if(FEED.pq&&FEED.pq.length&&FEED.count>=FEED.np){const pr=FEED.pq.shift();html+=promoHTML(pr);FEED.np=FEED.count+pr.every;promoSeen(pr.id)}if(FEED.count%6===0&&FEED.ads.length){const ad=FEED.ads.shift();html+=postHTML(ad);if(!FEED.adsShown.has(ad.ad)){FEED.adsShown.add(ad.ad);sb.rpc('ad_impression',{p_ad:ad.ad}).then(()=>{})}}if(reset&&FEED.count===2)html+='<div id="sugg"></div>';if(reset&&FEED.count===4)html+='<div id="reels"></div>'});
   for(const x of ins)if(x[1])html+=x[1];
-  if(reset){feed.innerHTML=html||empty(mode==='friends'?'მეგობრების პოსტები ჯერ არ არის':'აქ ჯერ ცარიელია',mode==='friends'?'დაამატე მეგობრები და მათი პოსტები აქ გამოჩნდება.':'დაწერე პირველი პოსტი ან მოიწვიე მეგობრები.',`<div class="row2"><button class="btn" data-a="compose">პოსტის დაწერა</button><button class="btn ghost" data-a="invite">მეგობრის მოწვევა</button></div>`);staggerIn($$('.post',feed).slice(0,6));loadSuggest()}
+  if(reset){feed.innerHTML=html||empty(mode==='friends'?'მეგობრების პოსტები ჯერ არ არის':'აქ ჯერ ცარიელია',mode==='friends'?'დაამატე მეგობრები და მათი პოსტები აქ გამოჩნდება.':'დაწერე პირველი პოსტი ან მოიწვიე მეგობრები.',`<div class="row2"><button class="btn" data-a="compose">პოსტის დაწერა</button><button class="btn ghost" data-a="invite">მეგობრის მოწვევა</button></div>`);staggerIn($$('.post',feed).slice(0,6));loadSuggest();loadReels()}
   else feed.insertAdjacentHTML('beforeend',html);
   if(!FEED.done){const ps=$$('#feed > .post');feedWatch(ps[Math.min(ps.length-1,before+FEED_AT-1)])}
   if(more)more.innerHTML=FEED.done&&FEED.count?'<span class="note">ყველაფერი ნახე</span>':''}
@@ -160,6 +160,18 @@ function welcomeGift(){try{if(!ME||ME.offline||store.get('welc',null)===ME.id)re
  q(sb.from('coin_log').select('amount').eq('user_id',ME.id).eq('action','welcome').limit(1)).then(rows=>{if(!rows||!rows.length)return;store.set('welc',ME.id);
   sheet(head('მოგესალმებით Peera-ზე!')+`<div class="ph-body inv"><div class="invhero" aria-hidden="true">🎁</div><p class="invt"><b>${rows[0].amount} მონეტა</b> საჩუქრად, რეგისტრაციისთვის. მონეტებით თამაშობ, ჩუქნი და მაღაზიაში ყიდულობ.</p>
    <div class="row2"><button class="btn" data-a="close">მადლობა!</button><button class="btn ghost" data-a="invite">მეგობრების მოწვევა</button></div></div>`,'short');try{confetti()}catch(e){}}).catch(()=>{})}catch(e){}}
+/* clips in the feed, as Facebook's reels: a sideways row of tall cards (the picture, who, likes, words); the first
+   makes a new one; a tap opens the clips at that one */
+async function loadReels(){const el=$('#reels');if(!el)return;
+ try{let rows=await fetchPosts(b=>b.eq('is_clip',true).eq('hidden',false).order('created_at',{ascending:false}).limit(24));rows=rows.filter(p=>(p.media||[]).some(m=>m.type==='video'));
+  if(!rows.length){el.remove();return}
+  /* a little shuffled, fresher ones first */
+  rows=rows.map((p,i)=>[p,i+Math.random()*4]).sort((a,b)=>a[1]-b[1]).map(x=>x[0]).slice(0,12);
+  const card=(p,i)=>{const v=p.media.find(m=>m.type==='video'),u=p.ap||prof(p.author),st=STAT.get(p.id)||blankStat(p.id),pic=mPoster(v);
+   return `<button class="reel" style="--i:${Math.min(i,8)}" data-a="reelopen" data-pid="${p.id}" aria-label="${esc(u.name)}: კლიპი">${pic?`<img src="${esc(pic)}" alt="" loading="lazy">`:`<video src="${esc(v.url)}#t=0.4" muted playsinline preload="metadata" tabindex="-1"></video>`}<span class="rshade"></span><span class="rav">${av(u,30)}</span><span class="rplay">${ic('play','currentColor')}</span><span class="rcap"><b>${esc(u.name)}</b>${p.body?`<em>${esc(String(p.body).slice(0,60))}</em>`:''}</span><span class="rstat">${ic('heart','currentColor')}${fmt(rTotal(st))}</span></button>`};
+  el.outerHTML=`<section class="reels" id="reelsx"><div class="shead"><h3>${ic('clips')} კლიპები</h3><button class="trb" data-a="page" data-p="clips">ყველა</button></div><div class="fbwrap"><button class="fbar prev" data-a="fbscroll" data-d="-1" aria-label="უკან">${ic('back')}</button><div class="fbrow reelrow" role="list"><button class="reel rnew" data-a="newclip" aria-label="კლიპის შექმნა"><span class="rme">${av(ME.id,46)}</span><span class="rplus">${ic('plus')}</span><b>კლიპის შექმნა</b></button>${rows.map(card).join('')}</div><button class="fbar next" data-a="fbscroll" data-d="1" aria-label="წინ">${ic('back')}</button></div></section>`;
+  S.reelIds=rows.map(p=>p.id);fbEdges($('#reelsx'))}catch(e){el.remove()}}
+A.reelopen=t=>{CLIP.start=+t.dataset.pid;openPage('clips')};
 async function loadSuggest(){const el=$('#sugg');if(!el)return;try{const hid=sugHidden();const s=(await rpc('friend_suggestions',{p_limit:12})).filter(p=>!hid.has(p.id));if(!s.length){el.remove();return}s.forEach(p=>PC.set(p.id,Object.assign(PC.get(p.id)||{},p)));
  el.outerHTML=`<section class="suggest" id="suggx"><div class="shead"><h3>შეიძლება იცნობდე</h3><button class="trb" data-a="page" data-p="friends">ყველა</button></div>${fbRow(s,'sug')}</section>`;fbEdges($('#suggx'))}catch(e){el.remove()}}
 /* trending tags are shown only in search (not on the feed) */
