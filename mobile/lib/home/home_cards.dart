@@ -333,11 +333,10 @@ class _FirstStepsScreenState extends State<FirstStepsScreen> {
     if (got == null || !mounted) return;
     final list = [for (final e in (me['edu'] is List ? me['edu'] as List : const [])) if (e is Map) Map<String, dynamic>.from(e), got];
     if (await attempt(context, () => app.api.updateMe({'edu': list.take(8).toList()}))) {
-      app.api.joinEduGroups().then((_) {}, onError: (_) {});
       app.refreshMe?.call();
       p?.edu = true;
       if (mounted) {
-        toast(context, 'შეგიყვანეთ კლასისა და კურსის ჯგუფებში');
+        toast(context, 'შენახულია');
         _next();
       }
     }
@@ -419,7 +418,7 @@ class _FirstStepsScreenState extends State<FirstStepsScreen> {
         main = busy ? null : (hasPhoto ? _next : _photo);
       case 1:
         body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          title('სად სწავლობ ან სწავლობდი?', 'შეგიყვანთ შენი კლასისა და კურსის ჯგუფებში, სადაც კლასელები და კურსელები დაგხვდებიან.'),
+          title('სად სწავლობ ან სწავლობდი?', 'ასე გიპოვით კლასელებსა და კურსელებს.'),
           if (x?.edu ?? false)
             Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('უკვე დამატებულია. შეგიძლია კიდევ ერთი დაამატო.', style: TextStyle(color: c.vine, fontWeight: FontWeight.w600))),
         ]);

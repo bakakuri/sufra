@@ -1,9 +1,9 @@
 /* groups, channels and business pages, ads, events, marketplace */
 const sqav=(n,h,s)=>avAny({n,h},s).replace('class="av"','class="av sq"');
 /* groups */
-PG.groups={r(){view.innerHTML=pgHead('ჯგუფები',`<button class="btn sm" data-a="newgroup">${ic('plus')}ახალი</button>`)+`<div id="placeb"></div><div id="grb">${skel(3)}</div>`;placeCard();
+PG.groups={r(){view.innerHTML=pgHead('ჯგუფები',`<button class="btn sm" data-a="newgroup">${ic('plus')}ახალი</button>`)+`<div id="grb">${skel(3)}</div>`;
  Promise.all([q(sb.from('group_members').select('group_id').eq('user_id',ME.id)),q(sb.from('groups').select('id,name,hue,is_private,description,owner,avatar_url').order('created_at',{ascending:false}).limit(60))]).then(([mine,all])=>{const ids=new Set(mine.map(m=>m.group_id));const el=$('#grb');if(!el)return;
-  const my=all.filter(g=>ids.has(g.id)||g.owner===ME.id),sug=placeGroups(all,ids),other=all.filter(g=>!ids.has(g.id)&&g.owner!==ME.id&&!sug.has(g.id));
+  const my=all.filter(g=>ids.has(g.id)||g.owner===ME.id),other=all.filter(g=>!ids.has(g.id)&&g.owner!==ME.id);
   el.innerHTML=(my.length?`<h3 class="sec2">ჩემი ჯგუფები</h3><div class="list">${my.map(groupRow).join('')}</div>`:'')+`<h3 class="sec2">აღმოაჩინე</h3>`+(other.length?`<div class="list">${other.map(groupRow).join('')}</div>`:empty('სხვა ჯგუფები ჯერ არ არის','შექმენი პირველი და მოიწვიე მეგობრები.'));staggerIn($$('.row',el).slice(0,8))}).catch(e=>{const el=$('#grb');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))})}};
 A.group=t=>openPage('group',+t.dataset.id,S.page?[S.page.id,S.page.arg]:null);
 A.newgroup=t=>newGroup({name:t?.dataset?.n||''});

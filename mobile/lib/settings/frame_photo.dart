@@ -95,8 +95,11 @@ class _FrameScreenState extends State<_FrameScreen> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 10),
+            // (the theme's buttons are as wide as they can be: in a bar that is endless, and the bar broke without its title and
+            // this button, so it says its own size)
             child: FilledButton(
               key: const ValueKey('frame-done'),
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 40)),
               onPressed: image == null || busy ? null : _done,
               child: busy ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('მზადაა'),
             ),
@@ -109,8 +112,8 @@ class _FrameScreenState extends State<_FrameScreen> {
               ? const Center(child: CircularProgressIndicator(color: Colors.white))
               : LayoutBuilder(builder: (context, box) {
                   var fw = box.maxWidth - 32, fh = fw / widget.aspect;
-                  if (fh > box.maxHeight - 120) {
-                    fh = box.maxHeight - 120;
+                  if (fh > box.maxHeight - 190) {
+                    fh = box.maxHeight - 190;
                     fw = fh * widget.aspect;
                   }
                   _lay(Size(fw, fh));
@@ -149,8 +152,20 @@ class _FrameScreenState extends State<_FrameScreen> {
                       ),
                     ),
                     const Padding(
-                      padding: EdgeInsets.fromLTRB(20, 0, 20, 28),
+                      padding: EdgeInsets.fromLTRB(20, 0, 20, 14),
                       child: Text('გადაწიე და გაადიდე, რომ საჭირო ნაწილი ჩარჩოში მოექცეს.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    ),
+                    // the same, big and under the thumb
+                    SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                        child: FilledButton(
+                          key: const ValueKey('frame-set'),
+                          onPressed: busy ? null : _done,
+                          child: Text(busy ? 'მუშავდება…' : round ? 'ფოტოს დაყენება' : 'დაყენება'),
+                        ),
+                      ),
                     ),
                   ]);
                 }),

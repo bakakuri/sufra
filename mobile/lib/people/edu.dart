@@ -9,7 +9,6 @@ import '../ui/icons.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'person_screen.dart';
-import 'profile_parts.dart';
 import 'search_screen.dart';
 
 /// key, full name, short name
@@ -109,7 +108,6 @@ class _EduScreenState extends State<EduScreen> {
     if (!mounted) return true;
     setState(() => list = next);
     toast(context, 'შენახულია');
-    app.api.joinEduGroups().then((_) {}, onError: (_) {});
     app.refreshMe?.call();
     return true;
   }
@@ -126,17 +124,6 @@ class _EduScreenState extends State<EduScreen> {
     await _save(l);
   }
 
-  Future<void> _groups() async {
-    try {
-      final ids = await context.app.api.joinEduGroups();
-      if (!mounted) return;
-      toast(context, ids.isNotEmpty ? 'ჯგუფები: ${ids.length}' : 'ჯგუფები ვერ შეიქმნა');
-      if (ids.isNotEmpty) openSite('#groups');
-    } catch (e) {
-      if (mounted) toast(context, errText(e));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = context.pc, l = list ?? const [];
@@ -145,7 +132,7 @@ class _EduScreenState extends State<EduScreen> {
       body: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Text('სკოლა და უნივერსიტეტი, სადაც სწავლობ ან სწავლობდი. ამით გიპოვით კლასელებსა და კურსელებს და შეგიყვანთ კლასისა და კურსის ჯგუფებში.',
+          child: Text('სკოლა და უნივერსიტეტი, სადაც სწავლობ ან სწავლობდი. ამით გიპოვით კლასელებსა და კურსელებს. ჯგუფი თავისით არ იქმნება: თუ გინდა, „ჯგუფებში“ შენ შექმნი.',
               style: TextStyle(color: c.muted, fontSize: 13.5, height: 1.4)),
         ),
         if (l.isEmpty)
@@ -169,8 +156,6 @@ class _EduScreenState extends State<EduScreen> {
                 icon: PIcon('users', size: 18, color: c.onAccent),
                 label: const Text('კლასელები და კურსელები'),
               ),
-              OutlinedButton.icon(style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 14)),
-onPressed: _groups, icon: PIcon('users', size: 18, color: c.ink), label: const Text('კლასისა და კურსის ჯგუფები')),
             ]),
           ),
         ],

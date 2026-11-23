@@ -1,6 +1,10 @@
 // My picture and cover, changed straight from my profile.
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:peera/settings/frame_photo.dart';
+import 'package:peera/ui/theme.dart';
 
 import 'helpers.dart';
 
@@ -56,5 +60,37 @@ void main() {
     await settle(t);
     expect(api.me['cover_url'], isNull);
     expect(find.text('ფონი წაიშალა'), findsOneWidget);
+  });
+
+  testWidgets('the framing screen itself: its title and the buttons to set the photo are there, and the framed photo comes back', (t) async {
+    phone(t);
+    final src = File('test/img/sea.jpg').readAsBytesSync();
+    Framed? got;
+    await t.pumpWidget(MaterialApp(
+      theme: peeraTheme(Brightness.light),
+      home: Builder(
+        builder: (c) => Scaffold(
+          body: Center(child: TextButton(onPressed: () async => got = await framePhoto(c, src, aspect: 1, max: 320, title: 'პროფილის ფოტო'), child: const Text('go'))),
+        ),
+      ),
+    ));
+    await t.tap(find.text('go'));
+    await t.pump();
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 600)));
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 400));
+    // the bar is whole (before, the theme's endless button broke it: no title, no button)
+    expect(t.takeException(), isNull);
+    expect(find.text('პროფილის ფოტო'), findsOneWidget);
+    expect(find.byKey(const ValueKey('frame-done')), findsOneWidget);
+    expect(find.text('ფოტოს დაყენება'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('frame-set')));
+    await t.pump();
+    await t.runAsync(() => Future<void>.delayed(const Duration(seconds: 3)));
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 400));
+    expect(got, isNotNull);
+    expect(got!.w, 320);
+    expect(got!.h, 320);
   });
 }

@@ -30,7 +30,7 @@ function drawFS(){const w=FSW;if(!w)return;const i=w.step;
  let body='',main='';
  if(i===0){body=`<div class="fsstep"><button class="fsav" data-a="fsphoto" aria-label="ფოტოს არჩევა">${ME.avatar_url?av('me',120):`<span class="fsph">${ic('camera')}</span>`}<i>${ic('camera')}</i></button><h3>${ME.avatar_url?'კარგი ფოტოა!':'დაამატე პროფილის ფოტო'}</h3><p class="muted">ფოტოთი მეგობრები და ნაცნობები უფრო ადვილად გიცნობენ.</p></div>`;
   main=ME.avatar_url?`<button class="btn" data-a="fsnext">შემდეგი</button>`:`<button class="btn" data-a="fsphoto">ფოტოს არჩევა</button>`}
- else if(i===1){body=`<div class="fsstep left"><h3>სად სწავლობ ან სწავლობდი?</h3><p class="muted">შეგიყვანთ შენი კლასისა და კურსის ჯგუფებში, სადაც კლასელები და კურსელები დაგხვდებიან.</p><form class="fsedu" id="eduf"></form></div>`;
+ else if(i===1){body=`<div class="fsstep left"><h3>სად სწავლობ ან სწავლობდი?</h3><p class="muted">ასე გიპოვით კლასელებსა და კურსელებს.</p><form class="fsedu" id="eduf"></form></div>`;
   main=`<button class="btn" data-a="fsedu">შენახვა</button>`}
  else if(i===2){body=`<div class="fsstep left"><h3>საიდან ხარ?</h3><p class="muted">ქალაქით და კუთხით მოგძებნიან თანასოფლელები, „ჯგუფებში“ კი შენი კუთხის ჯგუფებს ნახავ.</p>
   <label class="fld">სად ცხოვრობ<input id="fs_c" list="fscities" maxlength="60" value="${esc(ME.city||'')}" placeholder="მაგ. თბილისი"></label><datalist id="fscities">${CITIES.map(c=>`<option value="${c}">`).join('')}</datalist>
@@ -48,7 +48,8 @@ function fsNext(){const w=FSW;if(!w)return;if(w.step>=4){FSW=null;closeSheet();l
 A.fsnext=()=>fsNext();
 A.fsedu=async t=>{const w=FSW;if(!w||!w.edu)return;const o=eduBuild(w.edu);if(typeof o==='string'){toast(o);return}t.disabled=true;
  try{const E=(await kuEduOf(ME.id)).filter(x=>x.key!==o.key);E.push(o);const db=await kuEduSave(E);KUR.cache.edu=E;w.p.edu=true;
-  if(db){let n=0;try{const ids=await q(sb.rpc('join_edu_groups'));n=(ids||[]).length;KUR.groups=null}catch(e){}toast(n?`შეგიყვანეთ ${n} ჯგუფში: იქ შენი კლასელები და კურსელები იქნებიან`:'შენახულია')}else toast('შენახულია');fsNext()}catch(e){toast(errMsg(e));t.disabled=false}};
+  /* no group is made or joined by itself: a person makes one when they want it */
+  toast('შენახულია');fsNext()}catch(e){toast(errMsg(e));t.disabled=false}};
 A.fsphoto=async()=>{const before=ME.avatar_url;await setMyPic('avatar');if(!FSW)return;if(ME.avatar_url&&ME.avatar_url!==before){FSW.p.photo=true;fsNext()}else drawFS()};
 A.fsplace=async t=>{const c=$('#fs_c').value.trim(),r=$('#fs_r').value,pl=$('#fs_p').value.trim();if(!c&&!r&&!pl){fsNext();return}t.disabled=true;
  const upd={city:c,home_region:r||null,home_place:pl||null};

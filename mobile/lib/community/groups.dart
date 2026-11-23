@@ -152,34 +152,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
                   onRefresh: _load,
                   child: Builder(builder: (context) {
                     final mine = [for (final g in x.$2) if (x.$1.contains(asInt(g['id'])) || g['owner'] == me) g];
-                    // my village's or town's groups (community.js placeGroups): suggested, never made for me
-                    final home = (context.me.homePlace ?? '').trim();
-                    bool near(Map<String, dynamic> g) => home.isNotEmpty && '${g['name'] ?? ''}'.toLowerCase().contains(home.toLowerCase());
-                    final corner = [for (final g in x.$2) if (!x.$1.contains(asInt(g['id'])) && g['owner'] != me && near(g)) g].take(6).toList();
-                    final other = [for (final g in x.$2) if (!x.$1.contains(asInt(g['id'])) && g['owner'] != me && !corner.contains(g)) g];
+                    final other = [for (final g in x.$2) if (!x.$1.contains(asInt(g['id'])) && g['owner'] != me) g];
                     return ListView(padding: const EdgeInsets.only(bottom: 24), children: [
                       if (mine.isNotEmpty) ...[sec('ჩემი ჯგუფები'), for (final g in mine) GroupRow(g: g)],
-                      if (corner.isNotEmpty) ...[sec('შენი კუთხის ჯგუფები'), for (final g in corner) GroupRow(g: g)],
-                      if (home.isNotEmpty && !x.$2.any(near))
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text('შენი კუთხის ჯგუფი ჯერ არ არის. შექმენი და მოიწვიე თანასოფლელები:', style: TextStyle(color: c.muted)),
-                            const SizedBox(height: 6),
-                            ActionChip(
-                              key: const ValueKey('groups-home'),
-                              avatar: PIcon('plus', size: 16, color: c.accent),
-                              label: Text(home),
-                              onPressed: () async {
-                                final id = await openPage<int>(context, GroupFormScreen(name: home), full: true);
-                                if (id != null && context.mounted) {
-                                  _load();
-                                  await openPage(context, GroupScreen(id: id), full: true);
-                                }
-                              },
-                            ),
-                          ]),
-                        ),
                       sec('აღმოაჩინე'),
                       if (other.isEmpty)
                         const Empty(icon: 'users', title: 'სხვა ჯგუფები ჯერ არ არის', text: 'შექმენი პირველი და მოიწვიე მეგობრები.')

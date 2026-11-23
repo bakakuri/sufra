@@ -194,10 +194,10 @@ async function kuEduOf(uid){if(!uid)return[];const local=()=>uid===ME.id?(store.
   if(uid===ME.id&&!E.length){const L=local();if(L.length){store.set(kuKey('edu'),[]);kuEduSave(L).catch(()=>store.set(kuKey('edu'),L));return L}}
   return E}catch(e){if(!kuMissing(e))return local();KUR.db.edu=false;return local()}}
 async function kuEduSave(list){list=list.slice(0,8);if(KUR.db.edu!==false){try{await q(sb.from('profiles').update({edu:list}).eq('id',ME.id));KUR.db.edu=true;return true}catch(e){if(!kuMissing(e))throw e;KUR.db.edu=false}}store.set(kuKey('edu'),list);return false}
-PG.edu={r(){view.innerHTML=pgHead('ჩემი განათლება',`<button class="btn sm" data-a="eduadd">${ic('plus')}დამატება</button>`)+`<p class="hint" style="padding:12px 16px 0">სკოლა და უნივერსიტეტი, სადაც სწავლობ ან სწავლობდი. ამით გიპოვით კლასელებსა და კურსელებს და შეგიყვანთ კლასისა და კურსის ჯგუფებში.</p><div id="edub">${skel(2)}</div>`;kuEduPage()}};
+PG.edu={r(){view.innerHTML=pgHead('ჩემი განათლება',`<button class="btn sm" data-a="eduadd">${ic('plus')}დამატება</button>`)+`<p class="hint" style="padding:12px 16px 0">სკოლა და უნივერსიტეტი, სადაც სწავლობ ან სწავლობდი. ამით გიპოვით კლასელებსა და კურსელებს. ჯგუფი თავისით არ იქმნება: თუ გინდა, „ჯგუფებში“ შენ შექმნი.</p><div id="edub">${skel(2)}</div>`;kuEduPage()}};
 async function kuEduPage(){const el=$('#edub');if(!el)return;const E=await kuEduOf(ME.id);if(!el.isConnected)return;KUR.cache.edu=E;
  el.innerHTML=(KUR.db.edu===false?`<p class="hint kuhint">${ic('lock')}ჯერჯერობით ეს ამ ტელეფონზე ინახება. კლასელების ძებნა ბაზის განახლების შემდეგ ჩაირთვება.</p>`:'')+(E.length?`<div class="kulist">${E.map((e,i)=>`<div class="kurow edurow"><span class="eduic">${ic(e.k==='uni'?'school':'book')}</span><span class="grow"><b>${esc(e.k==='uni'?e.n:e.n)}</b><span class="sub">${[e.c,e.f,e.k==='uni'?((e.y0||'')+(e.y1?'–'+e.y1:'')):(e.y1?e.y1+' წლის გამოშვება':''),e.cls?'კლასი „'+e.cls+'“':''].filter(Boolean).map(esc).join(' · ')}</span></span><button class="ibtn sm" data-a="eduedit" data-i="${i}" aria-label="რედაქტირება">${ic('edit')}</button></div>`).join('')}</div>
-  <div class="row2" style="padding:0 16px;justify-content:flex-start;flex-wrap:wrap;gap:8px"><button class="btn" data-a="page" data-p="classmates">${ic('users')}კლასელები და კურსელები</button>${KUR.db.edu?`<button class="btn ghost" data-a="edugroups">${ic('users')}კლასისა და კურსის ჯგუფები</button>`:''}</div>`
+  <div class="row2" style="padding:0 16px;justify-content:flex-start;flex-wrap:wrap;gap:8px"><button class="btn" data-a="page" data-p="classmates">${ic('users')}კლასელები და კურსელები</button></div>`
   :empty('ჯერ არაფერი დაგიმატებია','დაამატე სკოლა ან უნივერსიტეტი.',`<button class="btn" data-a="eduadd">${ic('plus')}დამატება</button>`))}
 A.eduadd=()=>eduSheet(-1);
 A.eduedit=t=>eduSheet(+t.dataset.i);
@@ -218,10 +218,9 @@ const eduNew=()=>({k:'school',n:'',c:ME.city||'',y0:'',y1:'',cls:'',f:''});
 function eduSheet(i){const E=(KUR.cache.edu||[]).slice(),e=i>=0?Object.assign({},E[i]):eduNew();
  sheet(head(i>=0?'რედაქტირება':'სკოლა ან უნივერსიტეტი')+`<form class="ph-body" id="eduf"></form><div class="ph-foot">${i>=0?`<button class="btn ghost danger" id="ed_del">${ic('trash')}წაშლა</button>`:''}<span class="sp"></span><button class="btn" id="ed_ok">${ic('check')}შენახვა</button></div>`);
  eduDraw(e);$('#eduf').onsubmit=ev=>{ev.preventDefault();$('#ed_ok').click()};
- const save=async L=>{try{const db=await kuEduSave(L);KUR.cache.edu=L;closeSheet();toast(db?'შენახულია':'შენახულია ამ ტელეფონზე');if(db)sb.rpc('join_edu_groups').then(()=>{KUR.groups=null},()=>{});kuEduPage()}catch(er){toast(errMsg(er))}};
+ const save=async L=>{try{const db=await kuEduSave(L);KUR.cache.edu=L;closeSheet();toast(db?'შენახულია':'შენახულია ამ ტელეფონზე');kuEduPage()}catch(er){toast(errMsg(er))}};
  if(i>=0)$('#ed_del').onclick=()=>{E.splice(i,1);save(E)};
  $('#ed_ok').onclick=()=>{const o=eduBuild(e);if(typeof o==='string'){toast(o);return}if(i>=0)E[i]=o;else E.push(o);save(E)}}
-A.edugroups=async()=>{try{const ids=await q(sb.rpc('join_edu_groups'));KUR.groups=null;toast(ids&&ids.length?`ჯგუფები: ${ids.length}`:'ჯგუფები ვერ შეიქმნა');openPage('groups')}catch(e){toast(kuMissing(e)?'ჯგუფები ბაზის განახლების შემდეგ ჩაირთვება':errMsg(e))}};
 PG.classmates={r(){view.innerHTML=pgHead('კლასელები და კურსელები')+`<div id="cmb">${skel(4)}</div>`;kuMates()}};
 async function kuMates(){const el=$('#cmb');if(!el)return;const E=await kuEduOf(ME.id);if(!el.isConnected)return;
  if(!E.length){el.innerHTML=empty('ჯერ სკოლა არ მიგითითებია','დაამატე სკოლა ან უნივერსიტეტი და გიპოვით, ვინ სწავლობდა შენთან ერთად.',`<button class="btn" data-a="page" data-p="edu">${ic('plus')}განათლების დამატება</button>`);return}
@@ -233,7 +232,7 @@ async function kuMates(){const el=$('#cmb');if(!el)return;const E=await kuEduOf(
    rest.sort((a,b)=>Math.abs((+a[1].y1||0)-(+e.y1||0))-Math.abs((+b[1].y1||0)-(+e.y1||0)));out.push({e,same,near,rest})}
   const person=([p,x])=>`<div class="row"><button class="grow row-in" data-a="user" data-u="${p.id}">${av(p,44)}<span class="grow"><b>${esc(p.name)}${vb(p)}</b><span class="sub">${[x.f,x.y0&&x.k==='uni'?x.y0+' წლის ჩარიცხვა':'',x.y1&&x.k==='school'?x.y1+' წლის გამოშვება':'',p.city].filter(Boolean).map(esc).join(' · ')}</span></span></button>${friendBtn(p.id)}</div>`;
   const block=(t,L)=>L.length?`<h3 class="sec2">${t} · ${L.length}</h3><div class="list">${L.slice(0,60).map(person).join('')}</div>`:'';
-  el.innerHTML=out.map(({e,same,near,rest})=>`<section class="kumates"><div class="kuhd"><h3>${ic(e.k==='uni'?'school':'book')}${esc(e.k==='uni'?uniShort(e):e.n)}</h3><button class="hash" data-a="edugroups">ჯგუფში შესვლა</button></div>
+  el.innerHTML=out.map(({e,same,near,rest})=>`<section class="kumates"><div class="kuhd"><h3>${ic(e.k==='uni'?'school':'book')}${esc(e.k==='uni'?uniShort(e):e.n)}</h3></div>
    ${block(e.k==='uni'?`კურსელები${e.f?' · '+esc(e.f):''}${e.y0?' · '+e.y0:''}`:`კლასელები${e.y1?' · '+e.y1:''}`,same)}${block('იგივე ფაკულტეტი, სხვა წელი',near)}${block(e.k==='uni'?'იგივე უნივერსიტეტი':'იგივე სკოლა, სხვა წელი',rest)}
    ${same.length+near.length+rest.length?'':`<p class="muted" style="padding:4px 16px 12px">აქ ჯერ არავინ მიუთითებია. მოიწვიე შენი კლასელები და კურსელები!</p><button class="btn sm ghost" data-a="invite" style="margin:0 16px 12px">${ic('send')}მოწვევა</button>`}</section>`).join('')}
  catch(e){el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))}}
