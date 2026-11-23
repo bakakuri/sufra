@@ -178,3 +178,87 @@ class SuggestCard extends StatelessWidget {
     );
   }
 }
+
+/// A friend as a raised photo card (people.js fbCard 'fr'): the picture large, online now, the name, their town,
+/// and two buttons: write to them, their profile. In a sideways row of all friends.
+class FriendPhotoCard extends StatelessWidget {
+  const FriendPhotoCard({super.key, required this.p, required this.onOpen, required this.onWrite});
+  final Profile p;
+  final VoidCallback onOpen, onWrite;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.pc, dark = Theme.of(context).brightness == Brightness.dark;
+    final sub = p.online ? 'ონლაინ' : ((p.city ?? '').isNotEmpty ? p.city! : ((p.homePlace ?? '').isNotEmpty ? p.homePlace! : 'მეგობარი'));
+    return Container(
+      width: 164,
+      height: 292,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: c.line.withValues(alpha: .6)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: dark ? .4 : .06), blurRadius: 2, offset: const Offset(0, 1)),
+          BoxShadow(color: Colors.black.withValues(alpha: dark ? .5 : .12), blurRadius: 22, spreadRadius: -6, offset: const Offset(0, 12)),
+        ],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Expanded(
+          child: Stack(fit: StackFit.expand, children: [
+            GestureDetector(onTap: onOpen, child: BigPhoto(p: p)),
+            const IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment(0, .35), end: Alignment.bottomCenter, colors: [Color(0x00000000), Color(0x33000000)])),
+              ),
+            ),
+            if (p.online)
+              Positioned(
+                left: 10,
+                top: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                  decoration: BoxDecoration(color: const Color(0xCC0B1020), borderRadius: BorderRadius.circular(99)),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    CircleAvatar(radius: 3.5, backgroundColor: Color(0xFF22C55E)),
+                    SizedBox(width: 4),
+                    Text('ონლაინ', style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w700)),
+                  ]),
+                ),
+              ),
+          ]),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(11, 9, 11, 10),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            GestureDetector(onTap: onOpen, child: NameLine(p, size: 15)),
+            const SizedBox(height: 2),
+            Row(children: [
+              if (p.online)
+                Container(width: 8, height: 8, margin: const EdgeInsets.symmetric(horizontal: 2.5), decoration: BoxDecoration(color: c.vine, shape: BoxShape.circle))
+              else
+                PIcon('pin', size: 13, color: c.muted),
+              const SizedBox(width: 4),
+              Expanded(child: Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: p.online ? c.vine : c.muted, fontSize: 12.5))),
+            ]),
+            const SizedBox(height: 9),
+            FilledButton.icon(
+              key: ValueKey('fr-msg-${p.id}'),
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: 8), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              onPressed: onWrite,
+              icon: PIcon('msg', size: 16, color: c.onAccent),
+              label: const FittedBox(fit: BoxFit.scaleDown, child: Text('მიწერა')),
+            ),
+            const SizedBox(height: 6),
+            OutlinedButton(
+              key: ValueKey('fr-pro-${p.id}'),
+              style: OutlinedButton.styleFrom(minimumSize: const Size(0, 34), padding: const EdgeInsets.symmetric(horizontal: 8), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              onPressed: onOpen,
+              child: const FittedBox(fit: BoxFit.scaleDown, child: Text('პროფილი')),
+            ),
+          ]),
+        ),
+      ]),
+    );
+  }
+}

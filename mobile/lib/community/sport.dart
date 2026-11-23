@@ -13,6 +13,7 @@ import '../profile/profile.dart';
 import '../ui/bits.dart';
 import '../ui/format.dart';
 import '../ui/icons.dart';
+import '../ui/motion.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'rides.dart' show atText;
@@ -60,25 +61,132 @@ Widget fixtureBadge(BuildContext context, Map<String, dynamic> f, {bool timeOnly
   return PTag(timeOnly ? hhmm(at) : atText(at), kind: 'ad');
 }
 
+/// a team's round mark (sport.js fxCrest): its first letter on a colour of its own, the same name the same colour
+class TeamCrest extends StatelessWidget {
+  const TeamCrest(this.name, {super.key, this.size = 40, this.draw = false});
+  final String name;
+  final double size;
+
+  /// the draw's mark: "=" on grey
+  final bool draw;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.pc;
+    var h = 0;
+    for (final r in name.runes) {
+      h = (h * 31 + r) % 360;
+    }
+    final t = name.trim();
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: draw ? c.sunk : null,
+        gradient: draw
+            ? null
+            : RadialGradient(center: const Alignment(-.4, -.6), radius: 1.2, colors: [
+                HSLColor.fromAHSL(1, h.toDouble(), .72, .62).toColor(),
+                HSLColor.fromAHSL(1, (h + 30) % 360.0, .62, .36).toColor(),
+              ]),
+        boxShadow: draw ? null : [BoxShadow(color: HSLColor.fromAHSL(.45, h.toDouble(), .6, .3).toColor(), blurRadius: 10, spreadRadius: -3, offset: const Offset(0, 4))],
+      ),
+      child: Text(draw ? '=' : (t.isEmpty ? '?' : t.characters.first), style: TextStyle(color: draw ? c.muted : Colors.white, fontWeight: FontWeight.w900, fontSize: size * .42)),
+    );
+  }
+}
+
 class _Teams extends StatelessWidget {
   const _Teams(this.f, {this.big = false});
   final Map<String, dynamic> f;
   final bool big;
   @override
   Widget build(BuildContext context) {
-    final c = context.pc, st = TextStyle(fontWeight: FontWeight.w900, fontSize: big ? 19 : 15.5);
-    return Row(children: [
-      Expanded(child: Text('${f['home']}', style: st, textAlign: TextAlign.end, maxLines: 2, overflow: TextOverflow.ellipsis)),
+    final c = context.pc, st = TextStyle(fontWeight: FontWeight.w900, fontSize: big ? 18 : 15, height: 1.2);
+    Widget side(String n) => Expanded(
+          child: Column(children: [
+            TeamCrest(n, size: big ? 56 : 40),
+            SizedBox(height: big ? 8 : 6),
+            Text(n, style: st, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+          ]),
+        );
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      side('${f['home']}'),
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: EdgeInsets.fromLTRB(10, big ? 12 : 6, 10, 0),
         child: Text(
           fixtureScore(f),
           key: big ? const ValueKey('fx-score') : null,
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: big ? 28 : 18, color: fixtureLive(f) ? c.nope : fixtureScore(f) != 'vs' ? c.ink : c.muted),
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: big ? 30 : 22, color: fixtureLive(f) ? c.nope : fixtureScore(f) != 'vs' ? c.ink : c.accent),
         ),
       ),
-      Expanded(child: Text('${f['away']}', style: st, maxLines: 2, overflow: TextOverflow.ellipsis)),
+      side('${f['away']}'),
     ]);
+  }
+}
+
+/// how people predicted (sport.js fxSplit): three green bars with their shares, the leading one fullest
+class FixtureSplit extends StatelessWidget {
+  const FixtureSplit({super.key, required this.pool});
+  final Map<String, dynamic>? pool;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.pc, n = asInt(pool?['n']);
+    int pc(String k) => n == 0 ? 0 : (asInt(pool?['c$k']) / n * 100).round();
+    final top = n == 0 ? -1 : [pc('1'), pc('X'), pc('2')].reduce((a, b) => a > b ? a : b);
+    return Row(children: [
+      for (final (i, k) in ['1', 'X', '2'].indexed) ...[
+        if (i > 0) const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(children: [
+              Text(k == 'X' ? 'ფრე' : k, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)),
+              const Spacer(),
+              Text('${pc(k)}%',
+                  key: ValueKey('fxsp-$k'),
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: pc(k) == top ? c.vine : c.muted, fontFeatures: const [FontFeature.tabularFigures()])),
+            ]),
+            const SizedBox(height: 5),
+            _Bar(value: pc(k) / 100, strong: pc(k) == top, height: 7),
+          ]),
+        ),
+      ],
+    ]);
+  }
+}
+
+/// a green bar that grows to its share
+class _Bar extends StatelessWidget {
+  const _Bar({required this.value, this.strong = true, this.height = 6});
+  final double value, height;
+  final bool strong;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.pc;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(99),
+      child: SizedBox(
+        height: height,
+        child: Stack(children: [
+          Positioned.fill(child: ColoredBox(color: c.sunk)),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: value.clamp(0, 1)),
+            duration: const Duration(milliseconds: 900),
+            curve: Curves.easeOutCubic,
+            builder: (context, v, _) => FractionallySizedBox(
+              widthFactor: v,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(99),
+                  gradient: LinearGradient(colors: strong ? [c.vine, Color.lerp(c.vine, const Color(0xFF7CF5C9), .4)!] : [c.vine.withValues(alpha: .5), c.vine.withValues(alpha: .5)]),
+                ),
+              ),
+            ),
+          ),
+        ]),
+      ),
+    );
   }
 }
 
@@ -101,6 +209,9 @@ class _SportScreenState extends State<SportScreen> {
   List<Map<String, dynamic>> pending = const [];
   Map<String, dynamic>? sync;
 
+  /// how people predicted each match in the list
+  Map<int, Map<String, dynamic>> pools = const {};
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -117,11 +228,13 @@ class _SportScreenState extends State<SportScreen> {
       final r = await api.fixtures(tab);
       final p = staff ? await api.pendingFixtures().catchError((_) => <Map<String, dynamic>>[]) : const <Map<String, dynamic>>[];
       final st = staff ? await api.fixtureSyncState() : null;
+      final pl = await api.fixturePools([for (final f in [...r.$1, ...p]) asInt(f['id'])]);
       if (mounted && g == _gen) {
         setState(() {
           d = r;
           pending = p;
           sync = st;
+          pools = pl;
           error = null;
           if (league.isNotEmpty && !r.$1.any((f) => _lg(f) == league)) league = '';
         });
@@ -154,35 +267,42 @@ class _SportScreenState extends State<SportScreen> {
   }
 
   Widget _card(BuildContext context, Map<String, dynamic> f, Map<int, Map<String, dynamic>> mine, {bool timeOnly = false}) {
-    final c = context.pc;
+    final c = context.pc, dark = Theme.of(context).brightness == Brightness.dark, id = asInt(f['id']);
+    final pool = pools[id], n = asInt(pool?['n']), m = mine[id];
+    final open = f['status'] == 'upcoming' && asTime(f['starts_at']).isAfter(DateTime.now());
+    final foot = [
+      n > 0 ? '$n პროგნოზი' : (open ? 'პროგნოზი ჯერ არავის გაუკეთებია · იყავი პირველი' : 'პროგნოზი არ ყოფილა'),
+      if (m != null)
+        'შენი: ${pickNames[m['pick']] ?? m['pick']}${m['payout'] != null ? ' · ${asInt(m['payout']) > asInt(m['stake']) ? 'მოგება +${m['payout']}' : asInt(m['payout']) == asInt(m['stake']) && asInt(m['stake']) > 0 ? 'დაბრუნდა' : 'წაგება'}' : ''}',
+    ].join(' · ');
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Material(
-        color: c.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: c.line)),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          key: ValueKey('fx-${f['id']}'),
-          onTap: () => _open(f),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Expanded(child: Text(_lg(f).toUpperCase(), style: TextStyle(color: c.muted, fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .4))),
-                fixtureBadge(context, f, timeOnly: timeOnly),
-              ]),
-              const SizedBox(height: 10),
-              _Teams(f),
-              if (mine[asInt(f['id'])] case final m?)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'შენი: ${pickNames[m['pick']] ?? m['pick']}${m['payout'] != null ? ' · ${asInt(m['payout']) > asInt(m['stake']) ? 'მოგება +${m['payout']}' : asInt(m['payout']) == asInt(m['stake']) && asInt(m['stake']) > 0 ? 'დაბრუნდა' : 'წაგება'}' : ''}',
-                    style: TextStyle(color: c.accent, fontWeight: FontWeight.w700, fontSize: 13),
-                  ),
-                ),
-            ]),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Pressable(
+        onTap: () => _open(f),
+        child: Container(
+          key: ValueKey('fx-$id'),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          decoration: BoxDecoration(
+            color: c.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: c.line.withValues(alpha: .6)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: dark ? .4 : .05), blurRadius: 2, offset: const Offset(0, 1)),
+              BoxShadow(color: Colors.black.withValues(alpha: dark ? .45 : .10), blurRadius: 20, spreadRadius: -6, offset: const Offset(0, 10)),
+            ],
           ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(children: [
+              Expanded(child: Text(_lg(f), style: TextStyle(color: c.muted, fontSize: 12.5, fontWeight: FontWeight.w700))),
+              fixtureBadge(context, f, timeOnly: timeOnly),
+            ]),
+            const SizedBox(height: 10),
+            _Teams(f),
+            const SizedBox(height: 12),
+            FixtureSplit(key: ValueKey('fxsplit-$id'), pool: pool),
+            const SizedBox(height: 8),
+            Text(foot, style: TextStyle(color: m != null ? c.accent : c.muted, fontSize: 12.5, fontWeight: m != null ? FontWeight.w700 : FontWeight.w400)),
+          ]),
         ),
       ),
     );
@@ -496,8 +616,17 @@ class _FixtureScreenState extends State<FixtureScreen> {
 
   Future<void> _add(Map<String, dynamic> m) async {
     if (!seen.add(m['id'])) return;
-    await context.app.people.ensure(['${m['user_id']}']);
-    if (mounted) setState(() => msgs.add(m));
+    final app = context.app;
+    await app.people.ensure(['${m['user_id']}']);
+    if (!mounted) return;
+    // mine always, someone else's when I am already near the end: the chat follows to the newest
+    final follow = m['user_id'] == app.api.myId || !scroll.hasClients || scroll.position.extentAfter < 320;
+    setState(() => msgs.add(m));
+    if (follow) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && scroll.hasClients) scroll.animateTo(scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic);
+      });
+    }
   }
 
   Future<void> _chat() async {
@@ -632,6 +761,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
     final f = x.f, my = x.my, n = asInt(x.pool['n']);
     final open = f['status'] == 'upcoming' && asTime(f['starts_at']).isAfter(DateTime.now());
     int pc(String k) => n == 0 ? 0 : (asInt(x.pool['c$k']) / n * 100).round();
+    final top = [pc('1'), pc('X'), pc('2')].reduce((a, b) => a > b ? a : b);
     final me = app.api.myId;
     return Scaffold(
       appBar: peeraBar(context, title: '${f['home']} – ${f['away']}'),
@@ -663,28 +793,51 @@ class _FixtureScreenState extends State<FixtureScreen> {
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Material(
-                        color: (my?['pick'] ?? pick) == k ? c.accent : c.surface,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: (my?['pick'] ?? pick) == k ? c.accent : c.line)),
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          key: ValueKey('fxp-$k'),
-                          onTap: !open || my != null ? null : () => setState(() => pick = k),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-                            child: Column(children: [
-                              Text(
-                                k == '1' ? '${f['home']}' : k == '2' ? '${f['away']}' : 'ფრე',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontWeight: FontWeight.w800, color: (my?['pick'] ?? pick) == k ? c.onAccent : c.ink),
+                      child: Builder(builder: (context) {
+                        final on = (my?['pick'] ?? pick) == k, lead = n > 0 && pc(k) == top;
+                        return Material(
+                          color: on ? Color.alphaBlend(c.vine.withValues(alpha: .08), c.surface) : c.surface,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: on ? c.vine : c.line, width: 2)),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            key: ValueKey('fxp-$k'),
+                            onTap: !open || my != null ? null : () => setState(() => pick = k),
+                            child: Stack(children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(8, 14, 8, 14),
+                                child: Column(children: [
+                                  TeamCrest(k == '1' ? '${f['home']}' : k == '2' ? '${f['away']}' : '', size: 34, draw: k == 'X'),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    k == '1' ? '${f['home']}' : k == '2' ? '${f['away']}' : 'ფრე',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text('${pc(k)}%',
+                                      style: TextStyle(color: lead ? c.vine : c.muted, fontWeight: FontWeight.w900, fontSize: 22, fontFeatures: const [FontFeature.tabularFigures()])),
+                                  const SizedBox(height: 8),
+                                  _Bar(value: pc(k) / 100, strong: true),
+                                ]),
                               ),
-                              const SizedBox(height: 2),
-                              Text('${pc(k)}%', style: TextStyle(color: (my?['pick'] ?? pick) == k ? c.onAccent : c.muted, fontWeight: FontWeight.w700)),
+                              if (on && my != null)
+                                Positioned(
+                                  top: 6,
+                                  right: 6,
+                                  child: Container(
+                                    width: 22,
+                                    height: 22,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(color: c.vine, shape: BoxShape.circle),
+                                    child: const PIcon('check', size: 14, color: Colors.white),
+                                  ),
+                                ),
                             ]),
                           ),
-                        ),
-                      ),
+                        );
+                      }),
                     ),
                   ),
               ]),

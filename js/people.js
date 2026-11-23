@@ -100,8 +100,8 @@ const SUGHIDE='sughide';
 const sugHidden=()=>new Set(store.get(SUGHIDE,[]));
 function fbCard(p,kind,i){const id=p.id,h=(p.hue??200)%360,ini=esc((String(p.name||'?').trim()[0])||'?');
  const ph=p.avatar_url?`<img src="${esc(p.avatar_url)}" alt="" loading="lazy">`:`<span class="fbi" style="--h:${h}" aria-hidden="true">${ini}</span>`;
- const sub=kind==='req'?'მეგობრობას გთხოვს':p.mutual?`${ic('users')}${p.mutual} საერთო მეგობარი`:esc(p.city||'Peera-ზეა');
- const btns=kind==='req'?`<button class="btn sm" data-a="acceptfriend" data-u="${id}">დადასტურება</button><button class="btn sm ghost" data-a="declinefriend" data-u="${id}">წაშლა</button>`
+ const sub=kind==='req'?'მეგობრობას გთხოვს':kind==='fr'?esc(p.city||p.home_place||'მეგობარი'):p.mutual?`${ic('users')}${p.mutual} საერთო მეგობარი`:esc(p.city||'Peera-ზეა');
+ const btns=kind==='fr'?`<button class="btn sm" data-a="chatwith" data-u="${id}">${ic('msg')}მიწერა</button><button class="btn sm ghost" data-a="user" data-u="${id}">პროფილი</button>`:kind==='req'?`<button class="btn sm" data-a="acceptfriend" data-u="${id}">დადასტურება</button><button class="btn sm ghost" data-a="declinefriend" data-u="${id}">წაშლა</button>`
   :PENDING_OUT.has(id)?`<button class="btn sm ghost" data-a="cancelfriend" data-u="${id}">${ic('check')}გაგზავნილია</button>`
   :`<button class="btn sm" data-a="addfriend" data-u="${id}">${ic('plus')}დამატება</button><button class="btn sm ghost" data-a="sughide" data-u="${id}">მოშორება</button>`;
  return `<article class="fbc" style="--i:${Math.min(i||0,8)}" data-u="${id}"><button class="fbph" data-a="user" data-u="${id}" tabindex="-1" aria-hidden="true">${ph}</button><div class="fbb"><button class="fbn" data-a="user" data-u="${id}"><b>${esc(p.name)}${vb(p)}</b><span>${sub}</span></button><div class="fbk">${btns}</div></div></article>`}
@@ -119,7 +119,7 @@ async function loadFriendsPage(){await loadFriends();const el=$('#frb');if(!el)r
  await loadProfiles([...PENDING_IN]);const hid=sugHidden();sug=sug.filter(p=>!hid.has(p.id)&&!FRIENDS.has(p.id)&&!PENDING_IN.has(p.id));
  el.innerHTML=(PENDING_IN.size?`<section class="fbsec"><h3 class="sec2">მოთხოვნები · ${PENDING_IN.size}</h3>${fbRow([...PENDING_IN].map(id=>prof(id)||{id,name:pname(id)}),'req')}</section>`:'')
  +(sug.length?`<section class="fbsec"><h3 class="sec2">შეიძლება იცნობდე</h3>${fbRow(sug,'sug')}</section>`:'')
- +`<h3 class="sec2">შენი მეგობრები · ${FRIENDS.size}</h3>`+(FRIENDS.size?`<div class="list">${[...FRIENDS].map(id=>personRow(prof(id))).join('')}</div>`:empty('მეგობრები ჯერ არ გყავს','მოიწვიე ნაცნობები ან მოძებნე სახელით.','<button class="btn" data-a="search">ძიება</button>'))
+ +`<section class="fbsec"><h3 class="sec2">შენი მეგობრები · ${FRIENDS.size}</h3>`+(FRIENDS.size?`${fbRow([...FRIENDS].map(id=>prof(id)||{id,name:pname(id)}).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ka')),'fr')}</section>`:empty('მეგობრები ჯერ არ გყავს','მოიწვიე ნაცნობები ან მოძებნე სახელით.','<button class="btn" data-a="search">ძიება</button>')+'</section>')
  +(PENDING_OUT.size?`<h3 class="sec2">გაგზავნილი მოთხოვნები</h3><div class="list">${[...PENDING_OUT].map(id=>`<div class="row">${av(id,40)}<span class="grow"><b>${esc(pname(id))}</b></span><button class="btn sm ghost" data-a="cancelfriend" data-u="${id}">გაუქმება</button></div>`).join('')}</div>`:'');fbEdges(el)}
 
 /* notifications */
