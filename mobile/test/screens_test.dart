@@ -41,6 +41,10 @@ import 'package:peera/data/models.dart';
 import 'package:peera/data/stores.dart';
 import 'package:peera/joker/engine.dart';
 import 'package:peera/joker/joker_tab.dart';
+import 'package:peera/nardi/board.dart';
+import 'package:peera/nardi/engine.dart';
+import 'package:peera/nardi/nardi_screen.dart';
+import 'package:peera/nardi/session.dart';
 import 'package:peera/joker/online.dart';
 import 'package:peera/joker/online_screen.dart';
 import 'package:peera/joker/session.dart';
@@ -326,6 +330,38 @@ void main() {
       await t.tap(find.byKey(const ValueKey('games-joker')));
       await settle(t);
       await _shot(t, '20-joker-$k');
+    });
+
+    testWidgets('backgammon ($k)', (t) async {
+      phone(t);
+      await shell(t, mode: m);
+      await t.tap(find.byKey(const ValueKey('tab-joker')));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('games-nardi')));
+      await settle(t);
+      await _shot(t, '87-nardi-$k');
+      await t.tap(find.byKey(const ValueKey('nd-start')));
+      await settle(t);
+      final s = t.widget<NardiScreen>(find.byType(NardiScreen)).table as NardiSession;
+      // a game some turns in: my move, a checker with two ways to go picked up
+      final g = NardiGame(rng: Random(11))..open();
+      final rng = Random(2);
+      var rolls = 0;
+      while (g.phase != Phase.over && !(rolls >= 8 && g.turn == 0 && g.phase == Phase.move && g.dice[0] != g.dice[1])) {
+        if (g.phase == Phase.roll) {
+          g.roll();
+          rolls++;
+        } else {
+          g.playTurn(botTurn(g, rng: rng));
+        }
+      }
+      s.use(g);
+      await settle(t);
+      final from = [for (final x in g.options) x.from].firstWhere((f) => {for (final x in g.options) if (x.from == f) x.to}.length > 1, orElse: () => g.options.first.from);
+      final r = t.getRect(find.byKey(const ValueKey('nd-board')));
+      await t.tapAt(r.topLeft + BoardGeo(r.size).checker(from, 0));
+      await settle(t);
+      await _shot(t, '88-nardi-table-$k');
     });
 
     testWidgets('joker: my bid ($k)', (t) async {

@@ -16,6 +16,7 @@ import 'package:peera/joker/joker_tab.dart';
 import 'package:peera/joker/online.dart';
 import 'package:peera/joker/online_screen.dart';
 import 'package:peera/joker/table_screen.dart';
+import 'package:peera/nardi/nardi_tab.dart';
 import 'package:peera/main.dart';
 import 'package:peera/map/live_map.dart';
 import 'package:peera/map/loc_device.dart';
@@ -641,24 +642,25 @@ void main() {
     phone(t);
     SharedPreferences.setMockInitialValues({});
     final api = await shell(t);
-    // the games: backgammon's card says it is not open yet and does not start; Joker's opens its page
+    // the games: backgammon's card and the big card's button open backgammon; Joker's card opens Joker
     await _tab(t, 'joker');
     expect(find.byType(GamesTab), findsOneWidget);
     expect(find.text('ონლაინ ნარდი და ჯოკერი'), findsOneWidget);
-    expect(find.descendant(of: find.byKey(const ValueKey('games-nardi')), matching: find.text('ჯერ არ არის ხელმისაწვდომი')), findsOneWidget);
+    expect(find.text('ჯერ არ არის ხელმისაწვდომი'), findsNothing);
     await t.tap(find.byKey(const ValueKey('games-nardi')));
-    await t.pump();
-    expect(find.text(nardiSoon), findsOneWidget);
     await settle(t);
+    expect(find.byType(NardiTab), findsOneWidget);
+    await _back(t);
+    expect(find.byType(NardiTab), findsNothing);
+    await t.tap(find.byKey(const ValueKey('games-play')));
+    await settle(t);
+    expect(find.byType(NardiTab), findsOneWidget);
+    await _back(t);
+    expect(find.byType(GamesTab), findsOneWidget);
     expect(find.byType(JokerTab), findsNothing);
     await t.tap(find.byKey(const ValueKey('games-joker')));
     await settle(t);
     expect(find.text('ჯოკერი ოთხ კაცზე'), findsOneWidget);
-    // back steps out to the games, the big card's button opens Joker too
-    await _back(t);
-    expect(find.byType(JokerTab), findsNothing);
-    await t.tap(find.byKey(const ValueKey('games-play')));
-    await settle(t);
     expect(find.byType(JokerTab), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('joker-new-quick')));
     await settle(t);

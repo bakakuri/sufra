@@ -27,7 +27,11 @@ class Profile {
     this.lastBonus,
     this.abroad,
     this.since,
+    this.look,
   });
+
+  /// how their character at the game tables looks (the site's games), when they chose one
+  final Map<String, dynamic>? look;
 
   /// the country they live in, when abroad
   final String? abroad;
@@ -106,5 +110,6 @@ class Profile {
         lastBonus: j['last_bonus'] as String?,
         abroad: (j['abroad'] as String?)?.trim().isEmpty == true ? null : j['abroad'] as String?,
         since: DateTime.tryParse('${j['created_at'] ?? ''}')?.toLocal(),
+        look: j['look'] is Map ? Map<String, dynamic>.from(j['look'] as Map) : null,
       );
 }

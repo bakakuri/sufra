@@ -18,6 +18,7 @@ import 'package:peera/home/services.dart';
 import 'package:peera/joker/scene.dart';
 import 'package:peera/joker/session.dart';
 import 'package:peera/map/live_map.dart';
+import 'package:peera/nardi/session.dart';
 import 'package:peera/map/loc_device.dart';
 import 'package:peera/media/photo_edit.dart';
 import 'package:peera/media/player.dart';
@@ -101,6 +102,7 @@ void useTestImages() {
   feedStartMode = 'new';
   stripTurns = false;
   jokerRandom = () => Random(7);
+  nardiRandom = () => Random(7);
   // the map draws no pictures in the tests (its own background shows), and the phone's location is pretend
   mapTile = (u) => MemoryImage(_clear);
   locDevice = FakeLoc();

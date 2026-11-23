@@ -1,22 +1,21 @@
-// The games tab: a big card for backgammon and Joker together, a card for each (backgammon is not open yet: its card
-// says so and does not start), and a table with friends. Joker opens its own page (against the computer, with people,
-// the rules); more games will join them here.
+// The games tab: a big card for backgammon and Joker together, a card for each, and a table with friends. Each game
+// opens its own page (against the computer, with people, the rules); more games will join them here.
 import 'package:flutter/material.dart';
 
 import '../data/stores.dart';
 import '../joker/cards.dart';
 import '../joker/engine.dart';
 import '../joker/joker_tab.dart';
+import '../nardi/nardi_tab.dart';
 import '../ui/icons.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-
-const nardiSoon = 'ნარდი ჯერ არ არის ხელმისაწვდომი';
 
 class GamesTab extends StatelessWidget {
   const GamesTab({super.key});
 
   Future<void> _joker(BuildContext context, {bool friends = false}) => openPage(context, JokerTab(friends: friends));
+  Future<void> _nardi(BuildContext context) => openPage(context, const NardiTab());
 
   @override
   Widget build(BuildContext context) {
@@ -29,17 +28,16 @@ class GamesTab extends StatelessWidget {
           const Text('თამაშები', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
         ]),
         const SizedBox(height: 14),
-        _Hero(onPlay: () => _joker(context)),
+        _Hero(onPlay: () => _nardi(context)),
         const SizedBox(height: 14),
         IntrinsicHeight(
           child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Expanded(
               child: _GameCard(
                 key: const ValueKey('games-nardi'),
-                title: 'ითამაშე\nონლაინ ნარდი',
-                soon: true,
+                title: 'ითამაშე\nნარდი',
                 art: const _NardiArt(),
-                onTap: () => toast(context, nardiSoon),
+                onTap: () => _nardi(context),
               ),
             ),
             const SizedBox(width: 12),
@@ -114,13 +112,12 @@ class _Hero extends StatelessWidget {
   }
 }
 
-/// A game's card: its picture, its name, "დაწყება". One not open yet says so over its picture and does not start.
+/// A game's card: its picture, its name, "დაწყება".
 class _GameCard extends StatelessWidget {
-  const _GameCard({super.key, required this.title, required this.art, required this.onTap, this.soon = false});
+  const _GameCard({super.key, required this.title, required this.art, required this.onTap});
   final String title;
   final Widget art;
   final VoidCallback onTap;
-  final bool soon;
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -137,45 +134,22 @@ class _GameCard extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Stack(clipBehavior: Clip.none, children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    height: 112,
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      gradient: RadialGradient(center: Alignment(0, -.2), radius: 1, colors: [Color(0xFF7C5CF0), _deep]),
-                    ),
-                    child: Opacity(opacity: soon ? .55 : 1, child: art),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  height: 112,
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    gradient: RadialGradient(center: Alignment(0, -.2), radius: 1, colors: [Color(0xFF7C5CF0), _deep]),
                   ),
+                  child: art,
                 ),
-                if (soon)
-                  Positioned(
-                    key: const ValueKey('games-nardi-soon'),
-                    left: 0,
-                    right: 0,
-                    top: 8,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFB020),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 6, offset: Offset(0, 2))],
-                        ),
-                        child: const FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text('ჯერ არ არის ხელმისაწვდომი', style: TextStyle(color: Color(0xFF3A2400), fontSize: 11.5, fontWeight: FontWeight.w800)),
-                        ),
-                      ),
-                    ),
-                  ),
-              ]),
+              ),
               const SizedBox(height: 10),
               Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, height: 1.2)),
               const Spacer(),
               const SizedBox(height: 12),
-              _Pill(label: 'დაწყება', dim: soon, onTap: onTap),
+              _Pill(label: 'დაწყება', onTap: onTap),
             ]),
           ),
         ),
@@ -230,10 +204,10 @@ class _FriendsBanner extends StatelessWidget {
 
 /// A rounded light button on the purple cards.
 class _Pill extends StatelessWidget {
-  const _Pill({super.key, required this.label, required this.onTap, this.arrow = false, this.big = false, this.dim = false});
+  const _Pill({super.key, required this.label, required this.onTap, this.arrow = false, this.big = false});
   final String label;
   final VoidCallback onTap;
-  final bool arrow, big, dim;
+  final bool arrow, big;
   @override
   Widget build(BuildContext context) {
     final h = big ? 52.0 : 40.0;
@@ -243,11 +217,7 @@ class _Pill extends StatelessWidget {
         height: h,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(h / 2),
-          gradient: LinearGradient(
-            colors: dim
-                ? [Colors.white.withValues(alpha: .16), Colors.white.withValues(alpha: .12)]
-                : const [Color(0xFF8B6CFF), Color(0xFF6A4BEA)],
-          ),
+          gradient: const LinearGradient(colors: [Color(0xFF8B6CFF), Color(0xFF6A4BEA)]),
           border: Border.all(color: Colors.white.withValues(alpha: .22)),
         ),
         child: InkWell(
@@ -260,7 +230,7 @@ class _Pill extends StatelessWidget {
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(label,
-                      style: TextStyle(color: Colors.white.withValues(alpha: dim ? .7 : 1), fontSize: big ? 17 : 14.5, fontWeight: FontWeight.w800)),
+                      style: TextStyle(color: Colors.white, fontSize: big ? 17 : 14.5, fontWeight: FontWeight.w800)),
                 ),
               ),
               if (arrow) ...[const SizedBox(width: 10), const PIcon('arrow', size: 22, color: Colors.white, stroke: 2.2)],
