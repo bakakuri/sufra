@@ -14,36 +14,72 @@ A.friendmenu=t=>{const id=t.dataset.u;sheet(head(esc(pname(id)))+`<div class="re
 A.unfriend=t=>{const id=t.dataset.u;confirmSheet('მეგობრობის გაუქმება',`${esc(pname(id))} აღარ იქნება შენს მეგობრებში.`,'გაუქმება',async()=>{await q(sb.from('friendships').delete().or(`and(requester.eq.${ME.id},addressee.eq.${id}),and(requester.eq.${id},addressee.eq.${ME.id})`));FRIENDS.delete(id);rp()},true)};
 
 /* profile page */
-R.me=()=>{view.innerHTML=`<div id="ub">${skel(2)}</div>`;loadUser(ME.id)};
+R.me=()=>{view.innerHTML=pgHead('პროფილი')+`<div id="ub">${skel(2)}</div>`;$('.pghead [data-a="back"]',view)?.remove();$('.pghead',view)?.classList.add('tabhead');loadUser(ME.id)};
 PG.user={r(id){const mine=id===ME.id;view.innerHTML=(mine&&!S.page?'':pgHead(''))+`<div id="ub">${skel(2)}</div>`;loadUser(id)}};
 /* the shared albums are not on a profile: they are among the services */
-const PTABS_ME=[['posts','grid','პოსტები'],['cv','school','CV'],['saved','bookmark','შენახული']];
-const PTABS_OTHER=[['posts','grid','პოსტები'],['friends','users','მეგობრები'],['cv','school','CV']];
+const PTABS_ME=[['posts','edit','პოსტები'],['photos','image','ფოტოები'],['cv','school','CV'],['saved','bookmark','შენახული']];
+const PTABS_OTHER=[['posts','edit','პოსტები'],['photos','image','ფოტოები'],['friends','users','მეგობრები'],['cv','school','CV']];
 /* "my space": one row of shortcuts under the numbers, scrolled sideways; the verification shortcut leads while there is no tick */
 const myTiles=p=>[...(p.verified?[]:[['page','verify','shield','ვერიფიკაცია','var(--super)']]),['page','friends','users','მეგობრები','var(--wine)',PENDING_IN.size],['ptsheet','guests','eye','სტუმრები','var(--super)'],['badges','','trophy','ნიშნები','var(--gold)'],['ptsheet','gifts','gift','საჩუქრები','var(--nope)'],['page','storyarch','story','ისტორიები','var(--wine)'],['tree','','tree','ოჯახის ხე','var(--vine)'],['page','close','star','ახლო მეგობრები','var(--gold)'],['page','drafts','clock','დრაფტები','var(--muted)'],['page','namedays','cal','ანგელოზის დღე','var(--vine)']];
 const spaceHTML=p=>myTiles(p).map(([a,pg,i,l,c,badge])=>`<button class="psp" data-a="${a}" ${a==='page'?`data-p="${pg}"`:a==='ptsheet'?`data-k="${pg}"`:a==='badges'?`data-u="${p.id}"`:''}><span class="pspi" style="--c:${c}">${ic(i)}</span><span>${l}</span>${a==='badges'?'<em id="psbn"></em>':''}${badge?`<i class="badge">${badge}</i>`:''}</button>`).join('');
 async function loadUser(id){const mine=id===ME.id;let p;try{if(mine){ME=await rpc('my_profile');p=ME}else{const d=await q(sb.from('profiles').select(PCOLS).eq('id',id).maybeSingle());if(!d){$('#ub').innerHTML=empty('პროფილი ვერ მოიძებნა');return}PC.set(id,d);p=d}}catch(e){const u=$('#ub');if(u)u.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e));return}
  if(!mine&&!ME.privacy?.guest)sb.from('profile_visits').upsert({visitor:ME.id,visited:id,visited_at:new Date().toISOString()},{onConflict:'visitor,visited'}).then(()=>{});
- let nf=0,np=0,mut=0;try{const[f,c,m]=await Promise.all([sb.from('friendships').select('requester',{count:'exact',head:true}).eq('status','accepted').or(`requester.eq.${id},addressee.eq.${id}`),sb.from('posts').select('id',{count:'exact',head:true}).eq('author',id).eq('draft',false),mine?Promise.resolve(0):rpc('mutual_friends',{other:id})]);nf=f.count||0;np=c.count||0;mut=m||0}catch(e){}
+ /* four numbers, as in the app: posts, friends, the reactions the posts got, and my coins (someone else's: the friends we share) */
+ let nf=0,np=0,mut=0,nl=null;try{const[f,c,m,l]=await Promise.all([sb.from('friendships').select('requester',{count:'exact',head:true}).eq('status','accepted').or(`requester.eq.${id},addressee.eq.${id}`),sb.from('posts').select('id',{count:'exact',head:true}).eq('author',id).eq('draft',false),mine?Promise.resolve(0):rpc('mutual_friends',{other:id}),sb.from('reactions').select('post_id,posts!inner(author)',{count:'exact',head:true}).eq('posts.author',id).then(r=>r.error?null:r.count,()=>null)]);nf=f.count||0;np=c.count||0;mut=m||0;nl=l}catch(e){}
  const tabs=mine?PTABS_ME:PTABS_OTHER;if(!tabs.find(t=>t[0]===S.ptab))S.ptab='posts';
- const ub=$('#ub');if(!ub)return;const blocked=BLOCKED.has(id),nd=nameDaysOf(p).map(([md])=>Object.assign({md},nextDate(md))).sort((a,b)=>a.n-b.n)[0];
+ const ub=$('#ub');if(!ub)return;const blocked=BLOCKED.has(id);
  const role=p.role==='admin'?'ადმინისტრატორი':p.role==='moderator'?'მოდერატორი':'';
- ub.innerHTML=`<div class="pcov${mine?' own':''}"${mine?' data-a="epcover" role="button" tabindex="0" aria-label="ფონის შეცვლა"':''}>${p.cover_url?`<img src="${esc(p.cover_url)}" alt="">`:`<img src="${art('mtn',(p.hue||7)+11,560,200)}" alt="">`}${mine?`<span class="pcam ic" aria-hidden="true">${ic('camera')}</span>`:''}</div>
- <section class="pro2"><div class="pro2top"><button class="pav2" data-a="${mine?'epavatar':'avview'}" data-u="${id}" aria-label="${mine?'პროფილის ფოტოს შეცვლა':'ფოტოს ნახვა'}">${av(p,104)}${mine?`<span class="pcam2">${ic('camera')}</span>`:isOnline(id)?'<i class="ond big" aria-label="ონლაინ"></i>':''}</button>
-</div>
+ const thought=String(p.bio||'').trim(),cloud=!!thought||mine,ti=Math.max(0,tabs.findIndex(t=>t[0]===S.ptab));
+ const st=[['posts',np,'პოსტი','edit','#6366F1'],['friends',nf,'მეგობარი','users','#0EA5E9'],['likes',nl,'მოწონება','heart','#E11D48'],mine?['coins',ME.coins??0,'მონეტა','coin','#E0A100']:['mutual',mut,'საერთო','uadd','#10B981']];
+ ub.innerHTML=`<div class="pfh${cloud?'':' nocl'}">
+  <div class="pcov${mine?' own':''}"${mine?' data-a="epcover" role="button" tabindex="0" aria-label="ფონის შეცვლა"':''}>${p.cover_url?`<img src="${esc(p.cover_url)}" alt="">`:`<img src="${art('mtn',(p.hue||7)+11,560,200)}" alt="">`}<i class="pcovsh" aria-hidden="true"></i>${mine?`<span class="pcam">${ic('camera')}ფონის შეცვლა</span>`:''}</div>
+  ${cloud?`<i class="pfb b1" aria-hidden="true"></i><i class="pfb b2" aria-hidden="true"></i><div class="pfcl">${mine?`<button class="pthought${thought?'':' pth0'}" data-a="editprofile" aria-label="${thought?'ჩემი ფიქრის შეცვლა':'ჩემი ფიქრის დაწერა'}">`:'<div class="pthought">'}<span>${esc(thought||'რას ფიქრობ? დაწერე აქ…')}</span>${mine?'</button>':'</div>'}</div>`:''}
+  <button class="pav2" data-a="${mine?'epavatar':'avview'}" data-u="${id}" aria-label="${mine?'პროფილის ფოტოს შეცვლა':'ფოტოს ნახვა'}">${av(p,104)}${mine?`<span class="pcam2">${ic('camera')}</span>`:isOnline(id)?'<i class="ond big" aria-label="ონლაინ"></i>':''}</button></div>
+ <section class="pro2 pf">
   <h1 class="pro2n">${esc(p.name)}${vb(p)}</h1>
-  <p class="pro2m">${p.username?'':`<span class="ptopb" id="ptopb" data-u="${id}"></span>`}${[p.username?`<span class="pmu">@${esc(p.username)}<span class="ptopb" id="ptopb" data-u="${id}"></span></span>`:'',p.city?ic('pin')+esc(p.city):'',!mine&&isOnline(id)?'<i class="ond"></i>ონლაინ':'',role,p.banned?'შეზღუდულია':''].filter(Boolean).join('<span class="dotsep">·</span>')}</p>
-  ${p.bio?tx(p.bio):''}
-  <div class="pchips prow"><span class="pedu" id="pedu" data-u="${id}" hidden></span><span class="pchip pjk" id="pjk" data-u="${id}" hidden></span>${p.surname||nd||p.home_place?`${p.surname?`<button class="pchip" data-a="surname" data-s="${esc(p.surname)}">${ic('users')}გვარი: ${esc(p.surname)}</button>`:''}${nd?`<span class="pchip">${ic('cal')}ანგელოზის დღე: ${mdTxt(nd.md)}</span>`:''}${p.home_place?`<span class="pchip">${ic('pin')}${esc(p.home_place)}</span>`:''}`:''}</div>
-  <div class="pro2row${mine?'':' oth'}">${mine?`<button class="btn" data-a="editprofile">${ic('edit')}რედაქტირება</button><button class="btn ghost" data-a="page" data-p="settings">${ic('gear')}პარამეტრები</button><button class="ibtn sq" data-a="sharepro" data-u="${id}" aria-label="პროფილის გაზიარება">${ic('share')}</button>`
-   :blocked?`<button class="btn ghost" data-a="unblock" data-u="${id}">განბლოკვა</button><button class="ibtn sq" data-a="umore" data-u="${id}" aria-label="მეტი">${ic('more')}</button>`:`${friendBtn(id)}<button class="btn ghost" data-a="chatwith" data-u="${id}">${ic('msg')}მიწერა</button><button class="ibtn sq" data-a="umore" data-u="${id}" aria-label="მეტი">${ic('more')}</button>`}</div>
-  <div class="stats2${mine?' s3':''}"><button data-a="pstat" data-k="posts" data-u="${id}"><b>${fmt(np)}</b><span>პოსტი</span></button><button data-a="pstat" data-k="friends" data-u="${id}"><b>${fmt(nf)}</b><span>მეგობარი</span></button><button data-a="pstat" data-k="games" data-u="${id}"><b>${p.rating??1500}</b><span>რეიტინგი</span></button>${mine?'':`<button data-a="pstat" data-k="mutual" data-u="${id}"><b>${mut}</b><span>საერთო</span></button>`}</div>
-  ${mine?walletHTML('pwal'):''}${mine?`<nav class="pspace" aria-label="ჩემი სივრცე">${spaceHTML(p)}</nav>`:''}<div id="hlrow"></div></section>
- <div class="ptabs2" role="tablist">${tabs.map(([k,i,l])=>`<button role="tab" data-a="ptab" data-p="${k}" data-u="${id}" aria-selected="${S.ptab===k}">${ic(i)}<span>${l}</span></button>`).join('')}</div><div id="ptabb">${skel(2)}</div>`;
- const h=$('.pghead h2');if(h)h.textContent=p.name;loadPTab(id);loadHighlights(id);loadBadges(id);if(typeof kuProfileEdu==='function')kuProfileEdu(id);if(typeof jkProfile==='function')jkProfile(id)}
-A.ptab=t=>{S.ptab=t.dataset.p;$$('[data-a="ptab"]').forEach(b=>b.setAttribute('aria-selected',String(b===t)));loadPTab(t.dataset.u)};
+  <p class="pro2m">${p.username?'':`<span class="ptopb" id="ptopb" data-u="${id}"></span>`}${[p.username?`<span class="pmu">@${esc(p.username)}<span class="ptopb" id="ptopb" data-u="${id}"></span></span>`:'',p.city?ic('pin')+esc(p.city):'',!mine&&isOnline(id)?'<i class="ond"></i>ონლაინ':'',role,p.banned?'<span class="pban">შეზღუდულია</span>':''].filter(Boolean).join('<span class="dotsep">·</span>')}</p>
+  <div class="pfinfo" data-u="${id}"><button class="pfinfo-h" data-a="pfinfo" data-u="${id}" aria-expanded="false"><span class="pfii">${ic('info')}</span><span class="pfinfo-t"><b>ინფორმაცია</b><span class="dotsep">·</span><em>${esc(p.name)}</em></span><span class="pfchev">${ic('chev')}</span></button><div class="pfinfo-b" hidden></div></div>
+  <div class="pro2row${mine?'':' oth'}">${mine?`<button class="btn" data-a="editprofile">${ic('edit')}<span>რედაქტირება</span></button><button class="btn ghost" data-a="page" data-p="settings">${ic('gear')}<span>პარამეტრები</span></button><button class="ibtn sq" data-a="sharepro" data-u="${id}" aria-label="პროფილის გაზიარება">${ic('share')}</button>`
+   :blocked?`<button class="btn ghost" data-a="unblock" data-u="${id}">განბლოკვა</button><button class="ibtn sq" data-a="umore" data-u="${id}" aria-label="მეტი">${ic('more')}</button>`:`${friendBtn(id)}<button class="btn ghost" data-a="chatwith" data-u="${id}">${ic('msg')}<span>მიწერა</span></button><button class="ibtn sq" data-a="umore" data-u="${id}" aria-label="მეტი">${ic('more')}</button>`}</div>
+  <div class="pfst">${st.map(([k,n,l,i,c],j)=>`<button class="pfs${k==='coins'?' coins':''}" data-a="pstat" data-k="${k}" data-u="${id}" style="--c:${c};--d:${j*70}ms">${k==='coins'&&bonusWaits()?`<i class="pfplus" title="დღის ბონუსი გელოდება">${ic('plus')}</i>`:''}${ic(i)}<b${k==='coins'?' class="coinv"':''} data-n="${n??''}">${n==null?'·':grp(n)}</b><span>${l}</span></button>`).join('')}</div>
+  ${mine?`<nav class="pspace" aria-label="ჩემი სივრცე">${spaceHTML(p)}</nav>`:''}<div id="hlrow"></div></section>
+ <div class="pftabs" role="tablist" style="--n:${tabs.length};--i:${ti}"><i class="pftind" aria-hidden="true"></i>${tabs.map(([k,i,l])=>`<button role="tab" data-a="ptab" data-p="${k}" data-u="${id}" aria-selected="${S.ptab===k}">${ic(i)}<span>${l}</span></button>`).join('')}</div><div id="ptabb">${skel(2)}</div>`;
+ const h=$('.pghead:not(.tabhead) h2');if(h)h.textContent=p.name;pfCloud();pfCount();loadPTab(id);loadHighlights(id);loadBadges(id)}
+/* "12 450": thousands apart, as in the app */
+const grp=n=>String(Math.round(+n||0)).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+/* the numbers count up from zero */
+function pfCount(){if(RM())return;$$('.pfs b[data-n]').forEach(b=>{const n=+b.dataset.n;if(!(n>0))return;const t0=performance.now();(function f(t){const k=Math.min(1,(t-t0)/700),e=1-Math.pow(1-k,3);if(!b.isConnected)return;b.textContent=grp(n*e);if(k<1)requestAnimationFrame(f)})(t0)})}
+/* the thought (the bio) in a cloud coming out of the picture: a rounded body with bumps all round its edge, drawn round
+   the words however many there are (the lines first, then the fill over them, so only the outer half of the edge stays) */
+function cloudSVG(w,h){const r=9,at=[],bump=(a,b)=>{const d=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.min(60,Math.max(1,Math.round(d/(r*1.55))));for(let i=0;i<n;i++)at.push([a[0]+(b[0]-a[0])*i/n,a[1]+(b[1]-a[1])*i/n])};
+ const tl=[r,r],tr=[w-r,r],br=[w-r,h-r],bl=[r,h-r];bump(tl,tr);bump(tr,br);bump(br,bl);bump(bl,tl);
+ const body=`<rect x="${r*.55}" y="${r*.55}" width="${(w-r*1.1).toFixed(1)}" height="${(h-r*1.1).toFixed(1)}" rx="${r*1.6}"/>`,cs=at.map(([x,y])=>`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}"/>`).join('');
+ return `<svg class="pthsvg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><g class="e">${body}${cs}</g><g class="f">${body}${cs}</g></svg>`}
+function pfCloud(){const el=$('.pthought');if(!el)return;const draw=()=>{if(!el.isConnected)return;const w=el.offsetWidth,h=el.offsetHeight;if(w<30||h<24)return;const k=w+'x'+h;if(el._k===k)return;el._k=k;const s=$('.pthsvg',el);if(s)s.remove();el.insertAdjacentHTML('afterbegin',cloudSVG(w,h))};draw();if(window.ResizeObserver)new ResizeObserver(draw).observe(el)}
+/* "ინფორმაცია · name": everything about them, by kind (study, places, family, dates, games, on Peera), folded under one
+   button; on my own page the empty ones are there too, as "+" to fill in */
+const pfRow=(icon,label,value,act,add)=>`<${act?'button':'div'} class="pfir${add?' add':''}"${act||''}><span class="pfiri">${ic(add?'plus':icon)}</span><span class="pfirt"><small>${label}</small><b>${value}</b></span>${act?`<span class="pfirc">${ic('chev')}</span>`:''}</${act?'button':'div'}>`;
+const eduTxt=e=>`${esc(e.k==='uni'?uniShort(e):e.n)}${e.k==='uni'&&e.f?' · '+esc(e.f):''}${e.y1||e.y0?' · '+(e.k==='uni'?(e.y0||'')+(e.y1?'–'+e.y1:''):e.y1):''}${e.cls?' „'+esc(e.cls)+'“':''}`;
+async function pfInfoBody(id){const mine=id===ME.id,base=mine?ME:(prof(id)||{});
+ const[x,E,jr,js,bd]=await Promise.all([q(sb.from('profiles').select('home_place,home_region,abroad,surname,created_at,nameday,nameday_label,city,verified,role,name').eq('id',id).maybeSingle()).catch(()=>null),typeof kuEduOf==='function'?kuEduOf(id).catch(()=>[]):[],q(sb.from('jk_ratings').select('rating,games,wins').eq('user_id',id).maybeSingle()).catch(()=>null),q(sb.from('jk_stats').select('g,w').eq('user_id',id).maybeSingle()).catch(()=>null),q(sb.from('achievements').select('code').eq('user_id',id)).catch(()=>[])]);
+ const p=Object.assign({},base,x||{}),nd=nameDaysOf(p).map(([md])=>Object.assign({md},nextDate(md))).sort((a,b)=>a.n-b.n)[0];
+ const jg=(js&&js.g)||(jr&&jr.games)||0,jw=(js&&js.w)||(jr&&jr.wins)||0,got=(bd||[]).filter(r=>BADGES[r.code]).length,all=Object.keys(BADGES).length,since=p.created_at?new Date(p.created_at):null;
+ const ed=' data-a="editprofile"',G=[
+  ['სწავლა',[...(E||[]).map(e=>pfRow(e.k==='uni'?'school':'book',e.k==='uni'?'უნივერსიტეტი':'სკოლა',eduTxt(e),mine?' data-a="page" data-p="edu"':'')),...(mine&&!(E||[]).length?[pfRow('school','დაამატე','სკოლა ან უნივერსიტეტი',' data-a="page" data-p="edu"',1)]:[])]],
+  ['ადგილები',[p.city?pfRow('pin','ცხოვრობს',esc(p.city)):mine?pfRow('pin','დაამატე','ქალაქი, სადაც ცხოვრობ',ed,1):'',
+   p.home_place?pfRow('home','წარმოშობით',esc([p.home_place,p.home_region&&p.home_region!==p.home_place?p.home_region:''].filter(Boolean).join(', '))):mine?pfRow('home','დაამატე','საიდან ხარ წარმოშობით',ed,1):'',
+   p.abroad?pfRow('send','ემიგრაციაში',esc(p.abroad)):'']],
+  ['ოჯახი',[p.surname?pfRow('users','გვარი',esc(p.surname),` data-a="surname" data-s="${esc(p.surname)}"`):mine?pfRow('users','დაამატე','გვარი',ed,1):'',pfRow('tree','ოჯახის ხე',mine?'ჩემი ოჯახის ხე':'ნახვა',` data-a="tree" data-u="${id}"`)]],
+  ['თარიღები',[nd?pfRow('cal','ანგელოზის დღე',mdTxt(nd.md),mine?' data-a="page" data-p="namedays"':''):'']],
+  ['თამაშები',[jg?pfRow('cards','ჯოკერი',`${jr&&jr.rating?jr.rating+' რეიტინგი · ':''}${jg} თამაში · ${jw} მოგება`,` data-a="pstat" data-k="games" data-u="${id}"`):pfRow('cards','სათამაშო ბარათი','რეიტინგები და ჯოკერი',` data-a="pstat" data-k="games" data-u="${id}"`)]],
+  ['Peera-ზე',[since&&!isNaN(since)?pfRow('clock','წევრია',`${MONTHS[since.getMonth()]} ${since.getFullYear()}-დან`):'',p.role==='admin'||p.role==='moderator'?pfRow('shield','როლი',p.role==='admin'?'ადმინისტრატორი':'მოდერატორი'):'',
+   p.verified?pfRow('check','ვერიფიკაცია','დადასტურებულია'):mine?pfRow('shield','დაამატე','ვერიფიკაცია',' data-a="page" data-p="verify"',1):'',pfRow('trophy','ნიშნები',`${got} / ${all}`,` data-a="badges" data-u="${id}"`)]]];
+ return G.map(([t,rows])=>{rows=rows.filter(Boolean);return rows.length?`<h4 class="pfig">${t}</h4>${rows.join('')}`:''}).join('')}
+A.pfinfo=async t=>{const box=t.closest('.pfinfo'),b=$('.pfinfo-b',box),open=t.getAttribute('aria-expanded')!=='true';t.setAttribute('aria-expanded',String(open));box.classList.toggle('open',open);
+ if(!open){b.hidden=true;return}b.hidden=false;if(b.dataset.ok)return;b.innerHTML=`<div class="pfiwait">${skel(1)}</div>`;try{b.innerHTML=await pfInfoBody(t.dataset.u);b.dataset.ok=1;staggerIn($$('.pfir',b).slice(0,12),25,30)}catch(e){b.innerHTML=`<p class="hint">${errMsg(e)}</p>`}};
+A.ptab=t=>{S.ptab=t.dataset.p;$$('[data-a="ptab"]').forEach(b=>b.setAttribute('aria-selected',String(b===t)));const bar=t.closest('.pftabs');if(bar)bar.style.setProperty('--i',$$('[role="tab"]',bar).indexOf(t));loadPTab(t.dataset.u)};
 A.pstat=t=>{const k=t.dataset.k,u=t.dataset.u;if(k==='games')return typeof gCardOpen==='function'?gCardOpen(u||ME.id):go('games');if(k==='coins')return openPage('coins');if(k==='friends'&&u===ME.id)return openPage('friends');
- const tab=k==='mutual'?'friends':k;const b=$(`[data-a="ptab"][data-p="${tab}"]`);if(b){A.ptab(b);b.scrollIntoView({block:'start',behavior:RM()?'auto':'smooth'})}};
+ const tab=k==='mutual'?'friends':k==='likes'?'posts':k;const b=$(`[data-a="ptab"][data-p="${tab}"]`);if(b){A.ptab(b);b.scrollIntoView({block:'start',behavior:RM()?'auto':'smooth'})}};
 A.ptsheet=t=>{const k=t.dataset.k;if(k==='guests')guestsSeen();sheet(head(k==='guests'?'სტუმრები':'საჩუქრები')+`<div class="ph-body" id="ptsb" style="padding:0">${skel(3)}</div>`);loadPTab(ME.id,k,$('#ptsb'))};
 A.avview=t=>{const p=prof(t.dataset.u);if(p.avatar_url)openImage(p.avatar_url)};
 /* the posts of a profile are shown as a grid, as on other networks; a tap opens the viewer */
@@ -61,7 +97,9 @@ async function loadPTab(id,k=S.ptab,el=$('#ptabb')){if(!el)return;el.innerHTML=s
    /* one post pinned on top, as on Facebook */
    const pinId=pinRow?.pinned_post||null;if(id===ME.id)ME.pinned_post=pinId;let pin=pinId?rows0.find(p=>p.id===pinId):null;if(pinId&&!pin)try{pin=(await fetchPosts(b=>b.eq('id',pinId)))[0]||null}catch(e){}
    const rows=pin?rows0.filter(p=>p.id!==pin.id):rows0;if(!el.isConnected)return;
-   el.innerHTML=(pin?`<section class="ppin"><h3 class="ppinh">${ic('pin')}მიმაგრებული პოსტი</h3>${postHTML(pin)}</section>`:'')+(rows.length||pin?gridHTML(rows):empty(id===ME.id?'ჯერ არაფერი დაგიწერია':'პოსტები ჯერ არ არის',id===ME.id?'გაუზიარე მეგობრებს პირველი ფიქრი ან ფოტო.':'',id===ME.id?'<button class="btn" data-a="compose">პოსტის დაწერა</button>':''));staggerIn($$('.pgt',el).slice(0,9),25,40)}
+   /* as in the app: for me a "რას ფიქრობ?" line, then the pinned post, then the posts themselves, whole */
+   el.innerHTML=rows.length||pin?(id===ME.id?pfWriteHTML():'')+(pin?`<section class="ppin"><h3 class="ppinh">${ic('pin')}მიმაგრებული პოსტი</h3>${postHTML(pin)}</section>`:'')+`<div class="pfposts">${rows.map(postHTML).join('')}</div>`:empty(id===ME.id?'ჯერ არაფერი დაგიწერია':'პოსტები ჯერ არ არის',id===ME.id?'გაუზიარე მეგობრებს პირველი ფიქრი ან ფოტო.':'',id===ME.id?'<button class="btn" data-a="compose">პოსტის დაწერა</button>':'');staggerIn($$('.pfposts>.post',el).slice(0,4),40,60)}
+  else if(k==='photos')await photosTab(id,el);
   else if(k==='saved'){el.innerHTML='<div class="savwrap"></div>';await savedView($('.savwrap',el),true)}
   else if(k==='albums')await profileAlbums(id,el);
   else if(k==='friends'){const rows=await q(sb.from('friendships').select('requester,addressee').eq('status','accepted').or(`requester.eq.${id},addressee.eq.${id}`).limit(200));const ids=rows.map(r=>r.requester===id?r.addressee:r.requester);await loadProfiles(ids);el.innerHTML=ids.length?`<div class="list" style="padding-top:8px">${ids.map(x=>personRow(prof(x))).join('')}</div>`:empty('მეგობრები ჯერ არ არის')}
@@ -71,6 +109,61 @@ async function loadPTab(id,k=S.ptab,el=$('#ptabb')){if(!el)return;el.innerHTML=s
   else if(k==='cv'){const cv=await q(sb.from('cvs').select('*').eq('user_id',id).maybeSingle());el.innerHTML=cv&&(cv.visible||id===ME.id)?`<div class="cvwrap">${id===ME.id?`<div class="cvbar"><span class="cvvis${cv.visible?' on':''}">${ic(cv.visible?'eye':'lock')}${cv.visible?'ყველა ხედავს':'მხოლოდ დამსაქმებლები ხედავენ'}</span><button class="btn sm ghost" data-a="page" data-p="cv">${ic('edit')}რედაქტირება</button></div>`:''}${cvHTML(cv,id)}</div>`:empty(id===ME.id?'CV ჯერ არ გაქვს':'CV არ არის გამოქვეყნებული',id===ME.id?'შექმენი და ვაკანსიებზე ერთი შეხებით გამოეხმაურე.':'',id===ME.id?'<button class="btn" data-a="page" data-p="cv">CV-ის შექმნა</button>':'')}}
  catch(e){el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))}}
 A.openpost=t=>openPost(pidOf(t));
+const pfWriteHTML=()=>`<div class="pfwrite">${av(ME,40)}<button class="pfwq" data-a="compose">რას ფიქრობ?</button><button class="ibtn pfwph" data-a="composeph" aria-label="ფოტო">${ic('image')}</button></div>`;
+A.composeph=async()=>{const f=await pickFile('image/*,video/*',{multiple:true});if(f&&f.length)compose({files:f.slice(0,10)})};
+/* the profile's own photos ("ფოტოები"), apart from the posts and from the shared albums: uploaded straight or into
+   albums of one's own. Who sees them is the owner's choice (everyone, friends or nobody, in the privacy settings); a
+   visitor who may not see them is told so, and the photos do not open. */
+const PHAUD={all:'ყველა',none:'მხოლოდ შენ',friends:'მეგობრები'},PHS=new Map();
+const phGrid=(ph,uid,alb)=>`<div class="phgrid">${ph.map((x,i)=>`<button class="pht" data-a="phview" data-i="${i}" data-u="${uid}" data-alb="${alb||''}" data-id="${x.id}" aria-label="ფოტო ${i+1}"><img src="${esc(safeU(x.sm)||x.url)}" alt="" loading="lazy" decoding="async"></button>`).join('')}</div>`;
+async function photosTab(id,el){const mine=id===ME.id;let acc='ok';
+ if(!mine)try{acc=String(await rpc('photo_access',{p_user:id})||'none')}catch(e){acc='none'}
+ if(!el.isConnected)return;
+ if(acc!=='ok'){const fo=acc==='friends';el.innerHTML=`<div class="phlock"><span class="phlki">${ic('lock')}</span><b>${fo?'ფოტოებს მხოლოდ მეგობრები ხედავენ':'ფოტოები დახურულია'}</b><p>${fo?'დაემეგობრე და მის ფოტოებს ნახავ.':'მან თავისი ფოტოები არავის აჩვენა.'}</p></div>`;return}
+ const[al,ph]=await Promise.all([rpc('photo_albums_of',{p_user:id}).then(r=>r||[]),q(sb.from('photos').select('*').eq('owner',id).order('created_at',{ascending:false}).order('id',{ascending:false}).range(0,119))]);
+ if(!el.isConnected)return;PHS.set(id+'|',{al,ph});
+ el.innerHTML=`${mine?`<div class="phtop"><button class="phup" data-a="phup">${ic('camera')}<span>ფოტოს ატვირთვა</span></button><button class="phnew" data-a="phnewalb">${ic('folder')}<span>ახალი ალბომი</span></button></div><button class="phwho" data-a="page" data-p="setprivacy">${ic('eye')}<span>ფოტოებს ხედავენ: <b>${PHAUD[ME.privacy?.photos||'friends']||'მეგობრები'}</b></span>${ic('chev')}</button>`:''}
+ ${al.length?`<h3 class="phh">ალბომები <span>${al.length}</span></h3><div class="phals">${al.map(a=>`<button class="phal" data-a="page" data-p="phalb" data-arg="${id}|${a.id}">${a.cover?`<img src="${esc(a.cover)}" alt="" loading="lazy">`:`<span class="phal0">${ic('image')}</span>`}<span class="phalt"><b>${esc(a.title)}</b><small>${a.n||0} ფოტო</small></span></button>`).join('')}</div>`:''}
+ <h3 class="phh">ყველა ფოტო <span>${ph.length}</span></h3>${ph.length?phGrid(ph,id,''):`<div class="phnone">${empty(mine?'ჯერ ფოტო არ აგიტვირთავს':'ფოტოები ჯერ არ არის',mine?'ატვირთე ფოტოები პირდაპირ ან ალბომებად.':'')}</div>`}`;
+ staggerIn($$('.pht',el).slice(0,12),20,30)}
+/* photos chosen on the device go up one by one, into an album (or among all of them) */
+async function phUpload(album){const fs=(await pickFile('image/*',{multiple:true})||[]).filter(f=>/^image\//.test(f.type)).slice(0,20);if(!fs.length)return 0;let n=0;
+ try{for(let i=0;i<fs.length;i++){let b=fs[i];if(fs.length===1&&b.type!=='image/gif'){b=await editImage(b,{max:1600,title:'ფოტო'});if(!b)return 0}
+   toast(fs.length===1?'იტვირთება…':`იტვირთება ${i+1}/${fs.length}…`);const m=await uploadMedia(b,'image');
+   await q(sb.from('photos').insert({url:m.url,sm:m.sm||m.md||null,w:m.w||null,h:m.h||null,album_id:album||null,caption:''}));n++}
+  toast(n===1?'ფოტო დაემატა':`${n} ფოტო დაემატა`)}catch(e){toast(/too_many/.test(String(e&&e.message||e))?'დღეში მაქსიმუმ 100 ფოტო შეიძლება':errMsg(e))}return n}
+function phRefresh(){if(S.page&&S.page.id==='phalb')return rp();const el=$('#ptabb');if(el&&S.ptab==='photos')photosTab(ME.id,el)}
+A.phup=async()=>{if(await phUpload(null))phRefresh()};
+function askLine(title,initial='',ok='შენახვა'){return new Promise(res=>{let done=false;const fin=v=>{if(!done){done=true;res(v)}};
+ sheet(head(title)+`<form class="ph-body" id="alf"><input class="field" id="alv" maxlength="60" value="${esc(initial)}" autocomplete="off" aria-label="${esc(title)}"></form><div class="ph-foot"><button class="btn ghost" data-a="close">გაუქმება</button><span class="sp"></span><button class="btn" id="alok">${ok}</button></div>`,'short',()=>fin(null));
+ const go=()=>{const v=$('#alv').value.trim();if(!v)return $('#alv').focus();fin(v);closeSheet()};$('#alok').onclick=go;$('#alf').onsubmit=e=>{e.preventDefault();go()}})}
+A.phnewalb=async()=>{const t=await askLine('ახალი ალბომი','','შექმნა');if(!t)return;try{const a=await q(sb.from('photo_albums').insert({title:t}).select().single());openPage('phalb',`${ME.id}|${a.id}`)}catch(e){toast(/too_many/.test(String(e&&e.message||e))?'მაქსიმუმ 50 ალბომი შეიძლება':errMsg(e))}};
+/* a tap opens the photos over the screen; holding one of mine (a right click on a computer) moves it or deletes it */
+let PHLP=null;
+A.phview=t=>{if(PHLP&&PHLP.fired&&Date.now()-PHLP.fired<900)return;const d=PHS.get(t.dataset.u+'|'+(t.dataset.alb||''));if(!d)return;openPhotoSet(d.ph.map(x=>x.url),+t.dataset.i||0)};
+function phMenu(t){const uid=t.dataset.u;if(uid!==ME.id)return;const d=PHS.get(uid+'|'+(t.dataset.alb||'')),x=d&&d.ph.find(y=>String(y.id)===t.dataset.id);if(!x)return;
+ const als=(PHS.get(uid+'|')||{}).al||d.al||[];
+ sheet(head('ფოტო')+`<div class="reasons">${als.some(a=>a.id!==x.album_id)?`<button data-a="phmove" data-id="${x.id}">${ic('folder')}ალბომში გადატანა</button>`:''}${x.album_id?`<button data-a="phout" data-id="${x.id}">${ic('image')}ალბომიდან ამოღება</button>`:''}<button class="warnbtn" data-a="phdel" data-id="${x.id}">${ic('trash')}წაშლა</button></div>`,'short')}
+A.phdel=t=>{const id=+t.dataset.id;confirmSheet('ფოტოს წაშლა','ფოტო სამუდამოდ წაიშლება.','წაშლა',async()=>{await q(sb.from('photos').delete().eq('id',id));setTimeout(phRefresh,60)},true)};
+A.phout=async t=>{closeSheet();try{await q(sb.from('photos').update({album_id:null}).eq('id',+t.dataset.id));phRefresh()}catch(e){toast(errMsg(e))}};
+A.phmove=async t=>{const id=+t.dataset.id;let al=[];try{al=await rpc('photo_albums_of',{p_user:ME.id})||[]}catch(e){}
+ sheet(head('რომელ ალბომში?')+`<div class="reasons">${al.map(a=>`<button data-a="phto" data-id="${id}" data-to="${a.id}">${ic('folder')}<span class="grow">${esc(a.title)}</span><small>${a.n||0} ფოტო</small></button>`).join('')}</div>`,'short')};
+A.phto=async t=>{closeSheet();try{await q(sb.from('photos').update({album_id:+t.dataset.to}).eq('id',+t.dataset.id));toast('გადატანილია');phRefresh()}catch(e){toast(errMsg(e))}};
+document.addEventListener('contextmenu',e=>{const b=e.target.closest('.pht');if(!b||b.dataset.u!==ME?.id)return;e.preventDefault();phMenu(b)});
+document.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;const b=e.target.closest('.pht');if(!b||b.dataset.u!==ME?.id)return;clearTimeout(PHLP?.t);
+ PHLP={x:e.clientX,y:e.clientY,b,t:setTimeout(()=>{if(!PHLP||PHLP.b!==b)return;PHLP.fired=Date.now();try{navigator.vibrate&&navigator.vibrate(12)}catch(x){}phMenu(b)},480)}},{passive:true});
+['pointerup','pointercancel','pointermove'].forEach(k=>document.addEventListener(k,e=>{if(!PHLP||PHLP.fired)return;if(k==='pointermove'&&Math.hypot(e.clientX-PHLP.x,e.clientY-PHLP.y)<10)return;clearTimeout(PHLP.t);PHLP=null},{passive:true}));
+/* one album: its photos three to a row; for me adding photos, renaming it, deleting it (its photos stay among all of them) */
+PG.phalb={async r(arg){const[uid,aid]=String(arg||'').split('|'),mine=uid===ME.id,id=+aid;
+ view.innerHTML=pgHead('ალბომი',mine?`<button class="ibtn" data-a="phadd" data-alb="${id}" aria-label="ფოტოს დამატება">${ic('plus')}</button><button class="ibtn" data-a="phalbmore" data-alb="${id}" aria-label="მეტი">${ic('more')}</button>`:'')+`<div id="phab">${skel(2)}</div>`;
+ try{const[ph,a,al]=await Promise.all([q(sb.from('photos').select('*').eq('owner',uid).eq('album_id',id).order('created_at',{ascending:false}).order('id',{ascending:false}).range(0,199)),q(sb.from('photo_albums').select('id,title').eq('id',id).maybeSingle()),mine?rpc('photo_albums_of',{p_user:uid}).then(r=>r||[]):[]]);
+  const el=$('#phab');if(!el)return;const h=$('.pghead h2');if(h&&a)h.textContent=a.title;PHS.set(uid+'|'+id,{ph,al,title:a&&a.title});
+  el.innerHTML=ph.length?phGrid(ph,uid,id):empty('ალბომი ცარიელია',mine?'დაამატე პირველი ფოტოები.':'',mine?`<button class="btn" data-a="phadd" data-alb="${id}">ფოტოს დამატება</button>`:'');staggerIn($$('.pht',el).slice(0,12),20,30)}
+ catch(e){const el=$('#phab');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))}}};
+A.phadd=async t=>{if(await phUpload(+t.dataset.alb))phRefresh()};
+A.phalbmore=t=>{const id=+t.dataset.alb;sheet(head('ალბომი')+`<div class="reasons"><button data-a="phalbren" data-alb="${id}">${ic('edit')}სახელის შეცვლა</button><button class="warnbtn" data-a="phalbdel" data-alb="${id}">${ic('trash')}ალბომის წაშლა</button></div>`,'short')};
+A.phalbren=async t=>{const id=+t.dataset.alb,cur=(PHS.get(ME.id+'|'+id)||{}).title||'';closeSheet(true);const v=await askLine('ალბომის სახელი',cur);if(!v)return;try{await q(sb.from('photo_albums').update({title:v}).eq('id',id));const h=$('.pghead h2');if(h)h.textContent=v;const d=PHS.get(ME.id+'|'+id);if(d)d.title=v}catch(e){toast(errMsg(e))}};
+A.phalbdel=t=>{const id=+t.dataset.alb;confirmSheet('ალბომის წაშლა','ალბომი წაიშლება, მისი ფოტოები კი „ყველა ფოტოში“ დარჩება.','წაშლა',async()=>{await q(sb.from('photo_albums').delete().eq('id',id));setTimeout(()=>{if(S.page&&S.page.id==='phalb')history.back()},80)},true)};
 /* photo and cover change straight from the profile */
 async function setMyPic(kind){const cover=kind==='cover';const b=await pickImage(cover?{ratios:['169'],ratio:'169',max:1400,title:'ფონის ფოტო'}:{ratios:['1'],ratio:'1',max:640,title:'პროფილის ფოტო'});if(!b)return;
  try{toast('იტვირთება…');const url=await uploadBlob(b,'jpg');const upd=cover?{cover_url:url}:{avatar_url:url};await q(sb.from('profiles').update(upd).eq('id',ME.id));Object.assign(ME,upd);toast(cover?'ფონი შეიცვალა':'ფოტო შეიცვალა');renderTop();renderSide();if(S.tab==='me'&&!S.page||S.page?.id==='user')loadUser(ME.id)}catch(e){toast(errMsg(e))}}
@@ -104,11 +197,11 @@ const SUGHIDE='sughide';
 const sugHidden=()=>new Set(store.get(SUGHIDE,[]));
 function fbCard(p,kind,i){const id=p.id,h=(p.hue??200)%360,ini=esc((String(p.name||'?').trim()[0])||'?');
  const ph=p.avatar_url?`<img src="${esc(p.avatar_url)}" alt="" loading="lazy">`:`<span class="fbi" style="--h:${h}" aria-hidden="true">${ini}</span>`;
- const sub=kind==='req'?'მეგობრობას გთხოვს':kind==='fr'?esc(p.city||p.home_place||'მეგობარი'):p.mutual?`${ic('users')}${p.mutual} საერთო მეგობარი`:esc(p.city||'Peera-ზეა');
+ const on=kind==='fr'&&isOnline(id),sub=kind==='req'?'მეგობრობას გთხოვს':kind==='fr'?(on?'<i class="frdot2"></i>ონლაინ':ic('pin')+esc(p.city||p.home_place||'მეგობარი')):p.mutual?`${ic('users')}${p.mutual} საერთო მეგობარი`:esc(p.city||'Peera-ზეა');
  const btns=kind==='fr'?`<button class="btn sm" data-a="chatwith" data-u="${id}">${ic('msg')}მიწერა</button><button class="btn sm ghost" data-a="user" data-u="${id}">პროფილი</button>`:kind==='req'?`<button class="btn sm" data-a="acceptfriend" data-u="${id}">დადასტურება</button><button class="btn sm ghost" data-a="declinefriend" data-u="${id}">წაშლა</button>`
   :PENDING_OUT.has(id)?`<button class="btn sm ghost" data-a="cancelfriend" data-u="${id}">${ic('check')}გაგზავნილია</button>`
   :`<button class="btn sm" data-a="addfriend" data-u="${id}">${ic('plus')}დამატება</button><button class="btn sm ghost" data-a="sughide" data-u="${id}">მოშორება</button>`;
- return `<article class="fbc" style="--i:${Math.min(i||0,8)}" data-u="${id}"><button class="fbph" data-a="user" data-u="${id}" tabindex="-1" aria-hidden="true">${ph}</button><div class="fbb"><button class="fbn" data-a="user" data-u="${id}"><b>${esc(p.name)}${vb(p)}</b><span>${sub}</span></button><div class="fbk">${btns}</div></div></article>`}
+ return `<article class="fbc" style="--i:${Math.min(i||0,8)}" data-u="${id}"><button class="fbph" data-a="user" data-u="${id}" tabindex="-1" aria-hidden="true">${ph}</button>${on?'<span class="fbon"><i></i>ონლაინ</span>':''}<div class="fbb"><button class="fbn" data-a="user" data-u="${id}"><b>${esc(p.name)}${vb(p)}</b><span${on?' class="on"':''}>${sub}</span></button><div class="fbk">${btns}</div></div></article>`}
 function fbRow(list,kind){return `<div class="fbwrap"><button class="fbar prev" data-a="fbscroll" data-d="-1" aria-label="უკან">${ic('back')}</button><div class="fbrow" role="list">${list.map((p,i)=>fbCard(p,kind,i)).join('')}</div><button class="fbar next" data-a="fbscroll" data-d="1" aria-label="წინ">${ic('back')}</button></div>`}
 /* the arrows (on a computer) show only where there is more to see */
 function fbEdges(root){(root||document).querySelectorAll('.fbrow').forEach(r=>{const w=r.parentElement,f=()=>{w.classList.toggle('at-start',r.scrollLeft<8);w.classList.toggle('at-end',r.scrollLeft+r.clientWidth>=r.scrollWidth-8)};if(!r._fb){r._fb=1;r.addEventListener('scroll',f,{passive:true})}f()})}
@@ -117,14 +210,58 @@ A.fbscroll=t=>{const r=t.parentElement.querySelector('.fbrow');if(r)r.scrollBy({
 function fbGone(c,then){if(!c){then&&then();return}const w=c.offsetWidth;c.style.setProperty('--w',w+'px');c.classList.add('out');setTimeout(()=>{const row=c.closest('.fbrow');c.remove();if(row&&!row.children.length){const sec=row.closest('.fbsec,.suggest');if(sec)sec.remove()}else fbEdges();then&&then()},matchMedia('(prefers-reduced-motion:reduce)').matches?0:330)}
 A.sughide=t=>{const id=t.dataset.u,h=[...sugHidden()].filter(x=>x!==id);h.push(id);store.set(SUGHIDE,h.slice(-300));fbGone(t.closest('.fbc'))};
 
-/* friends page */
-PG.friends={r(){view.innerHTML=pgHead('მეგობრები',`<button class="ibtn" data-a="sharepro" data-u="${ME.id}" aria-label="QR კოდი: ჩემი და სკანირება">${ic('qr')}</button><button class="btn sm ghost" data-a="invite">${ic('send')}მოწვევა</button>`)+`<div id="frb">${skel(3)}</div>`;loadFriendsPage()}};
-async function loadFriendsPage(){await loadFriends();const el=$('#frb');if(!el)return;let sug=[];try{sug=await rpc('friend_suggestions',{p_limit:15});sug.forEach(p=>PC.set(p.id,Object.assign(PC.get(p.id)||{},p)))}catch(e){}await loadProfiles([...PENDING_OUT]);
- await loadProfiles([...PENDING_IN]);const hid=sugHidden();sug=sug.filter(p=>!hid.has(p.id)&&!FRIENDS.has(p.id)&&!PENDING_IN.has(p.id));
- el.innerHTML=(PENDING_IN.size?`<section class="fbsec"><h3 class="sec2">მოთხოვნები · ${PENDING_IN.size}</h3>${fbRow([...PENDING_IN].map(id=>prof(id)||{id,name:pname(id)}),'req')}</section>`:'')
- +(sug.length?`<section class="fbsec"><h3 class="sec2">შეიძლება იცნობდე</h3>${fbRow(sug,'sug')}</section>`:'')
- +`<section class="fbsec"><h3 class="sec2">შენი მეგობრები · ${FRIENDS.size}</h3>`+(FRIENDS.size?`${fbRow([...FRIENDS].map(id=>prof(id)||{id,name:pname(id)}).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ka')),'fr')}</section>`:empty('მეგობრები ჯერ არ გყავს','მოიწვიე ნაცნობები ან მოძებნე სახელით.','<button class="btn" data-a="search">ძიება</button>')+'</section>')
- +(PENDING_OUT.size?`<h3 class="sec2">გაგზავნილი მოთხოვნები</h3><div class="list">${[...PENDING_OUT].map(id=>`<div class="row">${av(id,40)}<span class="grow"><b>${esc(pname(id))}</b></span><button class="btn sm ghost" data-a="cancelfriend" data-u="${id}">გაუქმება</button></div>`).join('')}</div>`:'');fbEdges(el)}
+/* friends, as in the app: a switch whose marker slides between all friends, requests and people you may know. Friends:
+   my relatives first (the people on Peera in my family tree, each with the tree's word for them), then the friends online
+   now in a row, then all of them as raised photo cards. Requests: each a card with its two answers; one accepted stays,
+   saying you are friends now. People you may know: two to a row, the picture large. */
+const FRS={seg:null,find:'',allOn:false,kin:null,sug:null,acc:new Set()};
+PG.friends={r(){FRS.seg=null;FRS.find='';FRS.allOn=false;FRS.acc=new Set();view.innerHTML=pgHead('მეგობრები',`<button class="ibtn" data-a="page" data-p="map" aria-label="ლაივ რუკა">${ic('locate')}</button><button class="ibtn" data-a="frsearch" aria-label="ხალხის ძებნა">${ic('search')}</button>`)+`<div class="frtop" id="frtop"></div><div id="frb">${skel(3)}</div>`;loadFriendsPage()}};
+A.frsearch=()=>{S.stab='people';openPage('search')};
+async function loadFriendsPage(){await loadFriends();if(!$('#frb'))return;
+ const sug=rpc('friend_suggestions',{p_limit:30}).then(r=>{r=r||[];r.forEach(p=>PC.set(p.id,Object.assign(PC.get(p.id)||{},p)));FRS.sug=r}).catch(()=>{FRS.sug=FRS.sug||[]});
+ const kin=myRelatives().then(r=>{FRS.kin=r}).catch(()=>{FRS.kin=FRS.kin||[]});
+ await loadProfiles([...PENDING_OUT,...PENDING_IN]);if(FRS.seg==null)FRS.seg=PENDING_IN.size?1:0;frRender();
+ await Promise.all([sug,kin]);if($('#frb'))frRender()}
+/* the people on Peera in my family tree (their request answered), each with the tree's word for them */
+async function myRelatives(){const rows=await q(sb.from('kin').select('id,anchor,relative,relation,sex,status').eq('owner',ME.id).order('id').limit(200));await loadProfiles(rows.map(r=>r.relative).filter(Boolean));
+ const sx=g=>g==='f'?'f':g==='m'?'m':null,N=new Map([['r',{chain:[]}]]),out=[];
+ rows.forEach(r=>{const par=N.get(r.anchor?'k'+r.anchor:'r');if(!par)return;const sex=r.sex||(r.relative?sx(prof(r.relative).gender):null),n={chain:[...par.chain,{rel:r.relation,sex}],r};N.set('k'+r.id,n);
+  if(r.relative&&r.status!=='pending')out.push([r.relative,kinLabel(n.chain,sx(ME.gender))])});return out}
+function frSegs(){const segs=[['ყველა მეგობარი',FRIENDS.size],['მოთხოვნები',PENDING_IN.size],['იქნებ იცნობ',0]];
+ return `<div class="frsegs" role="tablist" aria-label="მეგობრები"><i class="frsegi" aria-hidden="true"></i>${segs.map(([l,n],i)=>`<button role="tab" data-a="frseg" data-i="${i}" aria-selected="${FRS.seg===i}" style="flex:1 1 auto"><span>${l}</span>${n>0?`<em class="${i===1?'alert':''}">${grp(n)}</em>`:''}</button>`).join('')}</div>`}
+function frSegMove(){const w=$('.frsegs');if(!w)return;const b=$('[aria-selected="true"]',w),ind=$('.frsegi',w);if(b&&ind){ind.style.width=b.offsetWidth+'px';ind.style.transform=`translateX(${b.offsetLeft}px)`}}
+A.frseg=t=>{FRS.seg=+t.dataset.i;FRS.acc=new Set();$$('[data-a="frseg"]').forEach(b=>b.setAttribute('aria-selected',String(b===t)));frSegMove();frBody()};
+const frHead=(t,n,cls='')=>`<h3 class="frh${cls}"><span>${t}</span>${n==null?'':`<em>${grp(n)}</em>`}</h3>`;
+const frAv=(p,s)=>`<span class="frav">${av(p,s)}${isOnline(p.id)?'<i class="frdot"></i>':''}</span>`;
+function frCard(p,kin){const on=isOnline(p.id),sub=on?'ონლაინ':[p.username?'@'+esc(p.username):'',p.city?esc(p.city):''].filter(Boolean).join(' · ');
+ return `<div class="frc" data-a="user" data-u="${p.id}" role="button" tabindex="0">${frAv(p,50)}<span class="frct"><b class="frn">${esc(p.name)}${vb(p)}</b>${sub||kin?`<span class="frs">${kin?`<em class="frkin">${esc(kin)}</em>`:''}<span class="${on?'on':''}">${sub}</span></span>`:''}</span><button class="frmsg" data-a="chatwith" data-u="${p.id}" aria-label="მიწერა">${ic('msg')}</button><span class="frch">${ic('chev')}</span></div>`}
+function frRender(){const top=$('#frtop');if(top){top.innerHTML=frSegs();requestAnimationFrame(frSegMove)}frBody()}
+function frBody(){const el=$('#frb');if(!el)return;const P=id=>prof(id)||{id,name:pname(id)};
+ if(FRS.seg===0){const fr=[...FRIENDS].map(P).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ka')),on=fr.filter(p=>isOnline(p.id)),row=FRS.allOn||on.length<=5?on:on.slice(0,4);
+  el.innerHTML=(FRS.kin?frHead('ნათესავები',FRS.kin.length,' first')+(FRS.kin.length?FRS.kin.map(([id,w])=>frCard(P(id),w)).join(''):`<div class="frc" data-a="tree" role="button" tabindex="0"><span class="frkini">${ic('tree')}</span><span class="frct"><b class="frn">ოჯახის ხე</b><span class="frs"><span>დაამატე ნათესავები ოჯახის ხეში და აქ გამოჩნდებიან</span></span></span><span class="frch">${ic('chev')}</span></div>`):'')
+   +(!fr.length?empty('ჯერ მეგობრები არ გყავს','მოძებნე ნაცნობები ან ნახე, ვის შეიძლება იცნობდე.','<button class="btn" data-a="frseg" data-i="2">შეიძლება იცნობდე</button>')
+   :(on.length?frHead('ონლაინ მეგობრები',on.length)+`<div class="fronl">${row.map(p=>`<button class="fron" data-a="chatwith" data-u="${p.id}">${frAv(p,58)}<span>${esc(String(p.name||'').split(' ')[0])}</span></button>`).join('')}${row.length<on.length?`<button class="fron" data-a="fronmore"><span class="fronm">+${on.length-row.length}</span></button>`:''}</div>`:'')
+    +(fr.length>4?`<label class="frfind">${ic('search')}<input id="frq" type="search" placeholder="მოძებნე მეგობრებში" value="${esc(FRS.find)}" autocomplete="off" aria-label="მოძებნე მეგობრებში"></label>`:'')+'<div id="frall"></div>');
+  frAll();const qi=$('#frq');if(qi)qi.oninput=()=>{FRS.find=qi.value;frAll()};staggerIn($$('.frc,.fron',el).slice(0,10),30,40);return}
+ if(FRS.seg===1){const asks=[...[...FRS.acc].filter(id=>FRIENDS.has(id)),...PENDING_IN].map(P),out=[...PENDING_OUT].map(P);
+  el.innerHTML=!asks.length&&!out.length?empty('მოთხოვნები არ არის','ვინც მეგობრობას გთხოვს, აქ გამოჩნდება.',`<button class="btn ghost" data-a="frseg" data-i="2">${ic('search')}ნახე, ვის შეიძლება იცნობდე</button>`)
+   :(asks.length?frHead('მეგობრობას გთხოვენ',PENDING_IN.size,' first')+asks.map(p=>{const done=FRS.acc.has(p.id)&&FRIENDS.has(p.id);return `<div class="frq${done?' done':''}" data-a="user" data-u="${p.id}" role="button" tabindex="0"><span class="frqav">${av(p,66)}<i class="frqb">${ic(done?'check':'uadd')}</i></span><span class="frqt"><b class="frn">${esc(p.name)}${vb(p)}</b><span class="frs${done?' ok':''}">${done?'ახლა მეგობრები ხართ 🎉':['მეგობრობას გთხოვს',p.city?esc(p.city):''].filter(Boolean).join(' · ')}</span><span class="frqk">${done?`<button class="btn sm ghost" data-a="chatwith" data-u="${p.id}">${ic('msg')}მიწერა</button>`:`<button class="btn sm" data-a="fracc" data-u="${p.id}">დადასტურება</button><button class="btn sm ghost" data-a="frdec" data-u="${p.id}">უარყოფა</button>`}</span></span></div>`}).join(''):'')
+   +(out.length?frHead('შენ გაგზავნე',out.length)+out.map(p=>`<div class="frc" data-a="user" data-u="${p.id}" role="button" tabindex="0">${av(p,46)}<span class="frct"><b class="frn">${esc(p.name)}${vb(p)}</b><span class="frs"><span>${ic('clock')}ელოდება პასუხს</span></span></span><button class="btn sm ghost frcx" data-a="frcan" data-u="${p.id}">გაუქმება</button></div>`).join(''):'');
+  staggerIn($$('.frq,.frc',el).slice(0,10),30,40);return}
+ if(FRS.sug==null){el.innerHTML=skel(3);return}const hid=sugHidden(),l=FRS.sug.filter(p=>!hid.has(p.id)&&p.id!==ME.id);
+ el.innerHTML=l.length?frHead('შეიძლება იცნობდე',l.length,' first')+`<div class="frgrid">${l.map((p,i)=>frSug(p,i)).join('')}</div>`:empty('ჯერ არავის გთავაზობ','როცა მეგობრები გეყოლება, მათ ნაცნობებს აქ ნახავ.');staggerIn($$('.frsg',el).slice(0,8),30,40)}
+function frAll(){const el=$('#frall');if(!el)return;const qv=FRS.find.trim().toLowerCase(),fr=[...FRIENDS].map(id=>prof(id)||{id,name:pname(id)}).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ka')),shown=qv?fr.filter(p=>String(p.name||'').toLowerCase().includes(qv)||String(p.username||'').toLowerCase().includes(qv)):fr;
+ el.innerHTML=frHead(qv?'ნაპოვნი':'ყველა მეგობარი',shown.length)+(!shown.length?'<p class="frnone">ასეთი მეგობარი ვერ ვიპოვე</p>':qv?shown.map(p=>frCard(p)).join(''):fbRow(shown,'fr'));fbEdges(el)}
+function frSug(p,i){const id=p.id,h=(p.hue??200)%360,ini=esc((String(p.name||'?').trim()[0])||'?'),st=FRIENDS.has(id)?'f':PENDING_OUT.has(id)?'o':PENDING_IN.has(id)?'i':'';
+ const ph=p.avatar_url?`<img src="${esc(p.avatar_url)}" alt="" loading="lazy">`:`<span class="fbi" style="--h:${h}" aria-hidden="true">${ini}</span>`;
+ const btn=st==='f'||st==='o'?`<span class="frsgok">${ic('check')}${st==='f'?'მეგობარია':'გაგზავნილია'}</span>`:`<button class="btn sm" data-a="fradd" data-u="${id}">${st==='i'?'დადასტურება':ic('uadd')+'დამატება'}</button>`;
+ return `<article class="fbc frsg" style="--i:${Math.min(i||0,8)}" data-u="${id}"><button class="fbph" data-a="user" data-u="${id}" tabindex="-1" aria-hidden="true">${ph}</button>${isOnline(id)?'<span class="fbon"><i></i>ონლაინ</span>':''}<button class="frx" data-a="sughide" data-u="${id}" aria-label="დამალვა">${ic('x')}</button><div class="fbb"><button class="fbn" data-a="user" data-u="${id}"><b>${esc(p.name)}${vb(p)}</b><span>${ic(p.mutual?'users':'pin')}${p.mutual?p.mutual+' საერთო მეგობარი':esc(p.city||'Peera-ზეა')}</span></button><div class="fbk">${btn}</div></div></article>`}
+A.fronmore=()=>{FRS.allOn=true;frBody()};
+A.fracc=async t=>{const id=t.dataset.u;t.disabled=true;try{await q(sb.from('friendships').update({status:'accepted'}).eq('requester',id).eq('addressee',ME.id));PENDING_IN.delete(id);FRIENDS.add(id);FRS.acc.add(id);renderBadges();confetti();frRender()}catch(e){toast(errMsg(e));t.disabled=false}};
+A.frdec=async t=>{const id=t.dataset.u;t.disabled=true;try{await q(sb.from('friendships').delete().eq('requester',id).eq('addressee',ME.id));PENDING_IN.delete(id);renderBadges();frRender()}catch(e){toast(errMsg(e));t.disabled=false}};
+A.frcan=async t=>{const id=t.dataset.u;t.disabled=true;try{await q(sb.from('friendships').delete().eq('requester',ME.id).eq('addressee',id));PENDING_OUT.delete(id);frRender()}catch(e){toast(errMsg(e));t.disabled=false}};
+A.fradd=async t=>{const id=t.dataset.u;if(PENDING_IN.has(id))return A.fracc(t);t.disabled=true;try{await q(sb.from('friendships').insert({requester:ME.id,addressee:id}));PENDING_OUT.add(id);const k=t.closest('.fbk');if(k){k.innerHTML=`<span class="frsgok">${ic('check')}გაგზავნილია</span>`;burst(k.firstChild)}toast('მოთხოვნა გაიგზავნა')}catch(e){toast(errMsg(e));t.disabled=false}};
+addEventListener('resize',()=>{if($('.frsegs'))frSegMove()});
 
 /* notifications */
 const dkN=k=>typeof dkOf==='function'?dkOf(k)[2]+' '+dkOf(k)[1]:'';

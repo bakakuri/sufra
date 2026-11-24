@@ -31,9 +31,9 @@ async function coinCheck(){const old=ME.coins||0;let my;try{my=await rpc('my_coi
 /* the wallet (it was a chip in the top bar): the balance, and a word when today's bonus is waiting */
 const bonusWaits=()=>!!ME&&!ME.offline&&ME.last_bonus!==today();
 function walletHTML(cls){return `<button class="cwal ${cls||''}${bonusWaits()?' bonus':''}" data-a="page" data-p="coins" aria-label="მონეტები: ${nf(ME.coins)}"><span class="cwal-i">${ic('coin')}</span><span class="grow"><b>მონეტები</b><small class="cwal-s">${bonusWaits()?'დღის ბონუსი გელოდება':'ისტორია, წესები, მაღაზია'}</small></span><span class="coinv">${ME.coins??0}</span></button>`}
-function walletBonusOff(){$$('.cwal.bonus').forEach(w=>{w.classList.remove('bonus');const s=$('.cwal-s',w);if(s)s.textContent='ისტორია, წესები, მაღაზია'});if(typeof renderBadges==='function')renderBadges()}
+function walletBonusOff(){$$('.pfplus').forEach(x=>x.remove());$$('.cwal.bonus').forEach(w=>{w.classList.remove('bonus');const s=$('.cwal-s',w);if(s)s.textContent='ისტორია, წესები, მაღაზია'});if(typeof renderBadges==='function')renderBadges()}
 function coinPing(n){const vis=x=>{if(!x)return null;const q=x.getBoundingClientRect();return q.width&&q.bottom>0&&q.top<innerHeight?q:null};
- const r=vis($('.cwal'))||vis($('.tab[data-tab="me"]'))||vis($('#sidel .smine')),b=document.createElement('span');b.className='coinping';b.setAttribute('aria-hidden','true');
+ const r=vis($('.cwal'))||vis($('.pfs.coins'))||vis($('.tab[data-tab="me"]'))||vis($('#sidel .smine')),b=document.createElement('span');b.className='coinping';b.setAttribute('aria-hidden','true');
  b.innerHTML=`+${nf(n)} ${ic('coin')}`;if(r){b.style.left=(r.left+r.width/2)+'px';b.style.top=(r.top>innerHeight/2?r.top-34:r.bottom+4)+'px'}else{b.style.left='50%';b.style.top='calc(env(safe-area-inset-top) + 56px)'}
  document.body.appendChild(b);setTimeout(()=>b.remove(),1600)}
 
@@ -42,42 +42,68 @@ function earnBar(id){const k=PG2RULE[id],m=CN.my;if(!k||!CN.rules||!m||!m.promo)
  const rs=CN.rules.filter(r=>r.page===k&&r.active&&r.amount>0).slice(0,3);if(!rs.length)return;const full=m.today>=m.daily_max;
  h.insertAdjacentHTML('afterend',`<button class="earnbar${full?' full':''}" data-a="page" data-p="coins" aria-label="მონეტების წესები">${ic('coin')}<span class="grow">${rs.map(r=>`${esc(r.label)} <b>+${r.amount}</b>`).join('<i>·</i>')}</span><small>${full?'დღის ლიმიტი შევსებულია':`დღეს ${nf(m.today)}/${nf(m.daily_max)}`}</small></button>`)}
 
-PG.coins={r(){view.innerHTML=pgHead('მონეტები')+`<div id="cnb">${skel(3)}</div>`;
+/* my coins, as in the app: the balance with today's earnings against the day's limit, the seven-day bonus, then two
+   parts: how to earn (by kind, today's quick ones first, every page as a card that opens its ways to earn) and the
+   history. The rules (the promotion, the limit, what comes back, cashing out) are a button at the top. */
+const CPG={friends:['მეგობრები','users','#7C5CF0','მოიწვიე მეგობრები ან დაიმეგობრე ახლები'],home:['ფიდი','home','#16A37F','წერე, დააკომენტარე და შეაფასე'],me:['პროფილი','ucheck','#6366F1','შეავსე პროფილი სრულად და მიიღე ბონუსი'],
+ sport:['სპორტი','trophy','#E0A100','მიიღე მონაწილეობა სპორტულ პროგნოზებში'],games:['თამაშები','dice','#10B981','მოიგე ბოტებთან ან ონლაინ'],places:['ადგილები','pin','#16A37F','დაამატე და შეაფასე ადგილები'],
+ clips:['კლიპები','clips','#E5484D','ატვირთე კლიპები'],chat:['შეტყობინებები','msg','#3B82F6','იყავი აქტიური მიმოწერაში'],groups:['ჯგუფები','users','#8B5CF6','გაწევრიანდი ჯგუფებში და წერე'],
+ stories:['ისტორიები','story','#DB2777','გააზიარე ყოველდღიური ისტორიები'],jobs:['ვაკანსიები','work','#0EA5E9','გამოაქვეყნე ან გაეცანი ვაკანსიებს'],rides:['მგზავრობა','send','#14B8A6','დაგეგმე საერთო მგზავრობა'],
+ events:['შეხვედრები','cal','#A855F7','შექმენი შეხვედრა ან შეუერთდი'],help:['დახმარება','heart','#E11D48','დაეხმარე სხვებს'],schedule:['ლექციების ცხრილი','school','#6366F1','შეავსე შენი ლექციების ცხრილი'],
+ tree:['ოჯახის ხე','tree','#059669','შეავსე შენი ოჯახის ხე'],albums:['ალბომები','image','#06B6D4','დაამატე ფოტოები ალბომებში'],market:['ბაზრობა','store','#F59E0B','განათავსე განცხადება ბაზრობაზე'],exams:['დავალებები','clock','#6366F1','შეასრულე დავალებები']};
+const CKIND=[['all','ყველა',null],['study','პროფილი და სწავლა',['me','schedule','exams','tree']],['social','სოციალური',['home','friends','chat','groups','stories','events','help']],['fun','გართობა',['clips','games','sport','albums','places']],['other','სხვა',['market','jobs','rides']]];
+const CACT={verified:['shield','გავლა'],profile_photo:['camera','ატვირთვა'],profile_bio:['note','შევსება'],post:['edit'],comment:['comment'],react:['heart'],grade:['star'],got_grade:['star'],poll_vote:['poll'],invite:['uadd','მოწვევა'],friend:['users'],game_win:['trophy'],bot_win:['dice'],predict:['trophy'],predict_win:['check'],fx_chat:['msg'],place:['pin'],place_review:['star'],clip:['clips'],msg:['msg'],group_post:['edit'],group_join:['users'],story:['story'],story_react:['heart'],job:['work'],job_apply:['send'],help_offer:['help'],ride:['route'],ride_book:['check'],event:['cal'],rsvp:['check'],kin:['tree'],lessons:['school'],album_photo:['image'],listing:['store'],task_done:['check']};
+const CST={part:0,kind:'all',open:null};
+PG.coins={r(){CST.open=null;view.innerHTML=pgHead('მონეტები',`<button class="cn-rules" data-a="cnrules">${ic('info')}<span>წესები</span></button>`)+`<div id="cnb">${skel(3)}</div>`;
  coinsLoad(true).then(drawCoins).catch(e=>{const el=$('#cnb');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',esc(errMsg(e)),'<button class="btn" data-a="cretry">თავიდან</button>')})}};
-function drawCoins(){const el=$('#cnb');if(!el||!CN.my)return;const m=CN.my,rate=m.rate||10000,all=m.coins||0,cash=all,min=m.min_out||10000;
- const by=m.by||{},done=new Set(m.done||[]),max=m.daily_max||150,today_=m.today||0;
+const cTile=(i,c,s=44)=>`<span class="cn-tile" style="--c:${c};--s:${s}px">${ic(i)}</span>`;
+function drawCoins(){const el=$('#cnb');if(!el||!CN.my)return;const m=CN.my,all=m.coins||0,rate=m.rate||10000,by=m.by||{},done=new Set(m.done||[]),max=m.daily_max||150,td=m.today||0,promo=!!m.promo;
  // the 7 days of the bonus: claimed today, carried on from yesterday, or starting again
- const yest=new Date(new Date(m.day+'T12:00:00Z').getTime()-864e5).toISOString().slice(0,10),got=m.last_bonus===m.day,cont=m.last_bonus===yest;
- const filled=got?(m.streak||0):cont?(m.streak||0)%7:0,next=got?0:filled+1;
- const until=m.until?new Date(m.until):null,left=until?Math.max(0,Math.ceil((until-Date.now())/864e5)):0;
- const groups=[];CN.rules.filter(r=>r.active&&r.amount>0&&r.page!=='coins').forEach(r=>{let g=groups.find(x=>x.k===r.page);if(!g){g={k:r.page,rs:[]};groups.push(g)}g.rs.push(r)});
- const row=r=>{const e=by[r.action]||0,isDone=r.once?done.has(r.action):r.day_cap>0&&e>=r.day_cap;
-  const prog=r.once?(isDone?ic('check'):'ერთხელ'):r.day_cap>0?(isDone?ic('check'):`${e}/${r.day_cap}`):'';
-  return `<div class="crrow${isDone?' full':''}"><span class="grow"><b>${esc(r.label)}</b>${r.hint?`<small>${esc(r.hint)}</small>`:''}</span><span class="crp">${prog}</span><em class="crc">+${r.amount}</em></div>`};
- const grp=(g,i)=>{const[t,icn]=CPAGE[g.k]||[g.k,'coin'],e=g.rs.reduce((a,r)=>a+(by[r.action]||0),0),cap=g.rs.reduce((a,r)=>a+(r.once?(done.has(r.action)?0:r.amount):r.day_cap||r.amount),0);
-  return `<details class="crgrp"${i<2?' open':''}><summary>${ic(icn)}<b>${esc(t)}</b><span class="crsum">${e?`<em>+${e}</em> დღეს`:`${cap?'+'+cap+'-მდე':''}`}</span></summary><div class="crlist">${g.rs.map(row).join('')}
-   <button class="btn sm ghost crgo" data-a="cngo" data-k="${g.k}">${esc(t)}: გადასვლა</button></div></details>`};
- el.innerHTML=`<section class="balance cbal"><span>შენი ბალანსი</span><b id="cbal">${nf(all)}</b><small class="cgel">≈ ${cgel(all,rate)} ₾ · ${nf(rate)} მონეტა = 1 ₾</small>
-  <div class="cout"><div class="cbar" role="progressbar" aria-label="გატანამდე" aria-valuemin="0" aria-valuemax="${min}" aria-valuenow="${Math.min(cash,min)}"><i style="width:${Math.min(100,cash/min*100)}%"></i></div>
-  <small>${!m.promo?'ლარად გატანა აქციის დროს შეიძლება.':cash>=min?`გასატანად მზადაა ${nf(cash)} მონეტა (${cgel(Math.floor(cash/100)*100,rate)} ₾).`:`ლარად გასატანად საჭიროა ${nf(min)} მონეტა (${cgel(min,rate)} ₾). დაგრჩა ${nf(min-cash)}.`}</small>
-  <button class="btn cout-go${m.promo&&cash>=min?'':' dim'}" data-a="page" data-p="payout">${ic('card')}ლარად გატანა</button></div></section><div id="cpend"></div>
- <section class="cpromo${m.promo?' on':''}"><span class="cpico">${m.promo?'🎉':ic('clock')}</span><div><b>${m.promo?'აქცია მიმდინარეობს':'აქცია ახლა არ მიდის'}</b>
-  <span>${m.promo?`ყველა მონეტა ითვლება და ლარად გადის: ${nf(rate)} მონეტა = 1 ₾.${until?` ბოლო დღე: ${cDate(until)} (დარჩა ${left} დღე).`:''}`:'მონეტები გროვდება და იხარჯება საჩუქრებზე, მაღაზიაში და სტილებზე. ლარად გატანა აქციის დროს იხსნება.'}</span></div></section>
- <section class="cday"><div class="cdays" aria-label="7 დღე ზედიზედ: ${filled} დღე">${[1,2,3,4,5,6,7].map(i=>`<span class="${i<=filled?'on':''}${i===next?' next':''}${i===7?' big':''}">${i===7?'+15':'+5'}</span>`).join('')}</div>
-  <button class="btn${got?' ghost':''}" data-a="bonus"${got?' disabled':''}>${got?'დღევანდელი ბონუსი აღებულია':`აიღე დღიური ბონუსი: +${next===7?15:5}`}</button>
-  <p class="note">ყოველდღე +5. მე-7 დღეს ზედიზედ დამატებით +10.</p></section>
- <section class="ctoday"><div><b>დღეს გამოიმუშავე ${nf(today_)} / ${nf(max)}</b><span>${today_>=max?'დღის ლიმიტი შევსებულია. ხვალ ისევ.':'ყველა აქტივობა ერთად, ბონუსის გარდა'}</span></div><div class="cbar"><i style="width:${Math.min(100,today_/max*100)}%"></i></div></section>
- <h3 class="sec2">როგორ გამოიმუშავო</h3><p class="note" style="padding:0 16px 8px">თითქმის ყველა გვერდზე. წაშლილი ან დამალული პოსტის, კომენტარის და სხვა მონეტები 24 საათში უკან ბრუნდება.</p>
- <div class="crules">${groups.map(grp).join('')}</div>
- <h3 class="sec2">ისტორია</h3><div class="hist" id="chist">${skel(1)}</div>`;
- coinHist();coinPend()}
+ const day=m.day||today(),yest=new Date(new Date(day+'T12:00:00Z').getTime()-864e5).toISOString().slice(0,10),got=m.last_bonus===day,cont=m.last_bonus===yest,streak=m.streak||0;
+ const filled=got?streak:cont?streak%7:0,next=got?0:filled+1,shownDay=(((got?filled:next)-1)%7+7)%7+1;
+ // the pages that pay, the richest first
+ const G={};(CN.rules||[]).forEach(r=>{if(r.active&&r.amount>0&&CPG[r.page])(G[r.page]=G[r.page]||[]).push(r)});
+ const capOf=r=>r.once?r.amount:(r.day_cap>0?r.day_cap:r.amount),earnedIn=p=>(G[p]||[]).reduce((a,r)=>a+(by[r.action]||0),0),capIn=p=>(G[p]||[]).reduce((a,r)=>a+(r.once&&done.has(r.action)?0:capOf(r)),0);
+ const pages=Object.keys(G).sort((a,b)=>capIn(b)-capIn(a)),top=pages[0],ks=(CKIND.find(k=>k[0]===CST.kind)||CKIND[0])[2],shown=pages.filter(p=>!ks||ks.includes(p));
+ const paid=pages.filter(p=>earnedIn(p)>0);let quick=null;for(const p of [...pages].reverse()){if(earnedIn(p)>0||p==='friends')continue;quick=G[p].find(r=>!r.once&&r.day_cap>0)||null;if(quick)break}
+ const days=[1,2,3,4,5,6,7].map(i=>`<span class="cn-day${i<=filled?' on':''}${i===next?' next':''}${i===7?' last':''}"><small>დღე ${i}</small><b>${i===7?'+15':'+5'}</b></span>`).join('');
+ let body='';
+ if(CST.part===0){
+  body=`<div class="cn-kinds">${CKIND.map(([k,l])=>`<button data-a="cnkind" data-k="${k}" aria-pressed="${CST.kind===k}">${l}</button>`).join('')}</div>`;
+  if(CST.kind==='all'&&(quick||paid.length)){body+=`<section class="cn-card cn-tb"><div class="cn-tbh"><b>დღეს აქტიური</b><em>სწრაფი მონეტები</em></div>`;
+   if(quick){const p=quick.page,g=CPG[p],cap=quick.day_cap,e=by[quick.action]||0;body+=`<button class="cn-quick" data-a="cngo" data-k="${p}" data-act="${esc(quick.action)}">${cTile(g[1],g[2])}<span class="grow"><span class="cn-qt"><b>${g[0]}</b><i>${e}/${cap}</i></span><small>${esc(quick.label||'')} (+${quick.amount} თითოზე)</small></span><em class="cn-amt2">+${cap}-მდე</em><span class="frch">${ic('chev')}</span></button>`}
+   if(paid.length)body+=`<div class="cn-paid">${paid.map(p=>`<button data-a="cnpick" data-k="${p}">${cTile(CPG[p][1],'var(--vine)',38)}<span class="grow"><b>${CPG[p][0]}</b><small>+${earnedIn(p)} დღეს</small></span>${ic('chev')}</button>`).join('')}</div>`;
+   body+='</section>'}
+  if(CST.open&&G[CST.open]){const p=CST.open,g=CPG[p],rs=G[p],once=rs.every(r=>r.once),cap=capIn(p);
+   body+=`<section class="cn-card cn-open" id="cnopen"><button class="cn-oh" data-a="cnpick" data-k="${p}">${cTile(g[1],g[2],48)}<span class="grow"><span class="cn-qt"><b>${g[0]}</b><em class="cn-kindb">${once?'ერთჯერადი':'ყოველდღიური'}</em></span><small>${g[3]}</small></span>${cap>0?`<em class="cn-amt2">+${cap}-მდე</em>`:''}<span class="frch">${ic('chevup')}</span></button><div class="cn-rules-l">${rs.map(r=>{const a=r.action,act=CACT[a]||[],e=by[a]||0,dc=r.day_cap||0,isDone=r.once?done.has(a):dc>0&&e>=dc,sub=r.once?'ერთხელ':[dc>0?`დღეში ${dc}-მდე`:'',e>0?`დღეს +${e}`:'',r.hint||''].filter(Boolean).join(' · ');
+    return `<div class="cn-rule${isDone?' done':''}">${cTile(act[0]||g[1],g[2],38)}<span class="grow"><b>${esc(r.label||'')}</b>${sub?`<small>${esc(sub)}</small>`:''}</span><em class="cn-plus">+${r.amount}</em>${isDone?`<span class="cn-ok">${ic('check')}</span>`:`<button class="cn-go" data-a="cngo" data-k="${p}" data-act="${esc(a)}">${act[1]||'გადასვლა'}</button>`}</div>`}).join('')}</div></section>`}
+  body+=`<div class="cn-allh"><b>ყველა კატეგორია</b><small>დააჭირე დეტალებისთვის</small></div><div class="cn-grid">${shown.map(p=>{const g=CPG[p],e=earnedIn(p),cap=capIn(p),amt=e>0?`+${e} დღეს`:cap>0?`+${cap}-მდე`:null;
+   return `<button class="cn-pc${p===CST.open?' on':''}${p===top?' top':''}" data-a="cnpick" data-k="${p}">${p===top?'<i class="cn-top">ტოპ</i>':''}<span class="cn-pch">${cTile(g[1],g[2],42)}${amt?`<em class="${e>0?'g':''}">${amt}</em>`:`<span class="cn-ok">${ic('check')}</span>`}</span><b>${g[0]}</b><small>${g[3]}</small></button>`}).join('')}</div>
+   <p class="cn-note">${ic('rotate')}<span>თითქმის ყველა გვერდზე. წაშლილი ან დამალული პოსტის, კომენტარის და სხვა მონეტები 24 საათში უკან ბრუნდება.</span></p>`}
+ else body=`<div class="cn-hist" id="chist">${skel(1)}</div>`;
+ el.innerHTML=`<div class="cn-wrap"><section class="cn-bal"><div class="cn-top1"><div class="cn-bl"><small>შენი ბალანსი</small><div class="cn-amt"><span class="cn-coin">${ic('coin')}</span><b class="coinv" data-n="${all}">${grp(all)}</b></div>${promo?`<small class="cn-gel">≈ ${(all/rate).toFixed(2)} ₾</small>`:''}</div><button class="cn-use" data-a="cnuse"><span>${ic('gift')}გამოყენება</span><small>საჩუქრები • 5+</small></button></div>
+  <hr><div class="cn-today"><span class="cn-bolt">${ic('bolt')}</span><b>დღეს გამოიმუშავე</b><em>${grp(td)} / ${grp(max)}</em></div><div class="cn-bar"><i style="width:${max?Math.min(100,td/max*100):0}%"></i></div><p>${td>=max?'დღის ლიმიტი შევსებულია. ხვალ ისევ.':'ყველა აქტივობა ერთად, დღიური ბონუსის გარდა'}</p></section>
+ <section class="cn-card cn-bonus"><div class="cn-bh">${cTile('flame','#F08C00')}<span class="grow"><b>დღიური ბონუსი</b><small>ყოველდღე +5 • მე-7 დღეს +15</small></span><em>დღე ${shownDay} / 7</em></div><div class="cn-days">${days}</div>
+  ${got?`<div class="cn-got"><span>${ic('check')}</span>დღევანდელი ბონუსი აღებულია</div>`:`<button class="cn-take" data-a="bonus">აიღე დღიური ბონუსი: +${next===7?15:5}</button>`}</section>
+ <div class="cn-parts"><button data-a="cnpart" data-i="0" aria-pressed="${CST.part===0}">${ic('sparkle')}<span>გამომუშავება</span>${pages.length?`<em>${pages.length}</em>`:''}</button><button data-a="cnpart" data-i="1" aria-pressed="${CST.part===1}">${ic('history')}<span>ისტორია</span></button></div>
+ ${body}</div>`;
+ if(CST.part===1)coinHist()}
+A.cnpart=t=>{CST.part=+t.dataset.i;drawCoins()};
+A.cnkind=t=>{CST.kind=t.dataset.k;drawCoins()};
+A.cnpick=t=>{const k=t.dataset.k;CST.open=CST.open===k?null:k;drawCoins();if(CST.open)requestAnimationFrame(()=>$('#cnopen')?.scrollIntoView({block:'start',behavior:RM()?'auto':'smooth'}))};
+const cnLine=(i,c,t,x)=>`<div class="cn-line">${cTile(i,c,40)}<span class="grow"><b>${t}</b><small>${x}</small></span></div>`;
+A.cnrules=()=>{const m=CN.my||{},rate=m.rate||10000,max=m.daily_max||150,promo=!!m.promo,until=m.until?new Date(m.until):null,left=until?Math.max(0,Math.ceil((until-Date.now())/864e5)):0,cash=m.coins||0,min=m.min_out||10000;
+ sheet(head('წესები')+`<div class="ph-body cn-sheet">${cnLine('gift','#E0A100',promo?'აქცია მიმდინარეობს 🎉':'აქცია ახლა არ მიდის',promo?`ყველა მონეტა ითვლება და ლარად გადის: ${grp(rate)} მონეტა = 1 ₾.${until?` ბოლო დღე: ${cDate(until)} (დარჩა ${left} დღე).`:''}`:'მონეტები გროვდება და იხარჯება საჩუქრებზე და „5+“-ზე. ლარად გატანა აქციის დროს იხსნება.')}
+  ${cnLine('flame','#F08C00','დღიური ბონუსი','ყოველდღე +5. მე-7 დღეს ზედიზედ +15. ერთი დღე თუ გამოტოვე, თავიდან იწყება.')}${cnLine('bolt','#6366F1','დღის ლიმიტი: '+grp(max),'ყველა აქტივობა ერთად, დღიური ბონუსის გარდა. ზოგ გვერდს თავისი დღის ზღვარიც აქვს.')}${cnLine('rotate','#E5484D','რა ბრუნდება უკან','წაშლილი ან დამალული პოსტის, კომენტარის და სხვა მონეტები 24 საათში უკან ბრუნდება.')}
+  ${promo?`<div id="cpend"></div><button class="btn${cash>=min?'':' ghost'}" data-a="page" data-p="payout">${ic('card')}ლარად გატანა</button>`:''}</div>`,'short');if(promo)coinPend()};
+A.cnuse=()=>{const plus=(CN.my||{}).plus_cost||0;sheet(head('სად გამოვიყენო')+`<div class="ph-body cn-sheet">${cnLine('gift','#E0A100','საჩუქრები','აჩუქე მეგობარს საჩუქარი პოსტზე ან პროფილზე: გამოჩნდება და მას მონეტებს მოუტანს.')}${cnLine('star','#7C5CF0','„5+“',`მეგობრის ფოტოს „5+“ დაუწერე${plus>0?': '+grp(plus)+' მონეტა':''}.`)}</div>`,'short')};
 async function coinHist(){let rows=[];try{rows=await q(sb.from('coin_log').select('amount,label,created_at,cash,n').eq('user_id',ME.id).order('created_at',{ascending:false}).limit(40))}catch(e){}
  const el=$('#chist');if(!el)return;
- el.innerHTML=rows.map(r=>`<div><span>${esc(r.label)}${r.n>1?` <small class="cn">×${r.n}</small>`:''} <small class="muted">${ago(r.created_at)}</small></span><span class="${r.amount>0?'plus':'minus'}">${r.amount>0?'+':''}${nf(r.amount)}</span></div>`).join('')||'<p class="muted">ჯერ ცარიელია.</p>'}
+ el.innerHTML=rows.map(r=>{const up=r.amount>0;return `<div class="cn-log"><span class="cn-li${up?' up':''}">${ic(up?'up':'down')}</span><span class="grow"><b>${esc(r.label)}${r.n>1?` <small>×${r.n}</small>`:''}</b><small>${ago(r.created_at)}</small></span><em class="${up?'up':''}">${up?'+':''}${grp(r.amount)}</em></div>`}).join('')||'<p class="cn-empty">ჯერ ცარიელია.</p>'}
 A.bonus=async t=>{t.disabled=true;try{const r=await rpc('daily_bonus'),b=r&&typeof r==='object'?r:{coins:r,got:5};ME.last_bonus=today();setCoins(b.coins);walletBonusOff();
  toast(`+${b.got||0} მონეტა${b.streak===7?' · 7 დღე ზედიზედ!':''}`);burst(t);if(b.streak===7)confetti();coinsLoad(true).then(drawCoins).catch(()=>{})}catch(e){t.disabled=false;toast(errMsg(e))}};
 A.cretry=()=>PG.coins.r();
-A.cngo=t=>{const k=(CPAGE[t.dataset.k]||[])[2];if(!k)return;if(k==='chat')return A.chats();if(['home','clips','games','me'].includes(k))return go(k);openPage(k)};
+A.cngo=t=>{const act=t.dataset.act;if(act==='verified')return openPage('verify');if(act==='profile_photo'||act==='profile_bio')return A.editprofile();const k=(CPAGE[t.dataset.k]||[])[2];if(!k)return;if(k==='chat')return A.chats();if(['home','clips','games','me'].includes(k))return go(k);openPage(k)};
 
 /* ---------- gifts on photos: each photo shows what it got, the dearest gift on it picks its ring ---------- */
 const GCOST=e=>(GIFTS.find(g=>g[0]===e)||[0,0,0])[2];

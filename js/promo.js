@@ -8,7 +8,10 @@ let APPSET={banner:null,features:{off:[]}};
 const featOff=k=>!!k&&(APPSET.features.off||[]).includes(k);
 const isAdm=()=>!!ME&&ME.role==='admin';
 /* the admin still sees everything, so a switched-off section can be checked before it comes back */
-const pageOk=p=>isAdm()||!featOff(FEAT_OF[p]);
+/* what the app does not have is not on the site either, for everyone (the casino, the other games, the coin shop, cups) */
+const SITE_OFF=new Set(['shop','shopapply','shopedit','shopitem','cups','cup','corrs','dmtable','lotable','aviator','bj','mines','plinko','roulette','slot','fleece','batumi','career','replay','gkind']);
+const GAMES_ON=new Set(['nardi','joker']);
+const pageOk=p=>!SITE_OFF.has(p)&&(isAdm()||!featOff(FEAT_OF[p]));
 const tabOk=t=>isAdm()||!featOff(t);
 const createOk=a=>isAdm()||!featOff(CREATE_FEAT[a]);
 async function loadAppSettings(){try{const rows=await q(sb.from('app_settings').select('key,value'));const m=Object.fromEntries(rows.map(r=>[r.key,r.value]));APPSET={banner:m.banner||null,features:Object.assign({off:[]},m.features||{}),games_lock:m.games_lock||null,games:m.games||null}}catch(e){}applyAppSettings()}

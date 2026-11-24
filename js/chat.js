@@ -9,14 +9,36 @@ async function myChats(){try{return await rpc('my_chats')}catch(e){return await 
 const mutedNow=c=>!!(c&&c.muted_until&&new Date(c.muted_until)>Date.now());
 const lastTxt=c=>c.last_kind==='voice'?'🎤 ხმოვანი':c.last_kind==='image'?'📷 ფოტო':c.last_body||(c.last_kind==='text'?'შეტყობინება წაიშალა':'');
 let CHAT_ARCH=false;
-async function openChats(arch=false){CHAT_ARCH=!!arch;navMark(arch?'chatarch':'chats',()=>openChats(arch));sheet(head(arch?'არქივი':'მიმოწერა',arch?`<button class="btn sm ghost" data-a="chats">${ic('back')}ყველა</button>`:`<button class="btn sm ghost" data-a="newgroupchat">${ic('users')}ჯგუფი</button>`)+`<div class="ph-body" id="chl">${skel(4)}</div>`);
- try{[CONVS]=await Promise.all([myChats(),loadStreaks()]);await loadProfiles(CONVS.flatMap(c=>c.members||[]));drawChatList()}catch(e){const el=$('#chl');if(el)el.innerHTML=empty('ვერ ჩაიტვირთა',errMsg(e))}}
-function chatRow(c){const other=!c.is_group&&c.members?.[0],title=c.is_group?(c.title||'ჯგუფი'):pname(other),mu=mutedNow(c);
- return `<button class="row" data-a="chat" data-c="${c.conv_id}">${c.is_group?`<span class="av gav" style="--s:48px;--h:${(c.conv_id*47)%360}">${ic('users')}</span>`:av(other,48)}<span class="grow"><b>${esc(title)}${other?vb(other):''}${fire(c.conv_id)}${mu?`<i class="chmu" aria-label="დადუმებულია">${ic('mute')}</i>`:''}</b><span class="sub">${c.last_sender===ME.id?'შენ: ':''}${esc(lastTxt(c))} · ${ago(c.last_message_at)}</span></span>${c.unread?`<span class="badge${mu?' muted':''}">${c.unread}</span>`:other&&isOnline(other)?'<i class="ond" aria-label="ონლაინ"></i>':''}</button>`}
-function drawChatList(){const el=$('#chl');if(!el)return;const arch=CHAT_ARCH,list=CONVS.filter(c=>!!c.archived===arch),na=CONVS.filter(c=>c.archived).length,ua=CONVS.filter(c=>c.archived).reduce((s,c)=>s+(c.unread||0),0);
- el.innerHTML=(!arch&&na?`<button class="row archrow" data-a="chatarch"><span class="av gav" style="--s:48px;--h:250">${ic('archive')}</span><span class="grow"><b>არქივი</b><span class="sub">${na} საუბარი</span></span>${ua?`<span class="badge muted">${ua}</span>`:''}</button>`:'')
-  +(list.map(chatRow).join('')||(arch?empty('არქივი ცარიელია','საუბარს დიდხანს დააჭირე და „არქივში“ აირჩიე.'):empty('მიმოწერა ჯერ ცარიელია','მეგობრის პროფილზე დააჭირე „მიწერა“.','<button class="btn" data-a="page" data-p="friends">მეგობრები</button>')))
-  +(!arch&&list.length?'<p class="note" style="padding:8px 16px">საუბარს დიდხანს დააჭირე: დადუმება ან არქივი.</p>':'')}
+/* the conversations, as in the app: a tab of their own (the round button in the middle of the bar), newest first; a
+   search over them, who is online now in a row (a tap writes to them), each conversation with what was said last, when,
+   and how many are unread (the unread ones in bold); the archive is a page of its own */
+const CHQ={q:''};
+R.chats=()=>chatsView(false);
+PG.chatarch={r(){chatsView(true)}};
+function chatsView(arch){CHAT_ARCH=!!arch;CHQ.q='';view.innerHTML=pgHead(arch?'არქივი':'მიმოწერა',arch?'':`<button class="ibtn" data-a="newgroupchat" aria-label="ახალი ჯგუფი">${ic('users')}</button><button class="ibtn" data-a="chatnew" aria-label="ახალი მიმოწერა">${ic('edit')}</button>`)+`<div id="chl" class="chlist">${skel(4)}</div>`;
+ if(!arch){$('.pghead [data-a="back"]',view)?.remove();$('.pghead',view)?.classList.add('tabhead')}loadChatList()}
+async function loadChatList(){try{const[c]=await Promise.all([myChats(),loadStreaks()]);CONVS=c||[];await loadProfiles(CONVS.flatMap(c=>c.members||[]));drawChatList()}catch(e){const el=$('#chl');if(el)el.innerHTML=empty('მიმოწერა ვერ ჩაიტვირთა',errMsg(e),'<button class="btn" data-a="chatreload">ხელახლა ცდა</button>')}}
+A.chatreload=()=>{const el=$('#chl');if(el)el.innerHTML=skel(4);loadChatList()};
+function openChats(arch=false){if(arch)return openPage('chatarch');go('chats')}
+const chTitle=c=>c.is_group?(c.title||'ჯგუფი'):pname(c.members?.[0]);
+function chatRow(c){const other=!c.is_group&&c.members?.[0],title=chTitle(c),mu=mutedNow(c),un=(c.unread||0)>0,
+ from=c.last_sender===ME.id?'შენ: ':c.is_group&&c.last_sender&&c.last_sender!==ME.id?pname(c.last_sender)+': ':'';
+ return `<button class="chr${un?' un':''}" data-a="chat" data-c="${c.conv_id}">${c.is_group?`<span class="chgav" style="--h:${(c.conv_id*47)%360}">${ic('users')}</span>`:frAv(prof(other)||{id:other,name:pname(other)},58)}<span class="chrt"><span class="chr1"><b>${esc(title||'უსახელო')}</b>${other?vb(other):''}${fire(c.conv_id)}${mu?`<i class="chmu" aria-label="დადუმებულია">${ic('mute')}</i>`:''}<small>${c.last_message_at?ago(c.last_message_at):''}</small></span><span class="chr2"><span>${esc(from+lastTxt(c))}</span>${un?`<em class="${mu?'mu':''}">${c.unread>99?'99+':c.unread}</em>`:''}</span></span></button>`}
+function drawChatList(){const el=$('#chl');if(!el)return;const arch=CHAT_ARCH,all=CONVS.filter(c=>!!c.archived===arch),na=CONVS.filter(c=>c.archived).length;
+ if(!all.length&&(arch||!na)){el.innerHTML=empty(arch?'არქივი ცარიელია':'ჯერ არავისთან გიწერია',arch?'საუბარს დიდხანს დააჭირე და „არქივში“ აირჩიე.':'მიწერე მეგობარს — შეტყობინებები აქ გამოჩნდება.',arch?'':'<button class="btn" data-a="chatnew">ახალი მიმოწერა</button>');return}
+ if(!$('#chrows',el)){el.innerHTML=(all.length?`<label class="chfind">${ic('search')}<input id="chq" type="search" placeholder="მოძებნე მიმოწერაში" value="${esc(CHQ.q)}" autocomplete="off" aria-label="მოძებნე მიმოწერაში"></label>`:'')+'<div id="chrows"></div>';
+  const qi=$('#chq',el);if(qi)qi.oninput=()=>{CHQ.q=qi.value;drawChatRows()}}
+ drawChatRows();staggerIn($$('.chr,.chon',el).slice(0,10),25,30)}
+function drawChatRows(){const el=$('#chrows');if(!el)return;const arch=CHAT_ARCH,all=CONVS.filter(c=>!!c.archived===arch),w=CHQ.q.trim().toLowerCase(),
+ list=w?all.filter(c=>String(chTitle(c)).toLowerCase().includes(w)||String(lastTxt(c)).toLowerCase().includes(w)):all,na=CONVS.filter(c=>c.archived).length,ua=CONVS.filter(c=>c.archived).reduce((s,c)=>s+(c.unread||0),0),
+ online=arch||w||typeof FRIENDS==='undefined'?[]:[...FRIENDS].filter(isOnline).map(id=>prof(id)||{id,name:pname(id)});
+ el.innerHTML=(online.length?`<div class="chonl">${online.map(p=>`<button class="chon" data-a="chatwith" data-u="${p.id}">${frAv(p,62)}<span>${esc(String(p.name||'').split(' ')[0])}</span></button>`).join('')}</div>`:'')
+  +(!list.length&&w?'<p class="frnone">ასეთი მიმოწერა ვერ ვიპოვე</p>':list.map(chatRow).join(''))
+  +(!arch&&na&&!w?`<button class="charch" data-a="chatarch"><span class="charci">${ic('archive')}</span><span class="charct"><b>არქივი</b><small>${na} მიმოწერა</small></span>${ua?`<em>${ua}</em>`:''}<span class="frch">${ic('chev')}</span></button>`:'')
+  +(list.length?'<p class="chnote">საუბარს დიდხანს დააჭირე: დადუმება ან არქივი.</p>':'')}
+/* a new conversation: choosing a friend to write to */
+A.chatnew=async()=>{const ids=[...(typeof FRIENDS!=='undefined'?FRIENDS:[])];await loadProfiles(ids);const l=ids.map(id=>prof(id)||{id,name:pname(id)}).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ka'));
+ sheet(head('ვის მისწერ?')+`<div class="ph-body chpick">${l.length?l.map(p=>`<button class="row" data-a="chatwith" data-u="${p.id}">${frAv(p,44)}<span class="grow"><b>${esc(p.name)}${vb(p)}</b>${p.username?`<span class="sub">@${esc(p.username)}</span>`:''}</span></button>`).join(''):empty('ჯერ მეგობრები არ გყავს','სხვისი გვერდიდანაც შეგიძლია მიწერო — „მიწერა“.')}</div>`)};
 A.chatarch=()=>openChats(true);
 const chatUnread=()=>CONVS.filter(c=>!mutedNow(c)).reduce((a,x)=>a+(x.unread||0),0);
 /* mute and archive one chat */
@@ -28,7 +50,8 @@ A.chmuteset=t=>{const h=+t.dataset.h;setMute(+t.dataset.c,h?new Date(Date.now()+
 async function setMute(cid,until){closeLayer();try{await q(sb.from('conversation_members').update({muted_until:until}).eq('conv_id',cid).eq('user_id',ME.id));const c=CONVS.find(x=>x.conv_id===cid);if(c)c.muted_until=until;toast(until?'საუბარი დადუმდა':'ხმა ჩაირთო');drawChatList();S.unreadMsgs=chatUnread();renderBadges();if(CHAT&&CHAT.cid===cid)drawChatSub()}catch(e){toast(errMsg(e))}}
 A.charch=async t=>{const cid=+t.dataset.c,c=CONVS.find(x=>x.conv_id===cid);if(!c)return;closeLayer();const v=!c.archived;
  try{await q(sb.from('conversation_members').update({archived:v}).eq('conv_id',cid).eq('user_id',ME.id));c.archived=v;toast(v?'გადავიდა არქივში. ახალი მესიჯი თავად ამოიღებს, თუ საუბარი დადუმებული არ არის':'ამოვიდა არქივიდან');if(CHAT&&CHAT.cid===cid&&v)openChats();else drawChatList()}catch(e){toast(errMsg(e))}};
-A.chats=()=>{if(!navBackTo('chats'))openChats()};
+/* the back arrow of a conversation: one step back (to the list, or to wherever it was opened from) */
+A.chats=()=>{const sh=$('#sheet');if(CHAT&&sh&&!sh.hidden&&NAV.ready&&OVE.sheet&&NAV.list[NAV.cur]===OVE.sheet&&NAV.cur>0){history.back();return}closeSheet();if(S.tab!=='chats'||S.page)go('chats')};
 A.chat=t=>openChat(+t.dataset.c);
 A.chatwith=t=>openChatWith(t.dataset.u);
 async function openChatWith(uid,draft){try{const c=await rpc('start_dm',{other:uid});openChat(c,draft)}catch(e){toast(errMsg(e))}}
@@ -83,7 +106,7 @@ async function openChat(cid,draft=''){let conv=CONVS.find(c=>c.conv_id===cid);
  ${other?`<button class="ibtn" data-a="call" data-u="${other}" data-v="0" aria-label="ხმოვანი ზარი">${ic('phone')}</button><button class="ibtn" data-a="call" data-u="${other}" data-v="1" aria-label="ვიდეოზარი">${ic('video')}</button>`:`<button class="ibtn" data-a="gcall" data-c="${cid}" aria-label="ჯგუფური ვიდეოზარი">${ic('video')}</button>`}<button class="ibtn" data-a="chatmore" data-c="${cid}" aria-label="მეტი">${ic('more')}</button></div>
  <button class="pinbar" id="pinb" data-a="jumppin" hidden></button>
  <div class="ph-body chatb" id="cb">${skel(2)}</div>
- <form class="ph-foot chatfoot" id="chf"><div class="replybar" id="rpb" hidden></div><div class="chrow"><button type="button" class="ibtn" id="ch_more" aria-label="დამატება">${ic('plus')}</button><button type="button" class="ibtn" id="ch_mic" aria-label="ხმოვანი შეტყობინება">${ic('mic')}</button><button type="button" class="ibtn stkb" id="ch_stk" data-a="emo" data-for="cin" aria-label="სმაილები და სტიკერები" aria-expanded="false">😊</button><input class="field" id="cin" maxlength="4000" placeholder="შეტყობინება…" aria-label="შეტყობინება" autocomplete="off"><button class="btn" aria-label="გაგზავნა">${ic('send')}</button></div></form>`,'',()=>{if(chan)sb.removeChannel(chan);st.timers.forEach(clearTimeout);st.typing.forEach(clearTimeout);if(CHAT===st)CHAT=null;S.openConv=null});
+ <form class="ph-foot chatfoot" id="chf"><div class="replybar" id="rpb" hidden></div><div class="chrow"><span class="chtools"><button type="button" class="ibtn" id="ch_more" aria-label="დამატება">${ic('plus')}</button><button type="button" class="ibtn" data-a="chcam" aria-label="კამერა">${ic('camera')}</button><button type="button" class="ibtn" data-a="chimg" aria-label="ფოტო">${ic('image')}</button><button type="button" class="ibtn" id="ch_mic" aria-label="ხმოვანი შეტყობინება">${ic('mic')}</button></span><button type="button" class="ibtn chtoolb" id="ch_tools" aria-label="ხელსაწყოები">${ic('chev')}</button><span class="chfield"><input class="field" id="cin" maxlength="4000" placeholder="შეტყობინება…" aria-label="შეტყობინება" autocomplete="off"><button type="button" class="ibtn stkb" id="ch_stk" data-a="emo" data-for="cin" aria-label="სმაილები და სტიკერები" aria-expanded="false">${ic('smile')}</button></span><button class="chsend" aria-label="გაგზავნა">${ic('send')}</button><button type="button" class="chlike" id="ch_like" aria-label="მოწონების გაგზავნა">👍</button></div></form>`,'chatp',()=>{if(chan)sb.removeChannel(chan);st.timers.forEach(clearTimeout);st.typing.forEach(clearTimeout);if(CHAT===st)CHAT=null;S.openConv=null});
  S.openConv=cid;const cb=$('#cb'),inp=$('#cin');if(draft){inp.value=draft}
  const expire=m=>{if(!m.expires_at)return;const ms=new Date(m.expires_at)-Date.now();if(ms<2147e6)st.timers.push(setTimeout(()=>{st.msgs.delete(m.id);$(`#cb [data-mid="${m.id}"]`)?.remove()},Math.max(0,ms)))};
  const add=m=>{if(st.msgs.has(m.id))return;st.msgs.set(m.id,m);const c=$('#cb');if(!c)return;const near=c.scrollHeight-c.scrollTop-c.clientHeight<120;c.insertAdjacentHTML('beforeend',msgHTML(m));expire(m);drawSeen();if(near||m.sender===ME.id)c.scrollTop=1e6};
@@ -115,13 +138,19 @@ async function openChat(cid,draft=''){let conv=CONVS.find(c=>c.conv_id===cid);
  const send=async(row)=>{if(st.reply){row.reply_to=st.reply.id;setReply(null)}try{const m=await q(sb.from('messages').insert(Object.assign({conv_id:cid,sender:ME.id},row)).select(MSEL).single());$('#chempty')?.remove();add(m)}catch(e){toast(errMsg(e))}};
  st.send=send;
  let typT=0;inp.addEventListener('input',()=>{if(ME.privacy?.read===false||!chan||!inp.value.trim())return;const n=Date.now();if(n-typT<2500)return;typT=n;try{chan.send({type:'broadcast',event:'typing',payload:{u:ME.id}})}catch(e){}});
- $('#chf').onsubmit=async e=>{e.preventDefault();const v=inp.value.trim();if(!v)return;inp.value='';
+ $('#chf').onsubmit=async e=>{e.preventDefault();const v=inp.value.trim();if(!v)return;inp.value='';$('#chf')?.classList.remove('has','tools');
   if(st.edit){const m=st.edit;setEdit(null);try{await rpc('edit_message',{p_id:m.id,p_body:v});Object.assign(m,{body:v,edited_at:new Date().toISOString()});redrawMsg(m.id)}catch(x){toast(errMsg(x));inp.value=v}return}
   const u=(v.match(/https?:\/\/[^\s<]+/)||[])[0];let link=null;if(u)link=await Promise.race([unfurl(u),new Promise(r=>setTimeout(()=>r(null),2500))]);send(link?{body:v,media:{link}}:{body:v})};
  inp._stk=id=>{const s=STICKERS.find(x=>x[0]===id);if(s&&CHAT===st)send({body:s[1],media:{sticker:id}})};
+ /* as in Messenger: with nothing written, the tools and a thumb that sends 👍 at once; while writing, the tools fold into
+    one arrow (a tap opens them again) and the thumb turns into the send button */
+ const chf=$('#chf'),wr=()=>{const has=!!inp.value.trim();chf.classList.toggle('has',has);if(!has)chf.classList.remove('tools')};inp.addEventListener('input',wr);wr();
+ inp.addEventListener('focus',()=>chf.classList.remove('tools'));$('#ch_tools').onclick=()=>chf.classList.add('tools');
+ $('#ch_like').onclick=()=>{if(inp.value.trim()){chf.requestSubmit?chf.requestSubmit():chf.onsubmit(new Event('submit'));return}send({body:'👍'})};
  $('#ch_mic').onclick=async()=>{const b=await recordVoice();if(!b)return;try{const url=await uploadBlob(b,extOf(b));send({kind:'voice',media:{url,dur:b.dur||0}})}catch(e){toast(errMsg(e))}};
  $('#ch_more').onclick=()=>layer(lhead('დამატება')+`<div class="reasons"><button data-a="chimg">${ic('image')} ფოტო</button><button data-a="chloc">${ic('pin')} ჩემი ლოკაცია</button><button data-a="chcard">${ic('card')} მისალოცი ბარათი</button>${CHAT&&CHAT.other?`<button data-a="chgame">${ic('dice')} თამაშზე გამოწვევა</button>`:''}</div>`)}
-A.chimg=async()=>{closeLayer();const st=CHAT;if(!st)return;const b=await pickImage({max:ECO()?1080:1600});if(!b)return;try{toast('იტვირთება…');const m=await uploadMedia(b,'image');st.send({kind:'image',media:{url:m.url,sm:m.sm||undefined,w:m.w,h:m.h}})}catch(e){toast(errMsg(e))}};
+A.chcam=()=>A.chimg({cam:1});
+A.chimg=async t=>{closeLayer();const st=CHAT;if(!st)return;const b=await pickImage({max:ECO()?1080:1600,capture:t&&t.cam?'environment':undefined});if(!b)return;try{toast('იტვირთება…');const m=await uploadMedia(b,'image');st.send({kind:'image',media:{url:m.url,sm:m.sm||undefined,w:m.w,h:m.h}})}catch(e){toast(errMsg(e))}};
 A.chloc=()=>{closeLayer();const st=CHAT;if(!st)return;if(!navigator.geolocation){toast('ამ მოწყობილობაზე ლოკაცია მიუწვდომელია');return}toast('ლოკაციას ვადგენ…');
  navigator.geolocation.getCurrentPosition(p=>{const{latitude:lat,longitude:lng,accuracy:acc}=p.coords;st.send({body:'📍 ლოკაცია',media:{loc:{lat:+lat.toFixed(6),lng:+lng.toFixed(6),acc:Math.round(acc)}}})},()=>toast('ლოკაციაზე წვდომა არ მოგვეცა. ჩართე ბრაუზერის პარამეტრებში'),{enableHighAccuracy:true,timeout:15000,maximumAge:30000})};
 A.chcard=()=>{closeLayer();if(CHAT)openCardPicker({cid:CHAT.cid,uid:CHAT.other||null,kind:'g'})};
@@ -133,7 +162,7 @@ async function jumpTo(id){let el=$(`#cb [data-mid="${id}"]`);const st=CHAT;
  if(!el){toast('ეს შეტყობინება აღარ მოიძებნა');return}el.scrollIntoView({block:'center',behavior:RM()?'auto':'smooth'});el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash')}
 A.unpin=async(t,e)=>{e?.stopPropagation();const st=CHAT;if(!st)return;try{await rpc('pin_message',{p_conv:st.cid,p_msg:null});st.pinned=null;drawPin()}catch(x){toast(errMsg(x))}};
 function setReply(m){const st=CHAT;if(!st)return;st.reply=m;if(m)st.edit=null;const b=$('#rpb');if(!b)return;b.hidden=!m;b.innerHTML=m?`${ic('reply')}<span class="grow"><b>${esc(String(pname(m.sender)).split(' ')[0])}</b><span>${esc(snip(m))}</span></span><button type="button" class="ibtn sm" id="rpx" aria-label="გაუქმება">${ic('x')}</button>`:'';const x=$('#rpx');if(x)x.onclick=()=>{setReply(null);setEdit(null)};if(m)$('#cin')?.focus()}
-function setEdit(m){const st=CHAT;if(!st)return;st.edit=m;const b=$('#rpb'),inp=$('#cin');if(m){st.reply=null;b.hidden=false;b.innerHTML=`${ic('edit')}<span class="grow"><b>რედაქტირება</b><span>${esc(snip(m))}</span></span><button type="button" class="ibtn sm" id="rpx" aria-label="გაუქმება">${ic('x')}</button>`;$('#rpx').onclick=()=>{setEdit(null);inp.value=''};inp.value=m.body;inp.focus()}else if(!st.reply){b.hidden=true;b.innerHTML=''}}
+function setEdit(m){const st=CHAT;if(!st)return;st.edit=m;const b=$('#rpb'),inp=$('#cin');if(m){st.reply=null;b.hidden=false;b.innerHTML=`${ic('edit')}<span class="grow"><b>რედაქტირება</b><span>${esc(snip(m))}</span></span><button type="button" class="ibtn sm" id="rpx" aria-label="გაუქმება">${ic('x')}</button>`;$('#rpx').onclick=()=>{setEdit(null);inp.value='';$('#chf')?.classList.remove('has')};inp.value=m.body;$('#chf')?.classList.add('has');inp.focus()}else if(!st.reply){b.hidden=true;b.innerHTML=''}}
 A.msgact=t=>{const st=CHAT,m=st&&st.msgs.get(+t.dataset.mid);if(!m)return;const me=m.sender===ME.id,plain=m.kind==='text'&&!m.media?.sticker&&!m.media?.card&&!m.media?.loc&&!m.media?.fwd;
  const canEdit=me&&plain&&Date.now()-new Date(m.created_at)<48*36e5;
  const myR=st.reacts.get(m.id)?.get(ME.id);

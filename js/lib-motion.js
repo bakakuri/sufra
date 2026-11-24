@@ -18,7 +18,7 @@ function confetti(){if(RM())return;const c=document.createElement('canvas');c.cl
  const ps=Array.from({length:150},()=>({x:W/2+(Math.random()-.5)*W*.35,y:H*.38,vx:(Math.random()-.5)*15,vy:-Math.random()*15-4,r:Math.random()*7+4,c:cols[Math.floor(Math.random()*cols.length)],a:Math.random()*6,va:(Math.random()-.5)*.35}));
  const t0=performance.now();(function f(t){const k=(t-t0)/1000;x.clearRect(0,0,W,H);for(const p of ps){p.vy+=.38;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.a+=p.va;x.save();x.translate(p.x,p.y);x.rotate(p.a);x.globalAlpha=Math.max(0,1-k/2.4);x.fillStyle=p.c;x.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);x.restore()}
   if(k<2.4)requestAnimationFrame(f);else c.remove()})(t0)}
-function animNum(el,a,b){if(RM()||a===b){el.textContent=b;return}const t0=performance.now();(function f(t){const k=Math.min(1,(t-t0)/650),e=1-Math.pow(1-k,3);el.textContent=Math.round(a+(b-a)*e);if(k<1)requestAnimationFrame(f)})(t0)}
+function animNum(el,a,b){const F=v=>el.dataset&&'n' in el.dataset&&typeof grp==='function'?grp(v):v;if(RM()||a===b){el.textContent=F(b);return}const t0=performance.now();(function f(t){const k=Math.min(1,(t-t0)/650),e=1-Math.pow(1-k,3);el.textContent=F(Math.round(a+(b-a)*e));if(k<1)requestAnimationFrame(f)})(t0)}
 function flipPiece(from,to){if(!from||!to)return;const p=to.firstElementChild;if(!p)return;const a=from.getBoundingClientRect(),b=to.getBoundingClientRect();
  anim(p,[{transform:`translate(${a.left-b.left}px,${a.top-b.top}px)`,zIndex:5},{transform:'none',zIndex:5}],{duration:300,easing:EASE})}
 function dragSheet(p){if(!p)return;let y0=null,dy=0;

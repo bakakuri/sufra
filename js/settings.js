@@ -1,6 +1,6 @@
 /* settings, coins, verification, push, install, rules, privacy, export, delete */
 function setCoins(n){if(!ME||n==null||isNaN(n))return;const old=ME.coins||0;ME.coins=n;
- $$('.coinv').forEach(c=>{animNum(c,old,n);const ch=c.closest('.cwal');if(ch){ch.classList.remove('bump');void ch.offsetWidth;ch.classList.add('bump')}})}
+ $$('.coinv').forEach(c=>{animNum(c,old,n);const ch=c.closest('.cwal,.pfs');if(ch){ch.classList.remove('bump');void ch.offsetWidth;ch.classList.add('bump')}})}
 /* settings: one short page of groups. Each group opens its own page, so one back comes straight back here */
 const chev=()=>`<span class="chev" aria-hidden="true">${ic('back')}</span>`;
 const sIc=(i,c)=>`<span class="sic"${c?` style="--c:${c}"`:''}>${ic(i)}</span>`;
@@ -8,23 +8,22 @@ const sLink=(a,i,c,label,sub,extra='')=>`<button class="srow" data-a="${a}"${ext
 const sPage=(p,i,c,label,sub)=>sLink('page',i,c,label,sub,` data-p="${p}"`);
 const sSwitch=(a,k,label,sub,on)=>`<div class="srow"><span class="grow"><span>${label}</span>${sub?`<small>${sub}</small>`:''}</span><button class="switch" role="switch" aria-checked="${!!on}" data-a="${a}"${k?` data-k="${k}"`:''} aria-label="${label}"></button></div>`;
 const sw=(k,label,sub)=>sSwitch('tog',k,label,sub,!!ME.privacy?.[k]);
-const segSet=(k,label,opts)=>`<div class="srow wrap"><span class="grow"><span>${label}</span></span><div class="seg flat" role="group" aria-label="${label}">${opts.map(([v,l])=>`<button data-a="pset" data-k="${k}" data-v="${v}" aria-pressed="${(ME.privacy?.[k]||'all')===v}">${l}</button>`).join('')}</div></div>`;
+const segSet=(k,label,opts,def='all')=>`<div class="srow wrap"><span class="grow"><span>${label}</span></span><div class="seg flat" role="group" aria-label="${label}">${opts.map(([v,l])=>`<button data-a="pset" data-k="${k}" data-v="${v}" aria-pressed="${(ME.privacy?.[k]||def)===v}">${l}</button>`).join('')}</div></div>`;
 const sGroup=(t,body)=>`<section class="sgrp">${t?`<h3>${t}</h3>`:''}<div class="sbox">${body}</div></section>`;
 const ZL={1:'ჩვეულებრივი','1.1':'დიდი','1.2':'უფრო დიდი'};
 function notifShort(push){const n=notifCfg(),off=NCATS.filter(c=>n.off[c[0]]).length;return [push?'Push ჩართულია':'Push გამორთულია',off?`${off} ტიპი გამორთულია`:'',n.quiet.on?'ღამით ჩუმად':''].filter(Boolean).join(' · ')}
 function privSummary(){const p=ME.privacy||{};return [p.online===false?'ონლაინ სტატუსი დამალულია':'ონლაინ სტატუსი ჩანს',p.dm==='friends'?'მოგწერენ მეგობრები':'მოგწერს ყველა',BLOCKED.size?`${BLOCKED.size} დაბლოკილი`:''].filter(Boolean).join(' · ')}
 function appSummary(){const a=A11Y();return ['ტექსტი: '+(ZL[a.z]||ZL[1]),S.eco?'ეკონომიური რეჟიმი':'',a.hc?'მაღალი კონტრასტი':''].filter(Boolean).join(' · ')}
 PG.settings={r(){const p=ME,push=store.get('push',false);view.innerHTML=pgHead('პარამეტრები')+`<div class="sets">
- <button class="setme" data-a="editprofile">${av('me',56)}<span class="grow"><b>${esc(p.name)}${vb(p)}</b><small>${[p.username?'@'+esc(p.username):'',esc(S.email||'')].filter(Boolean).join(' · ')}</small><em>პროფილის რედაქტირება</em></span>${chev()}</button>
- ${sGroup('ანგარიში',sPage('verify','shield','var(--super)','ვერიფიკაცია',p.verified?'დადასტურებულია ✓':'მიიღე ლურჯი ნიშანი ერთი სელფით')
-  +sPage('edu','school','var(--vine)','განათლება','სკოლა, კლასი, უნივერსიტეტი, კურსი')
-  +sPage('coins','coin','var(--gold)','მონეტები','ბალანსი: '+(p.coins??0))
-  +(isAdult()?sLink('datesettings','heart','var(--nope)','გაცნობის პროფილი',p.dating?'ჩართულია':'გამორთულია'):''))}
- ${sGroup('პარამეტრები',sPage('notifset','bell','var(--wine)','შეტყობინებები',notifShort(push))
-  +sPage('setprivacy','lock','var(--vine)','კონფიდენციალურობა',privSummary())
-  +sPage('setapp','eye','var(--super)','ეკრანი და აპი',appSummary()))}
+ <button class="setme" data-a="editprofile">${av('me',56)}<span class="grow"><b>${esc(p.name)}${vb(p)}</b>${p.username?`<small>@${esc(p.username)}</small>`:''}<em>პროფილის რედაქტირება</em></span>${chev()}</button>
+ ${sGroup('ანგარიში',sPage('coins','coin','var(--gold)','მონეტები','ბალანსი: '+grp(p.coins??0))
+  +(isAdult()?sLink('datesettings','heart','var(--nope)','გაცნობის პროფილი',p.dating?'ჩართულია':'გამორთულია'):'')
+  +sPage('verify','check','#3E8EF7','ვერიფიკაცია',p.verified?'დადასტურებულია ✓':'მიიღე ლურჯი ნიშანი ერთი სელფით'))}
+ ${sGroup('პარამეტრები',sPage('notifset','bell','var(--vine)','შეტყობინებები',notifShort(push))
+  +sPage('setprivacy','lock','var(--wine)','კონფიდენციალურობა',privSummary())
+  +sPage('setapp','eye','#3E8EF7','ეკრანი',appSummary()))}
  ${isStaff()?sGroup('',sPage('admin','shield','var(--gold)','ადმინ პანელი','საჩივრები, ვერიფიკაცია, რეკლამა')):''}
- ${sGroup('წესები და მონაცემები',sLink('rules','flag','var(--muted)','საზოგადოების წესები')+sLink('privacy','lock','var(--muted)','კონფიდენციალურობის პოლიტიკა')+sLink('exportdata','download','var(--muted)','ჩემი მონაცემების ჩამოტვირთვა','ყველაფერი ერთ ფაილში'))}
+ ${sGroup('წესები და მონაცემები',sLink('rules','note','var(--muted)','საზოგადოების წესები')+sLink('privacy','lock','var(--muted)','კონფიდენციალურობის პოლიტიკა')+sLink('exportdata','download','var(--muted)','ჩემი მონაცემების ჩამოტვირთვა','ყველაფერი ერთ ფაილში'))}
  ${sGroup('',`<button class="srow" data-a="signout">${sIc('logout','var(--nope)')}<span class="grow"><span>გასვლა</span>${S.email?`<small>${esc(S.email)}</small>`:''}</span></button>`)}
  <button class="sdel" data-a="delaccount">${ic('trash')}ანგარიშის წაშლა</button></div>`}};
 PG.setprivacy={r(){const pr=ME.privacy||{};view.innerHTML=pgHead('კონფიდენციალურობა')+`<div class="sets">
@@ -32,11 +31,12 @@ PG.setprivacy={r(){const pr=ME.privacy||{};view.innerHTML=pgHead('კონფ�
  ${sGroup('ვინ რას ხედავს',sSwitch('onlinetog','','ონლაინ სტატუსი','სხვები ხედავენ, როცა ონლაინ ხარ',pr.online!==false)
   +sSwitch('readtog','','„ნანახია“ და „წერს…“','გამორთვისას სხვები ვერ ნახავენ, რომ წაიკითხე ან წერ. შენც ვერ დაინახავ მათსას',pr.read!==false)
   +sw('guest','უხილავი სტუმარი','სხვის პროფილს ისე ნახავ, რომ მის სტუმრებში არ გამოჩნდე'))}
+ ${sGroup('ჩემი ფოტოები',segSet('photos','ვინ ნახოს ჩემი ფოტოები',[['all','ყველამ'],['friends','მეგობრებმა'],['none','არავინ']],'friends'))}
  ${sGroup('ვინ დამიკავშირდეს',segSet('dm','ვინ მომწეროს',[['all','ყველამ'],['friends','მეგობრებმა']])+segSet('chal','ვინ გამომიწვიოს თამაშში',[['all','ყველამ'],['friends','მეგობრებმა'],['none','არავინ']]))}
  ${sGroup('ისტორიები',sPage('close','star','var(--gold)','ახლო მეგობრები','ვინ ნახავს „ახლო მეგობრების“ ისტორიებს'))}
  ${sGroup('დაბლოკილები',`<div id="blk">${BLOCKED.size?'<p class="sempty">იტვირთება…</p>':'<p class="sempty">დაბლოკილი არავინ გყავს.</p>'}</div>`)}</div>`;
  if(BLOCKED.size)loadProfiles([...BLOCKED]).then(()=>{const el=$('#blk');if(el)el.innerHTML=[...BLOCKED].map(id=>`<div class="srow">${av(id,36)}<span class="grow"><span>${esc(pname(id))}</span></span><button class="btn sm ghost" data-a="unblock" data-u="${id}">განბლოკვა</button></div>`).join('')})}};
-PG.setapp={r(){const a=A11Y();view.innerHTML=pgHead('ეკრანი და აპი')+`<div class="sets">
+PG.setapp={r(){const a=A11Y();view.innerHTML=pgHead('ეკრანი')+`<div class="sets">
  ${sGroup('კითხვა',`<div class="srow wrap"><span class="grow"><span>ტექსტის ზომა</span><small>ზრდის ყველაფერს: ტექსტს, ღილაკებს, ფოტოებს</small></span><div class="seg flat" role="group" aria-label="ტექსტის ზომა">${[[1,'ჩვეულებრივი'],[1.1,'დიდი'],[1.2,'უფრო დიდი']].map(([v,l])=>`<button data-a="a11yz" data-v="${v}" aria-pressed="${+a.z===v}" style="font-size:${13*v}px">${l}</button>`).join('')}</div></div>`
   +sSwitch('a11yhc','','მაღალი კონტრასტი','უფრო მუქი ტექსტი და მკაფიო საზღვრები',!!a.hc))}
  <p class="snote">პოსტის ხმამაღლა მოსასმენად: პოსტთან „…“ → „მოსმენა“.</p>

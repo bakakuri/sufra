@@ -20,9 +20,27 @@ function fitTop(){const t=$('#top');if(!t)return;const run=()=>{t.classList.remo
  if(TOPRO){TOPRO.disconnect();TOPRO.observe(t);$$('#top .hicons').forEach(e=>TOPRO.observe(e))}
  if(document.fonts&&!fitTop.f){fitTop.f=1;document.fonts.ready.then(()=>fitTop())}}
 const visTabs=()=>TABS.filter(t=>typeof tabOk!=='function'||tabOk(t[0]));
+/* the bottom bar as the app's (tab_bar.dart): pictures only, no words; the Peera mark for the feed, my picture in a
+   ring for the profile, the round chat button standing out in the middle; the open tab's icon filled in a soft pill */
+const BARIC={
+ friends:{body:'<circle cx="9" cy="7.8" r="3.7"/><path d="M2.6 20.1c.4-3.9 3.1-6.2 6.4-6.2s6 2.3 6.4 6.2a.9.9 0 0 1-.9 1H3.5a.9.9 0 0 1-.9-1z"/>',soft:'<circle cx="16.9" cy="8.6" r="3"/><path d="M16.3 14.1c3.1-.2 5.1 1.8 5.4 5a.9.9 0 0 1-.9 1h-3.2c-.1-2.4-.5-4.3-1.3-6z"/>',detail:'',line:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.7-3.5 3.4-5.5 6.5-5.5s5.8 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c2 .8 3.2 2.6 3.5 5.4"/>'},
+ heart:{body:'<path d="M12 20.3s-7.4-4.5-9.4-9.3a5.2 5.2 0 0 1 9.4-3.4 5.2 5.2 0 0 1 9.4 3.4c-2 4.8-9.4 9.3-9.4 9.3z"/>',soft:'',detail:'<path d="M6.6 8.7a2.8 2.8 0 0 1 2.4-2"/>',line:'<path d="M12 20s-7-4.4-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.6-9 9-9 9z"/>'},
+ clips:{body:'<rect x="4" y="2.8" width="16" height="18.4" rx="4.6"/>',soft:'',detail:'<path d="M10.2 8.6v6.8l5.6-3.4z" fill="1"/>',line:'<rect x="4" y="3" width="16" height="18" rx="4"/><path d="M10 9l5 3-5 3z"/>'},
+ games:{body:'<path d="M7.2 6.8h9.6a4.8 4.8 0 0 1 4.7 3.9l1 5.5a2.9 2.9 0 0 1-5 2.5l-2.1-2.3H8.6l-2.1 2.3a2.9 2.9 0 0 1-5-2.5l1-5.5a4.8 4.8 0 0 1 4.7-3.9z"/>',soft:'',detail:'<path d="M7.4 10.2v3.6M5.6 12h3.6"/><circle cx="15.9" cy="10.9" r="1.2" fill="1"/><circle cx="18.2" cy="13.2" r="1.2" fill="1"/>',line:'<path d="M7.2 6.8h9.6a4.8 4.8 0 0 1 4.7 3.9l1 5.5a2.9 2.9 0 0 1-5 2.5l-2.1-2.3H8.6l-2.1 2.3a2.9 2.9 0 0 1-5-2.5l1-5.5a4.8 4.8 0 0 1 4.7-3.9z"/><path d="M7.4 10.2v3.6M5.6 12h3.6"/><circle cx="15.9" cy="10.9" r="1.2" fill="1"/><circle cx="18.2" cy="13.2" r="1.2" fill="1"/>'},
+ chat:{body:'<path d="M12 3.8c5 0 9.2 3.4 9.2 7.7S17 19.2 12 19.2c-1.1 0-2.2-.2-3.2-.5L4.3 20.4l1.3-3.6C4 15.4 2.8 13.6 2.8 11.5c0-4.3 4.2-7.7 9.2-7.7z"/>',soft:'',detail:'<circle cx="8" cy="11.6" r="1.25" fill="1"/><circle cx="12" cy="11.6" r="1.25" fill="1"/><circle cx="16" cy="11.6" r="1.25" fill="1"/>',line:''}};
+/* lines when closed; filled when open: the body in the accent (a softer second body), the details in the bar's colour */
+function barIc(k,on,cls=''){const x=BARIC[k];if(!x)return ic(k);const F=(s,c)=>s.replace(/fill="1"/g,`fill="${c}" stroke="none"`);
+ if(!on)return `<svg class="bic${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${F(x.line,'currentColor')}</svg>`;
+ return `<svg class="bic on${cls}" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor" opacity=".45">${x.soft}</g><g class="bicb" fill="currentColor">${x.body}</g><g class="bicd" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${F(x.detail,'var(--bicd)')}</g></svg>`}
+const TABPIC={home:'mark',friends:'friends',date:'heart',clips:'clips',games:'games',me:'me'};
+function tabPic(k,on){const t=TABPIC[k];if(t==='mark')return `<span class="tmark">${kMark()}</span>`;if(t==='me')return `<span class="tme">${av(ME||{},32)}</span>`;return barIc(t||k,on)}
 function renderTabs(){const v=visTabs(),el=$('#tabs');el.style.setProperty('--tn',v.length);el.innerHTML='<span class="tabind" aria-hidden="true"></span>'+v.map(([k,l,i])=>k===TABMID?
- `<button class="tab tmid" data-tab="${k}" aria-label="${l}"><span class="tmidb">${ic(i)}<span class="dot" id="dm" hidden></span></span><span class="tl">${l}</span></button>`:
- `<button class="tab" data-tab="${k}" aria-current="${k===S.tab}">${ic(i)}<span class="tl">${l}</span>${k==='friends'?'<span class="dot tcount" id="df" hidden></span>':'<i class="tdot" hidden></i>'}</button>`).join('');renderBadges()}
+ `<button class="tab tmid" data-tab="${k}" aria-label="${l}" title="${l}"><span class="tmidb">${barIc('chat',true,' tchat')}<span class="dot" id="dm" hidden></span></span></button>`:
+ `<button class="tab${k==='me'?' tabme':''}" data-tab="${k}" aria-label="${l}" title="${l}" aria-current="${k===S.tab}"><span class="tpic">${tabPic(k,k===S.tab)}${k==='friends'?'<span class="dot tcount" id="df" hidden></span>':'<i class="tdot" hidden></i>'}</span></button>`).join('');
+ el.classList.toggle('onme',S.tab==='me');renderBadges()}
+/* the open tab's picture fills in, the one left goes back to lines */
+function markTabs(tab){$$('#tabs .tab:not(.tmid)').forEach(b=>{const on=b.dataset.tab===tab,p=$('.tpic',b);b.setAttribute('aria-current',String(on));
+ if(p&&BARIC[TABPIC[b.dataset.tab]]){const svg=$('svg.bic',p);if(svg&&svg.classList.contains('on')!==on)svg.outerHTML=barIc(TABPIC[b.dataset.tab],on)}});$('#tabs')?.classList.toggle('onme',tab==='me')}
 function renderBadges(){const set=(id,n)=>{const d=$('#'+id);if(!d)return;const was=d.hidden?0:parseInt(d.textContent,10)||0;d.hidden=!n;d.textContent=n>99?'99+':String(n);if(n>was)pop(d)};
  set('dn',S.unreadNotes);set('dm',S.unreadMsgs);set('dn2',S.unreadNotes);set('dm2',S.unreadMsgs);set('df',typeof PENDING_IN!=='undefined'?PENDING_IN.size:0);set('dg',S.newGuests||0);
  const me=$('.tab[data-tab="me"] .tdot');if(me){const bon=typeof bonusWaits==='function'&&bonusWaits();me.hidden=!bon;me.classList.toggle('gold',bon)}
@@ -31,20 +49,69 @@ function renderBadges(){const set=(id,n)=>{const d=$('#'+id);if(!d)return;const 
 
 /* tabs and pages */
 function go(tab,dx){if(!R[tab])tab='home';const oi=TABS.findIndex(t=>t[0]===S.tab),ni=TABS.findIndex(t=>t[0]===tab),wasPage=!!S.page;
- closeSheet(true);closePV(true);stopMedia();S.page=null;S.tab=tab;$$('.tab').forEach(b=>b.setAttribute('aria-current',String(b.dataset.tab===tab)));moveInd(tab);
+ closeSheet(true);closePV(true);stopMedia();S.page=null;S.tab=tab;markTabs(tab);moveInd(tab);
  const app=$('#app');app.classList.toggle('media',tab==='clips');app.classList.remove('barhidden');view.className=tab==='clips'?'is-clips':'';view.scrollTop=0;
  navStep();
  R[tab]();updateFab();markSide();
  const d=dx!=null?dx:(oi===ni&&!wasPage?0:Math.sign(ni-oi||1)*24);if(d)enterView(d)}
 {const op=openPage;openPage=function(...a){if(a[0]==='friends'&&R.friends){go('friends');return}closePV(true);const r=op.apply(this,a);updateFab();markSide();return r}}
 R.friends=()=>{PG.friends.r();$('.pghead [data-a="back"]',view)?.remove();$('.pghead',view)?.classList.add('tabhead')};
-function updateFab(){const f=$('#fab');if(f)f.hidden=document.body.classList.contains('wide')||!!S.page||!['home','me'].includes(S.tab)}
+function updateFab(){const f=$('#fab');if(f)f.hidden=document.body.classList.contains('wide')||!!S.page||S.tab!=='home'}
 A.home=()=>{if(S.tab==='home'&&!S.page){view.scrollTo({top:0,behavior:RM()?'auto':'smooth'});return}go('home')};
 
 /* services menu and the create sheet */
-A.menu=()=>{navMark('menu',A.menu);const svc=SVC.filter(x=>pageOk(x[0]));if(isStaff())svc.push(['admin','shield','ადმინ პანელი']);
- const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
- sheet(head('სერვისები')+walletHTML('mwal')+`<div class="svc">${svc.map(([p,i,l,a])=>`<button data-a="${R[p]&&!PG[p]?'tabgo':'page'}" data-p="${p}"${a?` data-arg="${a}"`:''}>${ic(i)}${l}</button>`).join('')}${INAPP?'':ANDROID?`<button data-a="install">${ic('download')}Android აპი</button>`:standalone?'':`<button data-a="install">${ic('download')}აპად დაყენება</button>`}<button data-a="rules">${ic('flag')}წესები</button></div>`,'short')};
+/* the services menu as the app's (services_menu.dart): a search, the groups in a row like a cover flow (the middle one
+   straight, the others turned toward it), and under it the middle group's pages, each with a line on what it does */
+const SVGROUPS=[
+ ['study','school','სწავლა','სკოლა და უნივერსიტეტი ერთ ადგილას',['#5B5BF0','#9B5CF6'],'schedule',[['study','school','სწავლის გვერდი','დღევანდელი ლექციები, ვადები და შენი ჯგუფი ერთად'],['schedule','cal','ლექციების ცხრილი','კვირის ლექციები, აუდიტორია და დრო'],['exams','clock','გამოცდები და დავალებები','ვადები და შეხსენებები, რომ არაფერი გამოგრჩეს'],['notes','book','კონსპექტები','ჩანაწერები და ფოტოები საგნების მიხედვით'],['classmates','users','კლასელები და კურსელები','შენი სკოლის და უნივერსიტეტის ხალხი'],['tips','help','სასწავლო რჩევები','გამოცდილება, კითხვები და პასუხები'],['rooms','video','სასწავლო ოთახი','ვიდეო-შეხვედრა კურსელებთან'],['rooms','mic','დისკუსია','ხმოვანი საუბარი ერთ თემაზე','birja']]],
+ ['people','users','ხალხი და თემები','მეგობრები, საზოგადოებები და შეხვედრები',['#0EA5E9','#6366F1'],'groups',[['friends','user','მეგობრები','მოთხოვნები, ნაცნობები და შემოთავაზებები'],['groups','users','ჯგუფები','კლასი, კურსი და ინტერესები'],['pages','mega','არხები და გვერდები','სიახლეები, ბიზნესი და ბრენდები'],['events','cal','შეხვედრები','ლექციები, ექსკურსიები, წვეულებები'],['map','globe','ლაივ რუკა','სად არიან მეგობრები ახლა'],['albums','image','ალბომები','საერთო ფოტოები ერთად']]],
+ ['daily','store','ყოველდღიური','ყიდვა-გაყიდვა, სამსახური, ადგილები და გზა',['#EAB308','#F97316'],'market',[['market','store','ბაზრობა','იყიდე, გაყიდე, გააჩუქე'],['jobs','work','ვაკანსიები და CV','სამსახური, სტაჟირება და შენი რეზიუმე'],['places','map','ადგილები','კაფეები, ბიბლიოთეკები, სივრცეები'],['rides','pin','ერთად წავიდეთ','მგზავრობა ერთ მანქანაში'],['help','help','დახმარება','დონორები, ცხოველები, მოხალისეები']]],
+ ['fun','live','გართობა და ლაივი','პირდაპირი ეთერი, მატჩები და შეჯიბრებები',['#15A34A','#065F46'],'sport',[['rooms','live','ლაივი','პირდაპირი ეთერი და მაყურებლები','live'],['sport','trophy','მატჩის ოთახი','მატჩები და პროგნოზები მეგობრებთან'],['tour','trophy','ტურნირი','შეჯიბრებები და ცხრილები']]],
+ ['roots','tree','ტრადიცია და ოჯახი','დაბადების დღეები, სახელის დღეები და შენი გვარი',['#EF4444','#F472B6'],'calendar',[['calendar','gift','კალენდარი','დაბადების და სახელის დღეები'],['namedays','cal','სახელის დღეები','ვისი სახელობის დღეა დღეს და მალე'],['tree','tree','ოჯახის ხე','შენი გვარი და ნათესავები']]],
+ ['mine','gear','ჩემი სივრცე','რაც შეინახე, დაიწყე და შენი პარამეტრები',['#334155','#64748B'],null,[['saved','bookmark','შენახული','შენახული პოსტები კოლექციებში'],['storyarch','archive','ისტორიების არქივი','შენი ძველი ისტორიები'],['drafts','clock','დრაფტები','დაწყებული და დაუსრულებელი პოსტები'],['coins','coin','მონეტები','ბალანსი და მისი ისტორია'],['verify','shield','ვერიფიკაცია','დადასტურებული პროფილის ნიშანი'],['settings','gear','პარამეტრები','პროფილი, კონფიდენციალურობა, შეტყობინებები']]]];
+/* the groups as this person sees them: switched-off pages left out, the admin's panel for the staff */
+const menuGroups=()=>SVGROUPS.map(g=>{const items=g[6].filter(i=>pageOk(i[0]));if(g[0]==='mine'&&isStaff())items.push(['admin','shield','ადმინ პანელი','საიტის მართვა: საჩივრები, მომხმარებლები, კონტენტი']);return items.length?[...g.slice(0,6),items]:null}).filter(Boolean);
+const MF={p:0,gs:[],raf:0,drag:null,el:null,step:120,at:-1};
+A.menu=()=>{navMark('menu',A.menu);MF.gs=menuGroups();MF.p=0;MF.at=-1;const n=MF.gs.reduce((s,g)=>s+g[6].length,0);
+ sheet(`<div class="mnu"><div class="mnu-h"><h2>სერვისები</h2><small>${MF.gs.length} ჯგუფი · ${n} გვერდი</small><button class="ibtn" data-a="close" aria-label="დახურვა">${ic('x')}</button></div>
+  <label class="mnu-q">${ic('search')}<input id="mnuq" type="search" placeholder="მოძებნე სერვისი" autocomplete="off" aria-label="მოძებნე სერვისი"></label>
+  <div id="mnub"><div class="mflow" id="mflow" role="listbox" aria-label="სერვისების ჯგუფები">${MF.gs.map((g,i)=>mfCard(g,i)).join('')}</div>
+  <div class="mdots" aria-hidden="true">${MF.gs.map((g,i)=>`<i style="--c:${g[4][0]}"></i>`).join('')}</div><div id="mgl" class="mgl"></div></div>
+  <div id="mnuf" class="mgl" hidden></div>${INAPP?'':`<div class="mnu-x">${ANDROID?`<button data-a="install">${ic('download')}Android აპი</button>`:''}<button data-a="rules">${ic('flag')}წესები</button></div>`}</div>`,'tall mnusheet');
+ MF.el=$('#mflow');mfWire();mfMeasure();mfRender();
+ $('#mnuq').oninput=e=>mfFind(e.target.value)};
+function mfCard(g,i){const [a,b]=g[4],art=g[5]&&typeof svArt==='function'?svArt(g[5]):'',names=g[6].map(x=>x[2]);
+ return `<button class="mfc" role="option" data-i="${i}" style="--a:${a};--b:${b}" aria-label="${g[2]}"><span class="mfc-top"><span class="mfc-ic">${ic(g[1])}</span><em>${g[6].length} გვერდი</em></span>
+  <span class="mfc-art">${art||`<span class="mfc-big">${ic(g[1])}</span>`}</span><b>${g[2]}</b><small>${g[3]}</small>
+  <span class="mfc-pills">${names.slice(0,2).map(t=>`<i>${t}</i>`).join('')}${names.length>2?`<i class="st">+${names.length-2}</i>`:''}</span><span class="mfc-sh"></span></button>`}
+function mfMeasure(){const el=MF.el;if(!el)return;const cw=el.clientWidth||360,w=Math.max(160,Math.min(230,cw*.47)),h=w*1.4;el.style.setProperty('--mw',w+'px');el.style.height=(h+40)+'px';
+ MF.w=w;MF.first=w*.62;MF.gap=Math.max(14,Math.min(64,(cw/2-MF.first-w*.1)/1.5));MF.step=MF.first}
+const mfX=a=>a<=1?a*MF.first:MF.first+(a-1)*MF.gap;
+function mfRender(){const el=MF.el;if(!el||!el.isConnected)return;const n=MF.gs.length,p=MF.p;
+ $$('.mfc',el).forEach(c=>{const i=+c.dataset.i;let d=((i-p)%n+n)%n;if(d>n/2)d-=n;const ad=Math.abs(d),sg=Math.sign(d),t=Math.min(ad,1);
+  c.style.transform=`translateX(${(sg*mfX(ad)).toFixed(1)}px) translateZ(${(-(t*110+Math.max(0,ad-1)*60)).toFixed(1)}px) rotateY(${(-sg*t*58).toFixed(2)}deg) scale(${(1-t*.06).toFixed(3)})`;
+  c.style.opacity=ad<=2?'1':String(Math.max(0,(2.6-ad)/.6).toFixed(3));c.style.zIndex=String(100-Math.round(ad*10));c.style.setProperty('--sh',(.22*t).toFixed(3));c.style.visibility=ad>2.6?'hidden':'';
+  c.classList.toggle('on',ad<.5);c.setAttribute('aria-selected',String(ad<.5));c.tabIndex=ad<.5?0:-1});
+ const at=((Math.round(p)%n)+n)%n;if(at!==MF.at){MF.at=at;mfList()}}
+function mfList(){const g=MF.gs[MF.at],el=$('#mgl');if(!g||!el)return;$$('.mdots i').forEach((d,i)=>d.classList.toggle('on',i===MF.at));
+ el.innerHTML=`<div class="mgh"><span class="mgi" style="--a:${g[4][0]};--b:${g[4][1]}">${ic(g[1])}</span><b>${g[2]}</b><small>${g[6].length} გვერდი</small></div>${g[6].map((it,k)=>mfRow(it,g,k)).join('')}`}
+function mfRow(it,g,k,showG){const s=typeof SVART!=='undefined'&&SVART[it[0]],a=s?s[0]:g[4][0],b=s?s[1]:g[4][1];
+ return `<button class="mrw" style="--i:${Math.min(k,8)}" data-a="mnugo" data-p="${it[0]}"${it[4]?` data-arg="${it[4]}"`:''}><span class="mri" style="--a:${a};--b:${b}">${ic(it[1])}</span><span class="grow">${showG?`<em style="color:${g[4][0]}">${g[2]}</em>`:''}<b>${it[2]}</b><small>${it[3]}</small></span>${ic('chev')}</button>`}
+function mfFind(q){q=q.trim().toLowerCase();const f=$('#mnuf'),b=$('#mnub');if(!q){f.hidden=true;b.hidden=false;return}b.hidden=true;f.hidden=false;
+ const found=[];MF.gs.forEach(g=>g[6].forEach(it=>{if(it[2].toLowerCase().includes(q)||it[3].toLowerCase().includes(q)||g[2].toLowerCase().includes(q))found.push([it,g])}));
+ f.innerHTML=found.length?found.map(([it,g],k)=>mfRow(it,g,k,true)).join(''):'<p class="mnone">ასეთი სერვისი ვერ ვიპოვე</p>'}
+function mfGo(k){cancelAnimationFrame(MF.raf);const from=MF.p,dur=Math.min(640,280+Math.abs(k-from)*120),t0=performance.now();
+ const step=now=>{const x=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-x,3);MF.p=from+(k-from)*e;mfRender();if(x<1)MF.raf=requestAnimationFrame(step)};MF.raf=requestAnimationFrame(step)}
+function mfWire(){const el=MF.el;let sx=0,sp=0,lx=0,lt=0,v=0,moved=0;
+ el.addEventListener('pointerdown',e=>{cancelAnimationFrame(MF.raf);MF.drag=e.pointerId;sx=lx=e.clientX;sp=MF.p;lt=performance.now();v=0;moved=0});
+ el.addEventListener('pointermove',e=>{if(MF.drag!==e.pointerId)return;const dx=e.clientX-sx;if(Math.abs(dx)>6&&!moved){moved=1;try{el.setPointerCapture(e.pointerId)}catch(x){}}
+  if(moved){const now=performance.now();v=(e.clientX-lx)/Math.max(1,now-lt)*1000;lx=e.clientX;lt=now;MF.p=sp-dx/MF.step;mfRender()}});
+ const up=e=>{if(MF.drag!==e.pointerId)return;MF.drag=null;if(!moved){const c=e.target.closest('.mfc');if(c&&!c.classList.contains('on')){const n=MF.gs.length,i=+c.dataset.i;let d=((i-MF.p)%n+n)%n;if(d>n/2)d-=n;mfGo(Math.round(MF.p+d))}return}
+  mfGo(Math.abs(v)<300?Math.round(MF.p):(v<0?Math.floor(MF.p)+1:Math.ceil(MF.p)-1))};
+ el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
+ el.addEventListener('keydown',e=>{if(e.key==='ArrowRight'){e.preventDefault();mfGo(Math.round(MF.p)+1)}else if(e.key==='ArrowLeft'){e.preventDefault();mfGo(Math.round(MF.p)-1)}});
+ try{const ro=new ResizeObserver(()=>{if(el.isConnected){mfMeasure();mfRender()}else ro.disconnect()});ro.observe(el)}catch(e){}}
+A.mnugo=t=>{const p=t.dataset.p,arg=t.dataset.arg;closeSheet(true);if(p==='admin'){openPage('admin');return}if(R[p]&&!PG[p]){go(p);return}openPage(p,arg)};
 const CREATE=[['cpost','edit','პოსტი','ტექსტი, ფოტო, ჰეშთეგი'],['cnote','book','კონსპექტი','ფოტო, ტექსტი, საგანი'],['clesson','cal','ლექცია ცხრილში','დღე, დრო, აუდიტორია'],['cexam','clock','გამოცდა ან დავალება','ვადით'],['croom','video','სასწავლო ოთახი','ვიდეო-შეხვედრა კურსელებთან'],['cbirja','mic','დისკუსია','ხმოვანი ოთახი თემაზე'],['cphoto','image','ფოტო','ფილტრით და ჭრით'],['cclip','clips','კლიპი','მოკლე ვერტიკალური ვიდეო'],['cpoll','poll','გამოკითხვა','მეგობრების აზრი'],['cstory','story','ისტორია','ქრება 24 საათში'],['cevent','cal','შეხვედრა','ლექცია, ექსკურსია, წვეულება'],['clisting','store','განცხადება','გაყიდე ან გააჩუქე'],['cgroup','users','ჯგუფი','საერთო ინტერესით'],['cpage','mega','არხი ან გვერდი','ბიზნესი და რეკლამა'],['cgchat','msg','ჯგუფური ჩატი','რამდენიმე მეგობართან'],['clive','live','ლაივი','პირდაპირი ეთერი'],['cplace','map','ადგილი','კაფე, ბიბლიოთეკა, სივრცე'],['chelp','help','დახმარების თხოვნა','სისხლი, ცხოველი, მოხალისე'],['cride','pin','მგზავრობა','ადგილები მანქანაში'],['cjob','school','ვაკანსია','მოძებნე თანამშრომელი']];
 A.create=()=>(navMark('create',A.create),sheet(head('შექმნა')+`<div class="createg">${CREATE.filter(x=>createOk(x[0])).map(([a,i,l,s])=>`<button data-a="${a}"><span class="cgi">${ic(i)}</span><b>${l}</b><small>${s}</small></button>`).join('')}</div>`,'short'));
 A.cpost=()=>compose();
@@ -86,7 +153,7 @@ async function loadSideR(){const el=$('#sider');if(!el)return;
   c('#sr_sg',sg.length?`<h3>შეიძლება იცნობდე</h3>${sg.map(p=>`<div class="srow"><button data-a="user" data-u="${p.id}">${av(p,36)}</button><button class="grow" data-a="user" data-u="${p.id}" style="text-align:left"><b>${esc(p.name)}</b><small>${p.mutual?p.mutual+' საერთო':esc(p.city||'')}</small></button><button class="btn sm" data-a="addfriend" data-u="${p.id}" aria-label="დამატება">${ic('plus')}</button></div>`).join('')}`:'');
   const bd=(await upcoming(7)).slice(0,4);c('#sr_bd',bd.length?`<h3>${ic('gift')}მალე</h3>${bd.map(e=>`<button class="srow" data-a="greet" data-u="${e.p.id}" data-k="${e.kind}">${av(e.p,32)}<span class="grow"><b>${esc(e.p.name)}</b><small>${whenTxt(e.n)} · ${e.kind==='b'?'დაბადების დღე':e.label}</small></span></button>`).join('')}`:'')}catch(e){}}
 WIDE.addEventListener?.('change',renderSide);
-document.addEventListener('click',e=>{const b=e.target.closest('[data-tab2]');if(b){if(b.dataset.tab2==='games'){gOpenHub();return}go(b.dataset.tab2);markSide()}});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-tab2]');if(b){go(b.dataset.tab2);markSide()}});
 setInterval(()=>{if(document.body.classList.contains('wide')&&!document.hidden)loadSideR()},300000);
 
 /* in-app banner for live notifications */
@@ -110,7 +177,7 @@ function route(h){h=String(h||'');if(!h||h==='#'||h.includes('='))return false;l
  if(id==='join'&&/^\d+$/.test(arg||'')){base();joinByLink(+arg);return true}
  if(id==='notifications'){base();openNotes();return true}
  if(id==='storyv'&&arg){base();openStoryById(+arg);return true}
- if(id==='chats'){base();openChats();return true}
+ if(id==='chats'){go('chats');return true}
  if(id==='post'&&/^\d+$/.test(arg||'')){base();openPost(+arg);return true}
  if(R[id]){go(id);return true}
  if(PG[id]||typeof GLZ_PG!=='undefined'&&GLZ_PG.includes(id)){openPage(id,arg);return true}
@@ -126,7 +193,7 @@ window.addEventListener('online',()=>{toast('კავშირი აღდგ�
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ME){countUnread();touchSeen()}});
 
 /* global input */
-$('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;if(b.dataset.tab===TABMID){A.chats();return}if(b.dataset.tab==='games'){gOpenHub();return}if(b.dataset.tab===S.tab&&!S.page&&view.scrollTop>10){view.scrollTo({top:0,behavior:RM()?'auto':'smooth'});return}go(b.dataset.tab)});
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;if(b.dataset.tab==='games'&&S.game&&S.tab==='games'&&!S.page){if(typeof A.lobby==='function')A.lobby();return}if(b.dataset.tab===S.tab&&!S.page&&view.scrollTop>10){view.scrollTo({top:0,behavior:RM()?'auto':'smooth'});return}go(b.dataset.tab)});
 document.addEventListener('click',e=>{if(!e.target.closest('.rwrap'))$$('.picker').forEach(x=>x.remove());const t=e.target.closest('[data-a]');if(!t)return;const f=A[t.dataset.a];if(!f){/* an action of the games or the admin panel, touched before they came */if(typeof GLZ!=='undefined'&&t.dataset.a&&(!GLZ.ready||ME&&ME.role==='admin'&&!PG.admin))(GLZ.ready?glAdmin():glLoad()).then(()=>{const g=A[t.dataset.a];if(g&&t.isConnected)g(t,e)}).catch(()=>{});return}if(t.tagName==='A')e.preventDefault();try{const r=f(t,e);if(r&&r.catch)r.catch(x=>{toast(errMsg(x));errBug(x,t.dataset.a)})}catch(x){toast(errMsg(x));errBug(x,t.dataset.a)}});
 $('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeSheet()});
 $('#layer').addEventListener('click',e=>{if(e.target.id==='layer')closeLayer()});
